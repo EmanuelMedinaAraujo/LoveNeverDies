@@ -78,6 +78,88 @@ test('Trauerfall anlegen', async ({ page }) => {
     ).toBeVisible()
   })
 
+  await test.step('legt im Tab "Alle" eine Aufgabe an', async () => {
+    await page.getByRole('link', { name: 'Alle Aufgaben' }).click()
+
+    await expect(page).toHaveURL(/\/alle$/)
+    await expect(page.getByRole('heading', { name: 'Alle Aufgaben' })).toBeVisible()
+    await expect(page.getByText('Hier ist noch nichts')).toBeVisible()
+
+    await page.getByLabel('Neue Aufgabe').fill('Sterbeurkunde beantragen')
+    await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+
+    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
+
+    await page.getByLabel('Neue Aufgabe').fill('Konten kündigen')
+    await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+
+    await expect(page.getByRole('checkbox')).toHaveCount(2)
+  })
+
+  await test.step('die Reihenfolge bleibt, wenn eine Aufgabe geändert wird', async () => {
+    /*
+     * `seq` steigt bei jedem Schreibvorgang (§4) und taugt deshalb nicht als
+     * Anzeigereihenfolge — danach sortiert wanderte die gerade abgehakte
+     * Aufgabe ans Ende. Sortiert wird über die UUIDv7 der Zeile.
+     */
+    await page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' }).check()
+
+    await gotoVerlaesslich(page, '/alle')
+
+    await expect(page.getByRole('checkbox')).toHaveCount(2)
+    await expect(page.getByRole('listitem').first()).toContainText('Sterbeurkunde beantragen')
+    await expect(page.getByRole('listitem').last()).toContainText('Konten kündigen')
+
+    // Aufgeräumt, damit die folgenden Schritte wieder mit genau einer Aufgabe
+    // arbeiten.
+    await page.getByRole('button', { name: /^Löschen.*Konten kündigen/ }).click()
+    await page.getByRole('button', { name: 'Endgültig löschen' }).click()
+    await expect(page.getByRole('checkbox')).toHaveCount(1)
+  })
+
+  await test.step('hakt sie ab, und nach dem Neuladen ist sie noch abgehakt', async () => {
+    /*
+     * Der eigentliche Punkt des Slices: Der Stand liegt nicht im Speicher des
+     * Tabs, sondern verschlüsselt auf dem Server. Neu geladen wird über eine
+     * echte Navigation und nicht über `page.reload()` — dieselbe Absicherung
+     * gegen den JWT-Jitter aus helpers.ts greift dann mit.
+     */
+    await page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' }).check()
+    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeChecked()
+
+    await gotoVerlaesslich(page, '/alle')
+
+    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeChecked()
+  })
+
+  await test.step('benennt sie um und gibt ihr eine Beschreibung', async () => {
+    await page.getByRole('button', { name: /^Ändern.*Sterbeurkunde beantragen/ }).click()
+
+    await page.getByLabel('Titel').fill('Sterbeurkunde abholen')
+    await page.getByLabel('Beschreibung').fill('Sechs Ausfertigungen, Standesamt Freiburg')
+    await page.getByRole('button', { name: 'Speichern' }).click()
+
+    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeVisible()
+    await expect(page.getByText('Sechs Ausfertigungen, Standesamt Freiburg')).toBeVisible()
+
+    // Das Häkchen überlebt das Umbenennen: Geändert wird der Payload, und der
+    // trägt beides.
+    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeChecked()
+  })
+
+  await test.step('löscht sie nach einer Rückfrage, und sie bleibt fort', async () => {
+    await page.getByRole('button', { name: /^Löschen.*Sterbeurkunde abholen/ }).click()
+
+    // §5: Löschen gewinnt endgültig. Das steht vor der Aktion auf dem Schirm.
+    await expect(page.getByText('kommen nicht zurück')).toBeVisible()
+    await page.getByRole('button', { name: 'Endgültig löschen' }).click()
+
+    await expect(page.getByText('Hier ist noch nichts')).toBeVisible()
+
+    await gotoVerlaesslich(page, '/alle')
+    await expect(page.getByText('Hier ist noch nichts')).toBeVisible()
+  })
+
   await test.step('der Fall steht in Profil unter "Für wen?"', async () => {
     await page.goto('/profil')
 

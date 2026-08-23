@@ -32,6 +32,7 @@ vi.mock('../../src/screens/shared/Anmelden/Anmelden.tsx', () => ({
 vi.mock('../../src/screens/shared/KeinFall/KeinFall.tsx', () => ({
   KeinFall: () => <p>Fallweiche</p>,
 }))
+vi.mock('../../src/screens/shared/Alle/Alle.tsx', () => ({ Alle: () => <p>Aufgabenliste</p> }))
 vi.mock('../../src/screens/shared/Profil/Profil.tsx', () => ({ Profil: () => <p>Profilseite</p> }))
 vi.mock('../../src/screens/shared/Todesfall/Todesfall.tsx', () => ({
   Todesfall: () => <p>Fallanlage</p>,
@@ -148,6 +149,23 @@ describe('Fallsperre', () => {
     ).toBeVisible()
   })
 
+  it('fuehrt von dort zu den Aufgaben und zum Profil', () => {
+    // Die untere Leiste aus §7 gibt es noch nicht; die beiden Screens, die es
+    // schon gibt, muessen trotzdem erreichbar sein.
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
+      legeTrauerfallAn: vi.fn(),
+    })
+
+    rendere(ANGEMELDET)
+
+    expect(screen.getByRole('link', { name: 'Alle Aufgaben' })).toHaveAttribute('href', '/alle')
+    expect(screen.getByRole('link', { name: 'Profil und Geräte' })).toHaveAttribute(
+      'href',
+      '/profil',
+    )
+  })
+
   it('zeigt den blossen Namen, wenn kein Sterbedatum bekannt ist', () => {
     const ohneDatum = { ...LESBAR, sterbedatum: null }
     useCase.mockReturnValue({
@@ -183,6 +201,12 @@ describe('Routen', () => {
     rendere(ANGEMELDET, '/todesfall')
 
     expect(screen.getByText('Fallanlage')).toBeVisible()
+  })
+
+  it('fuehrt /alle zur Aufgabenliste', () => {
+    rendere(ANGEMELDET, '/alle')
+
+    expect(screen.getByText('Aufgabenliste')).toBeVisible()
   })
 
   it('fuehrt /profil zum Profil', () => {
