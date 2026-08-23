@@ -29,7 +29,7 @@
 /** `"LN"` — jeder Envelope beginnt damit. */
 export const ENVELOPE_MAGIC = Uint8Array.of(0x4c, 0x4e)
 
-/** `v = 1` → Suite: X-Wing (ml-kem-768 + x25519) als KEM, aes-256-gcm als AEAD. */
+/** `v = 1` → Suite: ml-kem-768 + x25519 als KEM, aes-256-gcm als AEAD. */
 export const ENVELOPE_VERSION = 1
 
 /** `aead = 1` → aes-256-gcm. */

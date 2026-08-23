@@ -1,32 +1,26 @@
 /**
  * KEM: ML-KEM-768 zusammen mit X25519 (DESIGN.md §3.1).
  *
- * **Zum Namen.** §3.1 nennt das Verfahren „X-Wing“. Benutzt wird
- * `ml_kem768_x25519` aus `@noble/post-quantum`, und das ist nicht dasselbe:
- * Dieselben zwei Bausteine, dieselbe Bezeichnung `\.//^\`, aber der Combiner
- * hängt sie in einer anderen Reihenfolge zusammen als
- * draft-connolly-cfrg-xwing-kem — `SHA3-256(ss_M ‖ ss_X ‖ ct_X ‖ pk_X ‖ label)`
- * statt der Bezeichnung voran —, und die Ableitung des Schlüsselpaars aus dem
- * Seed geht ebenfalls einen eigenen Weg. Kryptographisch ist beides in Ordnung;
- * byteweise sind sie unvereinbar.
- *
- * Das ist keine Kleinigkeit für §9: Die Edge Function und jede zweite
- * Implementierung müssen dieselbe `@noble/post-quantum`-Version benutzen, nicht
- * „irgendein X-Wing“. Ein Wechsel der Konstruktion — auch der zur echten
- * Spezifikation hin — macht jeden gespeicherten `wrapped_key` unlesbar und ist
- * damit ein neues `v` (§3.2), keine Aktualisierung einer Abhängigkeit.
- *
  * Das Identitäts-Keypair jedes Geräts. Es beweist, dass jemand lesen darf, und
  * sonst nichts — wer etwas geschrieben hat, sagt erst die Signatur in
  * `sign.ts`.
  *
- * X-Wing statt ML-KEM allein: Bricht eines der beiden Verfahren, hält das
+ * Hybrid statt ML-KEM allein: Bricht eines der beiden Verfahren, hält das
  * andere. Der geheime Schlüssel ist ein 32-Byte-Seed; er verlässt das Gerät
  * nie und liegt at-rest unter einem nicht-extrahierbaren AES-GCM-Schlüssel.
  * Der öffentliche mit seinen 1216 Byte liegt im Klartext auf dem Server.
  *
  * `kem_ct` trägt bewusst keinen eigenen Kopf (§3.2). Welches KEM ihn erzeugt
  * hat, sagt das `v` des `wrapped_key`, der neben ihm in derselben Zeile steht.
+ *
+ * **Zum Namen.** Benutzt wird `ml_kem768_x25519` aus `@noble/post-quantum`.
+ * Warum das Verfahren nirgends „X-Wing“ heißt, obwohl es so aussieht, steht in
+ * §1: Der Combiner hängt die Bezeichnung hinten an statt voran, und damit ist es
+ * byteweise nicht das Verfahren aus draft-connolly-cfrg-xwing-kem. Für dieses
+ * Modul folgt daraus genau eines — die Edge Function und jede zweite
+ * Implementierung (§9) brauchen diese Bibliothek in dieser Version, und ein
+ * Wechsel der Konstruktion ist ein neues `v` (§3.2), keine Aktualisierung einer
+ * Abhängigkeit.
  */
 
 import { ml_kem768_x25519 } from '@noble/post-quantum/hybrid.js'
@@ -42,7 +36,7 @@ export const KEM_CIPHERTEXT_LAENGE = 1120
 /** Der Wrapping-Schlüssel für AES-256-GCM, der aus einer Kapselung fällt. */
 export const GETEILTES_GEHEIMNIS_LAENGE = 32
 
-/** Ein Schlüssel oder ein Ciphertext passte nicht zu X-Wing. */
+/** Ein Schlüssel oder ein Ciphertext passte nicht zum KEM. */
 export class KemFehler extends Error {
   constructor(nachricht: string, options?: ErrorOptions) {
     super(nachricht, options)
