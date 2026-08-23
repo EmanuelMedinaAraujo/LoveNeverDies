@@ -16,6 +16,27 @@ supabase projects create loveneverdies --region eu-central-1 --org-id <org>
 supabase link --project-ref <ref>
 ```
 
+## Auf einem zweiten Rechner
+
+Das Projekt existiert schon (`pgljqnvkvgusmerruicl`), es wird also nichts
+angelegt, sondern nur verknüpft:
+
+```bash
+supabase login
+supabase link --project-ref pgljqnvkvgusmerruicl
+```
+
+`supabase init` ist nicht nötig und wäre eher hinderlich — `link` legt sich
+`supabase/.temp/` selbst an, und beides ist gitignored. Ein `db push` direkt
+danach meldet, dass nichts zu tun ist; das ist die Probe, dass die Verknüpfung
+sitzt.
+
+Was **nicht** aus dem Repo kommt, ist `.env.local` (siehe unten). Und die
+Geräteschlüssel schon gar nicht: Der zweite Rechner erzeugt beim ersten Start
+ein eigenes Schlüsselpaar und trägt sich als weiteres Gerät in `device_keys`
+ein (§3.6). Das ist keine Panne, sondern der Entwurf — der private Seed
+verlässt kein Gerät, deshalb *kann* er nicht mitkopiert werden.
+
 ## Die Migrationen einspielen
 
 ```bash
@@ -33,32 +54,59 @@ was einmal eingespielt ist, ist eingespielt.
 | `20260823120000_geraeteschluessel.sql`  | `device_keys`, ein Gerät je Zeile                  |
 | `20260823120100_faelle.sql`             | `cases`, `memberships`, `is_member()`              |
 | `20260823120200_geraeteschluessel_rls.sql` | Wer welche Geräteschlüssel sehen und ändern darf |
+| `20260823120300_datenapi_zugriff.sql`   | Welche Rolle die Tabellen überhaupt kennt          |
+| `20260823171924_rls_initplan.sql`       | Den Clerk-`sub` einmal je Abfrage, nicht je Zeile  |
+| `20260823172125_rls_initplan_schreibweise.sql` | Dieselbe Optimierung, für den Linter lesbar |
+
+`20260823120300_datenapi_zugriff.sql` ist die unscheinbarste Datei der Kette
+und die, ohne die nichts geht. RLS
+entscheidet über Zeilen, nicht über Tabellen: Neue Supabase-Projekte erteilen
+`anon` und `authenticated` in `public` keine Lese- und Schreibrechte mehr, und
+ohne sie antwortet PostgREST mit `permission denied for table` — an jeder
+Policy vorbei, die dafür gar nichts kann. `tests/db/postgres.ts` richtet
+seither dieselbe Voreinstellung ein, damit ein vergessenes `grant` im Test
+auffällt und nicht erst im Browser.
 
 ## Clerk als Auth-Anbieter eintragen
 
 Supabase prüft die Token nicht selbst, sondern akzeptiert die von Clerk. Im
 Dashboard unter **Authentication → Sign In / Providers → Third Party Auth** die
-Clerk-Domain eintragen. Danach steht in jeder Policy `auth.jwt() ->> 'sub'` für
-denselben Clerk-`sub`, der in `memberships.user_id` und `device_keys.user_id`
-liegt (§3.3).
+Clerk-Domain eintragen — für die Entwicklungsinstanz dieses Projekts
+`honest-hornet-2314.clerk.accounts.dev`. In Clerk gehört umgekehrt unter
+**Configure → Integrations** die Supabase-Integration eingeschaltet; erst dann
+legt Clerk `"role": "authenticated"` ins Token, und ohne diesen Anspruch landet
+jede Anfrage bei `anon` und damit bei `permission denied`.
 
-Ohne diesen Eintrag antwortet PostgREST auf jede Anfrage mit leeren Mengen —
-kein Fehler, keine Zeile. Das ist die richtige Voreinstellung und beim
-Einrichten die häufigste Verwechslung.
+Danach steht in jeder Policy `auth.jwt() ->> 'sub'` für denselben Clerk-`sub`,
+der in `memberships.user_id` und `device_keys.user_id` liegt (§3.3).
+
+Ohne diesen Eintrag prüft Supabase das Clerk-Token gegen niemanden, verwirft es
+und behandelt die Anfrage als `anon`. Und weil `anon` seit
+`20260823120300_datenapi_zugriff.sql` keine Rechte auf diesen Tabellen hat,
+kommt `permission denied for table` zurück — nicht die leere Menge, die man
+hier erwartet. Die Meldung nennt die Rolle, nicht die Ursache; wer sie sieht,
+sollte zuerst hier nachsehen und nicht in den Policies.
 
 ## Die Zugangsdaten in die App
 
-Projekt-URL und Anon-Key stehen im Dashboard unter **Project Settings → API**
-und gehören nach `.env.local`:
+Projekt-URL und Publishable Key stehen im Dashboard unter
+**Project Settings → API Keys** und gehören nach `.env.local`:
 
 ```
-VITE_SUPABASE_URL=https://<ref>.supabase.co
-VITE_SUPABASE_ANON_KEY=<anon key>
+VITE_SUPABASE_URL=https://pgljqnvkvgusmerruicl.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_...
 ```
 
-Der Anon-Key ist öffentlich und liegt ohnehin im ausgelieferten JavaScript. Was
-jemand damit sieht, entscheidet die RLS. Der **Service-Role-Key** umgeht sie
-vollständig; er gehört niemals in eine `VITE_`-Variable und niemals ins Repo.
+Die Variable heißt aus historischen Gründen `ANON_KEY`, enthält aber den neuen
+Publishable Key. Beide werden vom selben Gateway akzeptiert; die alten
+Legacy-JWT-Keys (`anon`, `service_role`) laufen Ende 2026 aus und sind in
+diesem Projekt unter **Settings → API Keys → Legacy API Keys** abgeschaltet.
+Wer sie doch verwendet, bekommt `Legacy API keys are disabled` zurück.
+
+Der Publishable Key ist öffentlich und liegt ohnehin im ausgelieferten
+JavaScript. Was jemand damit sieht, entscheidet die RLS. Der **Secret Key**
+(`sb_secret_...`, früher `service_role`) umgeht sie vollständig; er gehört
+niemals in eine `VITE_`-Variable und niemals ins Repo.
 Gebraucht wird er erst von der Edge Function `vault-release` (§3.5), und dort
 serverseitig.
 

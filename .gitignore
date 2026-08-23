@@ -11,3 +11,9 @@ coverage/
 .DS_Store
 *.log
 *.tsbuildinfo
+
+# Supabase-CLI: config.toml wird von `supabase init` passend zur installierten
+# Version erzeugt (supabase/README.md), .temp/ ist Sitzungszustand.
+supabase/config.toml
+supabase/.temp/
+supabase/.branches/

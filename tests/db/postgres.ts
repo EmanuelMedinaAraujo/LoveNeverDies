@@ -43,12 +43,13 @@ const PLATTFORM = `
   grant usage on schema public to anon, authenticated, service_role;
   grant usage on schema auth to anon, authenticated, service_role;
 
+  -- Genau die Voreinstellung eines heutigen Supabase-Projekts: Tabellen in
+  -- public sind fuer anon und authenticated nicht lesbar, bis eine Migration
+  -- es ausdruecklich erteilt. Stuende hier grant all, liefe jede Policy im
+  -- Test gegen Rechte, die es in der Cloud nicht gibt, und ein fehlendes
+  -- grant faenden wir erst im Browser.
   alter default privileges in schema public
-    grant all on tables to anon, authenticated, service_role;
-  alter default privileges in schema public
-    grant all on functions to anon, authenticated, service_role;
-  alter default privileges in schema public
-    grant all on sequences to anon, authenticated, service_role;
+    grant truncate, references, trigger on tables to anon, authenticated, service_role;
 `
 
 export function migrationsdateien(): string[] {
