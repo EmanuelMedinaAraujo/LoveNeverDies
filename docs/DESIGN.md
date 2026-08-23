@@ -14,7 +14,7 @@ Gebaut für Legal Loves Tech 2026, Abschlusspitch am 27. August 2026.
 | Sprache         | Deutsch, durchgehend "Sie"                                                     |
 | Auth            | Clerk, hinter einem `AuthProvider`-Adapter (austauschbar)                      |
 | Backend         | Supabase (Region EU/Frankfurt): Postgres + RLS + Realtime + Storage            |
-| Serverlogik     | Eine Edge Function (`vault-release`), `security definer`-RPCs, ein Cron-Job     |
+| Serverlogik     | Eine Edge Function (`vault-release`), `security definer`-RPCs, ein Cron-Job    |
 | Autorisierung   | Postgres RLS, von der Datenbank erzwungen, nicht von Anwendungscode            |
 | KEM             | X-Wing (`ml_kem768_x25519`) aus `@noble/post-quantum` (Version gepinnt; 0.7.0) |
 | Signatur        | ML-DSA-65 + Ed25519, zusammengesetzt; beide müssen verifizieren                |
@@ -309,7 +309,7 @@ Läuft identisch beim ersten Versiegeln und bei jeder späteren Mitgliederänder
    Shamir-Bibliothek und `share_1 = K_v`; das ist die einzige Verzweigung im ganzen
    Tresorpfad. Bei `n = 0` entfällt der Schritt.
 3. Alle bestehenden `vault_shares` des Falls löschen, `share_i` an jedes Gerät von
-   Angehörigem *i* wrappen, `share_hash_i = SHA-256(share_i)` als Klartextspalte daneben.
+   Angehörigem _i_ wrappen, `share_hash_i = SHA-256(share_i)` als Klartextspalte daneben.
 4. Alle `vault_releases` des Falls löschen.
 5. `vault_resplit_pending = false`.
 
@@ -329,7 +329,7 @@ Grund, aus dem `kid` und Payload in §3.1 entkoppelt sind.
 Die Bibliothek verlangt `shares ≥ 2` und `threshold ≥ 2`. Genau deshalb ist `n = 1` ein
 Direktwrap statt eines Split-Aufrufs.
 
-#### Freigeben (Gerät von Angehörigem *i*, nach dem Tod)
+#### Freigeben (Gerät von Angehörigem _i_, nach dem Tod)
 
 1. `share_i` mit `sk_u` entpacken.
 2. Gegen `share_hash_i` prüfen. Das fängt einen kaputten Wrap ab, bevor irgendetwas
@@ -427,7 +427,7 @@ DELETE ist ausschließlich dem Besitzer des betroffenen Geräts erlaubt, damit e
 fehlerhaften Wrap verwerfen und sich einen korrekten nachliefern lassen kann.
 
 Die Signatur wehrt genau einen Angriff ab: ein Mitglied, das einen formal gültigen Wrap
-eines *falschen* `K_c` einstellt und das Empfängergerät damit dauerhaft aussperrt. Der
+eines _falschen_ `K_c` einstellt und das Empfängergerät damit dauerhaft aussperrt. Der
 AES-GCM-Tag erkennt nur Beschädigung, nicht die falsche Absicht. `personal_key_wraps` und
 `vault_key_wraps` tragen deshalb keine Signatur: Dort darf per RLS ohnehin nur die eigene
 Person schreiben, und es gibt kein fremdes Gerät, das etwas einstellen könnte.
@@ -473,7 +473,7 @@ sie also mit und verwerfen sie, bei zehn privaten Items rund 20 KB, einmalig.
 > auch Items, die aus einem echten Defekt heraus unlesbar sind. Einen Zähler übersprungener
 > Einträge gibt es ausschließlich im Dev-Modus, in Produktion nie.
 
-**Zwei Sorten privater Items.** *Aufgaben* stehen im Aufgabenbaum. *Konfiguration* steht
+**Zwei Sorten privater Items.** _Aufgaben_ stehen im Aufgabenbaum. _Konfiguration_ steht
 nie darin — bislang genau ein Fall, `kenntnisAm` (§8). Die beiden Strukturregeln gelten
 deshalb ausschließlich für private Aufgaben; ein privates Konfigurations-Item hat weder
 Eltern noch Kinder noch Abhängigkeiten und kann den Baum nicht verletzen.
@@ -1054,7 +1054,7 @@ verschiedene Fristenden.
 ist standardmäßig leer und wird von jeder Person selbst eingetragen. Weil das Fristende
 abgeleitet und nie gespeichert wird, zeigt dieselbe geteilte Aufgabe jedem Mitglied sein
 eigenes Datum, ohne dass irgendetwas divergiert. Aufgaben mit `frist_ab = kenntnis` bleiben
-ohne dieses Datum fristenlos und tragen den sichtbaren Hinweis "Diese Frist läuft ab *Ihrer*
+ohne dieses Datum fristenlos und tragen den sichtbaren Hinweis "Diese Frist läuft ab _Ihrer_
 Kenntnis". Die App rechnet nicht mit einer Vermutung, denn eine falsch berechnete
 Ausschlagungsfrist kostet den ganzen Nachlass.
 
@@ -1180,3 +1180,29 @@ Gerät würde von einem bestehenden gegengezeichnet, wodurch der Prüfcode-Abgle
 dauerhafte Spur hinterließe, statt ein einmaliges Ritual zu bleiben. Eine
 Trust-on-first-use-Wurzel bliebe auch dann: Das allererste Gerät kann niemand
 gegenzeichnen.
+
+---
+
+## 12 Colors
+
+Light Mode:
+
+- background: "#F7F4EC"
+- cardBackground: "#FFFFFF"
+- cardBorder: "#E4DFD5"
+- primaryAccent: "#35523C"
+- textOnAccent: "#FAF8F5"
+- textPrimary: "#141E16"
+- textSecondary: "#5E6A61"
+- inactiveIcon: "#647267"
+
+Dark Mode:
+
+- background: "#0C130E"
+- cardBackground: "#18231C"
+- cardBorder: "#25352B"
+- primaryAccent: "#97BA8E"
+- textOnAccent: "#111A13"
+- textPrimary: "#FAF8F5"
+- textSecondary: "#9AA89D"
+- inactiveIcon: "#5E7064"
