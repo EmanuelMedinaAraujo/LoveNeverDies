@@ -1,3 +1,5 @@
+import { readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ESLint } from 'eslint'
 import { beforeAll, describe, expect, it } from 'vitest'
@@ -95,5 +97,26 @@ describe('Kein Schlupfloch neben den Schichten', () => {
     )
 
     expect(errors).toEqual([])
+  })
+})
+
+describe('Der echte Kryptokern', () => {
+  it('laeuft ohne Lint-Fehler durch', async () => {
+    // Die Faelle oben pruefen die Regel an erfundenen Dateien. Dieser prueft die
+    // Dateien, die es wirklich gibt: `core/crypto` importiert weder React noch
+    // Supabase noch Clerk, und der Lint-Lauf aus #1 bleibt gruen.
+    const kern = fileURLToPath(new URL('../src/core/crypto', import.meta.url))
+    const dateien = readdirSync(kern).map((name) => join(kern, name))
+
+    expect(dateien.length).toBeGreaterThan(0)
+
+    const ergebnisse = await eslint.lintFiles(dateien)
+    const fehler = ergebnisse.flatMap((ergebnis) =>
+      ergebnis.messages
+        .filter((meldung) => meldung.severity === 2)
+        .map((meldung) => `${ergebnis.filePath}:${meldung.line} ${meldung.message}`),
+    )
+
+    expect(fehler).toEqual([])
   })
 })

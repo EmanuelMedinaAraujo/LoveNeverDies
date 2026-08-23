@@ -53,6 +53,28 @@ Alle Versionen sind exakt gepinnt (`save-exact=true` in `.npmrc`). §11.2 nennt
 die kurze, kontrollierte Abhängigkeitsliste als Gegenmaßnahme gegen XSS im
 eigenen Origin — die Kryptobibliotheken dürfen sich nicht unbemerkt bewegen.
 
+## Kryptokern
+
+`src/core/crypto` steht für sich: kein React, kein Supabase, kein Clerk, und
+außer WebCrypto keine Browser-Abhängigkeit — die Edge Function `vault-release`
+soll dieselben Präfixe und denselben Verifikationscode benutzen können (§9).
+
+| Datei            | Wofür                                                                  |
+| ---------------- | ---------------------------------------------------------------------- |
+| `domain.ts`      | Die fünf Domain-Trennungs-Präfixe aus §3.2, an genau einer Stelle       |
+| `envelope.ts`    | Das versionierte Format aus §3.2 samt Versions-Dispatch                 |
+| `aead.ts`        | AES-256-GCM über WebCrypto                                             |
+| `kem.ts`         | ML-KEM-768 + X25519: kapseln und entkapseln (zum Namen siehe die Datei) |
+| `sign.ts`        | ML-DSA-65 **und** Ed25519; gültig nur, wenn beide verifizieren          |
+| `shamir.ts`      | `K_v` teilen und zusammensetzen (ohne `n = 1`, siehe §3.5)              |
+| `commitment.ts`  | Tresor-Commitment, Freigabe- und Wrap-Nachricht, Katalog-Item-ID        |
+| `fingerprint.ts` | Geräte-Fingerprint und der 6-stellige Prüfcode aus §3.6                 |
+| `bytes.ts`       | Verketten, Vergleichen, Zufall, SHA-256 und HMAC                        |
+
+Ein Blob mit unbekanntem `v` oder `aead` wird abgewiesen und nie stillschweigend
+falsch gelesen; Migration läuft lazy, also müssen alte und neue nebeneinander
+lesbar bleiben. Die Tests dazu liegen in `tests/crypto/`.
+
 ## Schichtung
 
 `core/crypto` importiert weder React noch Supabase, Abhängigkeiten zeigen
