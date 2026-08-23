@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Link, Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../core/auth/authProvider.ts'
 import { speicherDauerhaftAnfordern } from '../core/storage/persist.ts'
 import { useAnsichtsmodus } from '../hooks/useAnsichtsmodus.ts'
@@ -7,6 +7,7 @@ import { useCase } from '../hooks/useCase.ts'
 import { useGeraeteanmeldung } from '../hooks/useGeraete.ts'
 import { fallBeschriftung } from '../services/fallbeschriftung.ts'
 import type { Fall } from '../services/fallService.ts'
+import { Alle } from '../screens/shared/Alle/Alle.tsx'
 import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
 import { KeinFall } from '../screens/shared/KeinFall/KeinFall.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
@@ -23,9 +24,9 @@ function Ladeanzeige({ text }: { text: string }) {
 
 /**
  * Der Fall selbst, sobald es einen gibt (§2). Es gibt noch keinen eigenen
- * Start-Screen mit Aufgabenliste — der kommt mit den Slices, die ihn füllen.
- * Bis dahin steht hier, wofür §2 die Beschriftung verlangt: der Name der
- * Person, kein Sammelbegriff.
+ * Start-Screen mit den *zugewiesenen* Aufgaben — der kommt mit der Zuweisung,
+ * die ihn füllt (§7). Bis dahin steht hier, wofür §2 die Beschriftung
+ * verlangt: der Name der Person, kein Sammelbegriff, und der Weg zu "Alle".
  */
 function Fallanzeige({ fall }: { fall: Fall }) {
   if (fall.zustand === 'gesperrt') {
@@ -44,6 +45,18 @@ function Fallanzeige({ fall }: { fall: Fall }) {
       <h1>
         {fall.sterbedatum === null ? fall.personName : fallBeschriftung(fall.personName, fall.sterbedatum)}
       </h1>
+
+      {/*
+        Die untere Leiste aus §7 — Start · Erbe · Alle · Profil — kommt mit den
+        Screens, die sie verbindet. Zwei davon gibt es, und die beiden Wege
+        stehen so lange hier.
+      */}
+      <p className={stile.hinweis}>
+        <Link to="/alle">Alle Aufgaben</Link>
+      </p>
+      <p className={stile.hinweis}>
+        <Link to="/profil">Profil und Geräte</Link>
+      </p>
     </main>
   )
 }
@@ -108,6 +121,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<FallSperre />} />
+      <Route path="/alle" element={<Alle />} />
       <Route path="/todesfall" element={<Todesfall />} />
       <Route path="/profil" element={<Profil />} />
       <Route path="*" element={<Navigate to="/" replace />} />

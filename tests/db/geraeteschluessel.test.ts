@@ -46,6 +46,7 @@ describe('Die Migrationskette', () => {
     expect(rows.map((zeile) => zeile.table_name)).toEqual([
       'cases',
       'device_keys',
+      'items',
       'key_wraps',
       'memberships',
     ])

@@ -57,6 +57,16 @@ export function stubClient(antwort: Antwort) {
     maybeSingle: () => Promise.resolve(antwort),
     single: () => Promise.resolve(antwort),
     returns: () => Promise.resolve(antwort),
+
+    /*
+     * PostgREST-Builder sind selbst awaitbar — ein `insert`, dessen Ergebnis
+     * niemand braucht, wird ohne Abschluss direkt awaitet. Ohne dieses `then`
+     * ergäbe so ein `await` das Kettenobjekt statt der Antwort, und der Adapter
+     * läse aus ihm ein `error: undefined` heraus.
+     */
+    then(...args: Parameters<Promise<Antwort>['then']>) {
+      return Promise.resolve(antwort).then(...args)
+    },
   }
 
   const client = {

@@ -1,0 +1,36 @@
+/*
+ * Alle Masse aus den Dichtetokens: Die einfache Ansicht bekommt ein groesseres
+ * Kaestchen, ohne dass diese Datei davon weiss (DESIGN.md §7).
+ */
+
+.zeile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dichte-abstand-klein);
+
+  cursor: pointer;
+  font-size: var(--dichte-schrift);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.feld {
+  flex: none;
+  width: var(--dichte-schrift-gross);
+  height: var(--dichte-schrift-gross);
+
+  /* Das Kaestchen steht auf der Mittellinie der ersten Textzeile, auch wenn
+     der Titel ueber zwei Zeilen laeuft. */
+  margin-top: calc((var(--dichte-schrift) * var(--dichte-zeilenhoehe) - var(--dichte-schrift-gross)) / 2);
+
+  accent-color: var(--farbe-akzent);
+  cursor: pointer;
+}
+
+.beschriftung {
+  color: var(--farbe-text);
+}
+
+.zeile:has(.feld:checked) .beschriftung {
+  color: var(--farbe-text-sekundaer);
+  text-decoration: line-through;
+}
