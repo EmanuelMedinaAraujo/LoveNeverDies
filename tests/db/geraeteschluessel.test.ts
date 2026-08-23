@@ -43,7 +43,12 @@ describe('Die Migrationskette', () => {
        where table_schema = 'public' order by table_name`,
     )
 
-    expect(rows.map((zeile) => zeile.table_name)).toEqual(['cases', 'device_keys', 'memberships'])
+    expect(rows.map((zeile) => zeile.table_name)).toEqual([
+      'cases',
+      'device_keys',
+      'key_wraps',
+      'memberships',
+    ])
   })
 
   it('schaltet auf jeder Tabelle RLS ein', async () => {

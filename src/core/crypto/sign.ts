@@ -105,6 +105,28 @@ export function pkSigBytes(oeffentlich: OeffentlicherSignaturSchluessel): Uint8A
   return verkette(oeffentlich.mldsa, oeffentlich.ed25519)
 }
 
+/**
+ * Die Gegenrichtung zu {@link pkSigBytes}.
+ *
+ * `device_keys.sig_public_key` ist eine einzige Spalte; wer daraus verifizieren
+ * will, braucht die beiden Hälften wieder getrennt. Die Länge wird geprüft,
+ * statt blind zu schneiden: Eine zu kurze Zeile ergäbe sonst zwei
+ * abgeschnittene Schlüssel, und die Signaturprüfung schlüge fehl, ohne dass
+ * jemand wüsste, warum.
+ */
+export function signaturSchluesselAusBytes(pkSig: Uint8Array): OeffentlicherSignaturSchluessel {
+  pruefeLaenge(
+    'pk_sig',
+    pkSig,
+    MLDSA_OEFFENTLICH_LAENGE + ED25519_OEFFENTLICH_LAENGE,
+  )
+
+  return {
+    mldsa: pkSig.slice(0, MLDSA_OEFFENTLICH_LAENGE),
+    ed25519: pkSig.slice(MLDSA_OEFFENTLICH_LAENGE),
+  }
+}
+
 function signierteBytes(praefix: DomainSeparationPrefix, nachricht: Uint8Array): Uint8Array {
   return verkette(textBytes(praefix), nachricht)
 }
