@@ -83,18 +83,25 @@ GERÄT (IndexedDB)
 │       │       DEK : pro Item / pro Datei, 32 Byte zufällig, ändert sich nie
 │       │       └── verschlüsselt → payload (Postgres) bzw. Dateibytes (Storage)
 │       │
-│       └── K_p : persönlicher Schlüssel, pro Person UND pro Fall
-│                 kid = 32 Byte zufällig, undurchsichtig
-│                 verschlüsselt die DEKs privater Aufgaben (§3.7)
+│       ├── K_cat : Katalogschlüssel, 32 Byte zufällig, pro Fall
+│       │           kid = "cat_<uuid>", rotiert nie (§8)
+│       │           dient ausschließlich der HMAC-Ableitung der Katalog-Item-IDs
+│       │
+│       ├── K_p : persönlicher Schlüssel, pro Person UND pro Fall
+│       │         kid = 32 Byte zufällig, undurchsichtig
+│       │         verschlüsselt die DEKs privater Items (§3.7)
+│       │
+│       └── K_v : Tresorschlüssel, AES-256-GCM, nur bei Vorsorge und nur auf den
+│                 Geräten des Preparers (Tabelle vault_key_wraps, §3.5)
+│                 verschlüsselt die DEKs der Tresor-Items
 │
 └── Signatur-Keypair : ML-DSA-65 (1952 B pk) + Ed25519 (32 B pk), pro Gerät
-        signiert Tresorfreigaben und Schlüssel-Wraps (§3.5, §3.6)
+        signiert Tresorfreigaben und Fallschlüssel-Wraps (§3.5, §3.6)
 
-SEPARAT, nur bei Vorsorge
-└── K_v : Tresorschlüssel, AES-256-GCM, verschlüsselt die DEKs der Tresor-Items
-    └── Shamir-Split in n Shares, share_i gewrappt an die Geräte von Angehörigem i
-        → k Shares nötig zur Rekonstruktion
-        → nach dem Split von jedem Gerät gelöscht: niemand besitzt K_v
+SEPARAT, verteilt an die Angehörigen
+└── K_v : Shamir-Split in n Shares, share_i gewrappt an die Geräte von Angehörigem i
+    → k Shares nötig zur Rekonstruktion
+    → der Preparer behält K_v; nach seinem Tod ist der Split der einzige Zugang
 ```
 
 DEKs liegen pro Item, damit eine Schlüsselrotation nur die 32-Byte-DEKs neu wrappen muss.
@@ -103,10 +110,10 @@ Rotation eines Falls mit 40 Aufgaben und 10 Scans kostet wenige Kilobyte statt h
 Megabyte. `kid` behandelt Schlüsselrotation, `v` behandelt Algorithmuswechsel; die beiden
 Achsen sind vollständig entkoppelt.
 
-**Warum ein zweites Keypair.** Ein KEM beweist, dass jemand lesen darf. Wer etwas
-geschrieben hat, beweist es nie. Sobald eine einzelne hochgeladene Zeile darüber
-entscheidet, ob ein Fall in den Trauerfall kippt, reicht das nicht mehr. X-Wing kann nicht
-signieren, also bekommt jedes Gerät ein Signaturpaar dazu.
+**Warum ein zweites Keypair.** Ein KEM beweist, dass jemand lesen darf, nie wer etwas
+geschrieben hat — und sobald eine einzelne hochgeladene Zeile darüber entscheidet, ob ein
+Fall in den Trauerfall kippt, reicht das nicht. X-Wing kann nicht signieren, also bekommt
+jedes Gerät ein Signaturpaar dazu.
 
 ### 3.2 Envelope-Format (versioniert)
 
@@ -134,19 +141,20 @@ einem Kontext in keinem anderen gilt:
 "LN-open-v1"  Tresor-Commitment       SHA-256(K_v)
 "LN-rel-v1"   Freigabe-Signatur       case_id ‖ user_id ‖ SHA-256(released_share)
 "LN-wrap-v1"  Wrap-Signatur           case_id ‖ kid ‖ device_id ‖ SHA-256(kem_ct ‖ wrapped_key)
-"LN-cat-v1"   Katalog-Item-ID         HMAC-SHA256(K_c, catalog_task_id)
+"LN-cat-v1"   Katalog-Item-ID         HMAC-SHA256(K_cat, catalog_task_id)
 ```
 
 ### 3.3 Was der Server sieht
 
 Im Klartext liegen: `case_id`, `seq`, `updated_at`, `kind` (`item` | `file`), `deleted`,
-`in_vault`, `kid`, `key_generation`, Mitgliedschaften, öffentliche Geräte- und
-Signaturschlüssel, `share_hash` je Share, `vault_commitment`, Freigabesignaturen und die
-Zahl der Freigaben.
+`in_vault`, `kid`, `key_generation`, `preparer_id`, Mitgliedschaften, öffentliche Geräte-
+und Signaturschlüssel, `share_hash` je Share, `vault_commitment`, Freigabesignaturen und
+die Zahl der Freigaben.
 
-Verschlüsselt sind: Titel, Beschreibung, Fristen, Zuständigkeit/Assignee, Notizen,
-Dokumente, Rechtsgrundlagen, Elternbeziehungen (`parentId`), Abhängigkeiten (`dependsOn`),
-Item-Typ, Name und Sterbedatum der verstorbenen Person.
+Verschlüsselt sind: Titel, Beschreibung, Fristangaben (`fristTage`, `fristAb`),
+Zuständigkeit/Assignee, Notizen, Dokumente, Rechtsgrundlagen, Elternbeziehungen
+(`parentId`), Abhängigkeiten (`dependsOn`), Item-Typ, Erledigt-Status, Name und
+Sterbedatum der verstorbenen Person sowie `kenntnisAm` je Person.
 
 Dass Unteraufgaben eigene Zeilen sind (§7), verrät dem Server nichts über die Baumstruktur.
 `kind` unterscheidet nur `item` von `file`, die Elternbeziehung liegt im verschlüsselten
@@ -168,16 +176,20 @@ Start-Screen filtert clientseitig nach dem Entschlüsseln.
 
 Es gibt kein "Entfernen" durch andere, nur freiwilliges Verlassen.
 
-1. Der Client der austretenden Person löscht lokal `sk_u`, `K_c`, `K_p` und den Cache.
+1. Der Client der austretenden Person löscht lokal `K_c`, `K_cat`, `K_p`, einen etwaigen
+   Tresor-Share und den Cache dieses Falls. `sk_u` bleibt: Es ist die Identität des Geräts
+   über alle Fälle hinweg, und ein Austritt aus dem Fall des Vaters darf den Fall der
+   Mutter nicht mitreißen.
 2. Die Mitgliedschaft wird gelöscht → RLS sperrt sofort jeden Blob-Zugriff.
-3. Ein Trigger setzt `rotation_pending = true` und tombstonet die privaten Items der
-   austretenden Person (§3.7). Sonst blieben sie als für niemanden lesbare Zeilen liegen
+3. Ein Trigger setzt `rotation_pending = true`, bei Vorsorgefällen zusätzlich
+   `vault_resplit_pending = true`, löscht die `vault_shares` der Person und tombstonet
+   ihre privaten Items (§3.7). Sonst blieben sie als für niemanden lesbare Zeilen liegen
    und würden bei jeder Synchronisation von jedem Mitglied mitgeladen.
-4. Das nächste verbleibende Mitglied, das die App öffnet, rotiert.
+4. Das nächste verbleibende Mitglied, das die App öffnet, rotiert `K_c`.
+5. Der Preparer verteilt beim nächsten Öffnen die Shares neu (§3.5).
 
 **Nebenläufigkeit.** Öffnen zwei Mitglieder gleichzeitig, erzeugten beide ein `K_c` für
-Generation +1 und überschrieben sich gegenseitig die Wraps. Geräte, deren Wrap vom
-Verlierer stammt, wären dauerhaft ausgesperrt. Deshalb:
+Generation +1 und sperrten die Geräte des jeweils anderen dauerhaft aus. Deshalb:
 
 ```
 claim_rotation(case_id, expected_generation, device_id)
@@ -194,9 +206,9 @@ Das Mandat ist zugleich der einzige Weg, "Schlüssel werden erneuert…" ehrlich
 statt die App wortlos hängen zu lassen. Läuft es ab, darf ein anderes Mitglied übernehmen;
 der CAS am Ende verhindert, dass ein verspäteter Verlierer noch etwas kaputt macht.
 
-`K_p` rotiert dabei nicht. Die austretende Person hat die persönlichen Schlüssel der
-anderen nie besessen. Neu gewrappt wird `K_p` ausschließlich, wenn seine Besitzerin ein
-Gerät hinzufügt.
+`K_cat` rotiert nie (§8). `K_p` rotiert nicht: Die austretende Person hat die persönlichen
+Schlüssel der anderen nie besessen. Neu gewrappt wird `K_p` ausschließlich, wenn seine
+Besitzerin ein Gerät hinzufügt.
 
 > Die austretende Person führt die Rotation nicht selbst durch, sie würde sonst den neuen
 > Schlüssel erfahren. Das Zeitfenster bis zur Rotation ist unkritisch, weil der
@@ -210,21 +222,34 @@ Backups und gegen erneuten Zugriff. Gegen bereits Gelesenes nicht.
 
 - `n` = Anzahl Angehöriger ohne Preparer
 - `k = max(1, ⌈2n/3⌉)`
-- Bei `n = 0` werden keine Shares verteilt. Der Fall trägt den Zustand
-  "nicht freigabefähig", und das Onboarding drängt sichtbar auf die erste Einladung.
+- Bei `n = 0` ist der Tresor versiegelt, aber nicht freigabefähig: Es gibt niemanden, an
+  den ein Share ginge. Der Preparer liest ihn weiter, das Onboarding drängt sichtbar auf
+  die erste Einladung.
 - Bei `n = 1` ist `k = 1`. Die App sagt das im Klartext: "Solange nur Anna hinterlegt ist,
   kann Anna den Tresor allein öffnen." Ein Schutz vor der einen unehrlichen Person wäre
   wertlos, wenn er den Fall der einen ehrlichen Person mit blockiert.
-- Shares werden bei jeder Mitgliederänderung neu verteilt. Das setzt voraus, dass der
-  Preparer lebt und online ist. Nach dem Tod frieren `n` und `k` beim letzten Stand ein.
+- Shares werden bei **jeder** Mitgliederänderung neu verteilt, bei Eintritt wie bei
+  Austritt. Das setzt voraus, dass der Preparer lebt und online ist; bis dahin steht
+  `vault_resplit_pending`. Nach seinem Tod frieren `n` und `k` beim letzten Stand ein.
+
+#### Wer `K_v` besitzt
+
+Der Preparer, und nur er. `K_v` liegt an seine eigenen Geräte gewrappt in
+`vault_key_wraps`, mit einer RLS-Policy, die ausschließlich `cases.preparer_id` durchlässt.
+
+Der naheliegende Entwurf — `K_v` nach dem Split von jedem Gerät löschen, damit ihn niemand
+mehr besitzt — macht den Tresor im selben Moment schreibunfähig, weil jeder neue Tresor-DEK
+unter `K_v` gewrappt werden muss und keine Mitgliederänderung mehr abbildbar wäre.
+
+Verloren geht dabei nichts: Der Preparer kennt ohnehin jeden Klartext seines eigenen
+Tresors. Der Tresor schützt gegen den Server und gegen die Angehörigen vor dem Todesfall,
+nicht gegen seinen Autor.
 
 #### Warum der Zähler nichts auslöst
 
-Naheliegend wäre, den Server Freigaben zählen und den Status bei `k` kippen zu lassen. Das
-ist angreifbar. Ein Mitglied kann jederzeit einen unbrauchbaren Share hochladen, korrekt
-signiert und mit seiner echten Identität, und der Zähler stiege trotzdem. Am Ende stünde
-ein `trauerfall` an einer lebenden Person. Einen schlimmeren Fehler kann diese App nicht
-machen.
+Ein Mitglied kann jederzeit einen unbrauchbaren Share hochladen, korrekt signiert und mit
+echter Identität — der Zähler stiege trotzdem, und am Ende stünde ein `trauerfall` an einer
+lebenden Person.
 
 Eine Signatur beweist die Herkunft einer Freigabe, niemals ihre Richtigkeit. Prüfen kann
 der Server die Richtigkeit prinzipiell nicht, weil der Share unter `K_c` liegt. Also
@@ -234,11 +259,29 @@ den nur besitzt, wer `K_v` wirklich rekonstruiert hat.
 #### Versiegeln (Gerät des Preparers, bei Vorsorge)
 
 1. `K_v` erzeugen, die Tresor-DEKs darunter wrappen.
-2. Shamir-Split in `n` Teile mit Schwelle `k`.
-3. `share_i` an jedes Gerät von Angehörigem *i* wrappen → `vault_shares`.
-4. `share_hash_i = SHA-256(share_i)` als Klartextspalte ablegen.
-5. `vault_commitment = SHA-256("LN-open-v1" ‖ K_v)` als Klartext auf `cases` ablegen.
-6. `K_v` löschen. Ab hier besitzt ihn niemand mehr.
+2. `K_v` an die eigenen Geräte wrappen → `vault_key_wraps`.
+3. `vault_commitment = SHA-256("LN-open-v1" ‖ K_v)` als Klartext auf `cases` ablegen.
+4. Verteilen wie unten.
+
+#### Verteilen und Neuverteilen (Gerät des Preparers)
+
+Läuft identisch beim ersten Versiegeln und bei jeder späteren Mitgliederänderung.
+
+1. `K_v` aus `vault_key_wraps` entpacken.
+2. Neues Polynom, Split in `n` Teile mit Schwelle `k`. Bei `n = 1` entfällt die
+   Shamir-Bibliothek und `share_1 = K_v`; das ist die einzige Verzweigung im ganzen
+   Tresorpfad. Bei `n = 0` entfällt der Schritt.
+3. Alle bestehenden `vault_shares` des Falls löschen, `share_i` an jedes Gerät von
+   Angehörigem *i* wrappen, `share_hash_i = SHA-256(share_i)` als Klartextspalte daneben.
+4. `vault_resplit_pending = false`.
+
+Neu verteilt wird auf demselben `K_v` mit einem frischen Polynom. Ein Share aus einer
+früheren Runde liegt nicht auf der neuen Kurve, ist also wertlos — der Cache einer
+ausgetretenen Person ebenso. Kein einziger Tresor-DEK wird dabei angefasst, aus demselben
+Grund, aus dem `kid` und Payload in §3.1 entkoppelt sind.
+
+Die Bibliothek verlangt `shares ≥ 2` und `threshold ≥ 2`. Genau deshalb ist `n = 1` ein
+Direktwrap statt eines Split-Aufrufs.
 
 #### Freigeben (Gerät von Angehörigem *i*, nach dem Tod)
 
@@ -269,7 +312,8 @@ dass eine authentifizierte Person X diesen Blob signiert hat.
 1. Alle `released_share` mit `K_c` entschlüsseln.
 2. Jeden gegen sein `share_hash` prüfen. Hier scheitert ein gültig signierter Müll-Share,
    und die App kann benennen, von wem er kam, statt nur "geht nicht" zu melden.
-3. Bleiben ≥ `k` gültige Teile: Shamir-Kombination → `K_v`.
+3. Bleiben ≥ `k` gültige Teile: Shamir-Kombination → `K_v`. Bei `k = 1` ist der Share
+   bereits `K_v`.
 4. `proof = SHA-256("LN-open-v1" ‖ K_v)` berechnen.
 5. `open_vault(case_id, proof, catalog_version)` aufrufen. Die RPC nimmt eine Zeilensperre,
    vergleicht `proof` mit `vault_commitment`, ist bei bereits gesetztem `trauerfall`
@@ -279,6 +323,10 @@ dass eine authentifizierte Person X diesen Blob signiert hat.
 
 Das Sterbedatum trägt die Person ein, die die Bestätigung startet. Es wird unter `K_c`
 verschlüsselt abgelegt, die Fristen werden clientseitig daraus berechnet.
+
+Wechselt ein Angehöriger das Gerät, bevor der Tresor geöffnet ist, wrappt sein altes Gerät
+den eigenen Share an das neue. Der Preparer wird dafür nicht gebraucht — und ist nach
+seinem Tod auch nicht mehr verfügbar.
 
 > **Grenze des Nachweises.** Der `proof` ist wiedereinspielbar, sobald jemand ihn gesehen
 > hat. Das bleibt folgenlos, weil der Übergang einmalig und idempotent ist. Ein bösartiger
@@ -294,8 +342,12 @@ Entschlüsselbarkeit nicht.
   nichts, bis ein anderes Mitglied `K_c` an den neuen öffentlichen Schlüssel wrappt.
 - Freigegeben wird in Profil, mit Badge in der unteren Leiste als Hinweis.
 - Der Bestätigungsdialog zeigt Name, E-Mail und einen 6-stelligen Prüfcode, den beide
-  Seiten vergleichen. Der Code sind die ersten 6 Ziffern von
-  `SHA-256("LN-fp-v1" ‖ pk_kem ‖ pk_sig)`.
+  Seiten vergleichen.
+
+```
+fp   = SHA-256("LN-fp-v1" ‖ pk_kem ‖ pk_sig)
+code = (fp[0] << 16 | fp[1] << 8 | fp[2]) mod 1_000_000,  auf 6 Stellen nullgefüllt
+```
 
 **Der Fingerprint deckt beide Schlüssel ab.** Deckte er nur den KEM-Schlüssel, könnte ein
 bösartiger Server den Signaturschlüssel austauschen, ohne dass der mündliche Abgleich es
@@ -304,36 +356,36 @@ Protokolls, also darf er nicht die Hälfte übersehen.
 
 **Schutz der Wraps.** `key_wraps` ist insert-only, UPDATE ist entzogen. Der Primärschlüssel
 `(case_id, kid, device_id)` sorgt für "erster Schreiber gewinnt", und Rotation erzeugt
-ohnehin ein neues `kid`, kollidiert also nie. Jeder Wrap trägt die Signatur des wrappenden
-Geräts; das Empfängergerät verifiziert sie, bevor es entpackt. DELETE ist ausschließlich
-dem Besitzer des betroffenen Geräts erlaubt, damit er einen fehlerhaften Wrap verwerfen und
-sich einen korrekten nachliefern lassen kann.
+ohnehin ein neues `kid`, kollidiert also nie. Jeder Wrap **in `key_wraps`** trägt die
+Signatur des wrappenden Geräts; das Empfängergerät verifiziert sie, bevor es entpackt.
+DELETE ist ausschließlich dem Besitzer des betroffenen Geräts erlaubt, damit er einen
+fehlerhaften Wrap verwerfen und sich einen korrekten nachliefern lassen kann.
+
+Die Signatur wehrt genau einen Angriff ab: ein Mitglied, das einen formal gültigen Wrap
+eines *falschen* `K_c` einstellt und das Empfängergerät damit dauerhaft aussperrt. Der
+AES-GCM-Tag erkennt nur Beschädigung, nicht die falsche Absicht. `personal_key_wraps` und
+`vault_key_wraps` tragen deshalb keine Signatur: Dort darf per RLS ohnehin nur die eigene
+Person schreiben, und es gibt kein fremdes Gerät, das etwas einstellen könnte.
 
 Ein gestohlenes Clerk-Passwort allein reicht damit nicht zum Entschlüsseln.
 
-**Warum `sk_u` gerätegebunden bleibt.** Es gibt bewusst keinen portablen Seed, keine
-Wiederherstellungsphrase und keinen aus dem Login-Passwort abgeleiteten Schlüssel. Drei
-Varianten wurden geprüft und verworfen.
-
-Eine Wiederherstellungsphrase verlagert das Problem auf einen Zettel. Die Zielgruppe dieser
-App verwahrt ihn im selben Ordner wie die Zugangsdaten. Wer ihn findet, entschlüsselt den
-ganzen Nachlass, ohne sich je anmelden zu müssen.
-
-Ein passwortabgeleiteter Schlüssel klingt bequem und macht jeden Passwort-Reset zum
-Totalverlust. Clerk setzt das Passwort zurück, ohne den alten Klartext zu kennen; die
-Ableitung wäre unwiederbringlich weg. Ein Reset-Klick darf keinen Nachlass vernichten.
+**Warum `sk_u` gerätegebunden bleibt.** Es gibt bewusst keinen portablen Seed und keine
+Wiederherstellungsphrase — sie landet im selben Ordner wie die Zugangsdaten und
+entschlüsselt dann den ganzen Nachlass, ohne Anmeldung. Und keinen aus dem Login-Passwort
+abgeleiteten Schlüssel, weil Clerk Passwörter zurücksetzt, ohne den alten Klartext zu
+kennen: Ein Reset-Klick würde den Nachlass vernichten.
 
 WebAuthn-PRF wäre der saubere Weg, weil der Passkey selbst den Schlüssel ableitet. Clerks
-Passkey-API reicht WebAuthn-Extensions aber nicht durch, die PRF-Extension ist darüber also
-nicht erreichbar. Das begrenzt die Auth-Schicht, nicht der Browser. Fällt die Grenze,
-lässt sich der Wiederherstellungsweg nachrüsten, ohne das Datenmodell anzufassen.
+Passkey-API reicht WebAuthn-Extensions aber nicht durch. Das begrenzt die Auth-Schicht,
+nicht der Browser; fällt die Grenze, lässt sich der Wiederherstellungsweg nachrüsten, ohne
+das Datenmodell anzufassen.
 
 Was bleibt, ist der zweite Mensch. Sobald ein weiteres Mitglied im Fall ist, wrappt es
 `K_c` an das neue Gerät. Die Lücke davor steht als erste Zeile in §11.
 
-### 3.7 Private Aufgaben
+### 3.7 Private Items
 
-Eine Person muss eine Aufgabe anlegen können, die die anderen Mitglieder nicht sehen. Der
+Eine Person muss Dinge festhalten können, die die anderen Mitglieder nicht sehen. Der
 Anlass ist konkret: Wer eine Erbausschlagung erwägt, hat gute Gründe, das nicht mit den
 Geschwistern zu teilen, bevor es entschieden ist.
 
@@ -350,14 +402,18 @@ Unter `K_c` geht das nicht, den besitzen alle. Deshalb `K_p`:
 
 Private Items liegen in derselben `items`-Tabelle wie alles andere und tragen keinen
 Marker. Wer sie nicht entschlüsseln kann, filtert sie still weg. Andere Mitglieder laden
-sie also mit und verwerfen sie, bei zehn privaten Aufgaben rund 20 KB, einmalig.
+sie also mit und verwerfen sie, bei zehn privaten Items rund 20 KB, einmalig.
 
 > **Preis dieser Entscheidung.** Die Regel "nicht entschlüsselbar → verwerfen" verschluckt
 > auch Items, die aus einem echten Defekt heraus unlesbar sind. Einen Zähler übersprungener
 > Einträge gibt es ausschließlich im Dev-Modus, in Produktion nie.
 
-Zwei Einschränkungen halten den Aufgabenbaum widerspruchsfrei (§7): Private Aufgaben sind
-immer Wurzelaufgaben, und nichts darf von ihnen abhängen.
+**Zwei Sorten privater Items.** *Aufgaben* stehen im Aufgabenbaum. *Konfiguration* steht
+nie darin — bislang genau ein Fall, `kenntnisAm` (§8). Die beiden Strukturregeln gelten
+deshalb ausschließlich für private Aufgaben; ein privates Konfigurations-Item hat weder
+Eltern noch Kinder noch Abhängigkeiten und kann den Baum nicht verletzen.
+
+Private Aufgaben sind immer Wurzelaufgaben, und nichts darf von ihnen abhängen (§7).
 
 ---
 
@@ -385,6 +441,7 @@ create table cases (
   rotation_pending          boolean not null default false,
   rotation_claimed_by       uuid references device_keys(id) on delete set null,
   rotation_claim_expires_at timestamptz,
+  vault_resplit_pending     boolean not null default false,
   vault_k                   int,
   vault_n                   int,
   vault_commitment          bytea,                       -- SHA-256("LN-open-v1" ‖ K_v)
@@ -401,19 +458,19 @@ create table memberships (
   primary key (case_id, user_id)
 );
 
--- Fallschlüssel, gewrappt pro Gerät, signiert vom Absender ------------------
+-- Fall- und Katalogschlüssel, gewrappt pro Gerät, signiert vom Absender -----
 create table key_wraps (
   case_id     uuid references cases(id) on delete cascade,
-  kid         text not null,
+  kid         text not null,                       -- "case_<uuid>:<gen>" | "cat_<uuid>"
   device_id   uuid references device_keys(id) on delete cascade,
   kem_ct      bytea not null,                      -- X-Wing Ciphertext
-  wrapped_key bytea not null,                      -- AES-GCM(ss, K_c)
+  wrapped_key bytea not null,                      -- AES-GCM(ss, K_c bzw. K_cat)
   wrapped_by  uuid not null references device_keys(id) on delete restrict,
   signature   bytea not null,                      -- "LN-wrap-v1", §3.2
   primary key (case_id, kid, device_id)
 );
 
--- Persönliche Schlüssel (private Aufgaben) ---------------------------------
+-- Persönliche Schlüssel (private Items) ------------------------------------
 create table personal_key_wraps (
   case_id     uuid references cases(id) on delete cascade,
   user_id     text not null,
@@ -422,6 +479,15 @@ create table personal_key_wraps (
   kem_ct      bytea not null,
   wrapped_key bytea not null,                      -- AES-GCM(ss, K_p)
   primary key (case_id, kid, device_id)
+);
+
+-- Tresorschlüssel, ausschließlich an die Geräte des Preparers ---------------
+create table vault_key_wraps (
+  case_id     uuid references cases(id) on delete cascade,
+  device_id   uuid references device_keys(id) on delete cascade,
+  kem_ct      bytea not null,
+  wrapped_key bytea not null,                      -- AES-GCM(ss, K_v)
+  primary key (case_id, device_id)
 );
 
 -- Inhalte ------------------------------------------------------------------
@@ -481,12 +547,10 @@ freigeschaltet"), statt es schweigend geschehen zu lassen.
 
 ### Sequenz und Türklingel
 
-`bigserial` wäre hier falsch, aus zwei Gründen. Es inkrementiert bei `UPDATE` nicht, also
-übersähe der Delta-Sync (`seq > watermark`) jede Änderung und jeden Soft-Delete. Und es
-vergibt Nummern vor dem Commit. Eine Transaktion mit `seq = 41` kann nach einer mit
-`seq = 42` committen; ein Client liest dazwischen, setzt sein Wasserzeichen auf 42 und
-sieht Item 41 nie wieder. Das ist stiller Datenverlust, und er wird mit steigender
-Schreiblast wahrscheinlicher.
+`bigserial` scheidet aus zwei Gründen aus: Es inkrementiert bei `UPDATE` nicht, also
+übersähe der Delta-Sync (`seq > watermark`) jede Änderung und jeden Soft-Delete, und es
+vergibt Nummern vor dem Commit, sodass eine Transaktion mit `seq = 41` nach einer mit
+`seq = 42` committen und ein Client Item 41 nie wiedersehen kann.
 
 Beides verschwindet mit einem Pro-Fall-Zähler unter Zeilensperre:
 
@@ -514,28 +578,53 @@ aus §5 wird `version > watermark`, und die Realtime-Subscription auf die `cases
 feuert bei jeder Inhaltsänderung von selbst. Der Durchsatzverlust ist bei Fällen von ≤ 10
 Personen kein Argument.
 
-Ein zweiter Trigger verhindert eine Kombination, die sich sonst nicht ausdrücken lässt.
-Naheliegend wäre ein `CHECK`, aber Postgres verbietet in Constraints jeden
-Unterabfrage-Zugriff auf andere Tabellen, und die Antwort auf "ist dieses `kid` ein
-persönliches?" steht in `personal_key_wraps`. Also ein Trigger, mit derselben Wirkung:
+### Löschen gewinnt endgültig
+
+§5 verspricht, dass ein späteres Edit ein gelöschtes Item nicht wiederbelebt. Ohne
+Durchsetzung ist das keine Regel, sondern eine Hoffnung: `items_assign_seq` hebt `seq` auch
+bei einem `deleted → false`, und LWW trägt die Auferstehung an jedes Gerät.
+
+```sql
+create function public.items_forbid_undelete() returns trigger
+  language plpgsql as $fn$
+begin
+  if old.deleted and not new.deleted then
+    raise exception 'ein geloeschtes Item kann nicht wiederbelebt werden';
+  end if;
+  return new;
+end $fn$;
+
+create trigger items_no_undelete before update on items
+  for each row execute function public.items_forbid_undelete();
+```
+
+### Privat und im Tresor schließen sich aus
+
+Ein `CHECK` scheidet aus, weil Postgres in Constraints keinen Unterabfrage-Zugriff auf
+andere Tabellen erlaubt und die Antwort auf "ist dieses `kid` ein persönliches?" in
+`personal_key_wraps` steht.
 
 ```sql
 create function public.items_reject_private_vault() returns trigger
-  language plpgsql as $fn$
+  language plpgsql security definer set search_path = public as $fn$
 begin
   if new.in_vault and exists (
-      select 1 from personal_key_wraps p where p.kid = new.kid) then
+      select 1 from personal_key_wraps p
+       where p.case_id = new.case_id and p.kid = new.kid) then
     raise exception 'ein privates Item kann nicht im Tresor liegen';
   end if;
   return new;
 end $fn$;
 ```
 
+`security definer` ist nötig, weil RLS die `personal_key_wraps` fremder Personen verbirgt
+und die Prüfung sonst genau dann durchginge, wenn sie greifen müsste.
+
 Ein Tresor-Item ist für die Hinterbliebenen bestimmt. Privat und im Tresor wäre ein Item,
 das nach dem Tod niemand mehr öffnen kann, und der Preparer könnte es anlegen, ohne die
 Folge zu sehen.
 
-### Aufräumen beim Austritt
+### Mitgliederänderungen
 
 ```sql
 create function public.on_membership_deleted() returns trigger
@@ -545,13 +634,30 @@ begin
      set deleted = true, payload = ''::bytea, wrapped_dek = ''::bytea
    where i.case_id = old.case_id
      and exists (select 1 from personal_key_wraps p
-                  where p.kid = i.kid and p.user_id = old.user_id);
+                  where p.case_id = i.case_id
+                    and p.kid = i.kid and p.user_id = old.user_id);
 
   delete from personal_key_wraps
    where case_id = old.case_id and user_id = old.user_id;
 
-  update cases set rotation_pending = true where id = old.case_id;
+  delete from vault_shares
+   where case_id = old.case_id and user_id = old.user_id;
+
+  update cases
+     set rotation_pending      = true,
+         vault_resplit_pending = (status = 'vorsorge')
+   where id = old.case_id;
   return old;
+end $fn$;
+
+create function public.on_membership_created() returns trigger
+  language plpgsql security definer set search_path = public as $fn$
+begin
+  update cases set vault_resplit_pending = true
+   where id = new.case_id
+     and status = 'vorsorge'
+     and preparer_id is distinct from new.user_id;
+  return new;
 end $fn$;
 ```
 
@@ -583,6 +689,10 @@ Analog für `cases` und `vault_shares`. Darüber hinaus gilt:
   aber lesen nur die Wraps für die eigenen Geräte. UPDATE gibt es nicht, DELETE nur für den
   Besitzer des betroffenen `device_id`.
 - `personal_key_wraps` ist lesbar und schreibbar ausschließlich für die eigene Person.
+- `vault_key_wraps` ist lesbar und schreibbar ausschließlich für `cases.preparer_id`.
+  Deshalb eine eigene Tabelle: `key_wraps` erlaubt bewusst jedem Mitglied zu schreiben, und
+  eine Policy, die diese Ausnahme an einem `kid`-Präfix festmacht, verlegt eine
+  Sicherheitsgrenze in eine Textspalte.
 - `vault_releases` ist für jedes Mitglied lesbar und für niemanden schreibbar. Der einzige
   Weg hinein führt über die Edge Function mit Service-Role.
 - `device_keys` ist lesbar für die eigene Person und für alle, mit denen man einen Fall
@@ -611,7 +721,7 @@ Analog für `cases` und `vault_shares`. Darüber hinaus gilt:
 ### Regeln
 
 - Last-Write-Wins über die serverseitig vergebene `seq`, ohne Client-Uhren.
-- Löschen gewinnt endgültig. Ein späteres Edit belebt ein Item nicht wieder.
+- Löschen gewinnt endgültig; die Datenbank weist ein `deleted → false` zurück (§4).
 - Offline-Queue in IndexedDB: Jede Mutation wird optimistisch lokal angewandt und angehängt
   (`{op, itemId, payload, ts}`), beim Reconnect abgearbeitet. Item-IDs sind clientseitig
   erzeugte UUIDv7, damit Anlegen offline funktioniert.
@@ -622,9 +732,8 @@ Analog für `cases` und `vault_shares`. Darüber hinaus gilt:
   anderen Person (§3.7). Ein Zähler dafür existiert nur im Dev-Modus.
 - Kein Offline-Upload von Dokumenten.
 - Tresorfreigabe und `open_vault` erfordern eine Verbindung und gehen nicht in die Queue.
-  Eine irreversible, sozial schwere Handlung, deren Wirkung erst Stunden später eintritt,
-  ist schlimmer als eine Fehlermeldung im Moment des Tippens. Eine versehentlich
-  abgeschickte Todesbestätigung nimmt niemand zurück.
+  Eine versehentlich abgeschickte Todesbestätigung nimmt niemand zurück; eine Fehlermeldung
+  im Moment des Tippens ist das kleinere Übel.
 
 ### Cache
 
@@ -648,7 +757,7 @@ Server-Rendezvous.
 4. Einladende:r gibt ihn ein und sieht:
       "Anna Müller (anna@...) zum Fall hinzufügen?   Prüfcode: 481 253"
 5. Anna sieht denselben Prüfcode -> mündlicher Abgleich
-6. Bestätigung -> K_c wird an Annas pk gewrappt, signiert und hochgeladen
+6. Bestätigung -> K_c und K_cat werden an Annas pk gewrappt, signiert und hochgeladen
 7. Annas App ist subscribed und schaltet innerhalb von Sekunden frei
 ```
 
@@ -659,6 +768,9 @@ Lücke, den Schlüsseltausch durch einen bösartigen Server, und deckt beide Sch
 (§3.6).
 
 Jedes Mitglied darf einladen. Das hier ist eine Familie, keine Organisation.
+
+Bei einem Vorsorgefall setzt der Beitritt `vault_resplit_pending`; die Shares verteilt der
+Preparer beim nächsten Öffnen neu (§3.5).
 
 Der Ablauf für ein neues Gerät ist identisch, nur mit `purpose = device` und Einstieg über
 Profil. Freigegeben werden dabei alle Fälle auf einmal, soweit das freigebende Gerät sie
@@ -694,33 +806,25 @@ Clerk-Anmeldung
 
 Die Ansichtswahl kommt vor der Fallweiche, damit alle folgenden Screens bereits im
 gewählten Modus erscheinen. Ohne Fall ist die App gesperrt: ein Screen, drei
-Schaltflächen.
-
-**Was das Onboarding bewusst nicht enthält.** Keinen Hinweis auf möglichen Speicherverlust
-und keinen Installationsschritt. `navigator.storage.persist()` läuft still mit; schlägt es
-fehl, sagt die App nichts.
-
-Es geht dabei um Reihenfolge, nicht um Verharmlosung. Ein Mensch, der gerade seinen Vater
-verloren hat, kann mit "Ihre Daten können verlorengehen, wenn Ihr Browser Speicher
-freigibt" nichts anfangen. Er kann daraus keine Handlung ableiten und trägt die Sorge durch
-den ganzen Ablauf. Ein "Zum Home-Bildschirm hinzufügen"-Schritt an derselben Stelle ist ein
-technischer Umweg vor der ersten Aufgabe, und ein erheblicher Teil bricht dort ab.
-Ausgerechnet dann, wenn das Vertrauen am dünnsten ist.
-
-Beides ist verschoben, nicht gestrichen. Der Installationshinweis erscheint später in
-Profil › Geräte, wo er eine Antwort auf eine bereits gestellte Frage ist. Und die
-eigentliche Absicherung ist ohnehin die zweite Person im Fall (§3.6). Darauf drängt das
-Onboarding sichtbar, denn das ist eine Handlung, die jemand in dieser Lage tatsächlich
-ausführen kann.
+Schaltflächen. `navigator.storage.persist()` läuft still mit; schlägt es fehl, sagt die App
+nichts. Worauf das Onboarding stattdessen sichtbar drängt, ist die zweite Person im Fall —
+die einzige echte Absicherung gegen Geräteverlust (§3.6) und eine Handlung, die jemand in
+dieser Lage tatsächlich ausführen kann.
 
 ### Zwei Ansichten
 
-Getrennte Screen-Bäume (`screens/senior`, `screens/advanced`), gemeinsame UI-Primitiven mit
-einem `density`-Token. Die einfache Ansicht ist nicht bloß größer gesetzt. Sie zeigt
-weniger Elemente pro Screen, verzichtet auf verschachtelte Navigation, benennt Aktionen mit
-Verben statt Substantiven und fragt vor jeder destruktiven Aktion nach. Die
-Navigationsstruktur bleibt in beiden Modi identisch, damit Angehörige einander am Telefon
-helfen können.
+Getrennte Screen-Bäume für `Start`, `Aufgabe` und `Alle` (`screens/senior`,
+`screens/advanced`), gemeinsame UI-Primitiven mit einem `density`-Token. Die einfache
+Ansicht ist nicht bloß größer gesetzt. Sie zeigt weniger Elemente pro Screen, verzichtet
+auf verschachtelte Navigation, benennt Aktionen mit Verben statt Substantiven und fragt vor
+jeder destruktiven Aktion nach. Die Navigationsstruktur bleibt in beiden Modi identisch,
+damit Angehörige einander am Telefon helfen können.
+
+`Erbe` und `Profil` gibt es dagegen nur einmal, in `screens/shared` mit `density`-Token.
+Dort liegen die unumkehrbaren Abläufe — Tresorfreigabe, "Todesfall bestätigen",
+Prüfcode-Abgleich, Fall verlassen. Sie sind ohnehin lineare Formulare mit
+Bestätigungsdialogen, und ein zweiter Bestätigungsdialog, der leicht anders formuliert ist,
+wäre ein Risiko ohne Gegenwert.
 
 ### Barrierefreiheit
 
@@ -737,12 +841,11 @@ Ganzseitig. Enthält Rechtsgrundlage und Quelle, Frist, Dokumente, Notizen, Unte
 (eine Ebene, keine Verschachtelung) und optional `dependsOn`. Blockierte Aufgaben erscheinen
 ausgegraut mit "Zuerst: …".
 
-**Unteraufgaben sind eigene Zeilen**, keine Liste im Payload der Elternaufgabe. Damit hat
-jede referenzierbare Sache eine UUID, und `dependsOn` ist eine schlichte UUID-Liste ohne
-Sonderfälle. Wichtiger noch: Hakt Anna offline Unteraufgabe 1 ab und Bert Unteraufgabe 2,
-überleben beide, weil LWW pro Zeile greift. Läge alles in einer Zeile, überlebte genau ein
-Häkchen, und niemand erführe davon. Über den Baum erfährt der Server dadurch nichts,
-`parentId` ist verschlüsselt (§3.3).
+**Unteraufgaben sind eigene Zeilen**, keine Liste im Payload der Elternaufgabe. Läge alles
+in einer Zeile, überlebte von zwei offline gesetzten Häkchen genau eines, ohne dass jemand
+davon erführe. So hat außerdem jede referenzierbare Sache eine UUID und `dependsOn` bleibt
+eine schlichte UUID-Liste. Über den Baum erfährt der Server dadurch nichts, `parentId` ist
+verschlüsselt (§3.3).
 
 **Abschluss.** `erledigt` ist nur bei Blättern ein gespeichertes Feld. Bei Aufgaben mit
 Unteraufgaben leitet der Client es bei jedem Rendern aus den Kindern ab. Damit gibt es
@@ -768,9 +871,8 @@ nichts zu synchronisieren und nichts, was divergieren kann.
 
 > **Das ist eine Bearbeitungssperre, kein Zugriffsschutz.** `assignee` ist verschlüsselt,
 > der Server kann eine Regel nicht durchsetzen, die er nicht lesen kann. Sie verhindert
-> zuverlässig versehentliches Gleichzeitig-Bearbeiten. Sie verhindert nicht, dass ein
-> Mitglied mit manipuliertem Client trotzdem schreibt. Das passt zu §11: Für Inhalte sind
-> Mitglieder vertrauenswürdig.
+> zuverlässig versehentliches Gleichzeitig-Bearbeiten, nicht einen manipulierten Client.
+> Das passt zu §11: Für Inhalte sind Mitglieder vertrauenswürdig.
 
 ### Private Aufgaben
 
@@ -783,14 +885,13 @@ und genau eine Aktion "Für alle sichtbar machen".
 
 Zwei Regeln, beide beim Anlegen validiert:
 
-- **Private Aufgaben sind immer Wurzelaufgaben.** Hinge eine private Unteraufgabe unter
-  einer geteilten, hätte dieselbe Aufgabe für ihre Besitzerin drei Kinder und für alle
-  anderen zwei. Die abgeleitete Erledigung zeigte den einen "erledigt" und der anderen
-  "offen", ohne dass irgendwo ein Fehler im Code steckt.
-- **Nichts darf von einer privaten Aufgabe abhängen.** Umgekehrt ist es erlaubt, "meine
-  private Ausschlagung kann erst los, wenn der Erbschein da ist" funktioniert. Zeigte eine
-  geteilte Aufgabe auf eine private, hätten die anderen eine UUID, zu der es für sie keine
-  Aufgabe gibt. Die Aufgabe bliebe dauerhaft blockiert oder würde fälschlich freigegeben.
+- **Private Aufgaben sind immer Wurzelaufgaben.** Sonst hätte dieselbe Elternaufgabe für
+  ihre Besitzerin drei Kinder und für alle anderen zwei, und die abgeleitete Erledigung
+  zeigte den einen "erledigt" und der anderen "offen".
+- **Nichts darf von einer privaten Aufgabe abhängen.** Sonst hielten die anderen eine UUID,
+  zu der es für sie keine Aufgabe gibt, und die abhängige Aufgabe bliebe dauerhaft
+  blockiert oder würde fälschlich freigegeben. Umgekehrt ist es erlaubt: "meine private
+  Ausschlagung kann erst los, wenn der Erbschein da ist" funktioniert.
 
 ### Dokumente
 
@@ -832,12 +933,11 @@ depends_on (;) · hinweis · quelle_url · kategorie · reihenfolge
 
 ### Wann der Katalog eingefroren wird
 
-Eingefroren wird beim Übergang nach `trauerfall`, nicht bei der Fallanlage. Ein
-Vorsorgefall hat laut §2 gar keine Aufgaben. Bei Anlage würde also etwas eingefroren, das
-noch nicht existiert, und ein 2026 angelegter Vorsorgefall instanziierte 2031 das Recht von
-2026. Das Einfrieren soll einen laufenden Fall stabil halten, und das greift ab dem
-Übergang. Bis dahin ist `catalog_version` NULL. Ein direkt in `trauerfall` angelegter Fall
-friert sofort ein, nach derselben Regel, ohne Sonderfall.
+Eingefroren wird beim Übergang nach `trauerfall`, nicht bei der Fallanlage: Ein
+Vorsorgefall hat laut §2 gar keine Aufgaben, und ein 2026 angelegter Vorsorgefall
+instanziierte sonst 2031 das Recht von 2026. Bis dahin ist `catalog_version` NULL. Ein
+direkt in `trauerfall` angelegter Fall friert sofort ein, nach derselben Regel, ohne
+Sonderfall.
 
 Der Katalog initialisiert, mehr nicht. Danach sind es gewöhnliche Items: frei änderbar,
 ergänzbar, löschbar. `catalog_version` ist eine Herkunftsangabe ("aufgesetzt aus
@@ -852,28 +952,46 @@ Ende-zu-Ende-verschlüsselt. Statt eines Mandats mit Ablauf und Aufräumlogik re
 deterministischer Schlüssel:
 
 ```
-item_id = UUIDv5(ns, HMAC-SHA256(K_c, "LN-cat-v1" ‖ catalog_task_id))
+item_id = UUIDv5(ns, HMAC-SHA256(K_cat, "LN-cat-v1" ‖ catalog_task_id))
 insert … on conflict do nothing
 ```
 
-Alle Mitglieder berechnen bitgleiche IDs. Doppelte Instanziierung wird damit unmöglich
-statt nur unwahrscheinlich. Der HMAC hat einen zweiten Zweck: Ein schlichtes
+Alle Mitglieder berechnen bitgleiche IDs. Der HMAC hat einen zweiten Zweck: Ein schlichtes
 `UUIDv5(case_id, catalog_task_id)` könnte der Server für den öffentlichen Katalog
 vorberechnen und jede Zeile ihrer Katalogaufgabe zuordnen. Er wüsste dann, wer eine
-Erbausschlagung offen hat. Mit `K_c` im HMAC geht das nicht.
+Erbausschlagung offen hat.
 
-### Fristen ab Kenntnis
+**Warum `K_cat` und nicht `K_c`.** `K_c` rotiert (§3.4). Zwei Mitglieder, die über eine
+Rotationsgrenze hinweg instanziieren, berechneten verschiedene IDs für dieselbe Aufgabe,
+`on conflict` liefe ins Leere und der Katalog stünde doppelt da — genau der Fehler, den die
+Konstruktion verhindern soll. `K_cat` wird deshalb bei der Fallanlage erzeugt, über
+dieselben `key_wraps` verteilt und nie rotiert. Dass eine ausgetretene Person weiterhin
+Katalog-IDs berechnen kann, ist folgenlos: Sie hält kein `K_c`, und RLS liefert ihr keine
+Zeile.
 
-`frist_ab = kenntnis` betrifft Fristen, die nicht am Sterbedatum hängen. Allen voran die
-Ausschlagungsfrist nach § 1944 BGB, die an die Kenntnis des jeweiligen Erben von Anfall und
-Berufungsgrund anknüpft. Ein Sohn, der am Sterbetag anwesend war, und ein Bruder, der drei
-Wochen später vom Notar erfährt, haben verschiedene Fristenden.
+### Fristen
 
-Deshalb liegt `kenntnis_am` pro Person vor und wird nie synchronisiert. Es steckt als
-privates Item unter `K_p` (§3.7), ist standardmäßig leer und wird von jeder Person selbst
-eingetragen. Aufgaben mit `frist_ab = kenntnis` bleiben ohne dieses Datum fristenlos. Die
-App rechnet nicht mit einer Vermutung, denn eine falsch berechnete Ausschlagungsfrist
-kostet den ganzen Nachlass.
+Ein Item speichert `{fristTage, fristAb}`, nie ein Datum. Das Fristende wird bei jedem
+Rendern berechnet und nirgends abgelegt:
+
+```
+fristAb = sterbedatum  ->  cases.payload.sterbedatum + fristTage
+fristAb = kenntnis     ->  eigenes kenntnisAm + fristTage
+fristAb = leer         ->  keine Frist
+```
+
+`frist_ab = kenntnis` betrifft vor allem die Ausschlagungsfrist nach § 1944 BGB, die an die
+Kenntnis des jeweiligen Erben von Anfall und Berufungsgrund anknüpft. Ein Sohn, der am
+Sterbetag anwesend war, und ein Bruder, der drei Wochen später vom Notar erfährt, haben
+verschiedene Fristenden.
+
+`kenntnisAm` liegt deshalb pro Person als privates Konfigurations-Item unter `K_p` (§3.7),
+ist standardmäßig leer und wird von jeder Person selbst eingetragen. Weil das Fristende
+abgeleitet und nie gespeichert wird, zeigt dieselbe geteilte Aufgabe jedem Mitglied sein
+eigenes Datum, ohne dass irgendetwas divergiert. Aufgaben mit `frist_ab = kenntnis` bleiben
+ohne dieses Datum fristenlos und tragen den sichtbaren Hinweis "Diese Frist läuft ab *Ihrer*
+Kenntnis". Die App rechnet nicht mit einer Vermutung, denn eine falsch berechnete
+Ausschlagungsfrist kostet den ganzen Nachlass.
 
 ---
 
@@ -892,9 +1010,9 @@ src/
                   pairingService.ts  personalKeyService.ts
   hooks/          useCase.ts  useTasks.ts  useVault.ts  useViewMode.ts  useSync.ts
   screens/
-    senior/       Start/  Aufgabe/  Erbe/  Alle/  Profil/
-    advanced/     Start/  Aufgabe/  Erbe/  Alle/  Profil/
-    shared/       Onboarding/  Beitreten/  KeinFall/
+    senior/       Start/  Aufgabe/  Alle/
+    advanced/     Start/  Aufgabe/  Alle/
+    shared/       Erbe/  Profil/  Onboarding/  Beitreten/  KeinFall/
   ui/             Button/  Card/  Checkbox/  Sheet/  Badge/  ProgressRing/  (density-Token)
   content/        catalog.de.json + import-Skript
   types/
@@ -921,9 +1039,15 @@ nutzt dieselbe `@noble/post-quantum`-Version wie der Client.
   Payload-Neuverschlüsselung, Shamir bei `k-1` (muss scheitern) und bei `k` (muss
   gelingen), Fingerprint-Stabilität über beide Schlüssel, zusammengesetzte Signatur (muss
   scheitern, wenn nur eines der beiden Verfahren verifiziert)
+- Tresor bei `n = 1`: Direktwrap statt Shamir, und Freigabe, Hash-Prüfung, Zähler und Proof
+  laufen denselben Pfad wie bei `n ≥ 2`
+- Neuverteilung: nach einem Re-Split auf frischem Polynom kombiniert ein Share aus der
+  vorigen Runde nicht mehr und scheitert bereits an `share_hash`
 - Sequenz-Monotonie: nebenläufige Schreibvorgänge auf denselben Fall. Kein `seq` darf nach
   einem höheren committen, kein Delta darf eine Zeile überspringen.
 - `seq` bei UPDATE: ein Edit und ein Soft-Delete müssen im Delta erscheinen
+- Tombstone-Finalität: ein UPDATE, das `deleted` von true auf false setzt, muss von der
+  Datenbank abgewiesen werden
 - Proof-Gate: `open_vault` mit falschem `proof` muss scheitern, mit richtigem gelingen und
   beim zweiten Aufruf folgenlos idempotent sein
 - Freigabe: ein gültig signierter, inhaltlich falscher Share darf den Zähler heben, aber
@@ -932,13 +1056,19 @@ nutzt dieselbe `@noble/post-quantum`-Version wie der Client.
   Signaturen falsch ist, wenn `device_id` einer anderen Person gehört oder wenn die
   Mitgliedschaft fehlt, jeweils ohne eine Zeile zu schreiben. Ein Empfängergerät entpackt
   keinen `key_wrap`, dessen Signatur nicht verifiziert.
-- Katalog: zwei gleichzeitige Instanziierungen erzeugen identische IDs und keine Duplikate
-- Aufräumen: nach dem Austritt sind die privaten Items der Person getombstonet und
-  erreichen die übrigen Geräte über den normalen Delta-Sync
-- Ausschluss: privat + `in_vault` muss von der Datenbank abgewiesen werden
+- Katalog: zwei gleichzeitige Instanziierungen erzeugen identische IDs und keine Duplikate,
+  auch dann, wenn die beiden Clients auf verschiedenen `K_c`-Generationen stehen
+- Fristen: dieselbe geteilte Aufgabe mit `frist_ab = kenntnis` zeigt zwei Mitgliedern mit
+  verschiedenem `kenntnisAm` verschiedene Fristenden, ohne dass sich eine Zeile ändert
+- Aufräumen: nach dem Austritt sind die privaten Items der Person getombstonet, ihre
+  `vault_shares` gelöscht und `vault_resplit_pending` gesetzt
+- Austritt aus einem Fall lässt `sk_u` und die übrigen Fälle desselben Geräts unberührt
+- Ausschluss: privat + `in_vault` muss von der Datenbank abgewiesen werden, auch wenn das
+  `kid` einer anderen Person gehört
 - Ein Offline-Queue-Replay-Test inklusive abgelehnter Mutation
 - Ein RLS-Test: Zugriff auf einen fremden Fall schlägt fehl, `key_wraps` eines fremden
-  Geräts sind weder lesbar noch löschbar
+  Geräts sind weder lesbar noch löschbar, `vault_key_wraps` sind für Nicht-Preparer
+  unsichtbar
 
 ---
 
@@ -963,23 +1093,25 @@ Tresor unbrauchbar machen.
    die Rohbytes des Schlüssels ausgelesen werden, nicht davor, dass fremder Code im selben
    Origin ihn benutzt. Die Gegenmaßnahme ist eine strikte CSP ohne `unsafe-inline` und eine
    kurze Abhängigkeitsliste, keine Kryptographie.
-3. **Der Server kann private Items einer Person zuordnen** (§3.3). Ihren Inhalt sieht er
+3. **Der Preparer besitzt `K_v`** (§3.5). Wer sein Gerät übernimmt, öffnet den Tresor —
+   allerdings hält dasselbe Gerät ohnehin jeden Klartext des Falls.
+4. **Shares werden erst neu verteilt, wenn der Preparer die App öffnet.** Zwischen einer
+   Mitgliederänderung und dem Re-Split steht `vault_resplit_pending`; in diesem Fenster
+   gilt die alte Verteilung. Nach dem Tod des Preparers frieren `n` und `k` endgültig ein.
+5. **Bei `n = 0` ist der Tresor nicht freigabefähig.** Stirbt der Preparer, bevor er
+   jemanden eingeladen hat, ist der Inhalt verloren. Das Onboarding drängt sichtbar auf die
+   erste Einladung.
+6. **Der Server kann private Items einer Person zuordnen** (§3.3). Ihren Inhalt sieht er
    nie.
-4. **Zuweisungsregeln sind nicht erzwungen** (§7), weil `assignee` verschlüsselt ist.
-5. **Nicht entschlüsselbare Items verschwinden stumm** (§3.7), auch solche, die es aus
+7. **Zuweisungsregeln sind nicht erzwungen** (§7), weil `assignee` verschlüsselt ist.
+8. **Nicht entschlüsselbare Items verschwinden stumm** (§3.7), auch solche, die es aus
    einem echten Defekt heraus sind.
-6. **Rotation schützt nicht gegen bereits Gelesenes** (§3.4).
-7. **Ein bösartiger Server kann den Status direkt setzen.** Das Proof-Gate schützt gegen
-   ein bösartiges Mitglied, nicht gegen den Betreiber der Datenbank.
+9. **Rotation schützt nicht gegen bereits Gelesenes** (§3.4).
+10. **Ein bösartiger Server kann den Status direkt setzen.** Das Proof-Gate schützt gegen
+    ein bösartiges Mitglied, nicht gegen den Betreiber der Datenbank.
 
 Vorgesehen, aber bewusst nicht in diesem Stand: Signaturen auf `device_keys`. Ein neues
 Gerät würde von einem bestehenden gegengezeichnet, wodurch der Prüfcode-Abgleich eine
 dauerhafte Spur hinterließe, statt ein einmaliges Ritual zu bleiben. Eine
 Trust-on-first-use-Wurzel bliebe auch dann: Das allererste Gerät kann niemand
 gegenzeichnen.
-
----
-
-## 12. Commit-Plan
-
-Conventional Commits, ein Commit pro vertikalem Schnitt, nie pro Schicht.
