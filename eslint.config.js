@@ -38,7 +38,18 @@ const schichtenPolicies = Object.entries(ERLAUBT).map(([from, nachUnten]) => ({
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'dev-dist/**', 'coverage/**', 'node_modules/**'],
+    ignores: [
+      'dist/**',
+      'dev-dist/**',
+      'coverage/**',
+      'node_modules/**',
+      // `supabase start` erzeugt hier eine Edge-Runtime-Kopie fuer den lokalen
+      // Stack (supabase/README.md) — kein Quellcode, schon in .gitignore.
+      'supabase/.temp/**',
+      'supabase/.branches/**',
+      'playwright-report/**',
+      'test-results/**',
+    ],
   },
 
   js.configs.recommended,
