@@ -134,8 +134,18 @@ export function useGeraeteanmeldung(): AnmeldungZustand {
   const benutzer = authZustand.status === 'angemeldet' ? authZustand.benutzer : null
   const identitaet = identitaetZustand.status === 'bereit' ? identitaetZustand.identitaet : null
 
+  /*
+   * Der Effekt hängt an diesen beiden Zeichenketten, nicht am `benutzer`-Objekt.
+   * Das Objekt entsteht bei jeder Token-Erneuerung neu, ohne dass sich darin
+   * etwas geändert hätte — der Effekt liefe dann für den Rest der Sitzung immer
+   * wieder, und jedes Mal ginge ein `finde` an den Server. Die Registrierung
+   * verträgt das (sie ist idempotent), aber sie hat nichts davon.
+   */
+  const benutzerId = benutzer?.id ?? null
+  const anzeigename = benutzer?.anzeigename ?? null
+
   useEffect(() => {
-    if (benutzer === null || identitaet === null) {
+    if (benutzerId === null || anzeigename === null || identitaet === null) {
       return
     }
 
@@ -144,8 +154,8 @@ export function useGeraeteanmeldung(): AnmeldungZustand {
     void (async () => {
       try {
         const geraet = await registriereGeraet(supabaseGeraeteschluessel(zugang()), identitaet, {
-          userId: benutzer.id,
-          label: standardGeraetename(navigator.userAgent, benutzer.anzeigename),
+          userId: benutzerId,
+          label: standardGeraetename(navigator.userAgent, anzeigename),
         })
 
         if (aktuell) {
@@ -161,7 +171,7 @@ export function useGeraeteanmeldung(): AnmeldungZustand {
     return () => {
       aktuell = false
     }
-  }, [benutzer, identitaet, zugang])
+  }, [anzeigename, benutzerId, identitaet, zugang])
 
   return useMemo<AnmeldungZustand>(() => {
     if (identitaetZustand.status === 'abgemeldet') {

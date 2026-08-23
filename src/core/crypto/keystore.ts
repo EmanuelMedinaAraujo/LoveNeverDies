@@ -98,9 +98,32 @@ async function oeffneDb(): Promise<IDBDatabase> {
     }
   }
 
+  const geoeffnet = alsVersprechen(anfrage)
+
+  /*
+   * `blocked` feuert, wenn ein anderer Tab die alte Version noch offen hält.
+   * Danach kommt weder `success` noch `error` — ohne diesen Zweig bliebe das
+   * Versprechen für immer offen, und mit ihm der Aufruf, der darauf wartet:
+   * Profil stünde auf „lädt", ohne Fehler und ohne zweiten Versuch. Heute
+   * unerreichbar, weil die Version bei 1 steht; erreichbar beim ersten
+   * Versionssprung, und dann genau bei dem, der die App offen hatte.
+   */
+  const blockiert = new Promise<never>((_, ablehnen) => {
+    anfrage.onblocked = () =>
+      ablehnen(
+        new KeystoreFehler(
+          'Der Keystore ist in einem anderen Tab dieser App noch offen. Bitte schließen Sie die übrigen Tabs und laden Sie neu.',
+        ),
+      )
+  })
+
   try {
-    return await alsVersprechen(anfrage)
+    return await Promise.race([geoeffnet, blockiert])
   } catch (ursache) {
+    if (ursache instanceof KeystoreFehler) {
+      throw ursache
+    }
+
     throw new KeystoreFehler('Der Keystore war nicht zu öffnen.', { cause: ursache })
   }
 }
