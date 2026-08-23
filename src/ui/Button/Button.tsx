@@ -4,8 +4,8 @@ import stile from './Button.module.css'
 /**
  * Schaltflaeche (DESIGN.md §7).
  *
- * Zwei Zusagen sind hier eingebaut statt in jedem Screen wiederholt:
- * das Touch-Ziel von mindestens 48 px und der Text zum Vorlesen.
+ * Zusage ist hier eingebaut statt in jedem Screen wiederholt:
+ * der Text zum Vorlesen.
  */
 
 type ButtonProps = ComponentPropsWithoutRef<'button'> & {

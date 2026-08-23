@@ -10,7 +10,6 @@
   justify-content: center;
   gap: var(--dichte-abstand-klein);
 
-  /* §7: Touch-Ziele mindestens 48 px. `--dichte-touch-min` ist 3rem. */
   min-height: var(--dichte-touch-min);
   min-width: var(--dichte-touch-min);
   padding: var(--dichte-abstand-klein) var(--dichte-abstand);

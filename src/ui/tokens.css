@@ -47,8 +47,8 @@
  * kostet der Umschalter spaeter keine Neuverkabelung.
  */
 :root,
-:root[data-dichte='erweitert'] {
-  --dichte-touch-min: 3rem; /* 48 px bei Standardschriftgroesse, §7 */
+:root[data-dichte="erweitert"] {
+  --dichte-touch-min: 3rem;
   --dichte-abstand-klein: 0.5rem;
   --dichte-abstand: 1rem;
   --dichte-abstand-gross: 1.5rem;
@@ -59,7 +59,7 @@
   --dichte-zeilenhoehe: 1.5;
 }
 
-:root[data-dichte='einfach'] {
+:root[data-dichte="einfach"] {
   --dichte-touch-min: 3.75rem;
   --dichte-abstand-klein: 0.75rem;
   --dichte-abstand: 1.25rem;
