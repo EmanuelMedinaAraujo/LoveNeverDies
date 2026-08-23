@@ -38,6 +38,18 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(page).toHaveURL(/\/profil$/)
     await expect(page.getByRole('heading', { name: 'Profil' })).toBeVisible()
 
+    /*
+     * Warten, bis dieses Gerät in der Liste steht — und zwar nicht nur der
+     * Vollständigkeit halber: Die Geräteanmeldung läuft still im Hintergrund
+     * (§7) und braucht erst die Schlüsselerzeugung, dann einen Rundlauf zum
+     * Server. Die Fallanlage im nächsten Schritt setzt sie voraus und scheitert
+     * sonst mit "Ohne angemeldetes Gerät lässt sich kein Fall anlegen".
+     *
+     * Der Screen sagt an dieser einen Stelle, dass die Anmeldung durch ist;
+     * das Formular unter /todesfall sagt es nirgends.
+     */
+    await expect(page.getByRole('listitem').filter({ hasText: 'Dieses Gerät' })).toBeVisible()
+
     await page.getByRole('link', { name: 'Zurück' }).click()
     await expect(page).toHaveURL(/\/$/)
   })
