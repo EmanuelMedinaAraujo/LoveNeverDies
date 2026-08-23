@@ -1,0 +1,27 @@
+{
+  /*
+   * Die Tests laufen unter Node, pruefen aber Code, der auf WebCrypto steht:
+   * `CryptoKey` und `BufferSource` sind DOM-Typen, und der Kryptokern kennt sie
+   * (DESIGN.md §9). Deshalb ein eigenes Projekt statt `tsconfig.node.json` —
+   * die Vite-Konfiguration soll keine DOM-Globals sehen, die es zur Laufzeit
+   * dort nicht gibt.
+   */
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "verbatimModuleSyntax": true,
+
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": ["tests/**/*.ts"]
+}
