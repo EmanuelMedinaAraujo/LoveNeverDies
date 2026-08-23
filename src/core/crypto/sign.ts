@@ -30,6 +30,19 @@ export const MLDSA_GEHEIM_LAENGE = 4032
 export const ED25519_OEFFENTLICH_LAENGE = 32
 export const ED25519_GEHEIM_LAENGE = 32
 
+/**
+ * Der Seed, aus dem beide Signaturschlüssel eines Geräts fallen: 32 Byte für
+ * ML-DSA-65, 32 Byte für Ed25519.
+ *
+ * Getrennte Hälften statt eines gemeinsamen Seeds, weil derselbe Wert sonst
+ * zwei Verfahren gleichzeitig trüge. Der Keystore (§3.1) bewahrt genau diese
+ * Bytes auf und nichts weiter; die 4032 Byte des geheimen ML-DSA-Schlüssels
+ * entstehen bei jedem Start neu.
+ */
+export const SIGNATUR_SEED_LAENGE = 64
+
+const MLDSA_SEED_LAENGE = 32
+
 /** Ein Signaturschlüssel passte nicht zu ML-DSA-65 + Ed25519. */
 export class SignFehler extends Error {
   constructor(nachricht: string) {
@@ -59,9 +72,18 @@ function pruefeLaenge(name: string, bytes: Uint8Array, erwartet: number): void {
   }
 }
 
-export function erzeugeSignaturSchluesselpaar(): SignaturSchluesselpaar {
-  const dsa = ml_dsa65.keygen()
-  const ed = ed25519.keygen()
+/**
+ * @param seed {@link SIGNATUR_SEED_LAENGE} Byte. Ohne Angabe ziehen beide
+ * Bibliotheken frischen Zufall. Mit Angabe ist das Paar reproduzierbar — genau
+ * so hält der Keystore es, ohne die langen geheimen Schlüssel abzulegen.
+ */
+export function erzeugeSignaturSchluesselpaar(seed?: Uint8Array): SignaturSchluesselpaar {
+  if (seed !== undefined) {
+    pruefeLaenge('Signatur-Seed', seed, SIGNATUR_SEED_LAENGE)
+  }
+
+  const dsa = ml_dsa65.keygen(seed?.subarray(0, MLDSA_SEED_LAENGE))
+  const ed = ed25519.keygen(seed?.subarray(MLDSA_SEED_LAENGE))
 
   return {
     geheim: { mldsa: dsa.secretKey, ed25519: ed.secretKey },

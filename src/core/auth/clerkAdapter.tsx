@@ -1,5 +1,5 @@
 import { deDE } from '@clerk/localizations'
-import { ClerkProvider, useClerk, useUser } from '@clerk/react'
+import { ClerkProvider, useClerk, useSession, useUser } from '@clerk/react'
 import { useCallback, useMemo, type ReactNode } from 'react'
 import { AuthKontextProvider, type AuthKontextWert, type AuthZustand } from './authProvider.ts'
 
@@ -16,7 +16,16 @@ const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 function ClerkZustandBruecke({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user } = useUser()
+  const { session } = useSession()
   const clerk = useClerk()
+
+  /*
+   * Clerk gibt bei jedem Aufruf ein frisches Token heraus und erneuert es
+   * selbst, sobald es abgelaufen ist. Deshalb wird hier keines zwischengelegt:
+   * Der Supabase-Client fragt vor jeder Anfrage, und ein Token, das jemand
+   * aufgehoben hat, ist genau das eine, das irgendwann nicht mehr gilt.
+   */
+  const zugangstoken = useCallback(async () => (await session?.getToken()) ?? null, [session])
 
   const abmelden = useCallback(async () => {
     await clerk.signOut()
@@ -48,7 +57,10 @@ function ClerkZustandBruecke({ children }: { children: ReactNode }) {
     }
   }, [isLoaded, isSignedIn, user])
 
-  const wert = useMemo<AuthKontextWert>(() => ({ zustand, abmelden }), [zustand, abmelden])
+  const wert = useMemo<AuthKontextWert>(
+    () => ({ zustand, abmelden, zugangstoken }),
+    [zustand, abmelden, zugangstoken],
+  )
 
   return <AuthKontextProvider value={wert}>{children}</AuthKontextProvider>
 }

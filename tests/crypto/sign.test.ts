@@ -4,6 +4,7 @@ import { EnvelopeFehler, leseSignatur, serialisiereSignatur } from '../../src/co
 import {
   ED25519_OEFFENTLICH_LAENGE,
   MLDSA_OEFFENTLICH_LAENGE,
+  SIGNATUR_SEED_LAENGE,
   SignFehler,
   erzeugeSignaturSchluesselpaar,
   pkSigBytes,
@@ -156,5 +157,44 @@ describe('Signieren und Verifizieren', () => {
         ed25519: paar.oeffentlich.ed25519,
       }),
     ).toThrow(SignFehler)
+  })
+})
+
+describe('Signatur-Schlüsselpaar aus einem Seed (§3.1)', () => {
+  it('ist reproduzierbar', () => {
+    const seed = new Uint8Array(SIGNATUR_SEED_LAENGE).fill(9)
+
+    const erstes = erzeugeSignaturSchluesselpaar(seed)
+    const zweites = erzeugeSignaturSchluesselpaar(seed)
+
+    expect([...pkSigBytes(erstes.oeffentlich)]).toEqual([...pkSigBytes(zweites.oeffentlich)])
+    expect([...erstes.geheim.mldsa]).toEqual([...zweites.geheim.mldsa])
+    expect([...erstes.geheim.ed25519]).toEqual([...zweites.geheim.ed25519])
+  })
+
+  it('trennt die beiden Hälften des Seeds', () => {
+    // Derselbe Seed für ML-DSA und Ed25519 wäre eine Schlüsselwiederverwendung
+    // über zwei Verfahren hinweg. Die hintere Hälfte darf die vordere nicht
+    // berühren: Wer nur sie ändert, bekommt denselben ML-DSA-Schlüssel.
+    const seed = new Uint8Array(SIGNATUR_SEED_LAENGE).fill(9)
+    const andereHaelfte = Uint8Array.from(seed)
+    andereHaelfte[SIGNATUR_SEED_LAENGE - 1] ^= 0xff
+
+    const erstes = erzeugeSignaturSchluesselpaar(seed)
+    const zweites = erzeugeSignaturSchluesselpaar(andereHaelfte)
+
+    expect([...erstes.oeffentlich.mldsa]).toEqual([...zweites.oeffentlich.mldsa])
+    expect([...erstes.oeffentlich.ed25519]).not.toEqual([...zweites.oeffentlich.ed25519])
+  })
+
+  it('signiert und verifiziert wie ein zufälliges Paar', () => {
+    const paar = erzeugeSignaturSchluesselpaar(new Uint8Array(SIGNATUR_SEED_LAENGE).fill(3))
+    const signatur = signiere(DOMAIN_SEPARATION.keyWrap, NACHRICHT, paar.geheim)
+
+    expect(verifiziere(signatur, DOMAIN_SEPARATION.keyWrap, NACHRICHT, paar.oeffentlich)).toBe(true)
+  })
+
+  it('weist einen Seed falscher Länge ab', () => {
+    expect(() => erzeugeSignaturSchluesselpaar(new Uint8Array(31))).toThrow(SignFehler)
   })
 })

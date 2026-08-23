@@ -4,8 +4,10 @@ import { useAuth } from '../core/auth/authProvider.ts'
 import { speicherDauerhaftAnfordern } from '../core/storage/persist.ts'
 import { useAnsichtsmodus } from '../hooks/useAnsichtsmodus.ts'
 import { useCase } from '../hooks/useCase.ts'
+import { useGeraeteanmeldung } from '../hooks/useGeraete.ts'
 import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
 import { KeinFall } from '../screens/shared/KeinFall/KeinFall.tsx'
+import { Profil } from '../screens/shared/Profil/Profil.tsx'
 import stile from './App.module.css'
 
 function Ladeanzeige({ text }: { text: string }) {
@@ -34,6 +36,13 @@ export function App() {
   const ansichtsmodus = useAnsichtsmodus()
   const { zustand } = useAuth()
 
+  /*
+   * §7: Nach der Anmeldung entstehen beide Keypairs und das Gerät meldet sich
+   * an — still, ohne sichtbaren Zwischenschritt. Der Rückgabewert wird hier
+   * nicht gebraucht; Profil holt sich denselben Zustand noch einmal.
+   */
+  useGeraeteanmeldung()
+
   useEffect(() => {
     document.documentElement.dataset.dichte = ansichtsmodus
   }, [ansichtsmodus])
@@ -61,6 +70,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<FallSperre />} />
+      <Route path="/profil" element={<Profil />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

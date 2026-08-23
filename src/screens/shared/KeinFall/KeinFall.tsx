@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import stile from './KeinFall.module.css'
@@ -35,6 +36,15 @@ export function KeinFall() {
           </p>
         </div>
       </Card>
+
+      {/*
+        Die untere Leiste aus §7 — Start · Erbe · Alle · Profil — kommt mit den
+        Screens, die sie verbindet. Bis dahin steht hier der eine Weg, den es
+        schon gibt: Profil zeigt die Geräte und ihre Prüfcodes (§3.6).
+      */}
+      <p className={stile.hinweis}>
+        <Link to="/profil">Profil und Geräte</Link>
+      </p>
     </main>
   )
 }
