@@ -14,5 +14,12 @@ export default defineConfig({
     // 5 Sekunden.
     testTimeout: 120_000,
     hookTimeout: 120_000,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.{ts,tsx}'],
+      // e2e/tests/**: von Playwright abgedeckt, nicht von vitest.
+      exclude: ['src/**/*.module.css.d.ts', 'src/vite-env.d.ts'],
+    },
   },
 })

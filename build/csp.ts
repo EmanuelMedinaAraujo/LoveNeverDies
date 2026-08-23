@@ -31,9 +31,17 @@ export type CspOptions = {
    * (`https://clerk.example.de`), die von den Platzhaltern nicht gedeckt ist.
    */
   extraHosts?: string[]
+  /**
+   * Der tatsaechlich konfigurierte Supabase-Origin (samt `ws`/`wss`-Pendant),
+   * etwa `http://127.0.0.1:54321` fuer den lokalen Stack aus den E2E-Tests.
+   * `SUPABASE_PLACEHOLDER` deckt nur `*.supabase.co` ab — ein selbst gehostetes
+   * oder lokales Projekt braeuchte ohne diese Ergaenzung eine eigene CSP-Bypass,
+   * um `connect-src` ueberhaupt zu erreichen.
+   */
+  supabaseHosts?: string[]
 }
 
-export function buildCsp({ extraHosts = [] }: CspOptions = {}): string {
+export function buildCsp({ extraHosts = [], supabaseHosts = [] }: CspOptions = {}): string {
   const clerk = [...CLERK_HOSTS, ...extraHosts]
 
   const directives: Record<string, string[]> = {
@@ -47,7 +55,7 @@ export function buildCsp({ extraHosts = [] }: CspOptions = {}): string {
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https://img.clerk.com'],
     'font-src': ["'self'"],
-    'connect-src': ["'self'", ...clerk, SUPABASE_PLACEHOLDER, 'wss://*.supabase.co'],
+    'connect-src': ["'self'", ...clerk, SUPABASE_PLACEHOLDER, 'wss://*.supabase.co', ...supabaseHosts],
     'worker-src': ["'self'", 'blob:'],
     'frame-src': ["'self'", ...clerk, TURNSTILE],
     'manifest-src': ["'self'"],
@@ -57,7 +65,18 @@ export function buildCsp({ extraHosts = [] }: CspOptions = {}): string {
     .map(([name, werte]) => `${name} ${werte.join(' ')}`)
     .join('; ')
 
-  return `${serialisiert}; upgrade-insecure-requests`
+  /*
+   * `upgrade-insecure-requests` schreibt jede `http:`-Anfrage der Seite auf
+   * `https:` um — auch eine, die `connect-src` gerade ausdruecklich erlaubt
+   * hat. Ein bewusst unverschluesseltes Supabase (lokaler Stack, selbst
+   * gehostet im eigenen Netz) waere damit nicht erreichbar, sondern liefe
+   * gegen ein `https:`, das dort gar nicht existiert.
+   */
+  const hatUnverschluesseltesZiel = [...extraHosts, ...supabaseHosts].some(
+    (host) => host.startsWith('http://') || host.startsWith('ws://'),
+  )
+
+  return hatUnverschluesseltesZiel ? serialisiert : `${serialisiert}; upgrade-insecure-requests`
 }
 
 /**
