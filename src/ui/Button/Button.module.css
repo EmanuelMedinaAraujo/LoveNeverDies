@@ -10,8 +10,6 @@
   justify-content: center;
   gap: var(--dichte-abstand-klein);
 
-  min-height: var(--dichte-touch-min);
-  min-width: var(--dichte-touch-min);
   padding: var(--dichte-abstand-klein) var(--dichte-abstand);
 
   border: 0.125rem solid transparent;

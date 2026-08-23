@@ -48,7 +48,6 @@
  */
 :root,
 :root[data-dichte="erweitert"] {
-  --dichte-touch-min: 3rem;
   --dichte-abstand-klein: 0.5rem;
   --dichte-abstand: 1rem;
   --dichte-abstand-gross: 1.5rem;
@@ -60,7 +59,6 @@
 }
 
 :root[data-dichte="einfach"] {
-  --dichte-touch-min: 3.75rem;
   --dichte-abstand-klein: 0.75rem;
   --dichte-abstand: 1.25rem;
   --dichte-abstand-gross: 2rem;
