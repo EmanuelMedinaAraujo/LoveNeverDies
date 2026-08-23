@@ -19,10 +19,28 @@ export default defineConfig(({ mode }) => {
     .map((host) => host.trim())
     .filter(Boolean)
 
+  /*
+   * `SUPABASE_PLACEHOLDER` in build/csp.ts deckt nur `*.supabase.co`. Der
+   * lokale Stack aus den E2E-Tests (`http://127.0.0.1:54321`) braucht seinen
+   * eigenen Eintrag, sonst blockt `connect-src` jede Anfrage im Produktionsbuild.
+   */
+  const supabaseHosts = (() => {
+    if (!env.VITE_SUPABASE_URL) {
+      return []
+    }
+
+    try {
+      const origin = new URL(env.VITE_SUPABASE_URL).origin
+      return [origin, origin.replace(/^http/, 'ws')]
+    } catch {
+      return []
+    }
+  })()
+
   return {
     plugins: [
       react(),
-      cspPlugin({ extraHosts: clerkExtraHosts }),
+      cspPlugin({ extraHosts: clerkExtraHosts, supabaseHosts }),
       VitePWA({
         registerType: 'autoUpdate',
         // Der Service Worker soll auch im Dev-Modus laufen, damit sich das

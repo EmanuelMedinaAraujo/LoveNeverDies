@@ -1,0 +1,199 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
+import { MemoryRouter } from 'react-router-dom'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { AuthKontextProvider, type AuthZustand } from '../../src/core/auth/authProvider.ts'
+import type { Falldaten } from '../../src/hooks/useCase.ts'
+import { authWert } from '../screens/harness.tsx'
+
+/**
+ * Die Fallsperre und das Routing aus DESIGN.md §7.
+ *
+ * Alle Screens sind ersetzt: Was sie zeigen, steht in ihren eigenen Tests.
+ * Hier geht es um die Weichen davor — angemeldet oder nicht, Fall oder kein
+ * Fall, lesbar oder gesperrt — und darum, dass §7 nach der Anmeldung
+ * `navigator.storage.persist()` still mitlaufen lässt.
+ */
+
+const useCase = vi.fn<() => Falldaten>()
+const useGeraeteanmeldung = vi.fn()
+const speicherDauerhaftAnfordern = vi.fn().mockResolvedValue('gewaehrt')
+
+vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
+vi.mock('../../src/hooks/useGeraete.ts', () => ({
+  useGeraeteanmeldung: () => useGeraeteanmeldung(),
+}))
+vi.mock('../../src/core/storage/persist.ts', () => ({
+  speicherDauerhaftAnfordern: () => speicherDauerhaftAnfordern(),
+}))
+vi.mock('../../src/screens/shared/Anmelden/Anmelden.tsx', () => ({
+  Anmelden: () => <p>Anmeldeformular</p>,
+}))
+vi.mock('../../src/screens/shared/KeinFall/KeinFall.tsx', () => ({
+  KeinFall: () => <p>Fallweiche</p>,
+}))
+vi.mock('../../src/screens/shared/Profil/Profil.tsx', () => ({ Profil: () => <p>Profilseite</p> }))
+vi.mock('../../src/screens/shared/Todesfall/Todesfall.tsx', () => ({
+  Todesfall: () => <p>Fallanlage</p>,
+}))
+
+const { App } = await import('../../src/app/App.tsx')
+
+const LESBAR = {
+  zustand: 'lesbar' as const,
+  id: 'fall-1',
+  status: 'trauerfall' as const,
+  personName: 'Hans Weber',
+  sterbedatum: '2024-03-15',
+  kid: 'case_fall-1:1',
+  kc: new Uint8Array([1]),
+  kcat: new Uint8Array([2]),
+}
+
+function rendere(zustand: AuthZustand, pfad = '/') {
+  function Huelle({ children }: { children: ReactNode }) {
+    return (
+      <AuthKontextProvider value={authWert(zustand)}>
+        <MemoryRouter initialEntries={[pfad]}>{children}</MemoryRouter>
+      </AuthKontextProvider>
+    )
+  }
+
+  return render(<App />, { wrapper: Huelle })
+}
+
+const ANGEMELDET: AuthZustand = {
+  status: 'angemeldet',
+  benutzer: { id: 'user_1', anzeigename: 'Anna', email: null },
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  useCase.mockReturnValue({ zustand: { status: 'kein-fall' }, legeTrauerfallAn: vi.fn() })
+  useGeraeteanmeldung.mockReturnValue({ status: 'laedt' })
+})
+
+describe('Anmeldezustand', () => {
+  it('zeigt einen Hinweis, solange die Sitzung geladen wird', () => {
+    rendere({ status: 'laedt' })
+
+    expect(screen.getByRole('status')).toHaveTextContent('Einen Moment bitte')
+  })
+
+  it('zeigt ausschliesslich die Anmeldung, wer nicht angemeldet ist', () => {
+    rendere({ status: 'abgemeldet' })
+
+    expect(screen.getByText('Anmeldeformular')).toBeVisible()
+    expect(screen.queryByText('Fallweiche')).toBeNull()
+  })
+
+  it('bittet erst nach der Anmeldung um dauerhaften Speicher', async () => {
+    /*
+     * Die Bitte steht hinter der Anmeldung, weil Browser sie eher gewaehren,
+     * wenn jemand die Seite tatsaechlich benutzt (§7).
+     */
+    rendere({ status: 'abgemeldet' })
+    expect(speicherDauerhaftAnfordern).not.toHaveBeenCalled()
+
+    rendere(ANGEMELDET)
+    await waitFor(() => expect(speicherDauerhaftAnfordern).toHaveBeenCalled())
+  })
+
+  it('setzt den Ansichtsmodus als data-dichte auf die Wurzel', async () => {
+    rendere(ANGEMELDET)
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.dichte).toBe('erweitert')
+    })
+  })
+})
+
+describe('Fallsperre', () => {
+  it('zeigt einen Hinweis, solange die Faelle geladen werden', () => {
+    useCase.mockReturnValue({ zustand: { status: 'laedt' }, legeTrauerfallAn: vi.fn() })
+
+    rendere(ANGEMELDET)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Ihre Daten werden geladen')
+  })
+
+  it('nennt den Grund, wenn die Faelle nicht abrufbar sind', () => {
+    useCase.mockReturnValue({
+      zustand: { status: 'fehler', nachricht: 'Kein Netz.' },
+      legeTrauerfallAn: vi.fn(),
+    })
+
+    rendere(ANGEMELDET)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Kein Netz.')
+  })
+
+  it('zeigt ohne Fall die Fallweiche', () => {
+    rendere(ANGEMELDET)
+
+    expect(screen.getByText('Fallweiche')).toBeVisible()
+  })
+
+  it('zeigt den Namen samt Sterbedatum, sobald ein Fall lesbar ist', () => {
+    // §2 verlangt den Namen der Person, keinen Sammelbegriff.
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
+      legeTrauerfallAn: vi.fn(),
+    })
+
+    rendere(ANGEMELDET)
+
+    expect(
+      screen.getByRole('heading', { name: 'Hans Weber · Trauerfall seit 15. März 2024' }),
+    ).toBeVisible()
+  })
+
+  it('zeigt den blossen Namen, wenn kein Sterbedatum bekannt ist', () => {
+    const ohneDatum = { ...LESBAR, sterbedatum: null }
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [ohneDatum], aktiver: ohneDatum },
+      legeTrauerfallAn: vi.fn(),
+    })
+
+    rendere(ANGEMELDET)
+
+    expect(screen.getByRole('heading', { name: 'Hans Weber' })).toBeVisible()
+  })
+
+  it('zeigt bei einem gesperrten Fall den Grund statt des Namens', () => {
+    const gesperrt = {
+      zustand: 'gesperrt' as const,
+      id: 'fall-1',
+      grund: 'Für dieses Gerät liegt noch kein Schlüssel vor.',
+    }
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [gesperrt], aktiver: gesperrt },
+      legeTrauerfallAn: vi.fn(),
+    })
+
+    rendere(ANGEMELDET)
+
+    expect(screen.getByRole('heading', { name: 'Fall gesperrt' })).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveTextContent('kein Schlüssel')
+  })
+})
+
+describe('Routen', () => {
+  it('fuehrt /todesfall zur Fallanlage', () => {
+    rendere(ANGEMELDET, '/todesfall')
+
+    expect(screen.getByText('Fallanlage')).toBeVisible()
+  })
+
+  it('fuehrt /profil zum Profil', () => {
+    rendere(ANGEMELDET, '/profil')
+
+    expect(screen.getByText('Profilseite')).toBeVisible()
+  })
+
+  it('leitet unbekannte Pfade auf die Startseite', () => {
+    rendere(ANGEMELDET, '/gibt-es-nicht')
+
+    expect(screen.getByText('Fallweiche')).toBeVisible()
+  })
+})
