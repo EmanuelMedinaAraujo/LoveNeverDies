@@ -11,7 +11,13 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "types": ["node"],
+    "jsx": "react-jsx",
+    /*
+     * `vite/client`, weil die Komponententests echte Komponenten importieren:
+     * Die bringen CSS-Module (`./Button.module.css`) und `import.meta.env`
+     * mit, und beides kennt TypeScript nur über diese Deklarationen.
+     */
+    "types": ["node", "vite/client", "@testing-library/jest-dom"],
 
     "strict": true,
     "noUnusedLocals": true,
@@ -23,5 +29,5 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "include": ["tests/**/*.ts"]
+  "include": ["tests/**/*.ts", "tests/**/*.tsx"]
 }
