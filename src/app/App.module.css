@@ -1,0 +1,8 @@
+.ladeanzeige {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  color: var(--farbe-text-sekundaer);
+}

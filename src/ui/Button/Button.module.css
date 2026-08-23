@@ -1,0 +1,49 @@
+/*
+ * Alle Masse kommen aus den Dichtetokens. Der Button weiss nicht, ob er in der
+ * einfachen oder der erweiterten Ansicht steht — das entscheidet `data-dichte`
+ * auf der Wurzel (DESIGN.md §7).
+ */
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dichte-abstand-klein);
+
+  /* §7: Touch-Ziele mindestens 48 px. `--dichte-touch-min` ist 3rem. */
+  min-height: var(--dichte-touch-min);
+  min-width: var(--dichte-touch-min);
+  padding: var(--dichte-abstand-klein) var(--dichte-abstand);
+
+  border: 0.125rem solid transparent;
+  border-radius: var(--dichte-radius);
+
+  font-size: var(--dichte-schrift);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-wrap: balance;
+
+  cursor: pointer;
+  transition: background-color 120ms ease-out;
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.primaer {
+  background: var(--farbe-akzent);
+  color: var(--farbe-auf-akzent);
+}
+
+.sekundaer {
+  background: var(--farbe-karte);
+  border-color: var(--farbe-akzent);
+  color: var(--farbe-akzent);
+}
+
+.volleBreite {
+  width: 100%;
+}
