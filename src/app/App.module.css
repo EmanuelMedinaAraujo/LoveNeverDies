@@ -6,3 +6,19 @@
   padding: var(--dichte-abstand-gross) var(--dichte-abstand);
   color: var(--farbe-text-sekundaer);
 }
+
+.start {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}

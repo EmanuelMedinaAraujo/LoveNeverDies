@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import stile from './KeinFall.module.css'
@@ -6,11 +6,13 @@ import stile from './KeinFall.module.css'
 /**
  * Ohne Fall ist die App gesperrt: ein Screen, drei Schaltflächen (DESIGN.md §7).
  *
- * Die drei Wege sind die Fallweiche aus dem Onboarding. Sie tragen in diesem
- * Stand noch keine Funktion — die Fallanlage, die Vorsorge und der
- * Kopplungscode kommen in eigenen Slices.
+ * Die drei Wege sind die Fallweiche aus dem Onboarding. "Ein Todesfall ist
+ * eingetreten" führt zur Fallanlage (§2, §3.1); die beiden anderen tragen noch
+ * keine Funktion — Vorsorge und Kopplungscode kommen in eigenen Slices.
  */
 export function KeinFall() {
+  const navigate = useNavigate()
+
   return (
     <main className={stile.seite}>
       <div className={stile.kopf}>
@@ -22,7 +24,7 @@ export function KeinFall() {
 
       <Card>
         <div className={stile.weiche}>
-          <Button volleBreite disabled>
+          <Button volleBreite onClick={() => navigate('/todesfall')}>
             Ein Todesfall ist eingetreten
           </Button>
           <Button volleBreite variante="sekundaer" disabled>
@@ -32,7 +34,7 @@ export function KeinFall() {
             Ich wurde eingeladen
           </Button>
           <p className={stile.hinweis}>
-            Diese Schritte werden gerade gebaut und sind noch nicht auswählbar.
+            Die beiden anderen Schritte werden gerade gebaut und sind noch nicht auswählbar.
           </p>
         </div>
       </Card>

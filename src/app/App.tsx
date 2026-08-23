@@ -5,9 +5,12 @@ import { speicherDauerhaftAnfordern } from '../core/storage/persist.ts'
 import { useAnsichtsmodus } from '../hooks/useAnsichtsmodus.ts'
 import { useCase } from '../hooks/useCase.ts'
 import { useGeraeteanmeldung } from '../hooks/useGeraete.ts'
+import { fallBeschriftung } from '../services/fallbeschriftung.ts'
+import type { Fall } from '../services/fallService.ts'
 import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
 import { KeinFall } from '../screens/shared/KeinFall/KeinFall.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
+import { Todesfall } from '../screens/shared/Todesfall/Todesfall.tsx'
 import stile from './App.module.css'
 
 function Ladeanzeige({ text }: { text: string }) {
@@ -19,17 +22,52 @@ function Ladeanzeige({ text }: { text: string }) {
 }
 
 /**
+ * Der Fall selbst, sobald es einen gibt (§2). Es gibt noch keinen eigenen
+ * Start-Screen mit Aufgabenliste — der kommt mit den Slices, die ihn füllen.
+ * Bis dahin steht hier, wofür §2 die Beschriftung verlangt: der Name der
+ * Person, kein Sammelbegriff.
+ */
+function Fallanzeige({ fall }: { fall: Fall }) {
+  if (fall.zustand === 'gesperrt') {
+    return (
+      <main className={stile.start}>
+        <h1>Fall gesperrt</h1>
+        <p className={stile.hinweis} role="alert">
+          {fall.grund}
+        </p>
+      </main>
+    )
+  }
+
+  return (
+    <main className={stile.start}>
+      <h1>
+        {fall.sterbedatum === null ? fall.personName : fallBeschriftung(fall.personName, fall.sterbedatum)}
+      </h1>
+    </main>
+  )
+}
+
+/**
  * Die Fallsperre aus DESIGN.md §7: Ohne Fall ist die App gesperrt, es gibt einen
  * Screen mit drei Schaltflächen.
  */
 function FallSperre() {
-  const fall = useCase()
+  const { zustand: fall } = useCase()
 
   if (fall.status === 'laedt') {
     return <Ladeanzeige text="Ihre Daten werden geladen…" />
   }
 
-  return <KeinFall />
+  if (fall.status === 'fehler') {
+    return <Ladeanzeige text={`Ihre Fälle sind gerade nicht abrufbar. ${fall.nachricht}`} />
+  }
+
+  if (fall.status === 'kein-fall') {
+    return <KeinFall />
+  }
+
+  return <Fallanzeige fall={fall.aktiver} />
 }
 
 export function App() {
@@ -70,6 +108,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/" element={<FallSperre />} />
+      <Route path="/todesfall" element={<Todesfall />} />
       <Route path="/profil" element={<Profil />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
