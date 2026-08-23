@@ -154,9 +154,21 @@ export default tseslint.config(
   },
 
   {
-    files: ['*.{js,ts,mjs}', 'scripts/**/*.{js,mjs}', 'build/**/*.ts', 'tests/**/*.ts'],
+    files: ['*.{js,ts,mjs}', 'scripts/**/*.{js,mjs}', 'build/**/*.ts', 'tests/**/*.{ts,tsx}'],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+
+  /**
+   * Die Komponententests rendern echtes JSX. `globals.node` allein reicht
+   * ihnen nicht: Sie greifen auf `document` und `window` zu, die im
+   * jsdom-Projekt (vitest.config.ts) da sind.
+   */
+  {
+    files: ['tests/**/*.tsx'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
     },
   },
 )
