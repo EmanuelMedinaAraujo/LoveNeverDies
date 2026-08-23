@@ -29,6 +29,15 @@ export type AuthZustand =
 export type AuthKontextWert = {
   zustand: AuthZustand
   abmelden: () => Promise<void>
+  /**
+   * Das Token, mit dem der Supabase-Client sich ausweist (§4).
+   *
+   * Es steht hier und nicht neben dem Client, weil sonst der Anbietername eine
+   * dritte Datei braeuchte. `null`, solange niemand angemeldet ist — dann
+   * greift keine Policy, und PostgREST antwortet mit leeren Mengen statt mit
+   * fremden Zeilen.
+   */
+  zugangstoken: () => Promise<string | null>
 }
 
 const AuthKontext = createContext<AuthKontextWert | null>(null)

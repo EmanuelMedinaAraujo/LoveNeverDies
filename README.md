@@ -31,6 +31,11 @@ Ohne Clerk-Zugang: `.env.example` nach `.env.local` kopieren und den
 Publishable Key eintragen. Er ist öffentlich und liegt ohnehin im ausgelieferten
 JavaScript — schützenswert ist allein der Secret Key.
 
+Dazu die Supabase-Zugangsdaten: `VITE_SUPABASE_URL` und
+`VITE_SUPABASE_ANON_KEY`. Wie das Projekt angelegt und verknüpft wird, steht in
+[`supabase/README.md`](supabase/README.md). Ohne sie läuft die App bis zur
+Anmeldung und meldet danach, dass die Geräte nicht abrufbar sind.
+
 ```bash
 npm run dev
 ```
@@ -70,10 +75,34 @@ soll dieselben Präfixe und denselben Verifikationscode benutzen können (§9).
 | `commitment.ts`  | Tresor-Commitment, Freigabe- und Wrap-Nachricht, Katalog-Item-ID  |
 | `fingerprint.ts` | Geräte-Fingerprint und der 6-stellige Prüfcode aus §3.6           |
 | `bytes.ts`       | Verketten, Vergleichen, Zufall, SHA-256 und HMAC                  |
+| `keystore.ts`    | Der Geräte-Seed in IndexedDB, verschlüsselt und ohne Weg zurück   |
 
 Ein Blob mit unbekanntem `v` oder `aead` wird abgewiesen und nie stillschweigend
 falsch gelesen; Migration läuft lazy, also müssen alte und neue nebeneinander
 lesbar bleiben. Die Tests dazu liegen in `tests/crypto/`.
+
+## Geräteidentität
+
+Jedes Gerät hat zwei Keypairs (§3.1): ML-KEM-768 + X25519 für den
+Schlüsseltransport, ML-DSA-65 + Ed25519 für Signaturen. Beide entstehen bei der
+ersten Anmeldung aus einem 96-Byte-Seed, der in IndexedDB liegt — verschlüsselt
+unter einem AES-GCM-`CryptoKey` mit `extractable: false`.
+
+Der Seed verlässt das Gerät nie. Es gibt keinen portablen Seed, keine
+Wiederherstellungsphrase und keine Ableitung aus dem Login-Passwort; die
+Begründungen stehen in §3.6, die Konsequenz als Grenze 1 in §11. Wer sein
+einziges Gerät verliert, verliert die Entschlüsselbarkeit — die Absicherung ist
+ein zweites Gerät oder eine zweite Person im Fall.
+
+Öffentlich wird davon nur, was öffentlich sein muss: `pk_kem` und `pk_sig`
+stehen in `device_keys`. Der Prüfcode aus §3.6 fällt aus beiden zusammen und
+steht in Profil → Geräte.
+
+## Datenbank
+
+Schema, RLS und Migrationen liegen unter [`supabase/`](supabase/README.md). Die
+Kette wird bei jedem `npm test` gegen ein echtes Postgres eingespielt — PGlite,
+also WASM statt Docker —, samt der RLS-Policies aus §4.
 
 ## Schichtung
 

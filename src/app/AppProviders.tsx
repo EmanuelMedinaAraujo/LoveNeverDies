@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { BrowserRouter } from 'react-router-dom'
 import { ClerkAuthProvider } from '../core/auth/clerkAdapter.tsx'
+import { SupabaseProvider } from '../core/db/supabaseProvider.tsx'
 import { ErrorBoundary } from './ErrorBoundary.tsx'
 
 /**
@@ -14,7 +15,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ErrorBoundary>
       <ClerkAuthProvider>
-        <BrowserRouter>{children}</BrowserRouter>
+        <SupabaseProvider>
+          <BrowserRouter>{children}</BrowserRouter>
+        </SupabaseProvider>
       </ClerkAuthProvider>
     </ErrorBoundary>
   )
