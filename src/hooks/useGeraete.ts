@@ -31,6 +31,7 @@ import {
 } from '../core/crypto/keystore.ts'
 import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
+import { alsNachricht } from '../core/fehler.ts'
 import {
   benenneGeraetUm,
   eigeneGeraete,
@@ -40,10 +41,6 @@ import {
 import { standardGeraetename } from '../services/geraetename.ts'
 
 type Ergebnis<T> = { wert: T } | { nachricht: string }
-
-function alsNachricht(fehler: unknown): string {
-  return fehler instanceof Error ? fehler.message : String(fehler)
-}
 
 function ausErgebnis<T, Z>(
   ergebnis: Ergebnis<T> | null,
@@ -111,7 +108,7 @@ export function useGeraeteidentitaet(): GeraeteidentitaetZustand {
 export type AnmeldungZustand =
   | { status: 'laedt' }
   | { status: 'abgemeldet' }
-  | { status: 'bereit'; identitaet: Geraeteidentitaet; benutzer: AuthBenutzer }
+  | { status: 'bereit'; identitaet: Geraeteidentitaet; benutzer: AuthBenutzer; geraet: Geraet }
   | { status: 'fehler'; nachricht: string }
 
 /**
@@ -186,10 +183,11 @@ export function useGeraeteanmeldung(): AnmeldungZustand {
       return { status: 'laedt' }
     }
 
-    return ausErgebnis(ergebnis, () => ({
+    return ausErgebnis(ergebnis, (geraet) => ({
       status: 'bereit' as const,
       identitaet: identitaetZustand.identitaet,
       benutzer,
+      geraet,
     }))
   }, [benutzer, ergebnis, identitaetZustand])
 }
