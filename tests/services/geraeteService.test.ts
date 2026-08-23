@@ -90,6 +90,10 @@ function speicherTabelle() {
       return zeile
     },
 
+    async nachId(id) {
+      return zeilen.find((zeile) => zeile.id === id) ?? null
+    },
+
     async fuerBenutzer(userId) {
       return zeilen.filter((zeile) => zeile.userId === userId)
     },

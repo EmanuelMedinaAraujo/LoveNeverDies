@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/authProvider.ts'
+import { useCase } from '../../../hooks/useCase.ts'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Geraeteliste } from './Geraeteliste.tsx'
 import stile from './Profil.module.css'
@@ -17,7 +18,11 @@ import stile from './Profil.module.css'
  */
 export function Profil() {
   const { zustand } = useAuth()
+  const { zustand: fall } = useCase()
   const benutzer = zustand.status === 'angemeldet' ? zustand.benutzer : null
+
+  const fuerWen =
+    fall.status === 'bereit' && fall.aktiver.zustand === 'lesbar' ? fall.aktiver.personName : null
 
   return (
     <main className={stile.seite}>
@@ -35,6 +40,13 @@ export function Profil() {
           {benutzer.email === null ? null : (
             <p className={stile.hinweis}>{benutzer.email}</p>
           )}
+        </Card>
+      )}
+
+      {fuerWen === null ? null : (
+        <Card>
+          <h2 className={stile.abschnitt}>Für wen?</h2>
+          <p className={stile.name}>{fuerWen}</p>
         </Card>
       )}
 

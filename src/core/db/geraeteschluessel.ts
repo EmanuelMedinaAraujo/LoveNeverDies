@@ -39,6 +39,17 @@ export type GeraeteschluesselTabelle = {
    */
   legeAn(neu: NeuerGeraeteschluessel): Promise<GeraeteschluesselZeile | null>
 
+  /**
+   * Die Zeile zu einer `device_keys.id`.
+   *
+   * Gebraucht für `key_wraps.wrapped_by` (§3.6): Bevor ein Wrap entpackt wird,
+   * muss der öffentliche Signaturschlüssel des wrappenden Geräts her — und das
+   * kann ein Gerät einer anderen Person sein.
+   *
+   * @returns `null`, wenn es die Zeile nicht gibt oder die RLS sie verbirgt.
+   */
+  nachId(id: string): Promise<GeraeteschluesselZeile | null>
+
   fuerBenutzer(userId: string): Promise<GeraeteschluesselZeile[]>
 
   benenneUm(id: string, label: string): Promise<void>

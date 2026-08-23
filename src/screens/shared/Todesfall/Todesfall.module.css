@@ -1,0 +1,48 @@
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-gross);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.einleitung {
+  color: var(--farbe-text-sekundaer);
+}
+
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eingabe {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  border: 1px solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}
