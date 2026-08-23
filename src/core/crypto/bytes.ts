@@ -94,3 +94,16 @@ export async function hmacSha256(
 
   return new Uint8Array(mac)
 }
+
+/**
+ * `fatal: true`, weil die Voreinstellung das Gegenteil tut: Sie ersetzt
+ * ungültige Folgen still durch U+FFFD. Was hier ankommt, ist frisch
+ * entschlüsselt — ist es kein gültiges UTF-8, dann ist es kaputt, und der
+ * Fehler gehört an diese Stelle und nicht in die Oberfläche.
+ */
+const DECODER = new TextDecoder('utf-8', { fatal: true })
+
+/** Die Gegenrichtung zu {@link textBytes}. */
+export function bytesText(bytes: Uint8Array): string {
+  return DECODER.decode(bytes)
+}

@@ -93,6 +93,20 @@ export function supabaseGeraeteschluessel(client: SupabaseClient): Geraeteschlue
       return alsZeile(data)
     },
 
+    async nachId(id) {
+      const { data, error } = await client
+        .from(TABELLE)
+        .select(SPALTEN)
+        .eq('id', id)
+        .maybeSingle<RohZeile>()
+
+      if (error !== null) {
+        throw new GeraeteschluesselFehler('Der Geräteschlüssel war nicht abzurufen', error)
+      }
+
+      return data === null ? null : alsZeile(data)
+    },
+
     async fuerBenutzer(userId) {
       const { data, error } = await client
         .from(TABELLE)
