@@ -26,6 +26,7 @@ function Zeile({
 }) {
   const [entwurf, setzeEntwurf] = useState<string | null>(null)
   const [laeuft, setzeLaeuft] = useState(false)
+  const [fehler, setzeFehler] = useState<string | null>(null)
 
   async function speichere() {
     if (entwurf === null || entwurf.trim() === '') {
@@ -33,10 +34,16 @@ function Zeile({
     }
 
     setzeLaeuft(true)
+    setzeFehler(null)
 
     try {
       await umbenennen(geraet.id, entwurf)
       setzeEntwurf(null)
+    } catch (ursache) {
+      // Ohne diesen Zweig verschwände ein gescheitertes Umbenennen spurlos:
+      // Das Feld bliebe offen, der Knopf wieder bedienbar, und nichts sagte,
+      // dass der eingetippte Name nirgends angekommen ist.
+      setzeFehler(ursache instanceof Error ? ursache.message : String(ursache))
     } finally {
       setzeLaeuft(false)
     }
@@ -81,10 +88,23 @@ function Zeile({
             <Button onClick={() => void speichere()} disabled={laeuft || entwurf.trim() === ''}>
               Speichern
             </Button>
-            <Button variante="sekundaer" onClick={() => setzeEntwurf(null)} disabled={laeuft}>
+            <Button
+              variante="sekundaer"
+              onClick={() => {
+                setzeEntwurf(null)
+                setzeFehler(null)
+              }}
+              disabled={laeuft}
+            >
               Abbrechen
             </Button>
           </div>
+
+          {fehler === null ? null : (
+            <p className={stile.hinweis} role="alert">
+              Der neue Name ist nicht angekommen. {fehler}
+            </p>
+          )}
         </div>
       )}
     </li>

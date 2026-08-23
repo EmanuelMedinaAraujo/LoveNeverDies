@@ -31,9 +31,9 @@ type RohZeile = {
   created_at: string
 }
 
-class GeraeteschluesselFehler extends Error {
-  constructor(was: string, ursache: PostgrestError) {
-    super(`${was}: ${ursache.message}`)
+export class GeraeteschluesselFehler extends Error {
+  constructor(was: string, ursache?: PostgrestError) {
+    super(ursache === undefined ? was : `${was}: ${ursache.message}`)
     this.name = 'GeraeteschluesselFehler'
     this.cause = ursache
   }
@@ -109,10 +109,26 @@ export function supabaseGeraeteschluessel(client: SupabaseClient): Geraeteschlue
     },
 
     async benenneUm(id, label) {
-      const { error } = await client.from(TABELLE).update({ label }).eq('id', id)
+      // `.select()` ist hier keine Zugabe, sondern die einzige Rückmeldung, die
+      // es gibt: Ein `UPDATE`, das die RLS auf null Zeilen einschränkt, ist für
+      // PostgREST kein Fehler. Ohne die zurückgegebenen Zeilen meldete diese
+      // Funktion Erfolg, die Liste käme unverändert zurück, und der neue Name
+      // verschwände vor den Augen dessen, der ihn gerade eingetippt hat.
+      const { data, error } = await client
+        .from(TABELLE)
+        .update({ label })
+        .eq('id', id)
+        .select('id')
+        .returns<{ id: string }[]>()
 
       if (error !== null) {
         throw new GeraeteschluesselFehler('Das Gerät war nicht umzubenennen', error)
+      }
+
+      if (data.length === 0) {
+        throw new GeraeteschluesselFehler(
+          'Dieses Gerät war nicht umzubenennen. Es gehört zu keinem Ihrer Geräte oder ist nicht mehr da.',
+        )
       }
     },
   }

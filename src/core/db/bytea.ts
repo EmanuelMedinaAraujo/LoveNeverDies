@@ -13,6 +13,17 @@
 
 const HEX_ZIFFERN = '0123456789abcdef'
 
+/**
+ * Was `Number.parseInt` als Hex durchgehen ließe, aber keines ist.
+ *
+ * `parseInt` liest so weit, wie es kann, und gibt zurück, was es bis dahin
+ * hatte: `parseInt('1g', 16)` ist 1, `parseInt('-1', 16)` ist -1 und landete
+ * als 255 im Feld. Nur ein Paar ganz ohne führende Hex-Ziffer ergäbe `NaN` —
+ * ein Test darauf prüft also den einen Fall, der ohnehin auffiele. Deshalb
+ * wird hier die ganze Zeichenkette geprüft, bevor irgendein Byte entsteht.
+ */
+const NUR_HEX = /^[0-9a-fA-F]*$/
+
 /** Ein Feld kam nicht in der Kodierung an, die `bytea` über PostgREST hat. */
 export class ByteaFehler extends Error {
   constructor(nachricht: string) {
@@ -55,16 +66,14 @@ export function ausBytea(wert: unknown): Uint8Array {
     throw new ByteaFehler(`Die Hex-Kodierung hat eine ungerade Länge: ${hex.length}.`)
   }
 
+  if (!NUR_HEX.test(hex)) {
+    throw new ByteaFehler('Die Hex-Kodierung enthält Zeichen, die keine Hex-Ziffern sind.')
+  }
+
   const bytes = new Uint8Array(hex.length / 2)
 
   for (let i = 0; i < bytes.length; i++) {
-    const byte = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
-
-    if (Number.isNaN(byte)) {
-      throw new ByteaFehler(`Die Hex-Kodierung enthält an Position ${i * 2} keine Hex-Ziffern.`)
-    }
-
-    bytes[i] = byte
+    bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16)
   }
 
   return bytes

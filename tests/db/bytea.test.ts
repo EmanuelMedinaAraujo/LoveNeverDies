@@ -40,4 +40,17 @@ describe('bytea hin und zurück', () => {
     expect(() => ausBytea('\\xzz')).toThrow(ByteaFehler)
     expect(() => ausBytea(null)).toThrow(ByteaFehler)
   })
+
+  it('weist auch zurück, was `parseInt` noch halb läse', () => {
+    // Der teure Fall: `parseInt` liest bis zum ersten ungültigen Zeichen und
+    // gibt zurück, was es bis dahin hatte. Ein Feld, das so durchkäme, ergäbe
+    // andere Bytes — und damit einen anderen Prüfcode, ohne dass irgendwo ein
+    // Fehler stünde.
+    expect(() => ausBytea('\\x1g')).toThrow(ByteaFehler)
+    expect(() => ausBytea('\\x0z')).toThrow(ByteaFehler)
+    expect(() => ausBytea('\\x+f')).toThrow(ByteaFehler)
+    expect(() => ausBytea('\\x-1')).toThrow(ByteaFehler)
+    // `parseInt` überspringt führenden Leerraum: Das Paar " f" ergäbe 0x0f.
+    expect(() => ausBytea('\\x00 f')).toThrow(ByteaFehler)
+  })
 })
