@@ -16,17 +16,28 @@ Gebaut für Legal Loves Tech 2026, Abschlusspitch am 27. August 2026.
 | Backend         | Supabase (Region EU/Frankfurt): Postgres + RLS + Realtime + Storage            |
 | Serverlogik     | Eine Edge Function (`vault-release`), `security definer`-RPCs, ein Cron-Job    |
 | Autorisierung   | Postgres RLS, von der Datenbank erzwungen, nicht von Anwendungscode            |
-| KEM             | X-Wing (`ml_kem768_x25519`) aus `@noble/post-quantum` (Version gepinnt; 0.7.0) |
+| KEM             | ML-KEM-768 + X25519 (`ml_kem768_x25519`, `@noble/post-quantum`; gepinnt 0.7.0) |
 | Signatur        | ML-DSA-65 + Ed25519, zusammengesetzt; beide müssen verifizieren                |
 | Content-Chiffre | AES-256-GCM (WebCrypto)                                                        |
 | Secret Sharing  | `shamir-secret-sharing` (Privy-io, auditiert von Cure53 + Zellic; v0.0.3)      |
 | Architektur     | Layered mit Feature-Unterordnern, `core/crypto` als importgekapselter Kern     |
 
-Die Signatur ist hybrid aufgebaut wie das KEM. X-Wing kombiniert ML-KEM-768 mit X25519,
+Die Signatur ist hybrid aufgebaut wie das KEM. Das KEM kombiniert ML-KEM-768 mit X25519,
 die Signatur kombiniert ML-DSA-65 mit Ed25519. Keinem Verfahren wird allein vertraut,
 weder beim Verschlüsseln noch beim Signieren. Das kostet 64 zusätzliche Bytes pro
 Signatur. Dafür reicht ein Bruch in einem einzelnen Algorithmus nicht aus, um einem
 Gerät einen falschen Fallschlüssel unterzuschieben und es dauerhaft auszusperren (§3.6).
+
+**Warum das KEM nicht "X-Wing" heißt.** `ml_kem768_x25519` sieht wie X-Wing aus und trägt
+sogar dieselbe Bezeichnung `\.//^\`, ist aber nicht das Verfahren aus
+draft-connolly-cfrg-xwing-kem: Der Combiner hängt die Bezeichnung hinten an statt voran —
+`SHA3-256(ss_M ‖ ss_X ‖ ct_X ‖ pk_X ‖ label)` —, und die Ableitung des Schlüsselpaars aus
+dem Seed geht ihren eigenen Weg. Kryptographisch ist beides in Ordnung, byteweise sind sie
+unvereinbar. Deshalb steht in diesem Dokument der Name der Bausteine und nicht der der
+Spezifikation: Die Edge Function und jede zweite Implementierung müssen genau diese
+`@noble/post-quantum`-Version benutzen, nicht irgendein X-Wing. Ein Wechsel der
+Konstruktion — auch der zur Spezifikation hin — macht jeden gespeicherten `wrapped_key`
+unlesbar und ist damit ein neues `v` (§3.2), keine Aktualisierung einer Abhängigkeit.
 
 Den Übergang in den Trauerfall sichert die Signatur ausdrücklich **nicht** ab. Das tut
 allein der Rekonstruktionsnachweis aus §3.5. Eine Signatur beweist die Herkunft einer
@@ -72,12 +83,12 @@ dass `K_v` tatsächlich rekonstruiert wurde (§3.5).
 
 ```
 GERÄT (IndexedDB)
-├── Identitäts-Keypair : X-Wing (ML-KEM-768 + X25519), pro Gerät
+├── Identitäts-Keypair : ML-KEM-768 + X25519, pro Gerät
 │   │   sk_u : 32-Byte-Seed, verlässt das Gerät nie,
 │   │          at-rest verschlüsselt unter einem non-extractable AES-GCM CryptoKey
 │   │   pk_u : 1216 B, öffentlich, liegt im Klartext auf dem Server
 │   │
-│   └── entpackt ↓  (X-Wing decapsulate + AES-GCM unwrap)
+│   └── entpackt ↓  (KEM-decapsulate + AES-GCM unwrap)
 │       │
 │       ├── K_c : Fallschlüssel, AES-256-GCM, pro Fall und Generation
 │       │   │     kid = "case_<uuid>:<gen>"
@@ -117,7 +128,7 @@ Achsen sind vollständig entkoppelt.
 
 **Warum ein zweites Keypair.** Ein KEM beweist, dass jemand lesen darf, nie wer etwas
 geschrieben hat — und sobald eine einzelne hochgeladene Zeile darüber entscheidet, ob ein
-Fall in den Trauerfall kippt, reicht das nicht. X-Wing kann nicht signieren, also bekommt
+Fall in den Trauerfall kippt, reicht das nicht. Signieren kann es nicht, also bekommt
 jedes Gerät ein Signaturpaar dazu.
 
 ### 3.2 Envelope-Format (versioniert)
@@ -132,7 +143,7 @@ wrapped_dek  := "LN" | v:u8 | aead:u8 | nonce:12B | ciphertext+tag   (48B Nutzla
 wrapped_key  := "LN" | v:u8 | aead:u8 | nonce:12B | ciphertext+tag
 signature    := "LN" | v:u8 | sig:u8  | mldsa:3309B | ed25519:64B
 
-v    = 1  ->  Suite: X-Wing (ml-kem-768 + x25519) als KEM, aes-256-gcm als AEAD
+v    = 1  ->  Suite: ml-kem-768 + x25519 als KEM, aes-256-gcm als AEAD
 aead = 1  ->  aes-256-gcm
 sig  = 1  ->  ml-dsa-65 + ed25519   (beide müssen verifizieren)
 ```
@@ -489,7 +500,7 @@ Private Aufgaben sind immer Wurzelaufgaben, und nichts darf von ihnen abhängen 
 create table device_keys (
   id             uuid primary key default gen_random_uuid(),
   user_id        text not null,
-  public_key     bytea not null,                   -- X-Wing pk, 1216 B
+  public_key     bytea not null,                   -- KEM-pk, 1216 B
   sig_public_key bytea not null,                   -- ML-DSA-65 pk ‖ Ed25519 pk
   label          text,                             -- "iPhone von Anna"
   created_at     timestamptz not null default now()
@@ -528,7 +539,7 @@ create table key_wraps (
   case_id     uuid references cases(id) on delete cascade,
   kid         text not null,                       -- "case_<uuid>:<gen>" | "cat_<uuid>"
   device_id   uuid references device_keys(id) on delete cascade,
-  kem_ct      bytea not null,                      -- X-Wing Ciphertext
+  kem_ct      bytea not null,                      -- KEM-Ciphertext
   wrapped_key bytea not null,                      -- AES-GCM(ss, K_c bzw. K_cat)
   wrapped_by  uuid not null references device_keys(id) on delete restrict,
   signature   bytea not null,                      -- "LN-wrap-v1", §3.2

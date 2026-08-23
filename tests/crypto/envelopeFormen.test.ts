@@ -15,7 +15,7 @@ import { erzeugeSignaturSchluesselpaar, signiere, verifiziere } from '../../src/
  * Datenbank nebeneinander liegt:
  *
  * ```
- * sk_u --X-Wing--> geteiltes Geheimnis --entpackt--> K_c --entpackt--> DEK --entschlüsselt--> payload
+ * sk_u --KEM--> geteiltes Geheimnis --entpackt--> K_c --entpackt--> DEK --entschlüsselt--> payload
  * ```
  */
 

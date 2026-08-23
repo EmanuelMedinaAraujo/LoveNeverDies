@@ -12,13 +12,13 @@ import {
 } from '../../src/core/crypto/kem'
 
 /**
- * Nahtstelle: X-Wing (ML-KEM-768 + X25519) als KEM (DESIGN.md §3.1).
+ * Nahtstelle: ML-KEM-768 + X25519 als KEM (DESIGN.md §3.1).
  *
  * Das Identitäts-Keypair jedes Geräts. Damit wird `K_c` an ein Gerät gewrappt,
  * und nur damit kommt ein Gerät wieder an einen Fallschlüssel heran.
  */
 
-describe('X-Wing-Schlüsselpaar', () => {
+describe('KEM-Schlüsselpaar', () => {
   it('hat die Längen aus §3.1', () => {
     const paar = erzeugeKemSchluesselpaar()
 
