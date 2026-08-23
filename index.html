@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="de" data-dichte="erweitert">
+  <head>
+    <meta charset="UTF-8" />
+    <!--
+      Kein `user-scalable=no` und kein `maximum-scale` (DESIGN.md §7).
+      Wer die Schrift des Browsers vergrößert oder die Seite aufzieht, soll das
+      können; die Zielgruppe dieser App braucht genau das.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#F7F4EC" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0C130E" />
+    <meta
+      name="description"
+      content="Begleitet Angehörige nach einem Todesfall durch die rechtlichen und organisatorischen Aufgaben."
+    />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon-180.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="LoveNeverDies" />
+
+    <title>LoveNeverDies</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,100 @@
+/*
+ * Grundlage der Oberflaeche. Mobile-only (DESIGN.md §1).
+ *
+ * Die Barrierefreiheitszusagen aus §7 stehen hier, damit sie nicht in jedem
+ * Screen einzeln wiederholt werden muessen.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /*
+   * Kein `font-size` in px. Die Textskalierung des Browsers setzt die
+   * Wurzelgroesse, und weil alle Tokens in `rem` rechnen, waechst die ganze
+   * Oberflaeche mit — Abstaende und Touch-Ziele eingeschlossen.
+   */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  font-size: var(--dichte-schrift);
+  line-height: var(--dichte-zeilenhoehe);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  line-height: 1.25;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--dichte-schrift-gross);
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Sichtbarer Fokus, auch fuer Zeigergeraete. Ein unsichtbarer Fokus ist bei
+   dieser Zielgruppe eine Sackgasse. */
+:focus-visible {
+  outline: 0.1875rem solid var(--farbe-akzent);
+  outline-offset: 0.125rem;
+}
+
+/*
+ * §7: `prefers-reduced-motion` wird automatisch uebernommen. Nicht abgeschwaecht,
+ * sondern abgeschaltet.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Nur fuer Screenreader: Text, der vorgelesen, aber nicht gezeigt wird (§7). */
+.nur-vorlesen {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

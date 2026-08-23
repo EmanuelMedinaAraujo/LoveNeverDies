@@ -1,0 +1,72 @@
+/*
+ * Farb- und Dichtetokens.
+ *
+ * Die Farbwerte stehen in DESIGN.md §12. Sie stehen ein zweites Mal in
+ * `src/ui/farben.ts`, weil Clerks `appearance` ein JavaScript-Objekt erwartet
+ * und keine CSS-Variablen aufloest. Aendert sich hier ein Wert, aendert er sich
+ * dort mit.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* §12 Light Mode */
+  --farbe-hintergrund: #f7f4ec;
+  --farbe-karte: #ffffff;
+  --farbe-kartenrand: #e4dfd5;
+  --farbe-akzent: #35523c;
+  --farbe-auf-akzent: #faf8f5;
+  --farbe-text: #141e16;
+  --farbe-text-sekundaer: #5e6a61;
+  --farbe-icon-inaktiv: #647267;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* §12 Dark Mode */
+    --farbe-hintergrund: #0c130e;
+    --farbe-karte: #18231c;
+    --farbe-kartenrand: #25352b;
+    --farbe-akzent: #97ba8e;
+    --farbe-auf-akzent: #111a13;
+    --farbe-text: #faf8f5;
+    --farbe-text-sekundaer: #9aa89d;
+    --farbe-icon-inaktiv: #5e7064;
+  }
+}
+
+/*
+ * Dichte (DESIGN.md §7).
+ *
+ * Die einfache Ansicht ist nicht bloss groesser gesetzt, aber sie ist auch
+ * groesser gesetzt. Alle Masse in `rem`, damit die Textskalierung des Browsers
+ * die ganze Oberflaeche mitzieht statt nur die Buchstaben.
+ *
+ * `erweitert` ist die Grundlage; `einfach` ueberschreibt nur, was sich aendert.
+ * Die Primitiven in `src/ui/` lesen ausschliesslich diese Variablen — deshalb
+ * kostet der Umschalter spaeter keine Neuverkabelung.
+ */
+:root,
+:root[data-dichte='erweitert'] {
+  --dichte-touch-min: 3rem; /* 48 px bei Standardschriftgroesse, §7 */
+  --dichte-abstand-klein: 0.5rem;
+  --dichte-abstand: 1rem;
+  --dichte-abstand-gross: 1.5rem;
+  --dichte-radius: 0.75rem;
+  --dichte-schrift: 1rem;
+  --dichte-schrift-klein: 0.875rem;
+  --dichte-schrift-gross: 1.375rem;
+  --dichte-zeilenhoehe: 1.5;
+}
+
+:root[data-dichte='einfach'] {
+  --dichte-touch-min: 3.75rem;
+  --dichte-abstand-klein: 0.75rem;
+  --dichte-abstand: 1.25rem;
+  --dichte-abstand-gross: 2rem;
+  --dichte-radius: 1rem;
+  --dichte-schrift: 1.25rem;
+  --dichte-schrift-klein: 1.0625rem;
+  --dichte-schrift-gross: 1.75rem;
+  --dichte-zeilenhoehe: 1.6;
+}
