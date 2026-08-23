@@ -38,7 +38,18 @@ const schichtenPolicies = Object.entries(ERLAUBT).map(([from, nachUnten]) => ({
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'dev-dist/**', 'coverage/**', 'node_modules/**'],
+    ignores: [
+      'dist/**',
+      'dev-dist/**',
+      'coverage/**',
+      'node_modules/**',
+      // `supabase start` erzeugt hier eine Edge-Runtime-Kopie fuer den lokalen
+      // Stack (supabase/README.md) — kein Quellcode, schon in .gitignore.
+      'supabase/.temp/**',
+      'supabase/.branches/**',
+      'playwright-report/**',
+      'test-results/**',
+    ],
   },
 
   js.configs.recommended,
@@ -143,9 +154,21 @@ export default tseslint.config(
   },
 
   {
-    files: ['*.{js,ts,mjs}', 'scripts/**/*.{js,mjs}', 'build/**/*.ts', 'tests/**/*.ts'],
+    files: ['*.{js,ts,mjs}', 'scripts/**/*.{js,mjs}', 'build/**/*.ts', 'tests/**/*.{ts,tsx}'],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+
+  /**
+   * Die Komponententests rendern echtes JSX. `globals.node` allein reicht
+   * ihnen nicht: Sie greifen auf `document` und `window` zu, die im
+   * jsdom-Projekt (vitest.config.ts) da sind.
+   */
+  {
+    files: ['tests/**/*.tsx'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
     },
   },
 )

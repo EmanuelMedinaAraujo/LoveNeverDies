@@ -12,6 +12,11 @@ coverage/
 *.log
 *.tsbuildinfo
 
+# Playwright: Sitzungszustand traegt ein echtes Clerk-Session-Token.
+tests/e2e/.auth/
+playwright-report/
+test-results/
+
 # Supabase-CLI: config.toml wird von `supabase init` passend zur installierten
 # Version erzeugt (supabase/README.md), .temp/ ist Sitzungszustand.
 supabase/config.toml
