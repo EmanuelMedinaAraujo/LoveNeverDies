@@ -989,7 +989,7 @@ rechtsgrundlage · zustaendige_stelle · benoetigte_dokumente (;) · subtasks (;
 depends_on (;) · hinweis · quelle_url · kategorie · reihenfolge
 ```
 
-`pnpm import:content` validiert und erzeugt `src/content/catalog.de.json` (eingecheckt).
+`npm import:content` validiert und erzeugt `src/content/catalog.de.json` (eingecheckt).
 
 - Eine `frist` ohne `rechtsgrundlage` ist ein harter Importfehler.
 - Fehlt eine gesetzliche Frist, bleibt das Feld leer. Erfunden wird nichts.
