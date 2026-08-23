@@ -897,7 +897,7 @@ wäre ein Risiko ohne Gegenwert.
   Browser-Textskalierung
 - In Profil zusätzlich ein Override, der auf "Systemeinstellung folgen" steht
 - Durchgehend `rem`, kein `user-scalable=no`
-- WCAG AA Kontrast, Touch-Ziele mindestens 48 px
+- WCAG AA Kontrast
 - Alle Buttons mit Text zum Vorlesen, auch wenn der Text visuell nicht sichtbar ist
 
 ### Aufgabendetail
