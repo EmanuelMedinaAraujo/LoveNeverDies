@@ -14,7 +14,7 @@ Gebaut für Legal Loves Tech 2026, Abschlusspitch am 27. August 2026.
 | Sprache         | Deutsch, durchgehend "Sie"                                                     |
 | Auth            | Clerk, hinter einem `AuthProvider`-Adapter (austauschbar)                      |
 | Backend         | Supabase (Region EU/Frankfurt): Postgres + RLS + Realtime + Storage            |
-| Serverlogik     | Genau eine Edge Function (`vault-release`), sonst nichts                       |
+| Serverlogik     | Eine Edge Function (`vault-release`), `security definer`-RPCs, ein Cron-Job     |
 | Autorisierung   | Postgres RLS, von der Datenbank erzwungen, nicht von Anwendungscode            |
 | KEM             | X-Wing (`ml_kem768_x25519`) aus `@noble/post-quantum` (Version gepinnt; 0.7.0) |
 | Signatur        | ML-DSA-65 + Ed25519, zusammengesetzt; beide müssen verifizieren                |
@@ -25,8 +25,12 @@ Gebaut für Legal Loves Tech 2026, Abschlusspitch am 27. August 2026.
 Die Signatur ist hybrid aufgebaut wie das KEM. X-Wing kombiniert ML-KEM-768 mit X25519,
 die Signatur kombiniert ML-DSA-65 mit Ed25519. Keinem Verfahren wird allein vertraut,
 weder beim Verschlüsseln noch beim Signieren. Das kostet 64 zusätzliche Bytes pro
-Signatur. Dafür reicht ein Bruch in einem einzelnen Algorithmus nicht aus, um einen
-Menschen für tot erklären zu lassen.
+Signatur. Dafür reicht ein Bruch in einem einzelnen Algorithmus nicht aus, um einem
+Gerät einen falschen Fallschlüssel unterzuschieben und es dauerhaft auszusperren (§3.6).
+
+Den Übergang in den Trauerfall sichert die Signatur ausdrücklich **nicht** ab. Das tut
+allein der Rekonstruktionsnachweis aus §3.5. Eine Signatur beweist die Herkunft einer
+Freigabe, damit ein Müll-Share benannt werden kann — nie ihre Richtigkeit.
 
 ---
 
@@ -93,6 +97,7 @@ GERÄT (IndexedDB)
 │       │
 │       └── K_v : Tresorschlüssel, AES-256-GCM, nur bei Vorsorge und nur auf den
 │                 Geräten des Preparers (Tabelle vault_key_wraps, §3.5)
+│                 kid = "vault_<uuid>", rotiert nie
 │                 verschlüsselt die DEKs der Tresor-Items
 │
 └── Signatur-Keypair : ML-DSA-65 (1952 B pk) + Ed25519 (32 B pk), pro Gerät
@@ -122,14 +127,20 @@ Migration läuft lazy. Ein Blob wird erst beim nächsten Schreibzugriff migriert
 lässt sich nie beweisen, dass jede Zeile angefasst wurde.
 
 ```
-payload      := "LN" | v:u8 | alg:u8 | nonce:12B | ciphertext+tag
-wrapped_dek  := "LN" | v:u8 | alg:u8 | nonce:12B | ciphertext+tag   (48B Nutzlast)
-signature    := "LN" | v:u8 | sig:u8 | mldsa:3309B | ed25519:64B
+payload      := "LN" | v:u8 | aead:u8 | nonce:12B | ciphertext+tag
+wrapped_dek  := "LN" | v:u8 | aead:u8 | nonce:12B | ciphertext+tag   (48B Nutzlast)
+wrapped_key  := "LN" | v:u8 | aead:u8 | nonce:12B | ciphertext+tag
+signature    := "LN" | v:u8 | sig:u8  | mldsa:3309B | ed25519:64B
 
-v   = 1
-alg = 1  ->  xwing-mlkem768-x25519 + aes-256-gcm
-sig = 1  ->  ml-dsa-65 + ed25519   (beide müssen verifizieren)
+v    = 1  ->  Suite: X-Wing (ml-kem-768 + x25519) als KEM, aes-256-gcm als AEAD
+aead = 1  ->  aes-256-gcm
+sig  = 1  ->  ml-dsa-65 + ed25519   (beide müssen verifizieren)
 ```
+
+Alle drei Envelopes sind rein symmetrisch und tragen deshalb nur ein AEAD-Byte. Ein
+`alg`-Byte, das in einem `payload` ein KEM benennt, das dort nie vorkommt, wäre eine Lüge
+im Format. Welches KEM einen `kem_ct` erzeugt hat, sagt das `v` des `wrapped_key`, der
+neben ihm in derselben Zeile steht; `kem_ct` selbst hat keinen eigenen Header.
 
 `kid` steht als Klartextspalte daneben, weil der Server danach gruppieren können muss.
 
@@ -139,17 +150,18 @@ einem Kontext in keinem anderen gilt:
 ```
 "LN-fp-v1"    Geräte-Fingerprint      SHA-256(pk_kem ‖ pk_sig)
 "LN-open-v1"  Tresor-Commitment       SHA-256(K_v)
-"LN-rel-v1"   Freigabe-Signatur       case_id ‖ user_id ‖ SHA-256(released_share)
+"LN-rel-v1"   Freigabe-Signatur       case_id ‖ user_id ‖ kid ‖ SHA-256(released_share)
 "LN-wrap-v1"  Wrap-Signatur           case_id ‖ kid ‖ device_id ‖ SHA-256(kem_ct ‖ wrapped_key)
-"LN-cat-v1"   Katalog-Item-ID         HMAC-SHA256(K_cat, catalog_task_id)
+"LN-cat-v1"   Katalog-Item-ID         HMAC-SHA256(K_cat, catalog_item_path)
 ```
 
 ### 3.3 Was der Server sieht
 
-Im Klartext liegen: `case_id`, `seq`, `updated_at`, `kind` (`item` | `file`), `deleted`,
-`in_vault`, `kid`, `key_generation`, `preparer_id`, Mitgliedschaften, öffentliche Geräte-
-und Signaturschlüssel, `share_hash` je Share, `vault_commitment`, Freigabesignaturen und
-die Zahl der Freigaben.
+Im Klartext liegen: `case_id`, `status`, `catalog_version`, `seq`, `updated_at`, `kind`
+(`item` | `file`), `deleted`, `in_vault`, `kid`, `key_generation`, `preparer_id`,
+`vault_k`, `vault_n`, Mitgliedschaften, öffentliche Geräte- und Signaturschlüssel,
+`share_hash` je Share, `vault_commitment`, Freigabesignaturen und die Zahl der Freigaben.
+Dazu Anzeigename und E-Mail jeder Person (Tabelle `profiles`, §4).
 
 Verschlüsselt sind: Titel, Beschreibung, Fristangaben (`fristTage`, `fristAb`),
 Zuständigkeit/Assignee, Notizen, Dokumente, Rechtsgrundlagen, Elternbeziehungen
@@ -160,7 +172,14 @@ Dass Unteraufgaben eigene Zeilen sind (§7), verrät dem Server nichts über die
 `kind` unterscheidet nur `item` von `file`, die Elternbeziehung liegt im verschlüsselten
 Payload.
 
-> Der Server weiß, wer zu wem gehört. Er weiß nichts über den Inhalt.
+> Der Server weiß, wer zu wem gehört und wie diese Menschen heißen. Er weiß nichts über
+> den Inhalt.
+
+`profiles` ist eine bewusste Verbreiterung und der Grund, warum der Satz oben nicht kürzer
+ausfällt. Verschlüsseln ließe sich die Tabelle nicht: §6 zeigt der einladenden Person den
+Namen der beitretenden, **bevor** ein gemeinsamer Schlüssel existiert — das ist der ganze
+Zweck des Schritts. Clerk kennt Name und E-Mail ohnehin; neu ist nur, dass Supabase sie
+auch kennt.
 
 Eine Einschränkung gehört offen benannt. Über den Join
 `items.kid → personal_key_wraps.kid → user_id` erkennt der Server, welche Items privat sind
@@ -176,11 +195,15 @@ Start-Screen filtert clientseitig nach dem Entschlüsseln.
 
 Es gibt kein "Entfernen" durch andere, nur freiwilliges Verlassen.
 
-1. Der Client der austretenden Person löscht lokal `K_c`, `K_cat`, `K_p`, einen etwaigen
+1. Die Mitgliedschaft wird gelöscht → RLS sperrt sofort jeden Blob-Zugriff. Dieser Schritt
+   steht zuerst, weil er als einziger einen Server braucht. Bricht die Verbindung mitten im
+   Austritt ab, ist die Person draußen und hält noch Schlüssel für Daten, die ihr Gerät
+   ohnehin schon gelesen hat. In der umgekehrten Reihenfolge bliebe ein Mitglied ohne
+   Schlüssel, aber mit Zugriff zurück — und ohne Weg, sich die Schlüssel zurückzuholen.
+2. Der Client der austretenden Person löscht lokal `K_c`, `K_cat`, `K_p`, einen etwaigen
    Tresor-Share und den Cache dieses Falls. `sk_u` bleibt: Es ist die Identität des Geräts
    über alle Fälle hinweg, und ein Austritt aus dem Fall des Vaters darf den Fall der
    Mutter nicht mitreißen.
-2. Die Mitgliedschaft wird gelöscht → RLS sperrt sofort jeden Blob-Zugriff.
 3. Ein Trigger setzt `rotation_pending = true`, bei Vorsorgefällen zusätzlich
    `vault_resplit_pending = true`, löscht die `vault_shares` der Person und tombstonet
    ihre privaten Items (§3.7). Sonst blieben sie als für niemanden lesbare Zeilen liegen
@@ -206,13 +229,19 @@ Das Mandat ist zugleich der einzige Weg, "Schlüssel werden erneuert…" ehrlich
 statt die App wortlos hängen zu lassen. Läuft es ab, darf ein anderes Mitglied übernehmen;
 der CAS am Ende verhindert, dass ein verspäteter Verlierer noch etwas kaputt macht.
 
+Rotiert werden ausschließlich die Items, deren `kid` auf die alte `K_c`-Generation zeigt.
+Tresor-Items (`kid = "vault_…"`) und private Items (undurchsichtiges `kid`) bleiben
+unberührt: Ihre DEKs liegen unter `K_v` bzw. `K_p`, und das rotierende Gerät könnte sie gar
+nicht entpacken — der Mandatsinhaber ist in aller Regel nicht der Preparer und nie der
+Besitzer eines fremden `K_p`.
+
 `K_cat` rotiert nie (§8). `K_p` rotiert nicht: Die austretende Person hat die persönlichen
 Schlüssel der anderen nie besessen. Neu gewrappt wird `K_p` ausschließlich, wenn seine
 Besitzerin ein Gerät hinzufügt.
 
 > Die austretende Person führt die Rotation nicht selbst durch, sie würde sonst den neuen
 > Schlüssel erfahren. Das Zeitfenster bis zur Rotation ist unkritisch, weil der
-> Serverzugriff bereits in Schritt 2 endet.
+> Serverzugriff bereits in Schritt 1 endet.
 
 Eine Grenze bleibt. Daten, die vor dem Austritt schon auf das Gerät synchronisiert wurden,
 holt keine Software zurück. Rotation schützt gegen ein später gestohlenes Altgerät, gegen
@@ -245,6 +274,14 @@ Verloren geht dabei nichts: Der Preparer kennt ohnehin jeden Klartext seines eig
 Tresors. Der Tresor schützt gegen den Server und gegen die Angehörigen vor dem Todesfall,
 nicht gegen seinen Autor.
 
+Daraus folgt eine Sperre: **Der Preparer kann einen versiegelten Fall nicht verlassen.**
+Solange `vault_commitment` gesetzt ist, weist ein Trigger das DELETE auf seiner
+Mitgliedschaft ab; die UI bietet ihm stattdessen "Vorsorge löschen", was den Fall samt
+Tresor kaskadierend entfernt. Träte er aus, zeigte `preparer_id` weiter auf ihn,
+`vault_key_wraps` bliebe für alle anderen unlesbar, `vault_resplit_pending` stünde für
+immer, und der Tresor wäre ein Datenblock, den niemand mehr öffnen und niemand mehr
+loswerden kann.
+
 #### Warum der Zähler nichts auslöst
 
 Ein Mitglied kann jederzeit einen unbrauchbaren Share hochladen, korrekt signiert und mit
@@ -273,7 +310,16 @@ Läuft identisch beim ersten Versiegeln und bei jeder späteren Mitgliederänder
    Tresorpfad. Bei `n = 0` entfällt der Schritt.
 3. Alle bestehenden `vault_shares` des Falls löschen, `share_i` an jedes Gerät von
    Angehörigem *i* wrappen, `share_hash_i = SHA-256(share_i)` als Klartextspalte daneben.
-4. `vault_resplit_pending = false`.
+4. Alle `vault_releases` des Falls löschen.
+5. `vault_resplit_pending = false`.
+
+Die Schritte 3 bis 5 laufen in einer Transaktion, über die RPC `resplit_vault`.
+
+Schritt 4 ist nicht optional. Eine Freigabe aus einer früheren Runde liegt auf der alten
+Kurve, zählt im Zähler aber weiter mit. Sie bliebe als Zeile stehen, die die Schwelle
+scheinbar näher rückt und die Rekonstruktion garantiert scheitern lässt. Dass Freigaben vor
+dem Tod des Preparers eigentlich nicht vorkommen, ist kein Schutz: Erzwungen ist es nicht,
+und ein verfrühter Fehlklick darf den Tresor nicht dauerhaft beschädigen.
 
 Neu verteilt wird auf demselben `K_v` mit einem frischen Polynom. Ein Share aus einer
 früheren Runde liegt nicht auf der neuen Kurve, ist also wertlos — der Cache einer
@@ -288,38 +334,57 @@ Direktwrap statt eines Split-Aufrufs.
 1. `share_i` mit `sk_u` entpacken.
 2. Gegen `share_hash_i` prüfen. Das fängt einen kaputten Wrap ab, bevor irgendetwas
    passiert.
-3. Unter `K_c` neu verschlüsseln → `released_share`.
-4. `msg = "LN-rel-v1" ‖ case_id ‖ user_id ‖ SHA-256(released_share)` zweifach signieren,
-   mit ML-DSA-65 und mit Ed25519.
+3. Unter dem aktuellen `K_c` neu verschlüsseln → `released_share`, dessen `kid` geht mit.
+4. `msg = "LN-rel-v1" ‖ case_id ‖ user_id ‖ kid ‖ SHA-256(released_share)` zweifach
+   signieren, mit ML-DSA-65 und mit Ed25519.
 5. An die Edge Function `vault-release` senden, zusammen mit dem Clerk-JWT.
+
+Der `kid` muss mit, weil zwischen Freigabe und Öffnen ein Mitglied austreten und `K_c`
+rotieren kann (§3.4). Ohne ihn wüsste das öffnende Gerät nicht, unter welcher Generation
+der Blob liegt, und müsste blind alle durchprobieren. Er steht in der Signatur, damit ihn
+niemand nachträglich verdreht und eine gültige Freigabe so unlesbar macht.
 
 #### Edge Function `vault-release` (Deno, Service-Role)
 
 Sie prüft das JWT und entnimmt ihm die `user_id`, nie dem Request-Body. Sie prüft, dass
 `device_id` dieser Person gehört und dass die Mitgliedschaft besteht. Sie verifiziert beide
 Signaturen gegen `device_keys.sig_public_key`. Dann schreibt sie
-`insert into vault_releases … on conflict (case_id, user_id) do nothing`.
+`insert into vault_releases … on conflict (case_id, user_id) do update`.
 
 Der Primärschlüssel `(case_id, user_id)` setzt durch, dass Personen gezählt werden und
 nicht Geräte. Von welchem ihrer Geräte jemand signiert, ändert nichts, es entsteht genau
 eine Zeile. Direktes INSERT auf `vault_releases` ist per RLS für alle ausgeschlossen.
+
+**`do update`, nicht `do nothing`.** Eine Freigabe muss ersetzbar sein. Wäre sie es nicht,
+machte ein einziger kaputter Share den Tresor endgültig unöffenbar: Er zählte mit,
+scheiterte an `share_hash` und ließe sich nie korrigieren, weil RLS UPDATE und DELETE für
+alle sperrt. Bei `k = ⌈2n/3⌉` genügten dafür `⌈n/3⌉` fehlerhafte oder böswillige Zeilen —
+genau das, was §11 ausschließt. Ersetzen ist ungefährlich: Jede neue Zeile durchläuft
+dieselbe Signaturprüfung, und der Zähler zählt Personen, keine Versuche.
 
 Ob der Share der richtige ist, kann die Function nicht prüfen. Sie weiß ausschließlich,
 dass eine authentifizierte Person X diesen Blob signiert hat.
 
 #### Öffnen (Gerät irgendeines Mitglieds, sobald der Zähler `k` erreicht)
 
-1. Alle `released_share` mit `K_c` entschlüsseln.
+1. Jeden `released_share` mit dem `K_c` seiner eigenen `kid`-Generation entschlüsseln.
 2. Jeden gegen sein `share_hash` prüfen. Hier scheitert ein gültig signierter Müll-Share,
-   und die App kann benennen, von wem er kam, statt nur "geht nicht" zu melden.
+   und die App kann benennen, von wem er kam, statt nur "geht nicht" zu melden. Sie fordert
+   diese Person zur erneuten Freigabe auf; deren zweiter Versuch überschreibt die
+   fehlerhafte Zeile.
 3. Bleiben ≥ `k` gültige Teile: Shamir-Kombination → `K_v`. Bei `k = 1` ist der Share
    bereits `K_v`.
 4. `proof = SHA-256("LN-open-v1" ‖ K_v)` berechnen.
 5. `open_vault(case_id, proof, catalog_version)` aufrufen. Die RPC nimmt eine Zeilensperre,
    vergleicht `proof` mit `vault_commitment`, ist bei bereits gesetztem `trauerfall`
-   folgenlos idempotent und setzt sonst Status und `catalog_version` atomar.
+   folgenlos idempotent und setzt sonst Status und `catalog_version` atomar. Sie **gibt die
+   gültige `catalog_version` zurück** — die eigene oder die eines schnelleren Clients.
 6. Danach der Client: Tresor-DEKs von `K_v` auf `K_c` umwrappen (`in_vault = false`),
-   Sterbedatum in den Fall-Payload schreiben, Katalog instanziieren (§8).
+   Sterbedatum in den Fall-Payload schreiben, Katalog instanziieren (§8) — und zwar aus der
+   zurückgegebenen Version, nicht aus der eigenen. Zwei Clients auf verschiedenen
+   App-Ständen schrieben sonst zwei verschiedene Kataloge in denselben Fall, und
+   `catalog_version` beschriebe die Hälfte der Zeilen falsch. Kennt ein Client die
+   zurückgegebene Version nicht, instanziiert er nicht und überlässt das dem anderen.
 
 Das Sterbedatum trägt die Person ein, die die Bestätigung startet. Es wird unter `K_c`
 verschlüsselt abgelegt, die Fristen werden clientseitig daraus berechnet.
