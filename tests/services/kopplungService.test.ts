@@ -13,7 +13,7 @@ import type {
   GeraeteschluesselZeile,
 } from '../../src/core/db/geraeteschluessel'
 import type { Einloesung, KopplungTabelle, Kopplungszweck } from '../../src/core/db/kopplung'
-import { ladeFaelle, legeTrauerfallAn } from '../../src/services/fallService'
+import { ladeFaelle, legeTrauerfallAn, type Fall } from '../../src/services/fallService'
 import {
   freischaltungText,
   fuegeZumFallHinzu,
@@ -452,6 +452,29 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
 
     expect(freischaltung).toEqual({ freigeschaltet: 1, gesamt: 2 })
     expect(freischaltungText(freischaltung)).toBe('1 von 2 Fällen freigeschaltet')
+  })
+
+  it('gibt nichts frei, wenn dieses Gerät selbst nichts lesen kann', async () => {
+    /*
+     * Ohne diesen Wurf käme „0 von 0 Fällen freigeschaltet" zurück — die
+     * Kopplung sähe erledigt aus, der Code wäre verbraucht, und das zweite
+     * Gerät läse weiterhin nichts. Ein Fehlschlag, der wie ein Erfolg aussieht,
+     * ist hier der schlimmste Ausgang.
+     */
+    const lage = await ausgangslage()
+    const zweitesGeraet = identitaet()
+    lage.s.meldeGeraetAn(BERNDS_ZWEITES, zweitesGeraet, BERND)
+
+    const { code } = await lage.bernd.kopplung.erzeugeCode(BERNDS_ZWEITES, 'device')
+    const anfrage = await loeseKopplungscodeEin(lage.bernd.kopplung, code)
+
+    const nurGesperrt: Fall[] = [{ zustand: 'gesperrt', id: 'fall-x', grund: 'Kein Schlüssel.' }]
+
+    await expect(
+      schalteGeraetFrei(lage.bernd.kopplung, anfrage, nurGesperrt, lage.berndsIdentitaet, BERNDS_GERAET),
+    ).rejects.toThrow(/keinen Fall lesen/)
+
+    expect(lage.s.wrapZeilen.some((zeile) => zeile.geraeteId === BERNDS_ZWEITES)).toBe(false)
   })
 
   it('nimmt einen join-Code für eine Gerätefreigabe nicht an', async () => {

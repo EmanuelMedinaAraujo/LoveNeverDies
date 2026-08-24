@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthKontextProvider } from '../../src/core/auth/authProvider.ts'
 import type { AuthZustand } from '../../src/core/auth/authProvider.ts'
@@ -48,14 +48,14 @@ describe('useProfilAbgleich (§3.3)', () => {
       wrapper: huelle({ status: 'abgemeldet' }),
     })
 
-    expect(result.current).toEqual({ status: 'abgemeldet' })
+    expect(result.current.zustand).toEqual({ status: 'abgemeldet' })
     expect(speichere).not.toHaveBeenCalled()
   })
 
   it('hinterlegt Name und E-Mail der angemeldeten Person', async () => {
     const { result } = renderHook(() => useProfilAbgleich(), { wrapper: huelle(ANGEMELDET) })
 
-    await waitFor(() => expect(result.current).toEqual({ status: 'bereit' }))
+    await waitFor(() => expect(result.current.zustand).toEqual({ status: 'bereit' }))
 
     expect(speichere).toHaveBeenCalledWith({
       userId: 'user_1',
@@ -72,7 +72,7 @@ describe('useProfilAbgleich (§3.3)', () => {
       }),
     })
 
-    await waitFor(() => expect(result.current).toEqual({ status: 'bereit' }))
+    await waitFor(() => expect(result.current.zustand).toEqual({ status: 'bereit' }))
     expect(speichere).toHaveBeenCalledWith(expect.objectContaining({ email: null }))
   })
 
@@ -84,7 +84,24 @@ describe('useProfilAbgleich (§3.3)', () => {
     const { result } = renderHook(() => useProfilAbgleich(), { wrapper: huelle(ANGEMELDET) })
 
     await waitFor(() =>
-      expect(result.current).toEqual({ status: 'fehler', nachricht: 'permission denied' }),
+      expect(result.current.zustand).toEqual({ status: 'fehler', nachricht: 'permission denied' }),
     )
+  })
+
+  it('schreibt auf Wunsch noch einmal', async () => {
+    /*
+     * Ohne diesen Weg bliebe die Sitzung nach einem einzigen misslungenen
+     * Rundlauf bis zum Neuladen ohne Profil — und jede Kopplung scheiterte an
+     * „Ohne hinterlegten Namen gibt es keinen Kopplungscode" (§6).
+     */
+    speichere.mockRejectedValueOnce(new Error('permission denied'))
+
+    const { result } = renderHook(() => useProfilAbgleich(), { wrapper: huelle(ANGEMELDET) })
+    await waitFor(() => expect(result.current.zustand.status).toBe('fehler'))
+
+    act(() => result.current.nochmal())
+
+    await waitFor(() => expect(result.current.zustand).toEqual({ status: 'bereit' }))
+    expect(speichere).toHaveBeenCalledTimes(2)
   })
 })

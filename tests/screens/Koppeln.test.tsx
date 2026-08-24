@@ -55,13 +55,23 @@ const ANFRAGE: Kopplungsanfrage = {
 function daten(
   zustand: unknown,
   lesbareFaelle: LesbarerFall[] = [fall('fall-1', 'Hans Weber')],
+  ueberschreibung: { laeuft?: boolean; faelleBereit?: boolean } = {},
 ) {
-  return { zustand, lesbareFaelle, einloesen, bestaetigen, abbrechen }
+  return {
+    zustand,
+    laeuft: false,
+    faelleBereit: true,
+    lesbareFaelle,
+    einloesen,
+    bestaetigen,
+    abbrechen,
+    ...ueberschreibung,
+  }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useEinloesung.mockReturnValue(daten({ status: 'leer' }))
+  useEinloesung.mockReturnValue(daten({ status: 'leer', fehler: null }))
 })
 
 describe('Koppeln: Code eingeben (§6, Schritt 4)', () => {
@@ -76,7 +86,7 @@ describe('Koppeln: Code eingeben (§6, Schritt 4)', () => {
 
   it('nennt den Grund, wenn der Code nicht durchging', () => {
     useEinloesung.mockReturnValue(
-      daten({ status: 'fehler', nachricht: 'Dieser Kopplungscode ist abgelaufen.' }),
+      daten({ status: 'leer', fehler: 'Dieser Kopplungscode ist abgelaufen.' }),
     )
 
     rendereMitProvidern(<Koppeln />)
@@ -87,7 +97,7 @@ describe('Koppeln: Code eingeben (§6, Schritt 4)', () => {
 
 describe('Koppeln: bestätigen (§6, Schritt 5 und 6)', () => {
   beforeEach(() => {
-    useEinloesung.mockReturnValue(daten({ status: 'angebot', anfrage: ANFRAGE }))
+    useEinloesung.mockReturnValue(daten({ status: 'angebot', anfrage: ANFRAGE, fehler: null }))
   })
 
   it('zeigt Name, E-Mail und Prüfcode, bevor irgendetwas übergeben wird', () => {
@@ -111,7 +121,7 @@ describe('Koppeln: bestätigen (§6, Schritt 5 und 6)', () => {
 
   it('übergibt den Fall, den die einladende Person gewählt hat', async () => {
     useEinloesung.mockReturnValue(
-      daten({ status: 'angebot', anfrage: ANFRAGE }, [
+      daten({ status: 'angebot', anfrage: ANFRAGE, fehler: null }, [
         fall('fall-1', 'Hans Weber'),
         fall('fall-2', 'Erika Weber'),
       ]),
@@ -132,12 +142,42 @@ describe('Koppeln: bestätigen (§6, Schritt 5 und 6)', () => {
   })
 
   it('sagt es, wenn dieses Gerät gar nichts weiterzugeben hat', () => {
-    useEinloesung.mockReturnValue(daten({ status: 'angebot', anfrage: ANFRAGE }, []))
+    useEinloesung.mockReturnValue(daten({ status: 'angebot', anfrage: ANFRAGE, fehler: null }, []))
 
     rendereMitProvidern(<Koppeln />)
 
     expect(screen.getByRole('alert')).toHaveTextContent('nur teilen, was Sie selbst lesen können')
     expect(screen.getByRole('button', { name: /bestätigen/ })).toBeDisabled()
+  })
+
+  it('lässt niemanden bestätigen, solange die Fallliste noch lädt', () => {
+    /*
+     * Der Code ist zu diesem Zeitpunkt eingelöst. Ein Klick auf eine Liste, die
+     * es noch nicht gibt, verbrennte ihn — bei `device` sogar mit einer Meldung,
+     * die wie ein Erfolg aussieht.
+     */
+    useEinloesung.mockReturnValue(
+      daten({ status: 'angebot', anfrage: ANFRAGE, fehler: null }, [], { faelleBereit: false }),
+    )
+
+    rendereMitProvidern(<Koppeln />)
+
+    expect(screen.getByRole('button', { name: /bestätigen/ })).toBeDisabled()
+    // Und keine Behauptung darüber, was dieses Gerät weitergeben kann: Das
+    // weiss noch niemand.
+    expect(screen.queryByText(/nur teilen, was Sie selbst lesen können/)).toBeNull()
+  })
+
+  it('lässt das Angebot stehen, wenn das Bestätigen scheitert', () => {
+    useEinloesung.mockReturnValue(
+      daten({ status: 'angebot', anfrage: ANFRAGE, fehler: 'Kein Netz.' }),
+    )
+
+    rendereMitProvidern(<Koppeln />)
+
+    expect(screen.getByText('Anna Müller')).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveTextContent('Kein Netz.')
+    expect(screen.getByRole('button', { name: /bestätigen/ })).toBeEnabled()
   })
 
   it('lässt abbrechen, wenn der Prüfcode nicht stimmt', async () => {
@@ -153,6 +193,7 @@ describe('Koppeln: bestätigen (§6, Schritt 5 und 6)', () => {
       daten({
         status: 'angebot',
         anfrage: { ...ANFRAGE, angebot: { ...ANFRAGE.angebot, zweck: 'device' } },
+        fehler: null,
       }),
     )
 

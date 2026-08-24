@@ -19,12 +19,11 @@ import stile from './Koppeln.module.css'
  * merken und nicht an einer Fehlermeldung.
  */
 export function Koppeln() {
-  const { zustand, lesbareFaelle, einloesen, bestaetigen, abbrechen } = useEinloesung()
+  const { zustand, laeuft, faelleBereit, lesbareFaelle, einloesen, bestaetigen, abbrechen } =
+    useEinloesung()
 
   const [eingabe, setzeEingabe] = useState('')
   const [gewaehlterFall, setzeGewaehltenFall] = useState<string | null>(null)
-
-  const laeuft = zustand.status === 'laeuft'
 
   function absenden(ereignis: FormEvent) {
     ereignis.preventDefault()
@@ -115,8 +114,13 @@ export function Koppeln() {
         ) : null}
 
         <div className={stile.knoepfe}>
+          {/*
+            Ohne geladene Fallliste bleibt der Knopf zu. Ein Klick darauf
+            verbrennte den Code an einer Liste, die es noch gar nicht gibt —
+            eingelöst ist er zu diesem Zeitpunkt bereits.
+          */}
           <Button
-            disabled={laeuft || (angebot.zweck === 'join' && fallId === null)}
+            disabled={laeuft || !faelleBereit || lesbareFaelle.length === 0}
             onClick={() => void bestaetigen(fallId ?? undefined)}
           >
             Prüfcode stimmt überein — bestätigen
@@ -126,9 +130,15 @@ export function Koppeln() {
           </Button>
         </div>
 
-        {angebot.zweck === 'join' && lesbareFaelle.length === 0 ? (
+        {zustand.fehler === null ? null : (
           <p className={stile.hinweis} role="alert">
-            Sie können niemanden hinzufügen, solange dieses Gerät keinen Fall lesen kann. Sie können
+            {zustand.fehler}
+          </p>
+        )}
+
+        {faelleBereit && lesbareFaelle.length === 0 ? (
+          <p className={stile.hinweis} role="alert">
+            Sie können nichts weitergeben, solange dieses Gerät keinen Fall lesen kann. Sie können
             nur teilen, was Sie selbst lesen können.
           </p>
         ) : null}
@@ -167,9 +177,9 @@ export function Koppeln() {
             Weiter
           </Button>
 
-          {zustand.status === 'fehler' ? (
+          {zustand.status === 'leer' && zustand.fehler !== null ? (
             <p className={stile.hinweis} role="alert">
-              {zustand.nachricht}
+              {zustand.fehler}
             </p>
           ) : null}
         </form>

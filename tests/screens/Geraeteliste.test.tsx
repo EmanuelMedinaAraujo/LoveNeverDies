@@ -8,7 +8,9 @@ const useGeraete = vi.fn<() => GeraetelisteDaten>()
 
 vi.mock('../../src/hooks/useGeraete.ts', () => ({ useGeraete: () => useGeraete() }))
 
-const { Geraeteliste, gruppierterPruefcode } = await import(
+const { gruppierterPruefcode } = await import('../../src/services/kopplungService.ts')
+
+const { Geraeteliste } = await import(
   '../../src/screens/shared/Profil/Geraeteliste.tsx'
 )
 

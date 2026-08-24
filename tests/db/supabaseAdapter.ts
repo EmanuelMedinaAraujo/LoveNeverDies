@@ -85,11 +85,10 @@ export function stubClient(antwort: Antwort) {
       return kette
     },
     /*
-     * `rpc` gibt dieselbe Kette zurück wie `from`, nicht bloß ein Promise:
-     * PostgREST-RPCs sind Filter-Builder, und die Adapter hängen `.returns<T>()`
-     * an eine Funktion, die eine Menge liefert (`supabaseKopplung.ts`). Ein
-     * blankes Promise hätte diese Methode nicht, und der Test schlüge an einer
-     * Stelle fehl, die mit dem Adapter nichts zu tun hat.
+     * `rpc` gibt dieselbe Kette zurück wie `from` und nicht bloß ein Promise:
+     * PostgREST-RPCs sind Filter-Builder, an die sich Filter und Abschlüsse
+     * hängen lassen. Ein blankes Promise ließe einen Adapter, der das tut, an
+     * einer Stelle scheitern, die mit dem Adapter nichts zu tun hat.
      */
     rpc(name: string, argumente: Record<string, unknown>) {
       gesehen.rpc = name

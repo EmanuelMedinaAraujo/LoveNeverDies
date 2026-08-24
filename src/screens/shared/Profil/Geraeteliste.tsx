@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGeraete } from '../../../hooks/useGeraete.ts'
 import type { Geraet } from '../../../services/geraeteService.ts'
+import { gruppierterPruefcode } from '../../../services/kopplungService.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import stile from './Profil.module.css'
 
@@ -12,10 +13,11 @@ import stile from './Profil.module.css'
  * Menschen ihn am Telefon vergleichen. Ablesbar sein muss er ab jetzt.
  */
 
-/** Sechs Ziffern in zwei Gruppen. Am Telefon liest niemand "vierhunderteinundachtzigtausend". */
-export function gruppierterPruefcode(pruefcode: string): string {
-  return `${pruefcode.slice(0, 3)} ${pruefcode.slice(3)}`
-}
+/*
+ * Die Gruppierung — am Telefon liest niemand "vierhunderteinundachtzigtausend"
+ * — steht im `kopplungService`: Dieselben sechs Ziffern zeigt die andere Seite
+ * beim Koppeln, und sie müssen dort gleich aussehen (§3.6).
+ */
 
 function Zeile({
   geraet,
