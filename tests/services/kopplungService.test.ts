@@ -117,6 +117,11 @@ function server() {
           version: 0,
           katalogVersion: neu.katalogVersion,
           payload: neu.payload,
+          preparerId: null,
+          vaultCommitment: null,
+          vaultResplitPending: false,
+          vaultK: null,
+          vaultN: null,
           angelegtAm: '2026-08-23T12:00:00Z',
         })
         mitglieder.push({ fallId: neu.id, userId })
@@ -130,6 +135,8 @@ function server() {
 
         return Promise.resolve()
       },
+      legeVorsorgefallAn: () => Promise.reject(new Error('nicht gebraucht')),
+      loescheVorsorgefall: () => Promise.reject(new Error('nicht gebraucht')),
     }
 
     /*

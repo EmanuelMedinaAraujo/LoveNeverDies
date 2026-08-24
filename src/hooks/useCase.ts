@@ -14,13 +14,17 @@ import { supabaseFaelle } from '../core/db/supabaseFaelle.ts'
 import { supabaseFallschluessel } from '../core/db/supabaseFallschluessel.ts'
 import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
 import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
+import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import { alsNachricht } from '../core/fehler.ts'
 import {
   ladeFaelle,
   legeTrauerfallAn as legeTrauerfallAnDienst,
+  legeVorsorgefallAn as legeVorsorgefallAnDienst,
+  loescheVorsorgefall as loescheVorsorgefallDienst,
   type Fall,
   type Trauerfallangaben,
+  type Vorsorgefallangaben,
 } from '../services/fallService.ts'
 import { useGeraeteanmeldung } from './useGeraete.ts'
 
@@ -35,6 +39,8 @@ export type FallZustand =
 export type Falldaten = {
   zustand: FallZustand
   legeTrauerfallAn: (angaben: Trauerfallangaben) => Promise<void>
+  legeVorsorgefallAn: (angaben: Vorsorgefallangaben) => Promise<void>
+  loescheVorsorgefall: (fallId: string) => Promise<void>
 }
 
 export function useCase(): Falldaten {
@@ -64,6 +70,7 @@ export function useCase(): Falldaten {
           supabaseGeraeteschluessel(client),
           identitaet,
           geraetId,
+          supabaseTresor(client),
         )
 
         if (aktuell) {
@@ -96,13 +103,37 @@ export function useCase(): Falldaten {
         geraetId,
         angaben,
       )
-      // Die Liste kommt vom Server zurück, statt den frischen Fall lokal
-      // anzuhängen: Was `ladeFaelle` liefert, hat den vollen Weg aus §3.6
-      // durchlaufen — Wrap lesen, Signatur prüfen, entpacken — und genau das
-      // soll auch für den eigenen, gerade erst angelegten Fall gelten.
       setzeRunde((vorher) => vorher + 1)
     },
     [geraetId, identitaet, zugang],
+  )
+
+  const legeVorsorgefallAn = useCallback(
+    async (angaben: Vorsorgefallangaben) => {
+      if (identitaet === null || geraetId === null) {
+        throw new Error('Ohne angemeldetes Gerät lässt sich kein Fall anlegen.')
+      }
+
+      const client = zugang()
+
+      await legeVorsorgefallAnDienst(
+        supabaseFaelle(client),
+        identitaet,
+        geraetId,
+        angaben,
+      )
+      setzeRunde((vorher) => vorher + 1)
+    },
+    [geraetId, identitaet, zugang],
+  )
+
+  const loescheVorsorgefall = useCallback(
+    async (fallId: string) => {
+      const client = zugang()
+      await loescheVorsorgefallDienst(supabaseFaelle(client), fallId)
+      setzeRunde((vorher) => vorher + 1)
+    },
+    [zugang],
   )
 
   const zustand = useMemo<FallZustand>(() => {
@@ -125,5 +156,8 @@ export function useCase(): Falldaten {
       : { status: 'bereit', faelle: ergebnis.wert, aktiver }
   }, [anmeldungFehler, ergebnis, geraetId, identitaet])
 
-  return useMemo(() => ({ zustand, legeTrauerfallAn }), [zustand, legeTrauerfallAn])
+  return useMemo(
+    () => ({ zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall }),
+    [zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall],
+  )
 }

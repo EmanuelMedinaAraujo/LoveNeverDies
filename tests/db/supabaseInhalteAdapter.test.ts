@@ -183,6 +183,7 @@ describe('lege', () => {
       kid: 'case_fall-1:1',
       wrapped_dek: alsBytea(new Uint8Array([0x05])),
       payload: alsBytea(new Uint8Array([0x06])),
+      in_vault: false,
       // Ausdrücklich `null` und nicht weggelassen: Bei einer Aufgabe *muss*
       // die Spalte leer bleiben (§7, CHECK auf `items`).
       storage_path: null,

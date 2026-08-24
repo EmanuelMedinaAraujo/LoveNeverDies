@@ -608,7 +608,8 @@ export function Alle() {
       <div className={stile.kopf}>
         <h1>Alle Aufgaben</h1>
         <p className={stile.hinweis}>
-          <Link to="/">Zurück</Link>
+          <Link to="/">Zurück</Link> · <Link to="/erbe">Erbe & Tresor</Link> ·{' '}
+          <Link to="/profil">Profil</Link>
         </p>
       </div>
 

@@ -14,11 +14,18 @@ vi.mock('../../src/screens/shared/Profil/Geraeteliste.tsx', () => ({
 
 const { Profil } = await import('../../src/screens/shared/Profil/Profil.tsx')
 
+import type { LesbarerFall } from '../../src/services/fallService.ts'
+
 function falldaten(zustand: Falldaten['zustand'] = { status: 'kein-fall' }): Falldaten {
-  return { zustand, legeTrauerfallAn: vi.fn() }
+  return {
+    zustand,
+    legeTrauerfallAn: vi.fn(),
+    legeVorsorgefallAn: vi.fn(),
+    loescheVorsorgefall: vi.fn(),
+  }
 }
 
-const LESBAR = {
+const LESBAR: LesbarerFall = {
   zustand: 'lesbar' as const,
   id: 'fall-1',
   status: 'trauerfall' as const,
@@ -27,6 +34,12 @@ const LESBAR = {
   kid: 'case_fall-1:1',
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
+  kv: null,
+  preparerId: null,
+  vaultCommitment: null,
+  vaultResplitPending: false,
+  vaultK: null,
+  vaultN: null,
   katalogVersion: '2026-08+testtest',
 }
 

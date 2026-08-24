@@ -156,6 +156,7 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
         kid: neu.kid,
         wrapped_dek: alsBytea(neu.wrappedDek),
         payload: alsBytea(neu.payload),
+        in_vault: neu.imTresor ?? false,
         // `null` und nicht weggelassen: Bei einer Aufgabe *muss* die Spalte
         // leer bleiben (§7, CHECK auf `items`), und ein fehlendes Feld hiesse
         // in PostgREST „nimm den Default" — der hier zufällig derselbe ist.

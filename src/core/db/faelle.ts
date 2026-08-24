@@ -33,6 +33,14 @@ export type FallZeile = {
   katalogVersion: string | null
   /** `{personName, sterbedatum}` unter `K_c` (§3.2). */
   payload: Uint8Array
+  /** Clerk `sub` der vorsorgenden Person, nur bei status = 'vorsorge' (§2, §3.5). */
+  preparerId: string | null
+  /** `SHA-256("LN-open-v1" || K_v)` (§3.5). */
+  vaultCommitment: Uint8Array | null
+  /** Ob nach einer Mitgliederänderung ein Re-Split aussteht (§3.5). */
+  vaultResplitPending: boolean
+  vaultK: number | null
+  vaultN: number | null
   angelegtAm: string
 }
 
@@ -50,9 +58,28 @@ export type NeuerTrauerfall = {
   wrapKatalog: Wrap
 }
 
+export type NeuerVorsorgefall = {
+  id: string
+  kidFall: string
+  kidKatalog: string
+  payload: Uint8Array
+  geraeteId: string
+  wrapFall: Wrap
+  wrapKatalog: Wrap
+  vaultCommitment: Uint8Array
+  vaultKemCt: Uint8Array
+  vaultWrappedKey: Uint8Array
+}
+
 export type FaelleTabelle = {
   /** Legt Fall, Mitgliedschaft und beide Wraps in einem Zug an. */
   legeTrauerfallAn(neu: NeuerTrauerfall): Promise<void>
+
+  /** Legt Vorsorgefall, Mitgliedschaft, Wraps und K_v-Wrap an. */
+  legeVorsorgefallAn(neu: NeuerVorsorgefall): Promise<void>
+
+  /** Löscht einen Vorsorgefall samt Tresor kaskadierend (§3.5). */
+  loescheVorsorgefall(fallId: string): Promise<void>
 
   /** Die Fälle der angemeldeten Person. Wer das ist, entscheidet die RLS. */
   eigene(): Promise<FallZeile[]>

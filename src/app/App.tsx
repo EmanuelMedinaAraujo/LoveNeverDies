@@ -9,10 +9,12 @@ import { Alle } from '../screens/shared/Alle/Alle.tsx'
 import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
 import { Beitreten } from '../screens/shared/Beitreten/Beitreten.tsx'
 import { Aufgabe } from '../screens/shared/Aufgabe/Aufgabe.tsx'
+import { Erbe } from '../screens/shared/Erbe/Erbe.tsx'
 import { Koppeln } from '../screens/shared/Koppeln/Koppeln.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
 import { Start } from '../screens/shared/Start/Start.tsx'
 import { Todesfall } from '../screens/shared/Todesfall/Todesfall.tsx'
+import { Vorsorge } from '../screens/shared/Vorsorge/Vorsorge.tsx'
 import stile from './App.module.css'
 
 function Ladeanzeige({ text }: { text: string }) {
@@ -75,10 +77,12 @@ export function App() {
         drei Schaltflächen.
       */}
       <Route path="/" element={<Start />} />
+      <Route path="/erbe" element={<Erbe />} />
       <Route path="/alle" element={<Alle />} />
       {/* Das ganzseitige Aufgabendetail (§7). */}
       <Route path="/aufgabe/:id" element={<Aufgabe />} />
       <Route path="/todesfall" element={<Todesfall />} />
+      <Route path="/vorsorge" element={<Vorsorge />} />
       {/*
         Beide Zwecke aus §6 auf demselben Screen, mit verschiedenen Wegen
         hinein: „Ich wurde eingeladen“ aus der Fallweiche, „Dieses Gerät
