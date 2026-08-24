@@ -15,18 +15,25 @@
  * Beschreibung, Typ und Erledigt-Status liegen im Payload; der Server kann eine
  * Aufgabe zählen, datieren und ausliefern, lesen kann er sie nie.
  *
+ * **Dieser Dienst schreibt nirgends hin.** Er nimmt Klartext entgegen und gibt
+ * eine {@link Mutation} zurück — fertig verschlüsselt, bereit zum Anhängen an
+ * die Offline-Queue (§5). Wann sie hinausgeht, entscheidet die Queue und nicht
+ * der Moment des Tippens; das ist der Unterschied zwischen einer App, die im
+ * Flugmodus funktioniert, und einer, die dort Fehlermeldungen zeigt.
+ *
  * **Nicht entschlüsselbare Items verschwinden still** (§3.7). Sie gehören in
  * aller Regel einer anderen Person — private Items liegen in derselben Tabelle
  * und tragen keinen Marker, also lädt jedes Mitglied sie mit und verwirft sie.
  * Dass dabei auch ein echter Defekt verschluckt wird, ist die bewusst
- * hingenommene Grenze aus §11.8. Deshalb zählt {@link ladeAufgaben} die
+ * hingenommene Grenze aus §11.8. Deshalb zählt {@link aufgabenAusZeilen} die
  * übersprungenen Zeilen mit — anzeigen darf das ausschließlich der Dev-Modus.
  */
 
 import { entschluessele, verschluessele } from '../core/crypto/aead'
 import { bytesText, textBytes } from '../core/crypto/bytes'
 import { entpackeDek, erzeugeDek, wrappeDek } from '../core/crypto/dek'
-import type { InhalteTabelle, InhaltZeile } from '../core/db/inhalte'
+import type { InhaltZeile } from '../core/db/inhalte'
+import type { AbgelehnteMutation, Mutation } from '../core/sync/queue'
 import { uuidv7 } from '../core/uuidv7'
 
 /** Eine Aufgabe war nicht anzulegen oder nicht zu ändern. */
@@ -147,18 +154,21 @@ async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufg
 }
 
 /**
- * Die Aufgaben eines Falls, in `seq`-Reihenfolge.
+ * Macht aus Ciphertext-Zeilen Aufgaben — der Schritt, den §5 „entschlüsselt beim
+ * Start in den Speicher" nennt.
  *
- * Ein Fehlschlag beim Entschlüsseln einer einzelnen Zeile bringt diese Funktion
- * nicht zum Scheitern — er zählt. Ein Fehlschlag beim Abrufen schon: Ein
- * Server, der nicht antwortet, darf nicht als „keine Aufgaben" durchgehen.
+ * Die Zeilen kommen aus dem Cache oder aus dem Delta; woher, ist dieser
+ * Funktion gleich. Sie kostet einige Millisekunden, und deshalb bezieht sich
+ * die Ladeanzeige ausdrücklich auf den Netzwerk-Fetch und nicht auf diesen
+ * Schritt (§5).
+ *
+ * Ein Fehlschlag beim Entschlüsseln einer einzelnen Zeile bringt die Liste
+ * nicht zum Scheitern — er zählt.
  */
-export async function ladeAufgaben(
-  inhalte: InhalteTabelle,
+export async function aufgabenAusZeilen(
+  zeilen: InhaltZeile[],
   fall: Fallschluessel,
 ): Promise<Aufgabenliste> {
-  const zeilen = await inhalte.imFall(fall.id)
-
   const aufgaben: Aufgabe[] = []
   let uebersprungen = 0
 
@@ -180,12 +190,17 @@ export async function ladeAufgaben(
   return { aufgaben, uebersprungen }
 }
 
-/** Legt eine Aufgabe an: eigener DEK, Payload darunter, DEK unter `K_c`. */
-export async function legeAufgabeAn(
-  inhalte: InhalteTabelle,
+/**
+ * Eine neue Aufgabe: eigener DEK, Payload darunter, DEK unter `K_c`.
+ *
+ * Die ID entsteht hier und nicht auf dem Server — eine clientseitige UUIDv7
+ * (§5), damit Anlegen offline funktioniert und die Queue eine Aufgabe benennen
+ * kann, die der Server noch nie gesehen hat.
+ */
+export async function mutationAnlegen(
   fall: Fallschluessel,
   titel: string,
-): Promise<void> {
+): Promise<Mutation> {
   const payload: Aufgabenpayload = {
     typ: 'aufgabe',
     titel: pruefeTitel(titel),
@@ -200,26 +215,26 @@ export async function legeAufgabeAn(
     wrappeDek(fall.kc, dek),
   ])
 
-  await inhalte.lege({
-    // Clientseitig erzeugt, damit Anlegen später offline funktioniert (§5).
-    id: uuidv7(),
+  return {
+    op: 'anlegen',
+    itemId: uuidv7(),
     fallId: fall.id,
     art: 'item',
     kid: fall.kid,
     wrappedDek,
     payload: verschluesselt,
-  })
+    ts: Date.now(),
+  }
 }
 
 /**
- * Schreibt geänderte Felder zurück. Der DEK bleibt unangetastet — er ändert
- * sich nie (§3.1), und deshalb kostet ein Edit genau eine Spalte.
+ * Geänderte Felder unter demselben DEK. Er ändert sich nie (§3.1), und deshalb
+ * kostet ein Edit genau eine Spalte.
  */
-export async function schreibeAufgabe(
-  inhalte: InhalteTabelle,
+export async function mutationAendern(
   aufgabe: Aufgabe,
   aenderung: Aufgabenaenderung,
-): Promise<void> {
+): Promise<Mutation> {
   const payload: Aufgabenpayload = {
     typ: 'aufgabe',
     titel: aenderung.titel === undefined ? aufgabe.titel : pruefeTitel(aenderung.titel),
@@ -227,19 +242,114 @@ export async function schreibeAufgabe(
     erledigt: aenderung.erledigt ?? aufgabe.erledigt,
   }
 
-  await inhalte.schreibePayload(
-    aufgabe.id,
-    await verschluessele(aufgabe.dek, textBytes(JSON.stringify(payload))),
-  )
+  return {
+    op: 'aendern',
+    itemId: aufgabe.id,
+    payload: await verschluessele(aufgabe.dek, textBytes(JSON.stringify(payload))),
+    ts: Date.now(),
+  }
 }
 
 /**
- * Löscht eine Aufgabe — als Tombstone, nicht als DELETE (§5).
+ * Löschen — als Tombstone, nicht als DELETE (§5).
  *
  * Löschen gewinnt endgültig: Die Datenbank weist ein `deleted → false` ab (§4),
  * ein späteres Edit von einem anderen Gerät belebt die Aufgabe also nicht
  * wieder.
  */
-export function loescheAufgabe(inhalte: InhalteTabelle, aufgabe: Aufgabe): Promise<void> {
-  return inhalte.loesche(aufgabe.id)
+export function mutationLoeschen(aufgabe: Aufgabe): Mutation {
+  return { op: 'loeschen', itemId: aufgabe.id, ts: Date.now() }
+}
+
+/**
+ * Eine abgelehnte Änderung, so wie sie auf dem Bildschirm steht.
+ *
+ * §5: „Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern mit
+ * ihrem **entschlüsselten** Inhalt als Mitteilung angezeigt." Ohne den Inhalt
+ * wäre die Mitteilung eine Zumutung — „eine Änderung konnte nicht gespeichert
+ * werden" sagt niemandem, was er noch einmal tippen muss.
+ */
+export type AbgelehnteAenderung = {
+  itemId: string
+  /** Was jemand tun wollte, in einem Wort für die Oberfläche. */
+  was: 'anlegen' | 'aendern' | 'loeschen'
+  /**
+   * Der Titel, entschlüsselt. Leer, wenn er sich nicht mehr herstellen lässt —
+   * dann fehlt der DEK, weil die Zeile inzwischen ein Tombstone ist.
+   */
+  titel: string
+  /** Was der Server gesagt hat. */
+  grund: string
+}
+
+/** Der DEK einer Zeile, oder `null`, wenn er sich nicht entpacken lässt. */
+async function dekVon(zeile: InhaltZeile | undefined, fall: Fallschluessel) {
+  if (zeile === undefined || zeile.wrappedDek.length === 0) {
+    return null
+  }
+
+  try {
+    return await entpackeDek(fall.kc, zeile.wrappedDek)
+  } catch {
+    return null
+  }
+}
+
+async function titelAus(
+  payload: Uint8Array | null,
+  dek: Uint8Array | null,
+): Promise<string> {
+  if (payload === null || dek === null) {
+    return ''
+  }
+
+  try {
+    return lesePayload(await entschluessele(dek, payload)).titel
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Entschlüsselt, was der Server abgelehnt hat.
+ *
+ * @param zeilen der aktuelle Bestand. Für ein Edit und ein Löschen steht der
+ * DEK dort — die Mutation trägt ihn nicht mit, weil ein Edit genau eine Spalte
+ * kostet (§3.1).
+ */
+export function beschreibeAbgelehnte(
+  abgelehnt: AbgelehnteMutation[],
+  zeilen: InhaltZeile[],
+  fall: Fallschluessel,
+): Promise<AbgelehnteAenderung[]> {
+  const nachId = new Map(zeilen.map((zeile) => [zeile.id, zeile]))
+
+  return Promise.all(
+    abgelehnt.map(async ({ mutation, grund }): Promise<AbgelehnteAenderung> => {
+      const gemeinsam = { itemId: mutation.itemId, was: mutation.op, grund }
+
+      if (mutation.op === 'anlegen') {
+        // Die abgelehnte Anlage trägt ihren eigenen DEK mit: Auf dem Server gibt
+        // es diese Zeile nicht, und im Bestand steht sie auch nicht.
+        const dek = await dekVon(
+          { wrappedDek: mutation.wrappedDek } as InhaltZeile,
+          fall,
+        )
+
+        return { ...gemeinsam, titel: await titelAus(mutation.payload, dek) }
+      }
+
+      const dek = await dekVon(nachId.get(mutation.itemId), fall)
+
+      return {
+        ...gemeinsam,
+        titel: await titelAus(
+          // Beim Löschen gibt es keinen neuen Payload — gemeint ist der, der
+          // noch dasteht.
+          mutation.op === 'aendern' ? mutation.payload : (nachId.get(mutation.itemId)?.payload ?? null),
+          dek,
+        ),
+      }
+    }),
+  )
 }

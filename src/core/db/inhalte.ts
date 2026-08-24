@@ -52,17 +52,41 @@ export type NeuerInhalt = {
   payload: Uint8Array
 }
 
+/**
+ * Ein Fehlschlag, über den der Server geurteilt hat (§5).
+ *
+ * Die Unterscheidung, an der die Offline-Queue hängt: Eine **abgelehnte**
+ * Mutation hat der Server gesehen und verworfen — sie gehört aus der Queue
+ * heraus und als Mitteilung auf den Bildschirm, denn ein zweiter Versuch
+ * brächte dasselbe Ergebnis. Eine Mutation, die ihn nie erreicht hat, bleibt
+ * stehen und geht beim nächsten Reconnect erneut hinaus.
+ *
+ * Wer den Unterschied kennt, ist die Umsetzung dieses Ports: Nur sie weiss, ob
+ * überhaupt jemand geantwortet hat. Sie sagt es, indem sie einen `Error` mit
+ * `abgelehnt: true` wirft.
+ */
+export type AbgelehntFehler = Error & { abgelehnt: true }
+
+/** Ob dieser Fehlschlag ein Urteil des Servers ist — und kein Netzproblem. */
+export function istAbgelehnt(fehler: unknown): fehler is AbgelehntFehler {
+  return fehler instanceof Error && (fehler as { abgelehnt?: unknown }).abgelehnt === true
+}
+
 export type InhalteTabelle = {
   /**
-   * Alle Zeilen eines Falls in Anlagereihenfolge — Tombstones eingeschlossen.
+   * Das Delta aus §5: alle Zeilen eines Falls mit `seq > wasserzeichen` —
+   * Tombstones eingeschlossen.
    *
-   * Sortiert wird über die `id` und ausdrücklich **nicht** über `seq`. `seq`
-   * ist der Sync-Zähler (§5) und steigt bei jedem Schreibvorgang: Ein Häkchen
-   * an der ersten Aufgabe schöbe sie ans Ende der Liste. Die `id` ist eine
-   * UUIDv7 und trägt den Anlagezeitpunkt in ihren führenden Bits, sortiert
-   * also chronologisch und ändert sich nie.
+   * Sortiert wird über `seq` und ausdrücklich **nicht** über die `id`. Das
+   * Wasserzeichen wandert am Ende auf die höchste gesehene Nummer, und das
+   * trägt nur, wenn die Zeilen in dieser Reihenfolge ankommen. Die
+   * Anzeigereihenfolge über die `id` — `seq` steigt bei jedem Häkchen und
+   * taugt dafür nicht — stellt der Reconciler her.
+   *
+   * @param wasserzeichen die höchste `seq`, die dieses Gerät gesehen hat. `0`
+   * ist die vollständige Resynchronisation und kein Sonderweg (§5).
    */
-  imFall(fallId: string): Promise<InhaltZeile[]>
+  seit(fallId: string, wasserzeichen: number): Promise<InhaltZeile[]>
 
   lege(neu: NeuerInhalt): Promise<void>
 

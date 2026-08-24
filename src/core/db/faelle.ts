@@ -46,4 +46,16 @@ export type FaelleTabelle = {
 
   /** Die Fälle der angemeldeten Person. Wer das ist, entscheidet die RLS. */
   eigene(): Promise<FallZeile[]>
+
+  /**
+   * Der billige Check aus §5: ein Integer, kein Fetch.
+   *
+   * Gleich dem Wasserzeichen heisst „nichts Neues" — dann wird kein Item
+   * abgerufen. `cases.version` trägt das, weil der Trigger `items_assign_seq`
+   * ihn bei jeder Inhaltsänderung des Falls mithebt (§4).
+   *
+   * @returns `null`, wenn die RLS den Fall nicht hergibt. Ausdrücklich nicht
+   * `0` — das hiesse „alles neu holen".
+   */
+  version(fallId: string): Promise<number | null>
 }

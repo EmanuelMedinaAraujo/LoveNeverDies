@@ -51,6 +51,14 @@ function server() {
   const geraeteZeilen: GeraeteschluesselZeile[] = []
 
   const faelle: FaelleTabelle = {
+    version(fallId) {
+      // Der billige Check aus §5. Der `fallService` benutzt ihn nicht — er
+      // liest Fälle, nicht Inhalte —, aber der Port verlangt ihn.
+      return Promise.resolve(
+        faelleZeilen.find((zeile) => zeile.id === fallId)?.version ?? null,
+      )
+    },
+
     legeTrauerfallAn(neu: NeuerTrauerfall) {
       faelleZeilen.push({
         id: neu.id,

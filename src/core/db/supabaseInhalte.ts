@@ -29,12 +29,38 @@ type RohZeile = {
   updated_at: string
 }
 
+/**
+ * Ein Schreib- oder Lesevorgang auf `items` ist gescheitert.
+ *
+ * `abgelehnt` trennt die beiden Sorten Fehlschlag, die die Offline-Queue
+ * auseinanderhalten muss (§5): Eine **abgelehnte** Mutation hat der Server
+ * gesehen und verworfen — sie gehört aus der Queue heraus und als Mitteilung
+ * auf den Bildschirm, denn ein zweiter Versuch brächte dasselbe Ergebnis. Eine
+ * Mutation, die nie ankam, bleibt stehen und geht beim nächsten Reconnect
+ * erneut hinaus.
+ */
 export class InhalteFehler extends Error {
-  constructor(was: string, ursache?: PostgrestError) {
+  /** Hat der Server geantwortet und Nein gesagt? */
+  readonly abgelehnt: boolean
+
+  constructor(was: string, ursache?: PostgrestError, abgelehnt = true) {
     super(ursache === undefined ? was : `${was}: ${ursache.message}`)
     this.name = 'InhalteFehler'
     this.cause = ursache
+    this.abgelehnt = abgelehnt
   }
+}
+
+/**
+ * Ob dieser Fehler ein Urteil des Servers ist.
+ *
+ * `supabase-js` verpackt auch einen Netzwerkabbruch als `PostgrestError`, dann
+ * allerdings ohne SQLSTATE. Der leere `code` ist damit das einzige verlässliche
+ * Erkennungszeichen dafür, dass gar niemand geantwortet hat — und im Zweifel
+ * bleibt eine Mutation lieber in der Queue stehen, als still zu verschwinden.
+ */
+function istUrteil(ursache: PostgrestError): boolean {
+  return ursache.code !== '' && ursache.code !== undefined && ursache.code !== null
 }
 
 /**
@@ -74,10 +100,13 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
       .returns<{ id: string }[]>()
 
     if (error !== null) {
-      throw new InhalteFehler(was, error)
+      throw new InhalteFehler(was, error, istUrteil(error))
     }
 
     if (data.length === 0) {
+      // Null geänderte Zeilen ohne Fehler: Die RLS hat die Zeile nicht
+      // hergegeben, oder es gibt sie nicht mehr. Beides bleibt beim zweiten
+      // Versuch so — also ein Urteil.
       throw new InhalteFehler(
         `${was}. Sie gehört zu keinem Ihrer Fälle oder ist nicht mehr da.`,
       )
@@ -85,26 +114,32 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
   }
 
   return {
-    async imFall(fallId) {
+    async seit(fallId, wasserzeichen) {
       /*
-       * Sortiert über die `id`, nicht über `seq`.
+       * `select * from items where case_id = ? and seq > watermark` (§5), in
+       * `seq`-Reihenfolge.
        *
-       * `seq` steigt bei **jedem** Schreibvorgang, auch bei einem Häkchen
-       * (§4). Danach sortiert stünde die gerade abgehakte Aufgabe am Ende der
-       * Liste, und wer bei zwanzig Aufgaben die erste abhakt, sucht sie
-       * anschließend unten wieder. Die `id` ist eine UUIDv7: Ihre führenden 48
-       * Bit tragen den Anlagezeitpunkt, sie sortiert byteweise chronologisch
-       * und ändert sich nie.
+       * Sortiert wird über `seq` und nicht über die `id`, weil das
+       * Wasserzeichen aus genau dieser Spalte kommt: Wer ein Delta halb
+       * verarbeitet, hat dann trotzdem einen gültigen Stand. Für die Anzeige
+       * taugt `seq` nicht — sie steigt bei jedem Häkchen (§4) und schöbe eine
+       * gerade abgehakte Aufgabe ans Ende der Liste. Diese Reihenfolge stellt
+       * der Reconciler über die `id` her, die als UUIDv7 den Anlagezeitpunkt
+       * trägt und sich nie ändert.
        */
       const { data, error } = await client
         .from(TABELLE)
         .select(SPALTEN)
         .eq('case_id', fallId)
-        .order('id', { ascending: true })
+        .gt('seq', wasserzeichen)
+        .order('seq', { ascending: true })
         .returns<RohZeile[]>()
 
       if (error !== null) {
-        throw new InhalteFehler('Die Aufgaben waren nicht abzurufen', error)
+        // Abrufen ist keine Mutation und landet nie in der Queue. `abgelehnt`
+        // bleibt deshalb falsch: Es beendete sonst eine Wiederholung, die es
+        // hier gar nicht gibt.
+        throw new InhalteFehler('Die Aufgaben waren nicht abzurufen', error, false)
       }
 
       return data.map(alsZeile)
@@ -124,7 +159,7 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
       })
 
       if (error !== null) {
-        throw new InhalteFehler('Die Aufgabe war nicht anzulegen', error)
+        throw new InhalteFehler('Die Aufgabe war nicht anzulegen', error, istUrteil(error))
       }
     },
 

@@ -38,24 +38,38 @@ const ERWARTET = {
   geaendertAm: '2026-08-23T10:00:00Z',
 }
 
-describe('imFall', () => {
-  it('holt die Zeilen eines Falls in Anlagereihenfolge', async () => {
-    // Über die `id` und nicht über `seq`: `seq` steigt bei jedem Häkchen (§4),
-    // und danach sortiert wanderte die gerade abgehakte Aufgabe ans Ende.
+describe('seit', () => {
+  it('holt das Delta eines Falls in seq-Reihenfolge', async () => {
+    // §5: `select * from items where case_id = ? and seq > watermark`. Sortiert
+    // über `seq` und nicht über die `id`: Das Wasserzeichen wandert am Ende des
+    // Deltas auf dessen höchste Nummer, und das trägt nur, wenn die Zeilen in
+    // eben dieser Reihenfolge ankommen. Die Anzeigereihenfolge über die `id`
+    // stellt der Reconciler her.
     const { client, gesehen } = stubClient({ data: [ZEILE], error: null })
 
-    const zeilen = await supabaseInhalte(client).imFall('fall-1')
+    const zeilen = await supabaseInhalte(client).seit('fall-1', 2)
 
     expect(gesehen.tabelle).toBe('items')
     expect(gesehen.filter).toEqual({ case_id: 'fall-1' })
-    expect(gesehen.sortierung).toEqual({ spalte: 'id', optionen: { ascending: true } })
+    expect(gesehen.groesserAls).toEqual({ seq: 2 })
+    expect(gesehen.sortierung).toEqual({ spalte: 'seq', optionen: { ascending: true } })
     expect(zeilen).toEqual([ERWARTET])
+  })
+
+  it('holt bei Wasserzeichen 0 den vollständigen Stand', async () => {
+    // §5: „Vollständige Resynchronisation ist `seq > 0`." Kein eigener Weg,
+    // derselbe Weg mit 0.
+    const { client, gesehen } = stubClient({ data: [ZEILE], error: null })
+
+    await supabaseInhalte(client).seit('fall-1', 0)
+
+    expect(gesehen.groesserAls).toEqual({ seq: 0 })
   })
 
   it('liest seq auch als Zahl, wenn PostgREST eine schickt', async () => {
     const { client } = stubClient({ data: [{ ...ZEILE, seq: 3 }], error: null })
 
-    const [zeile] = await supabaseInhalte(client).imFall('fall-1')
+    const [zeile] = await supabaseInhalte(client).seit('fall-1', 0)
 
     expect(zeile?.seq).toBe(3)
   })
@@ -63,21 +77,23 @@ describe('imFall', () => {
   it('macht aus einem PostgREST-Fehler einen InhalteFehler', async () => {
     const { client } = stubClient({ data: null, error: fehler('permission denied') })
 
-    await expect(supabaseInhalte(client).imFall('fall-1')).rejects.toThrow(
+    await expect(supabaseInhalte(client).seit('fall-1', 0)).rejects.toThrow(
       /Die Aufgaben waren nicht abzurufen: permission denied/,
     )
   })
 })
 
+const NEUES_ITEM = {
+  id: 'item-2',
+  fallId: 'fall-1',
+  art: 'item' as const,
+  kid: 'case_fall-1:1',
+  wrappedDek: new Uint8Array([0x05]),
+  payload: new Uint8Array([0x06]),
+}
+
 describe('lege', () => {
-  const NEU = {
-    id: 'item-2',
-    fallId: 'fall-1',
-    art: 'item' as const,
-    kid: 'case_fall-1:1',
-    wrappedDek: new Uint8Array([0x05]),
-    payload: new Uint8Array([0x06]),
-  }
+  const NEU = NEUES_ITEM
 
   it('schreibt genau die Spalten, die der Client vergibt', async () => {
     // `seq` und `updated_at` stehen bewusst nicht dabei: Beides setzt der
@@ -159,5 +175,76 @@ describe('loesche', () => {
     await expect(supabaseInhalte(client).loesche('item-1')).rejects.toThrow(
       /nicht zu löschen/,
     )
+  })
+})
+
+describe('abgelehnt oder nur nicht angekommen', () => {
+  /*
+   * Die Unterscheidung, an der die Offline-Queue hängt (§5).
+   *
+   * Eine Mutation, die der Server **abgelehnt** hat, gehört aus der Queue heraus
+   * und als Mitteilung auf den Bildschirm — ein zweiter Versuch änderte nichts.
+   * Eine Mutation, die den Server nie erreicht hat, gehört in der Queue stehen
+   * und beim nächsten Reconnect erneut abgeschickt. Von außen sehen beide gleich
+   * aus: ein abgelehntes Versprechen. Wer den Unterschied kennt, ist der
+   * Adapter, denn nur er weiss, ob überhaupt jemand geantwortet hat.
+   *
+   * `supabase-js` verpackt auch einen Netzwerkabbruch als `PostgrestError` —
+   * dann allerdings ohne SQLSTATE. Der leere `code` ist das Erkennungszeichen.
+   */
+
+  it('nennt eine von der RLS abgewiesene Änderung abgelehnt', async () => {
+    const { client } = stubClient({
+      data: null,
+      error: fehler('new row violates row-level security policy', '42501'),
+    })
+
+    await expect(supabaseInhalte(client).lege(NEUES_ITEM)).rejects.toMatchObject({
+      name: 'InhalteFehler',
+      abgelehnt: true,
+    })
+  })
+
+  it('nennt eine abgewiesene Auferstehung abgelehnt', async () => {
+    // §4: `items_forbid_undelete` wirft mit SQLSTATE 23514. Ein Wiederholen
+    // brächte dasselbe Ergebnis — Löschen gewinnt endgültig.
+    const { client } = stubClient({
+      data: null,
+      error: fehler('Ein geloeschtes Item kann nicht wiederbelebt werden.', '23514'),
+    })
+
+    await expect(
+      supabaseInhalte(client).schreibePayload('item-1', new Uint8Array([1])),
+    ).rejects.toMatchObject({ abgelehnt: true })
+  })
+
+  it('nennt eine weggefilterte Zeile abgelehnt', async () => {
+    // Null geänderte Zeilen ohne Fehler: Die RLS hat die Zeile nicht
+    // hergegeben, oder es gibt sie nicht mehr. Beides bleibt beim zweiten
+    // Versuch so.
+    const { client } = stubClient({ data: [], error: null })
+
+    await expect(supabaseInhalte(client).loesche('item-1')).rejects.toMatchObject({
+      abgelehnt: true,
+    })
+  })
+
+  it('nennt einen Netzwerkabbruch nicht abgelehnt', async () => {
+    const { client } = stubClient({ data: null, error: fehler('TypeError: Failed to fetch', '') })
+
+    await expect(supabaseInhalte(client).lege(NEUES_ITEM)).rejects.toMatchObject({
+      abgelehnt: false,
+    })
+  })
+
+  it('nennt einen Fehlschlag beim Abrufen nicht abgelehnt', async () => {
+    // Abrufen ist keine Mutation und landet nie in der Queue. Trotzdem darf ein
+    // Lesefehler nicht als „abgelehnt" durchgehen: Er beendete sonst eine
+    // Wiederholung, die es gar nicht gibt.
+    const { client } = stubClient({ data: null, error: fehler('permission denied', '42501') })
+
+    await expect(supabaseInhalte(client).seit('fall-1', 0)).rejects.toMatchObject({
+      abgelehnt: false,
+    })
   })
 })
