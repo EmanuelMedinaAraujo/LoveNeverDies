@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
  *
  * Dieses Modul ist eine von genau zwei Stellen, an denen der Anbietername
  * überhaupt vorkommt. Geprüft wird deshalb die Übersetzung: Was Clerks Hooks
- * sagen, wird zu `AuthZustand` — und zwar so, dass „lädt" und „abgemeldet"
+ * sagen, wird zu `AuthZustand`, und zwar so, dass "lädt" und "abgemeldet"
  * nicht verwechselt werden. Eine Verwechslung zeigte die Anmeldung an, während
  * die Sitzung noch lädt, und ein angemeldeter Mensch sähe kurz das Formular.
  */
@@ -33,10 +33,10 @@ vi.mock('@clerk/react', () => ({
  * `resetModules` samt dynamischem Import, weil der Adapter den Publishable Key
  * beim Laden des Moduls liest.
  *
- * `useAuth` kommt aus **demselben** frisch geladenen Modulgraphen, nicht aus
+ * `useAuth` kommt aus demselben frisch geladenen Modulgraphen, nicht aus
  * einem Import oben in dieser Datei: Nach `resetModules` gibt es `authProvider`
  * zweimal, jedes mit einem eigenen React-Kontextobjekt. Der Provider schriebe
- * dann in den einen Kontext und der Verbraucher läse aus dem anderen — der
+ * dann in den einen Kontext und der Verbraucher läse aus dem anderen. Der
  * Test scheiterte an `useAuth ausserhalb eines AuthProviders`, ohne dass am
  * Code etwas falsch wäre.
  */

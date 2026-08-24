@@ -4,7 +4,7 @@ import { ByteaFehler, alsBytea, ausBytea } from '../../src/core/db/bytea'
 /**
  * Nahtstelle: `bytea` über PostgREST.
  *
- * Alles, was dieses Projekt an den Server schickt, ist ein Byte-Feld — Envelope,
+ * Alles, was dieses Projekt an den Server schickt, ist ein Byte-Feld: Envelope,
  * Wrap, Signatur, öffentlicher Schlüssel. PostgREST reicht `bytea` als
  * Hex-Zeichenkette mit `\x` davor durch. Eine stillschweigend falsch gelesene
  * Kodierung wäre hier besonders teuer: Ein um ein Byte verschobener
@@ -44,7 +44,7 @@ describe('bytea hin und zurück', () => {
   it('weist auch zurück, was `parseInt` noch halb läse', () => {
     // Der teure Fall: `parseInt` liest bis zum ersten ungültigen Zeichen und
     // gibt zurück, was es bis dahin hatte. Ein Feld, das so durchkäme, ergäbe
-    // andere Bytes — und damit einen anderen Prüfcode, ohne dass irgendwo ein
+    // andere Bytes, und damit einen anderen Prüfcode, ohne dass irgendwo ein
     // Fehler stünde.
     expect(() => ausBytea('\\x1g')).toThrow(ByteaFehler)
     expect(() => ausBytea('\\x0z')).toThrow(ByteaFehler)

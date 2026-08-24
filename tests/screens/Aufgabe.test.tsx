@@ -34,7 +34,7 @@ vi.mock('../../src/hooks/useMitglieder.ts', () => ({
 /*
  * Die Dokumente hängen an Storage und an `items` (§7) und haben ihren eigenen
  * Screentest daneben. Hier steht die Attrappe, damit das Aufgabendetail ohne
- * Supabase-Provider rendert — dieselbe Linie wie bei `useAufgaben` und
+ * Supabase-Provider rendert: dieselbe Linie wie bei `useAufgaben` und
  * `useMitglieder`.
  */
 vi.mock('../../src/hooks/useDokumente.ts', () => ({
@@ -57,10 +57,10 @@ const { Aufgabe } = await import('../../src/screens/shared/Aufgabe/Aufgabe.tsx')
  * §7 dort ausdrücklich verlangt: Rechtsgrundlage, Quelle, zuständige Stelle,
  * benötigte Dokumente und Notizen; Unteraufgaben als eigene Zeilen mit eigenem
  * Häkchen; eine Elternaufgabe ohne eigenes Häkchen; die Frist, gerechnet und
- * nie gespeichert; und „Zuerst: …" bei offenen Abhängigkeiten.
+ * nie gespeichert; und "Zuerst: ..." bei offenen Abhängigkeiten.
  */
 
-/** Heute als ISO-Kalendertag — damit die Fristen nicht mit dem Jahr altern. */
+/** Heute als ISO-Kalendertag, damit die Fristen nicht mit dem Jahr altern. */
 function heute(): string {
   const jetzt = new Date()
   const monat = `${jetzt.getMonth() + 1}`.padStart(2, '0')
@@ -166,7 +166,7 @@ function aufgabendaten(
   }
 }
 
-/** Der Screen unter seiner echten Route — sonst gibt `useParams` keine ID her. */
+/** Der Screen unter seiner echten Route, sonst gibt `useParams` keine ID her. */
 function zeigeDetail(id = 'item-1') {
   return rendereMitProvidern(
     <Routes>
@@ -462,10 +462,10 @@ describe('Aufgabendetail (§7, §8)', () => {
 
   it('trägt einen Notizentwurf nicht in die nächste Aufgabe', async () => {
     /*
-     * Der Screen bleibt beim Wechsel über einen „Zuerst: …"-Link an derselben
+     * Der Screen bleibt beim Wechsel über einen "Zuerst: ..."-Link an derselben
      * Stelle im Baum. Ohne `key` behielte React den Zustand des Formulars: Ein
      * angefangener Entwurf stünde im Feld der anderen Aufgabe und landete beim
-     * nächsten „Notizen speichern" an der falschen Zeile — eine Notiz, die
+     * nächsten "Notizen speichern" an der falschen Zeile: eine Notiz, die
      * jemand zu seiner Erbausschlagung getippt hat, unter der Bestattung.
      */
     const schreibe = vi.fn().mockResolvedValue(undefined)
@@ -510,7 +510,7 @@ describe('Aufgabendetail (§7, §8)', () => {
  * Zuständigkeit im Aufgabendetail (DESIGN.md §7).
  *
  * Der Screen, auf dem eine Familie die Arbeit verteilt: übernehmen, freigeben,
- * jemanden eintragen, „Alle". Die Sperre gilt für das Bearbeiten — nicht für
+ * jemanden eintragen, "Alle". Die Sperre gilt für das Bearbeiten, nicht für
  * das Lesen und nicht für die Zuweisung selbst. Wer nicht eingetragen ist, soll
  * die Rechtsgrundlage sehen und sich eintragen können.
  */
@@ -569,9 +569,9 @@ describe('Zuständigkeit (§7)', () => {
     zeigeDetail()
 
     /*
-     * „Weiteres Mitglied": Bert steht in `memberships`, aber sein Name ist
+     * "Weiteres Mitglied": Bert steht in `memberships`, aber sein Name ist
      * diesem Gerät noch nirgends begegnet. Die Namenstabelle `profiles` kommt
-     * mit der Kopplung (#10, §3.3) — bis dahin ist eine namenlose Person immer
+     * mit der Kopplung (#10, §3.3). Bis dahin ist eine namenlose Person immer
      * noch besser als eine unsichtbare.
      */
     await userEvent.click(screen.getByRole('checkbox', { name: 'Weiteres Mitglied' }))
@@ -594,8 +594,8 @@ describe('Zuständigkeit (§7)', () => {
 
   it('macht aus "Alle" die eine Person, die angetippt wird', async () => {
     /*
-     * Bei „Alle" stehen alle Häkchen, ein Tipp kommt also als „abwählen" an —
-     * gemeint ist aber „nur sie". Ein Klick, der sichtbar nichts tut, wäre die
+     * Bei "Alle" stehen alle Häkchen, ein Tipp kommt also als "abwählen" an,
+     * gemeint ist aber "nur sie". Ein Klick, der sichtbar nichts tut, wäre die
      * schlechtere Antwort.
      */
     const daten = mitAufgabe({ assignee: ALLE })
@@ -621,7 +621,7 @@ describe('Zuständigkeit (§7)', () => {
   })
 
   it('kennt den Namen eines Mitglieds, sobald er in einer Zuweisung steht', () => {
-    // Der Name kommt aus dem Payload, in dem er ohnehin steht — nicht aus einer
+    // Der Name kommt aus dem Payload, in dem er ohnehin steht, nicht aus einer
     // Tabelle, die es noch nicht gibt (§3.3, #10).
     mitAufgabe({ assignee: personen([BERT]) })
 

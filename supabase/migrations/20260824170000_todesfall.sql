@@ -1,7 +1,7 @@
 -- Todesfall bestätigen: Proof-Gate und Übergang nach `trauerfall` (DESIGN.md §3.5, §5, §8)
 --
 -- Der heikelste Schritt des Projekts, und der einzige, der einen Fall von
--- `vorsorge` nach `trauerfall` bewegt. Ausgelöst wird er **nicht** vom Zähler
+-- `vorsorge` nach `trauerfall` bewegt. Ausgelöst wird er nicht vom Zähler
 -- der Freigaben, sondern von einem Nachweis, dass `K_v` wirklich
 -- rekonstruiert wurde: `proof = SHA-256("LN-open-v1" ‖ K_v)`, verglichen mit
 -- dem `vault_commitment`, das seit dem Versiegeln auf dem Fall steht.
@@ -33,7 +33,7 @@ grant execute on function public.angemeldete_kennung() to authenticated;
 -- §3.5 verlangt, dass der `kid` mitkommt: Zwischen Freigabe und Öffnen kann ein
 -- Mitglied austreten und `K_c` rotieren (§3.4). Ohne ihn wüsste das öffnende
 -- Gerät nicht, unter welcher Generation der Blob liegt, und müsste blind alle
--- durchprobieren. Er steht zugleich **in** der Signatur, damit ihn niemand
+-- durchprobieren. Er steht zugleich in der Signatur, damit ihn niemand
 -- nachträglich verdreht und eine gültige Freigabe so unlesbar macht.
 --
 -- Der Vorgabewert steht nur da, damit die Spalte an einer bereits benutzten
@@ -60,9 +60,9 @@ grant select, insert, update on vault_releases to service_role;
 --
 -- Nimmt eine Zeilensperre, vergleicht den Nachweis mit dem Commitment, ist bei
 -- bereits gesetztem `trauerfall` folgenlos idempotent und gibt die gültige
--- `catalog_version` zurück — die eigene oder die eines schnelleren Clients.
+-- `catalog_version` zurück: die eigene oder die eines schnelleren Clients.
 --
--- **Warum der Payload mitkommt.** §3.5 lässt das Sterbedatum von der Person
+-- Warum der Payload mitkommt. §3.5 lässt das Sterbedatum von der Person
 -- eintragen, die den Übergang vollzieht. Auf `cases` gibt es aber bewusst kein
 -- UPDATE für `authenticated` (20260823210000_aufgaben.sql): Wer einen Fall
 -- ändern darf, entscheidet nicht die Tabelle. Also geht der Payload durch
@@ -70,7 +70,7 @@ grant select, insert, update on vault_releases to service_role;
 -- gar nicht. Der zweite Client überschreibt ihn nicht: Beim Übergang gewinnt,
 -- wer zuerst da war, samt seinem Sterbedatum.
 --
--- **Warum `version` unberührt bleibt.** `cases.version` ist das Wasserzeichen
+-- Warum `version` unberührt bleibt. `cases.version` ist das Wasserzeichen
 -- des Delta-Sync (§5): Der Client holt `items` mit `seq > wasserzeichen` und
 -- setzt es danach auf die höchste gesehene `seq`. Ein Sprung ohne neue Zeile
 -- in `items` liesse ihn bei jeder Runde erneut ein leeres Delta abrufen. Die
@@ -108,7 +108,7 @@ begin
   end if;
 
   -- Folgenlos idempotent: Der Fall steht schon offen, und die gültige Version
-  -- ist die, die dort steht — nicht die, die dieser Client mitbringt (§3.5).
+  -- ist die, die dort steht, nicht die, die dieser Client mitbringt (§3.5).
   if v_fall.status = 'trauerfall' then
     return v_fall.catalog_version;
   end if;
@@ -126,12 +126,12 @@ begin
   /*
    * Ein Boden, kein Auslöser.
    *
-   * Der Zähler entscheidet weiterhin nichts (§3.5) — er kann den Übergang nur
+   * Der Zähler entscheidet weiterhin nichts (§3.5). Er kann den Übergang nur
    * verhindern, nie herbeiführen. Nötig ist er trotzdem, und zwar wegen einer
-   * Eigenschaft des Nachweises selbst: `proof` **ist** `vault_commitment`, und
+   * Eigenschaft des Nachweises selbst: `proof` ist `vault_commitment`, und
    * die Spalte steht jedem Mitglied offen (`cases_read`). Ohne diese Zeile
    * genügte es, sie abzuschreiben, um einen Fall an einer lebenden Person in
-   * den Trauerfall zu kippen — ohne einen einzigen Anteil zu besitzen.
+   * den Trauerfall zu kippen, ohne einen einzigen Anteil zu besitzen.
    *
    * Eine Freigabe je Person setzt der Primärschlüssel durch. Wer die Schwelle
    * erreicht, hat also `k` Menschen hinter sich, und `k` Menschen können `K_v`
@@ -167,20 +167,20 @@ grant execute on function public.open_vault(uuid, bytea, text, bytea) to authent
 --
 -- §3.5: "Wechselt ein Angehöriger das Gerät, bevor der Tresor geöffnet ist,
 -- wrappt sein altes Gerät den eigenen Share an das neue. Der Preparer wird
--- dafür nicht gebraucht — und ist nach seinem Tod auch nicht mehr verfügbar."
+-- dafür nicht gebraucht und ist nach seinem Tod auch nicht mehr verfügbar."
 --
 -- Deshalb eine eigene RPC und kein `insert`: `vault_shares` hat keine
 -- Schreib-Policy, weil die Verteilung dem Preparer gehört (`resplit_vault`).
 -- Ein zweiter Schreibweg für alle wäre eine Tür in die Verteilung; dieser hier
 -- ist so schmal wie der Anlass.
 --
--- **`share_index` und `share_hash` kommen aus der bestehenden Zeile**, nicht
+-- `share_index` und `share_hash` kommen aus der bestehenden Zeile, nicht
 -- vom Aufrufer. Sonst schöbe jemand einen erfundenen Anteil samt passendem
 -- Hash unter, und das Öffnen bemerkte es nicht: Die Hash-Prüfung beim Öffnen
 -- misst den Share an genau dieser Spalte (§3.5).
 --
 -- Die alte Zeile bleibt stehen. Sie zu löschen wäre der Versuch, einen
--- Gerätewechsel von einem Geräteverlust zu unterscheiden — und wer sich
+-- Gerätewechsel von einem Geräteverlust zu unterscheiden. Wer sich
 -- irrte, nähme sich den einzigen Anteil, den er noch hat. Der nächste
 -- Re-Split räumt ohnehin auf.
 create function public.uebergib_tresoranteil(

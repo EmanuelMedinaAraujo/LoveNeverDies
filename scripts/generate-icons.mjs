@@ -84,8 +84,8 @@ function png(groesse, farbe) {
 
 /**
  * Implizite Herzkurve: (x² + y² − 1)³ − x²y³ ≤ 0.
- * `skalierung` ist die halbe Kantenlänge des Herzens im Verhältnis zum Icon —
- * bei `maskable` kleiner, damit die Form innerhalb der sicheren Zone bleibt.
+ * `skalierung` ist die halbe Kantenlänge des Herzens im Verhältnis zum Icon.
+ * Bei `maskable` ist sie kleiner, damit die Form innerhalb der sicheren Zone bleibt.
  */
 function herzZeichner(groesse, skalierung) {
   const mitte = (groesse - 1) / 2

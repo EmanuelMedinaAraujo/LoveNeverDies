@@ -22,11 +22,11 @@ vi.mock('../../src/screens/shared/KeinFall/KeinFall.tsx', () => ({
 const { Start } = await import('../../src/screens/shared/Start/Start.tsx')
 
 /**
- * Der Tab „Start": H1 „Meine Aufgaben" (DESIGN.md §7).
+ * Der Tab "Start": H1 "Meine Aufgaben" (DESIGN.md §7).
  *
  * Geprüft wird, was §7 von diesem Screen verlangt: die Überschrift, und
- * darunter ausschließlich, was der angemeldeten Person zugewiesen ist —
- * gefiltert clientseitig, nach dem Entschlüsseln (§3.3). Dazu die Fallsperre,
+ * darunter ausschließlich, was der angemeldeten Person zugewiesen ist,
+ * gefiltert clientseitig nach dem Entschlüsseln (§3.3). Dazu die Fallsperre,
  * die hier sitzt: Ohne Fall ist die App gesperrt und zeigt die Fallweiche.
  *
  * Der Sync und die Krypto liegen darunter und sind ersetzt; was sie tun, steht
@@ -170,7 +170,7 @@ describe('Start', () => {
   it('zeigt ausschließlich die eigenen Aufgaben (§7)', () => {
     /*
      * Der Kern des Screens: Gefiltert wird clientseitig, nach dem
-     * Entschlüsseln — der Server kann es nicht, weil `assignee` verschlüsselt
+     * Entschlüsseln: Der Server kann es nicht, weil `assignee` verschlüsselt
      * ist (§3.3).
      */
     mitAufgaben([
@@ -332,7 +332,7 @@ describe('Fallsperre (§7)', () => {
     /*
      * §3.6 verlangt den Badge in der unteren Leiste. Die gibt es noch nicht;
      * er steht deshalb am Profil-Weg, der ihren Platz hält. Ablesbar ist er
-     * nur auf dem wartenden Gerät — die Wraps fremder Geräte verbirgt die
+     * nur auf dem wartenden Gerät: Die Wraps fremder Geräte verbirgt die
      * RLS (§4). Der aktive Fall ist hier lesbar: Der Hinweis hängt an der
      * Liste, nicht daran, welchen Fall man gerade ansieht.
      */

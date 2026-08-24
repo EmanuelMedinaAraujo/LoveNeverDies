@@ -15,7 +15,7 @@ html {
   /*
    * Kein `font-size` in px. Die Textskalierung des Browsers setzt die
    * Wurzelgroesse, und weil alle Tokens in `rem` rechnen, waechst die ganze
-   * Oberflaeche mit — Abstaende und Touch-Ziele eingeschlossen.
+   * Oberflaeche mit, Abstaende und Touch-Ziele eingeschlossen.
    */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;

@@ -6,8 +6,8 @@
 -- `schliesse_kopplung_ab` kommt, aus einer späteren Wiederherstellung oder aus
 -- einem Eingriff mit Service-Role.
 --
--- **Warum ein Beitritt die Shares betrifft.** `K_v` ist über die Mitglieder
--- verteilt (§3.5). Wer dazukommt, hat keinen Share — und `n` stimmt nicht mehr
+-- Warum ein Beitritt die Shares betrifft. `K_v` ist über die Mitglieder
+-- verteilt (§3.5). Wer dazukommt, hat keinen Share, und `n` stimmt nicht mehr
 -- mit der Zahl der Personen überein, an denen der Schwellwert `k` bemessen war.
 -- Neu verteilt wird nicht hier: Das kann nur der Preparer, weil nur er `K_v`
 -- besitzt. Der Trigger setzt deshalb bloß die Fahne, und der Preparer sieht sie

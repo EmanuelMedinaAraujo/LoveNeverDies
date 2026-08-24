@@ -1,7 +1,7 @@
 -- Rechtskatalog: einfrieren bei der Fallanlage (DESIGN.md §8)
 --
 -- Ein Trauerfall ohne Katalogstand gibt es nicht. §8 sagt, wann eingefroren
--- wird — beim Übergang nach `trauerfall`, nicht bei der Fallanlage — und ein
+-- wird, nämlich beim Übergang nach `trauerfall`, nicht bei der Fallanlage. Ein
 -- direkt in `trauerfall` angelegter Fall friert deshalb sofort ein, nach
 -- derselben Regel und ohne Sonderfall.
 --
@@ -9,8 +9,8 @@
 -- instanziierte sonst 2031 das Recht von 2026.
 --
 -- Der CHECK macht aus der Regel eine Zusage der Datenbank. Ohne ihn wäre sie
--- eine Absprache zwischen zwei Funktionen, und die zweite — der Übergang aus
--- der Vorsorge (#15) — ist noch nicht geschrieben.
+-- eine Absprache zwischen zwei Funktionen, und die zweite (der Übergang aus
+-- der Vorsorge, #15) ist noch nicht geschrieben.
 
 alter table cases
   add constraint cases_trauerfall_hat_katalogstand
@@ -52,7 +52,7 @@ begin
   /*
    * Beide `kid` sind aus der `case_id` herleitbar, und genau das ist ihr Sinn:
    * Ein zweites Gerät findet den Wrap, ohne ihn zu suchen. Sie stehen trotzdem
-   * als Parameter da, weil sie in die Wrap-Signatur eingehen (§3.2) — würde die
+   * als Parameter da, weil sie in die Wrap-Signatur eingehen (§3.2). Würde die
    * Funktion sie selbst bilden, führte eine abweichende Schreibweise im Client
    * zu einer Signatur, die niemand mehr verifizieren kann. So scheitert
    * stattdessen der Aufruf, laut und sofort.

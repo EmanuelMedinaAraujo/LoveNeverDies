@@ -1,11 +1,11 @@
 /**
  * Je Browser-Projekt eine eigene Testperson und ein eigener Sitzungszustand.
  *
- * **Warum getrennt und nicht ein Account fuer alle:** Die Projekte laufen
+ * Warum getrennt und nicht ein Account fuer alle: Die Projekte laufen
  * parallel gegen dieselbe lokale Postgres, die `npm run test:e2e` genau einmal
  * zuruecksetzt. `fall-lebenszyklus.spec.ts` setzt voraus, dass die Person noch
  * keinen Fall hat, legt dann einen an und prueft, dass kein zweiter entsteht.
- * Mit einem gemeinsamen Account saehe das zweite Projekt den Fall des ersten —
+ * Mit einem gemeinsamen Account saehe das zweite Projekt den Fall des ersten,
  * und zwar gesperrt, weil sein Geraeteschluessel fuer keinen Wrap dieses Falls
  * vorliegt (`Fuer dieses Geraet liegt noch kein Schluessel zu diesem Fall
  * vor`). Getrennte Personen entkoppeln die Projekte vollstaendig.
@@ -57,7 +57,7 @@ export function testpersonAdresse(projekt: Projektname): string {
  *
  * Bewusst nicht in `PERSONEN` oben: Die dortigen Personen haengen je an einem
  * Browser-Projekt und melden sich einmalig in `auth.setup.ts` an. Die Kopplung
- * braucht das Gegenteil — mehrere Personen *gleichzeitig* im selben Test, jede
+ * braucht das Gegenteil: mehrere Personen gleichzeitig im selben Test, jede
  * in einem eigenen Kontext, weil die Geraeteidentitaet in IndexedDB liegt und
  * ein geteilter Kontext ein geteiltes Geraet waere. Ein gespeicherter
  * Sitzungszustand nuetzt dabei nichts; jeder Kontext meldet sich selbst an.

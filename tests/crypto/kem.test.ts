@@ -30,7 +30,7 @@ describe('KEM-Schlüsselpaar', () => {
 
   it('ist aus demselben Seed reproduzierbar', () => {
     // `sk_u` ist ein 32-Byte-Seed (§3.1). Was aus dem Seed folgt, muss aus dem
-    // Seed folgen — sonst wäre der Seed allein kein vollständiges Backup des
+    // Seed folgen, sonst wäre der Seed allein kein vollständiges Backup des
     // Schlüssels, und der Keystore müsste 1216 Byte mehr aufbewahren.
     const seed = new Uint8Array(32).fill(0x2b)
 

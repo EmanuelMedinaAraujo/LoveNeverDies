@@ -8,13 +8,13 @@ import { alsBenutzer, frischeDatenbank, geraeteschluessel, type FuehreAus } from
  * Zwei Zusagen stehen hier auf dem Prüfstand, und beide sind Zusagen der
  * Datenbank und nicht des Clients:
  *
- * **Das Proof-Gate.** `open_vault` kippt den Status nur gegen einen Nachweis,
+ * Das Proof-Gate. `open_vault` kippt den Status nur gegen einen Nachweis,
  * der zum `vault_commitment` passt. Ein Zähler von Freigaben löst nichts aus
- * (§3.5) — ein Mitglied kann jederzeit einen korrekt signierten Müll-Share
+ * (§3.5). Ein Mitglied kann jederzeit einen korrekt signierten Müll-Share
  * hochladen, und am Ende stünde sonst ein `trauerfall` an einer lebenden
  * Person.
  *
- * **Der Weg in `vault_releases`.** Er führt ausschließlich über die Edge
+ * Der Weg in `vault_releases`. Er führt ausschließlich über die Edge
  * Function mit Service-Role. Für jede angemeldete Person ist die Tabelle
  * lesbar und für niemanden schreibbar, und der Primärschlüssel
  * `(case_id, user_id)` zählt Personen, keine Geräte.

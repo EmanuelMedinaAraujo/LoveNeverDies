@@ -5,9 +5,9 @@ import { standardGeraetename } from '../../src/services/geraetename'
  * Nahtstelle: der Name, unter dem ein Gerät zum ersten Mal in der Liste steht
  * (DESIGN.md §3.6).
  *
- * Er ist eine Vermutung und darf eine bleiben — die Person kann ihn in Profil
- * ändern. Wofür er da ist: „Prüfcode 481 253" allein sagt am Telefon nicht,
- * welches Gerät gemeint ist. „iPhone von Anna" schon.
+ * Er ist eine Vermutung und darf eine bleiben: Die Person kann ihn in Profil
+ * ändern. Wofür er da ist: "Prüfcode 481 253" allein sagt am Telefon nicht,
+ * welches Gerät gemeint ist. "iPhone von Anna" schon.
  */
 
 const IPHONE =

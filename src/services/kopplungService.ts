@@ -227,7 +227,7 @@ export async function fuegeZumFallHinzu(
  * Nur beim `device`-Zweck, und nur der Preparer kommt hier durch: `fall.kv`
  * steht ausschließlich auf seinen Geräten, und die RLS auf `vault_key_wraps`
  * lässt niemanden sonst schreiben. Ohne diesen Schritt bliebe der Tresor auf
- * dem zweiten Gerät stumm — der Fall wäre lesbar, der Tresor aber leer, kein
+ * dem zweiten Gerät stumm. Der Fall wäre lesbar, der Tresor aber leer, kein
  * Re-Split liefe von dort, und die Oberfläche hielte den Preparer für einen
  * Angehörigen.
  *
@@ -260,7 +260,7 @@ async function uebergebeTresorschluessel(
  *
  * §3.5: "Wechselt ein Angehöriger das Gerät, bevor der Tresor geöffnet ist,
  * wrappt sein altes Gerät den eigenen Share an das neue. Der Preparer wird
- * dafür nicht gebraucht — und ist nach seinem Tod auch nicht mehr verfügbar."
+ * dafür nicht gebraucht und ist nach seinem Tod auch nicht mehr verfügbar."
  *
  * Ohne diesen Schritt könnte das neue Gerät den Todesfall nicht bestätigen,
  * und der Anteil dieser Person fiele für die Schwelle aus, sobald das alte

@@ -34,7 +34,7 @@ create index memberships_user_id_idx on memberships (user_id);
 -- Die Zugehörigkeitsprüfung, auf der jede Policy steht (§4).
 --
 -- `security definer`, weil sie `memberships` lesen muss, ohne selbst durch die
--- Policy auf `memberships` zu laufen — sonst prüfte die Policy sich rekursiv
+-- Policy auf `memberships` zu laufen. Sonst prüfte die Policy sich rekursiv
 -- selbst. `set search_path = public` schließt aus, dass jemand über einen
 -- eigenen Suchpfad eine andere `memberships` unterschiebt.
 create function public.is_member(p_case uuid) returns boolean

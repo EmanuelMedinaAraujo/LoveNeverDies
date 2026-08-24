@@ -9,15 +9,15 @@ import { NIEMAND } from '../../src/services/zuweisung.ts'
  * Erinnerungen als Timer (DESIGN.md §7).
  *
  * Geprüft wird, was der reine Plan nicht prüfen kann: dass überhaupt jemand
- * benachrichtigt wird, dass ohne Erlaubnis nichts läuft — und dass ein neuer
+ * benachrichtigt wird, dass ohne Erlaubnis nichts läuft, und dass ein neuer
  * Baum die alten Timer ablöst, statt sich zu ihnen zu stellen. Der letzte Punkt
- * ist die Zusage „nach jeder Synchronisation neu geplant": Ohne das Aufräumen
+ * ist die Zusage "nach jeder Synchronisation neu geplant": Ohne das Aufräumen
  * hätte ein Gerät nach einer Stunde Türklingel hundert Timer zur selben Frist.
  */
 
 const STERBEDATUM = '2026-05-12'
 
-/** Der 12. Mai 2026, morgens um sechs — lokale Zeit, wie ein Gerät sie sieht. */
+/** Der 12. Mai 2026, morgens um sechs: lokale Zeit, wie ein Gerät sie sieht. */
 const JETZT = new Date(2026, 4, 12, 6)
 
 function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
@@ -155,7 +155,7 @@ describe('useErinnerungen (§7)', () => {
 
   it('plant nach jedem neuen Baum neu, statt die alten Timer stehenzulassen', () => {
     /*
-     * §7: „nach jeder Synchronisation neu geplant". Der Baum wechselt mit jedem
+     * §7: "nach jeder Synchronisation neu geplant". Der Baum wechselt mit jedem
      * Delta seine Identität; würden die alten Timer nicht abgeräumt, käme
      * dieselbe Erinnerung nach zehn Türklingeln zehnmal.
      */

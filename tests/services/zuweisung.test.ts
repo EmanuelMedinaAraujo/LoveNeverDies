@@ -21,7 +21,7 @@ import {
  *
  * Reine Regeln, ohne Netz und ohne Krypto: wer bearbeiten darf, wer sich
  * eintragen kann, und wer eine Aufgabe weggeschnappt hat. Dass die Zuweisung
- * verschlüsselt hinausgeht, steht in `aufgabenService.test.ts` — hier steht,
+ * verschlüsselt hinausgeht, steht in `aufgabenService.test.ts`: Hier steht,
  * was sie bedeutet.
  */
 

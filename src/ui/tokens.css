@@ -23,8 +23,8 @@
   /*
    * Fristfarben (§7, §12).
    *
-   * §12 nennt eine Palette ohne Warnfarbe — bis es Fristen gab, brauchte
-   * keiner eine. Ein Badge „seit 4 Tagen überfällig" in Akzentgrün wäre
+   * §12 nennt eine Palette ohne Warnfarbe. Bis es Fristen gab, brauchte
+   * keiner eine. Ein Badge "seit 4 Tagen überfällig" in Akzentgrün wäre
    * jedoch eine Beruhigung an genau der Stelle, an der die App am wenigsten
    * beruhigen darf. Die drei Paare unten sind deshalb dazugekommen; jedes
    * erfüllt auf `--farbe-karte` den AA-Kontrast aus §7.
@@ -66,7 +66,7 @@
  * die ganze Oberflaeche mitzieht statt nur die Buchstaben.
  *
  * `erweitert` ist die Grundlage; `einfach` ueberschreibt nur, was sich aendert.
- * Die Primitiven in `src/ui/` lesen ausschliesslich diese Variablen — deshalb
+ * Die Primitiven in `src/ui/` lesen ausschliesslich diese Variablen. Deshalb
  * kostet der Umschalter spaeter keine Neuverkabelung.
  */
 :root,

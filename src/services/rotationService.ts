@@ -21,7 +21,7 @@ import { entschluessele, erzeugeAesSchluessel, verschluessele } from '../core/cr
 import { textBytes } from '../core/crypto/bytes'
 import type { Geraeteidentitaet } from '../core/crypto/keystore'
 import { wrappeSchluessel } from '../core/crypto/wrap'
-import type { FaelleTabelle } from '../core/db/faelle'
+import type { FaelleTabelle, RotierteItemZeile } from '../core/db/faelle'
 import type { SchluesselwrapTabelle, SchluesselwrapZeile } from '../core/db/fallschluessel'
 import type { GeraeteschluesselTabelle } from '../core/db/geraeteschluessel'
 import type { InhalteTabelle } from '../core/db/inhalte'
@@ -92,8 +92,10 @@ export async function rotiereFallschluessel(
   )
   await fallschluessel.schreibeWraps(wraps)
 
-  // 5. Nur Items umwrappen, die unter dem alten K_c liegen
+  // 5. Nur geteilte Items unter dem alten K_c umwrappen (gesammelt für atomaren Commit)
   const alleItems = await inhalte.seit(fall.id, 0)
+  const umgewrappteItems: RotierteItemZeile[] = []
+
   for (const item of alleItems) {
     // Tresor-Items, Privat-Items und gelöschte leere Items auslassen
     if (item.kid !== fall.kid || item.imTresor || item.geloescht || item.wrappedDek.length === 0) {
@@ -102,7 +104,7 @@ export async function rotiereFallschluessel(
 
     const dek = await entschluessele(fall.kc, item.wrappedDek)
     const neuWrappedDek = await verschluessele(kcNeu, dek)
-    await inhalte.rotiereItem(item.id, kidNeu, neuWrappedDek)
+    umgewrappteItems.push({ id: item.id, wrappedDek: neuWrappedDek })
   }
 
   // 6. Fall-Payload unter neuem K_c verschlüsseln
@@ -112,13 +114,14 @@ export async function rotiereFallschluessel(
   }
   const neuerPayload = await verschluessele(kcNeu, textBytes(JSON.stringify(angaben)))
 
-  // 7. Rotation per CAS bestätigen
+  // 7. Rotation und Item-Rewraps atomar per CAS bestätigen
   const committet = await faelle.commitRotation(
     fall.id,
     generation,
     kidNeu,
     geraeteId,
     neuerPayload,
+    umgewrappteItems,
   )
 
   if (!committet) {

@@ -7,7 +7,7 @@ import { NIEMAND } from '../../src/services/zuweisung'
 /**
  * Lokale Erinnerungen (DESIGN.md §7).
  *
- * „Rein lokal, aus entschlüsselten Fristen, nach jeder Synchronisation neu
+ * "Rein lokal, aus entschlüsselten Fristen, nach jeder Synchronisation neu
  * geplant." Server-Push gibt es nicht und kann es nicht geben: Der Server
  * kennt die Fristen nicht, sie liegen verschlüsselt im Payload (§3.3).
  *
@@ -98,7 +98,7 @@ describe('planeErinnerungen (§7)', () => {
   })
 
   it('erinnert nicht an eine Aufgabe, deren Unteraufgaben alle erledigt sind', () => {
-    // §7: Sind alle Kinder erledigt, gilt sie zwingend als erledigt — auch für
+    // §7: Sind alle Kinder erledigt, gilt sie zwingend als erledigt, auch für
     // die Erinnerung, deren gespeichertes Feld noch `false` sagt.
     const eltern = mitFrist(10, { id: 'eltern', erledigt: false })
     const kind = aufgabe({ id: 'kind', parentId: 'eltern', erledigt: true })
@@ -129,7 +129,7 @@ describe('planeErinnerungen (§7)', () => {
   it('plant nichts über den Horizont hinaus, den ein Timer trägt', () => {
     /*
      * `setTimeout` hält nur knapp 25 Tage; eine längere Frist würde sofort
-     * feuern. Geplant wird deshalb nur, was in Reichweite ist — und beim
+     * feuern. Geplant wird deshalb nur, was in Reichweite ist, und beim
      * nächsten Abgleich neu (§7).
      */
     expect(plan([mitFrist(365)], morgens('2026-05-12'))).toEqual([])

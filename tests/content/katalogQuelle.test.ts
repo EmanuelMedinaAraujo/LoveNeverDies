@@ -6,7 +6,7 @@ import { KatalogQuelleFehler, SPALTEN, leseQuelltabelle } from '../../build/kata
  *
  * Die Regel, um die es hier vor allem geht, steht in §8 als einziger harter
  * Importfehler: Eine Frist ohne Rechtsgrundlage kommt nicht durch. Alles andere
- * hier prueft, dass die Tabelle ueberhaupt als Tabelle gelesen wird — Kommas in
+ * hier prueft, dass die Tabelle ueberhaupt als Tabelle gelesen wird: Kommas in
  * Hinweisen, Listenfelder, Zeilennummern in den Meldungen.
  */
 

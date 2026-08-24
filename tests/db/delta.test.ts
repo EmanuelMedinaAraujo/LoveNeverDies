@@ -6,15 +6,15 @@ import { fallMitMitgliedern, frischeDatenbank } from './postgres'
 /**
  * Nahtstelle: der Delta-Sync gegen echtes Postgres (DESIGN.md §5).
  *
- * Das ganze Protokoll aus §5 sind zwei Abfragen — `select version from cases`
+ * Das ganze Protokoll aus §5 sind zwei Abfragen: `select version from cases`
  * und `select * from items where seq > watermark`. Ob sie tragen, entscheidet
  * nicht der Client, sondern die Datenbank: Sie vergibt `seq` unter Zeilensperre
  * und hebt `cases.version` im selben Zug. Deshalb laufen die Zusagen hier gegen
  * Postgres und nicht gegen einen Adapter.
  *
- * Geprüft wird die eine Eigenschaft, an der alles hängt: **Das Delta überspringt
- * keine Zeile.** Ein Client, der Wasserzeichen `w` gesehen hat, bekommt jede
- * Änderung mit `seq > w` — genau einmal und ohne Lücke, auch wenn zwischen
+ * Geprüft wird die eine Eigenschaft, an der alles hängt: Das Delta überspringt
+ * keine Zeile. Ein Client, der Wasserzeichen `w` gesehen hat, bekommt jede
+ * Änderung mit `seq > w`: genau einmal und ohne Lücke, auch wenn zwischen
  * seinen beiden Abfragen weitergeschrieben wird.
  */
 
@@ -62,8 +62,8 @@ async function version(fallId: string): Promise<number> {
 
 describe('Delta über seq (§5)', () => {
   it('liefert bei Wasserzeichen 0 den vollständigen Stand', async () => {
-    // §5: „Vollständige Resynchronisation ist `seq > 0`." Ein eigener Weg für
-    // den Kaltstart existiert deshalb nicht — er ist derselbe Weg mit 0.
+    // §5: "Vollständige Resynchronisation ist `seq > 0`." Ein eigener Weg für
+    // den Kaltstart existiert deshalb nicht: Er ist derselbe Weg mit 0.
     const fall = await fallMitMitgliedern(db, ANNA)
     const erstes = await item(fall)
     const zweites = await item(fall)
@@ -117,7 +117,7 @@ describe('Delta über seq (§5)', () => {
     const gesehen = [...ersterAbruf, ...zweiterAbruf].map((zeile) => zeile.id)
     expect(new Set(gesehen)).toEqual(new Set(angelegt))
     // Genau einmal je Änderung, nicht je Zeile: Das erste Item steht zweimal
-    // drin — einmal als Anlage, einmal als Tombstone.
+    // drin, einmal als Anlage, einmal als Tombstone.
     expect(gesehen).toHaveLength(angelegt.length + 1)
   })
 
@@ -143,7 +143,7 @@ describe('Türklingel (§5)', () => {
   it('veröffentlicht cases für Realtime', async () => {
     /*
      * §5: Die Türklingel ist eine Subscription auf die `cases`-Zeile. Ohne die
-     * Tabelle in der Publikation `supabase_realtime` feuert sie nie — die
+     * Tabelle in der Publikation `supabase_realtime` feuert sie nie. Die
      * Subscription meldete `SUBSCRIBED`, und nichts käme je an. Der Fallback
      * aus §5 greift dann ausdrücklich nicht, weil er nur bei einer
      * *gescheiterten* Subscription läuft.
@@ -157,7 +157,7 @@ describe('Türklingel (§5)', () => {
 
   it('lässt items aus der Publikation heraus', async () => {
     // Die Türklingel trägt keine Nutzlast. Was sich geändert hat, holt der
-    // Delta-Sync — verschlüsselt, über PostgREST und durch die RLS. Stünde
+    // Delta-Sync, verschlüsselt über PostgREST und durch die RLS. Stünde
     // `items` in der Publikation, liefe daneben ein zweiter Weg für dieselben
     // Daten.
     const { rows } = await db.query<{ tablename: string }>(

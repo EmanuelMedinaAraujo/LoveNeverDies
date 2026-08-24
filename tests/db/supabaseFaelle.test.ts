@@ -8,7 +8,7 @@ import { alsHex, fehler, stubClient } from './supabaseAdapter'
  *
  * Was daneben gegen echtes Postgres läuft, steht in `tests/db/faelle.test.ts`:
  * die RLS und die Transaktion in `lege_trauerfall_an`. Hier geht es um die
- * Übersetzung — Byte-Felder als Hex, Spaltennamen in camelCase, und aus einem
+ * Übersetzung: Byte-Felder als Hex, Spaltennamen in camelCase, und aus einem
  * PostgREST-`error` ein Wurf statt eines stillen Erfolgs.
  */
 
@@ -163,7 +163,7 @@ describe('eigene', () => {
 
 describe('version', () => {
   /*
-   * Der billige Check aus §5, Schritt 1: „`select version from cases where
+   * Der billige Check aus §5, Schritt 1: "`select version from cases where
    * id = ?`, ein Integer. Gleich dem Wasserzeichen → kein Fetch."
    *
    * Er ist der Grund, aus dem die Türklingel bei jedem Fokuswechsel läuten darf,
@@ -191,7 +191,7 @@ describe('version', () => {
 
   it('gibt null zurück, wenn es den Fall für dieses Gerät nicht gibt', async () => {
     // Die RLS filtert einen fremden Fall weg, statt einen Fehler zu liefern.
-    // Als `0` durchgehen darf das nicht: Das hiesse „alles neu holen" und
+    // Als `0` durchgehen darf das nicht: Das hiesse "alles neu holen" und
     // liefe gegen eine Zeile, die dieses Gerät nie sehen wird.
     const { client } = stubClient({ data: null, error: null })
 
@@ -230,7 +230,7 @@ describe('claimRotation', () => {
 })
 
 describe('commitRotation', () => {
-  it('ruft commit_rotation RPC mit Argumenten und bytea-Payload auf', async () => {
+  it('ruft commit_rotation RPC mit Argumenten, bytea-Payload und p_items auf', async () => {
     const { client, gesehen } = stubClient({ data: true, error: null })
 
     const ergebnis = await supabaseFaelle(client).commitRotation(
@@ -239,6 +239,7 @@ describe('commitRotation', () => {
       'case_fall-1:2',
       'geraet-1',
       new Uint8Array([0xaa, 0xbb]),
+      [{ id: 'item-1', wrappedDek: new Uint8Array([0x12, 0x34]) }],
     )
 
     expect(ergebnis).toBe(true)
@@ -249,6 +250,7 @@ describe('commitRotation', () => {
       p_new_kid: 'case_fall-1:2',
       p_device_id: 'geraet-1',
       p_payload: alsBytea(new Uint8Array([0xaa, 0xbb])),
+      p_items: [{ id: 'item-1', wrapped_dek: alsBytea(new Uint8Array([0x12, 0x34])) }],
     })
   })
 

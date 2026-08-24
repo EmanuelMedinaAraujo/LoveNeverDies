@@ -57,7 +57,7 @@ beforeEach(() => {
 })
 
 /**
- * Profil (DESIGN.md §7). In diesem Stand: die eigene Person, „Für wen?" sobald
+ * Profil (DESIGN.md §7). In diesem Stand: die eigene Person, "Für wen?" sobald
  * es einen lesbaren Fall gibt, die Geräte und die beiden Kopplungswege aus §6.
  */
 describe('Profil', () => {
@@ -115,7 +115,7 @@ describe('Profil', () => {
   })
 
   it('laesst jedes Mitglied einladen, sobald ein Fall lesbar ist', () => {
-    // §6: „Jedes Mitglied darf einladen. Das hier ist eine Familie, keine
+    // §6: "Jedes Mitglied darf einladen. Das hier ist eine Familie, keine
     // Organisation." Es haengt am lesbaren Fall, nicht an einer Rolle.
     useCase.mockReturnValue(falldaten({ status: 'bereit', faelle: [LESBAR], aktiver: LESBAR }))
 

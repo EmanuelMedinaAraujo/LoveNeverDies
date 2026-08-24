@@ -14,7 +14,7 @@ import stile from './Profil.module.css'
  *
  * Der Tab trägt laut §7 Name, Angehörige, Fallwechsel, Geräte, Textgröße,
  * Darstellung und "Fall verlassen". In diesem Stand gibt es davon Name, Geräte
- * und die beiden Kopplungswege aus §6 — alles Weitere setzt Screens voraus, die
+ * und die beiden Kopplungswege aus §6. Alles Weitere setzt Screens voraus, die
  * es noch nicht gibt.
  *
  * Profil liegt in `screens/shared`, nicht doppelt in `senior` und `advanced`:
@@ -79,10 +79,10 @@ export function Profil() {
       )}
 
       {/*
-        §6: „Jedes Mitglied darf einladen. Das hier ist eine Familie, keine
-        Organisation." Deshalb steht der Weg in Profil und nicht an einer Rolle;
-        die einzige Bedingung ist, dass dieses Gerät den Fall überhaupt lesen
-        kann — man kann nur weitergeben, was man selbst hat (§3.6).
+        §6: "Jedes Mitglied darf einladen. Das hier ist eine Familie, keine
+        Organisation." Deshalb steht der Weg in Profil und nicht an einer Rolle.
+        Die einzige Bedingung ist, dass dieses Gerät den Fall überhaupt lesen
+        kann: Man kann nur weitergeben, was man selbst hat (§3.6).
       */}
       <Card>
         <h2 className={stile.abschnitt}>Angehörige</h2>

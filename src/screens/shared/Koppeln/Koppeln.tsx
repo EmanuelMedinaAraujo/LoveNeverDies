@@ -10,8 +10,8 @@ import stile from './Koppeln.module.css'
  *
  * Zwei Schritte, sichtbar getrennt: Code eingeben, dann bestätigen. Dazwischen
  * steht der Prüfcode, und dazwischen telefonieren zwei Menschen. Ein Formular,
- * das beides in einem Zug erledigte, hätte für den Abgleich keine Stelle — und
- * der Abgleich ist der einzige Schutz gegen einen Server, der beim Rendezvous
+ * das beides in einem Zug erledigte, hätte für den Abgleich keine Stelle. Der
+ * Abgleich ist der einzige Schutz gegen einen Server, der beim Rendezvous
  * fremde Schlüssel unterschiebt (§3.6).
  *
  * Derselbe Screen nimmt beide Zwecke an. Welcher es ist, sagt der Code, nicht
@@ -72,7 +72,7 @@ export function Koppeln() {
 
         <Card>
           <h2 className={stile.abschnitt}>Prüfcode</h2>
-          {/* Zum Vorlesen die Ziffern einzeln — verglichen werden Ziffern. */}
+          {/* Zum Vorlesen die Ziffern einzeln, denn verglichen werden Ziffern. */}
           <p className={stile.pruefcode}>
             <span aria-hidden="true">{`${pruefcode.slice(0, 3)} ${pruefcode.slice(3)}`}</span>
             <span className="nur-vorlesen">{[...pruefcode].join(' ')}</span>
@@ -116,8 +116,8 @@ export function Koppeln() {
         <div className={stile.knoepfe}>
           {/*
             Ohne geladene Fallliste bleibt der Knopf zu. Ein Klick darauf
-            verbrennte den Code an einer Liste, die es noch gar nicht gibt —
-            eingelöst ist er zu diesem Zeitpunkt bereits.
+            verbrennte den Code an einer Liste, die es noch gar nicht gibt.
+            Eingelöst ist er zu diesem Zeitpunkt bereits.
           */}
           <Button
             disabled={laeuft || !faelleBereit || lesbareFaelle.length === 0}

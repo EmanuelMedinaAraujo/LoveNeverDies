@@ -9,7 +9,7 @@ import { alsHex, fehler, stubClient } from './supabaseAdapter'
 /**
  * `device_keys` über Supabase (DESIGN.md §4), die lesenden und anlegenden Wege.
  *
- * `benenneUm` steht schon in `supabaseGeraeteschluessel.test.ts` — dort geht es
+ * `benenneUm` steht schon in `supabaseGeraeteschluessel.test.ts`. Dort geht es
  * um den einen Fall, in dem PostgREST Erfolg meldet, ohne etwas getan zu haben.
  */
 

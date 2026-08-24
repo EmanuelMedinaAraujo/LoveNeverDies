@@ -7,9 +7,9 @@ import { KatalogIdFehler, katalogItemId } from '../../src/core/crypto/katalogId'
  *
  * Zwei Zusagen hängen an diesem Modul, und beide sind hier prüfbar:
  *
- *   1. Alle Mitglieder rechnen bitgleiche IDs aus — sonst stünde der Katalog
+ *   1. Alle Mitglieder rechnen bitgleiche IDs aus, sonst stünde der Katalog
  *      nach zwei gleichzeitigen Instanziierungen doppelt da.
- *   2. Ohne `K_cat` ist keine ID vorberechenbar — sonst ordnete der Server
+ *   2. Ohne `K_cat` ist keine ID vorberechenbar, sonst ordnete der Server
  *      jede Zeile ihrer Katalogaufgabe zu und wüsste, wer eine Erbausschlagung
  *      offen hat.
  */
@@ -24,8 +24,8 @@ const ANDERER_KCAT = new Uint8Array(32).fill(0x2b)
  * Dieselbe Rechnung noch einmal, mit `node:crypto` statt WebCrypto.
  *
  * Ein Erwartungswert, den dasselbe Modul erzeugt hat, prüfte nur sich selbst.
- * Diese Fassung steht unabhängig daneben: Ändert sich am Ablauf etwas —
- * Präfix, Reihenfolge, Namensraum, Versionsbits —, gehen die beiden
+ * Diese Fassung steht unabhängig daneben. Ändert sich am Ablauf etwas, etwa
+ * Präfix, Reihenfolge, Namensraum oder Versionsbits, gehen die beiden
  * auseinander.
  */
 function nachgerechnet(kcat: Uint8Array, fallId: string, aufgabeId: string): string {

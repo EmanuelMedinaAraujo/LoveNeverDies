@@ -8,7 +8,7 @@ import { supabaseAblage } from '../../src/core/db/supabaseAblage'
  *
  * Absichtlich kein echter Stack: Ob die Policy greift, steht daneben in
  * `dokumente.test.ts` gegen PGlite. Hier geht es um das, was dieser Adapter
- * allein entscheidet — welcher Bucket, welcher Pfad, welcher Content-Type, und
+ * allein entscheidet: welcher Bucket, welcher Pfad, welcher Content-Type, und
  * was er aus einem `StorageError` macht.
  */
 

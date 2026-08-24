@@ -31,8 +31,8 @@ describe('Badge', () => {
   })
 
   it('setzt den Freigabe-Hinweis von den Fristen ab', () => {
-    // §3.6: „Freigabe nötig" ist keine Frist. Dieselbe Form, eine andere Farbe
-    // — und der Text sagt es ohnehin.
+    // §3.6: "Freigabe nötig" ist keine Frist. Dieselbe Form, eine andere Farbe,
+    // und der Text sagt es ohnehin.
     const { rerender } = render(<Badge lage="ruhig">Text</Badge>)
     const ruhig = screen.getByText('Text').className
 

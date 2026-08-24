@@ -8,12 +8,12 @@ import { alsBenutzer, fallMitMitgliedern, frischeDatenbank } from './postgres'
  *
  * Vier Zusagen dieses Slices trägt die Datenbank und nicht der Client:
  *
- *   1. Der Pfad eines Dokuments ist `{case_id}/{item_id}` — nichts sonst, und
+ *   1. Der Pfad eines Dokuments ist `{case_id}/{item_id}`, nichts sonst, und
  *      ein Item ohne `kind = 'file'` trägt gar keinen.
  *   2. Wer im Fall ist, liest und schreibt seinen Ordner im Bucket.
- *   3. Wer nicht im Fall ist, sieht ihn nicht — weder lesend noch löschend.
+ *   3. Wer nicht im Fall ist, sieht ihn nicht, weder lesend noch löschend.
  *   4. Der Aufräumjob benennt nach der Karenz die Dateien getombsteter Items
- *      und lässt jüngere in Ruhe. Entfernt werden sie über die Storage-API —
+ *      und lässt jüngere in Ruhe. Entfernt werden sie über die Storage-API:
  *      ein DELETE per SQL nähme die Zeile und liesse die Bytes liegen, und
  *      die Plattform weist es deshalb ab.
  *
@@ -59,7 +59,7 @@ async function objekt(pfad: string, alter_: string = '0 seconds'): Promise<void>
 /**
  * Setzt den Tombstone und datiert ihn zurück.
  *
- * `items_assign_seq` stempelt bei jedem UPDATE `updated_at := now()` (§4) —
+ * `items_assign_seq` stempelt bei jedem UPDATE `updated_at := now()` (§4):
  * ein alter Tombstone lässt sich deshalb nicht schreiben, sondern nur am
  * Trigger vorbei herstellen. Genau das tut hier die Zeitmaschine: Geprüft wird
  * der Aufräumjob, nicht der Sequenzzähler.
@@ -255,7 +255,7 @@ describe('Der Zugriff auf den Ordner eines Falls', () => {
     await objekt(pfad)
 
     // Die Zeile ist der Katalogeintrag, die Bytes liegen im Objektspeicher.
-    // Wer nur die Zeile nähme, hinterliesse die Datei — genau das Gegenteil
+    // Wer nur die Zeile nähme, hinterliesse die Datei, genau das Gegenteil
     // dessen, was §7 verlangt.
     await expect(
       alsBenutzer(db, ANNA)((fuehreAus) =>

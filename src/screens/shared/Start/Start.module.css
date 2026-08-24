@@ -57,7 +57,7 @@
 
 /*
  * §7: Blockierte Aufgaben erscheinen ausgegraut. Nur die Farbe wird gedaempft,
- * keine `opacity` — die zoege den Kontrast des Textes unter AA (§7).
+ * keine `opacity`, denn die zoege den Kontrast des Textes unter AA (§7).
  */
 .blockiert {
   background: var(--farbe-hintergrund);

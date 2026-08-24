@@ -57,7 +57,7 @@ describe('Geraeteliste', () => {
   it('behauptet keine leere Liste, wenn die Registrierung nicht durchkam', () => {
     /*
      * Nach einer erfolgreichen Anmeldung steht hier immer mindestens dieses
-     * Geraet. Leer heisst: Die Registrierung kam nicht durch — kein Grund fuer
+     * Geraet. Leer heisst: Die Registrierung kam nicht durch, kein Grund fuer
      * eine Fehlermeldung, aber auch keiner, eine leere Liste zu behaupten.
      */
     useGeraete.mockReturnValue(daten({ zustand: { status: 'bereit', geraete: [] } }))
@@ -90,7 +90,7 @@ describe('Geraeteliste', () => {
 
   it('zeigt den Pruefcode gruppiert und zum Vorlesen einzeln', () => {
     /*
-     * Screenreader machen aus "481 253" sonst zwei Zahlwoerter — verglichen
+     * Screenreader machen aus "481 253" sonst zwei Zahlwoerter: Verglichen
      * werden aber Ziffern (§3.6).
      */
     const { container } = rendereMitProvidern(<Geraeteliste />)

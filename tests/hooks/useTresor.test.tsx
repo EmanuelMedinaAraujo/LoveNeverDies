@@ -227,7 +227,7 @@ describe('useTresor Hook (§3.5)', () => {
   /*
    * Nachgeladen heißt: neue Auskunft. Ein Beitritt, der während des ersten
    * Re-Splits hereinkam, steht danach wieder als offene Fahne da und muss
-   * einen zweiten Lauf auslösen — auch dann, wenn `vault_n` zufällig dieselbe
+   * einen zweiten Lauf auslösen, auch dann, wenn `vault_n` zufällig dieselbe
    * Zahl trägt wie vorher.
    */
   it('läuft nach einem Nachladen wieder, wenn die Fahne erneut steht', async () => {

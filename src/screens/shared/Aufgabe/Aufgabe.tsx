@@ -21,6 +21,7 @@ import {
 } from '../../../services/zuweisung.ts'
 import { Uebernahmen } from '../Meldungen/Meldungen.tsx'
 import { Dokumente } from './Dokumente.tsx'
+import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import { Zuweisungsfeld } from '../Zuweisung/Zuweisungsfeld.tsx'
 import stile from './Aufgabe.module.css'
 
@@ -647,13 +648,7 @@ export function Aufgabe() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
-        <Ladeanzeige
-          text={
-            zustand.status === 'schluessel-erneuerung'
-              ? 'Schlüssel werden erneuert…'
-              : 'Ihre Daten werden geladen…'
-          }
-        />
+        <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
   }

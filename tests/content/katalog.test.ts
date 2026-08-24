@@ -7,7 +7,7 @@ import { katalog } from '../../src/content/katalog.ts'
 /**
  * Der eingecheckte Katalog (DESIGN.md §8).
  *
- * `catalog.de.json` ist erzeugt und eingecheckt zugleich — zwei Eigenschaften,
+ * `catalog.de.json` ist erzeugt und eingecheckt zugleich: zwei Eigenschaften,
  * die auseinanderlaufen, sobald jemand die Datei von Hand anfasst oder den
  * Import nach einer Aenderung der Quelltabelle vergisst. Dann behauptete
  * `catalog_version` in jedem Fall eine Herkunft, die es nicht gibt.

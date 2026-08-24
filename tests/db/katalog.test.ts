@@ -6,12 +6,12 @@ import { alsBenutzer, fallMitMitgliedern, frischeDatenbank } from './postgres'
 /**
  * Nahtstelle: die Instanziierung des Rechtskatalogs (DESIGN.md §8).
  *
- * Die Zusage „zwei gleichzeitige Instanziierungen erzeugen keine Duplikate"
+ * Die Zusage "zwei gleichzeitige Instanziierungen erzeugen keine Duplikate"
  * hängt an zwei Dingen, und das zweite ist Postgres: an bitgleichen IDs
- * (`katalogId.test.ts`) und an `insert … on conflict do nothing`. Genau das
+ * (`katalogId.test.ts`) und an `insert ... on conflict do nothing`. Genau das
  * schickt PostgREST, wenn der Adapter `ignoreDuplicates` setzt.
  *
- * Geprüft wird hier deshalb das SQL selbst — mitsamt dem Sequenztrigger, der
+ * Geprüft wird hier deshalb das SQL selbst, mitsamt dem Sequenztrigger, der
  * bei jedem Einfügeversuch mitläuft.
  */
 
@@ -67,7 +67,7 @@ describe('Katalog-Instanziierung (§8)', () => {
       ),
     )
 
-    // Anna instanziiert. Bernd tut dasselbe — auf einer anderen
+    // Anna instanziiert. Bernd tut dasselbe, auf einer anderen
     // `K_c`-Generation, also mit einem anderen `kid`, aber mit denselben IDs.
     await alsBenutzer(db, ANNA)((fuehreAus) =>
       instanziiere(fuehreAus, fallId, `case_${fallId}:1`, ids),

@@ -165,13 +165,20 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
       return Boolean(data)
     },
 
-    async commitRotation(fallId, expectedGeneration, newKid, geraeteId, payload) {
+    async commitRotation(fallId, expectedGeneration, newKid, geraeteId, payload, items) {
       const { data, error } = await client.rpc('commit_rotation', {
         p_case_id: fallId,
         p_expected_generation: expectedGeneration,
         p_new_kid: newKid,
         p_device_id: geraeteId,
         p_payload: payload === undefined ? null : alsBytea(payload),
+        p_items:
+          items === undefined
+            ? []
+            : items.map((item) => ({
+                id: item.id,
+                wrapped_dek: alsBytea(item.wrappedDek),
+              })),
       })
 
       if (error !== null) {

@@ -6,12 +6,12 @@ import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
  * Nur so viel PostgREST-Kette, wie die Adapter tatsächlich anfassen: `from`,
  * `select`/`insert`/`update`, die Filter und die drei Abschlüsse
  * (`maybeSingle`, `single`, `returns`). Jedes Glied gibt dieselbe Kette
- * zurück, damit die Reihenfolge der Aufrufe keine Rolle spielt — geprüft wird,
- * **was** der Adapter verlangt hat, nicht in welcher Reihenfolge.
+ * zurück, damit die Reihenfolge der Aufrufe keine Rolle spielt: Geprüft wird,
+ * was der Adapter verlangt hat, nicht in welcher Reihenfolge.
  *
  * Absichtlich kein echtes Postgres: Das steht daneben in `faelle.test.ts` und
  * `geraeteschluessel.test.ts` gegen PGlite. Hier geht es um die Übersetzung
- * zwischen PostgREST-Antwort und Port — insbesondere darum, was der Adapter
+ * zwischen PostgREST-Antwort und Port, insbesondere darum, was der Adapter
  * aus einem `error` macht.
  */
 
@@ -82,7 +82,7 @@ export function stubClient(
     returns: () => Promise.resolve(antwort),
 
     /*
-     * PostgREST-Builder sind selbst awaitbar — ein `insert`, dessen Ergebnis
+     * PostgREST-Builder sind selbst awaitbar: Ein `insert`, dessen Ergebnis
      * niemand braucht, wird ohne Abschluss direkt awaitet. Ohne dieses `then`
      * ergäbe so ein `await` das Kettenobjekt statt der Antwort, und der Adapter
      * läse aus ihm ein `error: undefined` heraus.

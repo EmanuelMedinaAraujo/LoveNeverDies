@@ -1,26 +1,26 @@
 /**
  * Der Aufräumjob für Dokumente (DESIGN.md §7).
  *
- * §7: „Ein serverseitiger Aufräumjob entfernt nach 7 Tagen alles, was zu einem
+ * §7: "Ein serverseitiger Aufräumjob entfernt nach 7 Tagen alles, was zu einem
  * `deleted = true`-Item noch liegt."
  *
- * **Warum eine Edge Function und kein `delete` in SQL.** Eine Zeile in
+ * Warum eine Edge Function und kein `delete` in SQL. Eine Zeile in
  * `storage.objects` ist der Katalogeintrag, nicht die Datei; die Bytes liegen
  * im Objektspeicher. Ein SQL-DELETE nähme den Eintrag und liesse die Datei
- * liegen — genau das Gegenteil dessen, was §7 verlangt —, und die Plattform
+ * liegen, genau das Gegenteil dessen, was §7 verlangt, und die Plattform
  * weist es deshalb ausdrücklich ab. Entfernt wird über die Storage-API, und
  * die spricht niemand aus Postgres heraus.
  *
  * Die Arbeit teilt sich in zwei Hälften. Welche Pfade fällig sind, entscheidet
- * `public.dokumente_zum_aufraeumen()` in der Datenbank — dort steht die Regel,
+ * `public.dokumente_zum_aufraeumen()` in der Datenbank. Dort steht die Regel,
  * dort ist sie geprüft (`tests/db/dokumente.test.ts`). Diese Funktion holt die
  * Liste und arbeitet sie ab, mehr nicht.
  *
- * **Die Karenz ist kein Papierkorb.** Löschen gewinnt weiterhin endgültig
+ * Die Karenz ist kein Papierkorb. Löschen gewinnt weiterhin endgültig
  * (§5); die sieben Tage existieren allein, damit der Job kein Objekt unter
  * einem Client wegzieht, der gerade mitten im Download ist.
  *
- * Aufgerufen wird sie von einem Zeitplan — täglich reicht bei einer Frist von
+ * Aufgerufen wird sie nach einem Zeitplan. Täglich reicht bei einer Frist von
  * sieben Tagen. Wie er eingerichtet wird, steht in `supabase/README.md`.
  */
 
@@ -51,7 +51,7 @@ export type Aufraeumergebnis = {
  * steht ausschliesslich `service_role` offen, und die Storage-Policies prüfen
  * gegen eine Anmeldung, die dieser Job nicht hat.
  * @param karenz die Frist als Postgres-Intervall. Der Vorgabewert steht in der
- * Datenbank — hier steht er ausdrücklich nicht ein zweites Mal.
+ * Datenbank; hier steht er ausdrücklich nicht ein zweites Mal.
  */
 export async function raeumeAuf(
   client: SupabaseClient,
@@ -77,7 +77,7 @@ export async function raeumeAuf(
     if (wegError === null) {
       // Gezählt wird, was die API als entfernt zurückmeldet, und nicht, was
       // hinausging: Ein Pfad, unter dem nichts mehr liegt, ist für `remove`
-      // kein Fehler — und eine Zahl, die ihn mitzählt, behauptete Arbeit, die
+      // kein Fehler. Eine Zahl, die ihn mitzählt, behauptete Arbeit, die
       // niemand getan hat.
       entfernt += weg?.length ?? 0
     } else {
@@ -101,7 +101,7 @@ Deno.serve(async (anfrage: Request) => {
     )
   }
 
-  // Die Karenz lässt sich überschreiben — für einen Lauf von Hand, wenn jemand
+  // Die Karenz lässt sich überschreiben, etwa für einen manuellen Testlauf, wenn jemand
   // wissen will, was in drei Tagen fällig wäre. Ohne Angabe gilt, was in der
   // Datenbank steht.
   const karenz = new URL(anfrage.url).searchParams.get('karenz') ?? undefined

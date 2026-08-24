@@ -5,17 +5,17 @@ import type { Fristanker, Katalog, Katalogaufgabe } from '../src/types/katalog.t
  * Die Quelltabelle der Juristinnen einlesen und pruefen (DESIGN.md §8).
  *
  * Ein Datensatz pro Aufgabe, als CSV, weil das die Tabelle ist, die aus einem
- * Tabellenprogramm herausfaellt. Listenfelder trennen ihre Eintraege mit `;`
- * — deshalb bleibt `,` als Feldtrenner frei, und ein Hinweis darf Kommas
+ * Tabellenprogramm herausfaellt. Listenfelder trennen ihre Eintraege mit `;`.
+ * Deshalb bleibt `,` als Feldtrenner frei, und ein Hinweis darf Kommas
  * enthalten, solange er in Anfuehrungszeichen steht.
  *
- * **Was dieses Modul nicht tut: die Datei lesen.** Es bekommt Text und gibt
+ * Was dieses Modul nicht tut: die Datei lesen. Es bekommt Text und gibt
  * einen Katalog zurueck; `import-content.ts` daneben legt die Datei an. So
  * laesst sich jede Regel dieses Moduls pruefen, ohne eine Datei anzulegen.
  *
  * Die harte Regel aus §8 steht in {@link pruefeFrist}: Eine Frist ohne
  * Rechtsgrundlage bricht den Import ab. Fristen sind das, was diese App
- * gefaehrlich macht, wenn sie falsch sind — eine Zahl ohne Paragraph ist eine
+ * gefaehrlich macht, wenn sie falsch sind. Eine Zahl ohne Paragraph ist eine
  * Behauptung, und Behauptungen kommen hier nicht durch.
  */
 
@@ -56,7 +56,7 @@ const FRISTANKER: readonly string[] = ['sterbedatum', 'kenntnis']
 const FINGERABDRUCK_BYTES = 4
 
 /**
- * Der Import ist gescheitert — mit allen Maengeln, nicht nur mit dem ersten.
+ * Der Import ist gescheitert, und zwar mit allen Maengeln auf einmal statt nur dem ersten.
  *
  * Wer eine Tabelle mit dreissig Zeilen pflegt, will nicht dreissig Mal
  * importieren, um dreissig Tippfehler zu finden.
@@ -72,14 +72,14 @@ export class KatalogQuelleFehler extends Error {
 }
 
 type Datensatz = {
-  /** Die Zeile in der Datei, ab 1 — fuer Fehlermeldungen, die man wiederfindet. */
+  /** Die Zeile in der Datei, ab 1, fuer Fehlermeldungen, die man wiederfindet. */
   zeile: number
   felder: string[]
 }
 
 /**
- * CSV nach RFC 4180: Anfuehrungszeichen schuetzen Kommas, Zeilenumbrueche und
- * — verdoppelt — sich selbst.
+ * CSV nach RFC 4180: Anfuehrungszeichen schuetzen Kommas, Zeilenumbrueche und,
+ * wenn verdoppelt, sich selbst.
  *
  * Von Hand und nicht aus einem Paket: Es ist ein Zustandsautomat mit vier
  * Zweigen, und er kostet weniger als die Abhaengigkeit, die er ersetzt.
@@ -206,7 +206,7 @@ function zugriff(kopf: string[], datensatz: Datensatz): Zugriff {
 }
 
 /**
- * Die harte Regel aus §8 — und ihre beiden Nachbarn.
+ * Die harte Regel aus §8 und ihre beiden Nachbarn.
  *
  * Eine Frist ohne Rechtsgrundlage ist ein Importfehler. Eine Frist ohne Anker
  * waere nicht berechenbar (§8: ab Sterbedatum oder ab Kenntnis), und ein Anker
@@ -309,7 +309,7 @@ function pruefeKopf(kopf: string[], maengel: string[]): void {
  * Verweise unter den Aufgaben: `depends_on` zeigt auf IDs derselben Tabelle.
  *
  * Ein Verweis ins Leere faellt sonst erst dem Aufgabendetail auf (§7), also
- * nach dem Instanziieren — und dann steht er bereits in den Items von Faellen,
+ * nach dem Instanziieren, und dann steht er bereits in den Items von Faellen,
  * die niemand mehr anfasst.
  */
 function pruefeVerweise(aufgaben: Katalogaufgabe[], maengel: string[]): void {
@@ -329,8 +329,8 @@ function pruefeVerweise(aufgaben: Katalogaufgabe[], maengel: string[]): void {
 /**
  * Der Fingerabdruck ueber den Inhalt, der neben dem Stand in der Version steht.
  *
- * Gehasht wird der kanonische JSON-Text ohne das Versionsfeld selbst — sonst
- * haenge der Hash von sich ab.
+ * Gehasht wird der kanonische JSON-Text ohne das Versionsfeld selbst, sonst
+ * hinge der Hash von sich selbst ab.
  */
 function fingerabdruck(ohneVersion: Omit<Katalog, 'version'>): string {
   return createHash('sha256')
@@ -415,7 +415,7 @@ export function leseQuelltabelle(text: string): Katalog {
  * Der Text, der in `catalog.de.json` steht.
  *
  * Eingecheckt (§8), also muss er sich bei gleicher Quelle Byte fuer Byte
- * wiederholen — sonst zeigte jeder Import einen Diff, der nichts bedeutet.
+ * wiederholen. Sonst zeigte jeder Import einen Diff ohne inhaltliche Aenderung.
  */
 export function alsJsonText(katalog: Katalog): string {
   return `${JSON.stringify(katalog, null, 2)}\n`

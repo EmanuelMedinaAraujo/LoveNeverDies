@@ -9,7 +9,7 @@ import stile from './Todesfall.module.css'
 /**
  * Einen Trauerfall anlegen (DESIGN.md §2, §3.1).
  *
- * Name und Sterbedatum verlassen dieses Formular nur verschlüsselt — der
+ * Name und Sterbedatum verlassen dieses Formular nur verschlüsselt: Der
  * Kryptokern in `fallService` erzeugt `K_c` und `K_cat` und wrappt beide an
  * dieses Gerät, bevor irgendetwas beim Server ankommt.
  */
@@ -36,7 +36,7 @@ export function Todesfall() {
     }
   }
 
-  // Wer schon einen Fall hat, legt hier keinen zweiten an — sonst entstünde
+  // Wer schon einen Fall hat, legt hier keinen zweiten an. Sonst entstünde
   // eine verwaiste, für niemanden erreichbare zweite Zeile in `cases` (§2).
   if (zustand.status === 'bereit') {
     return <Navigate to="/" replace />

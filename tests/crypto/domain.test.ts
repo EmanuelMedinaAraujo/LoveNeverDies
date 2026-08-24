@@ -11,8 +11,8 @@ import { erzeugeSignaturSchluesselpaar, signiere, verifiziere } from '../../src/
  *
  * Jeder Hash und jede Signatur trägt ein Präfix, damit ein Wert aus einem
  * Kontext in keinem anderen gilt. Zwei Dinge müssen dafür stimmen: Die Präfixe
- * stehen an genau einer Stelle im Code — sonst driften Client und Edge Function
- * auseinander —, und sie trennen wirklich.
+ * stehen an genau einer Stelle im Code, sonst driften Client und Edge Function
+ * auseinander, und sie trennen wirklich.
  */
 
 const src = fileURLToPath(new URL('../../src', import.meta.url))
@@ -37,8 +37,8 @@ function alleQuelldateien(ordner: string): string[] {
 
 /**
  * Kommentare zählen nicht: In ihnen steht das Format aus §3.2 absichtlich noch
- * einmal. Der Ausdruck ist grob — ein `//` in einem String kürzt die Zeile zu
- * früh —, was höchstens ein Vorkommen übersieht und nie eines erfindet.
+ * einmal. Der Ausdruck ist grob: Ein `//` in einem String kürzt die Zeile zu
+ * früh, was höchstens ein Vorkommen übersieht und nie eines erfindet.
  */
 function ohneKommentare(quelle: string): string {
   return quelle.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '')

@@ -78,7 +78,7 @@ describe('AES-256-GCM', () => {
   })
 
   it('reicht einen Schlüsselfehler durch, statt ihn als Tag-Fehler auszugeben', async () => {
-    // §3.7 heißt „nicht entschlüsselbar → still verwerfen“, und genau deshalb
+    // §3.7 heißt "nicht entschlüsselbar -> still verwerfen", und genau deshalb
     // darf ein AeadFehler ausschließlich einen nicht passenden Tag bedeuten.
     // Ein CryptoKey ohne `decrypt`-Erlaubnis ist ein Defekt im eigenen Code;
     // käme er als AeadFehler an, verschluckte die App die eigenen Daten.

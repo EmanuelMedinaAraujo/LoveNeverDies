@@ -23,7 +23,7 @@ create index device_keys_user_id_idx on device_keys (user_id);
 -- Steht nicht in §4, folgt aber aus §3.6: Die Registrierung läuft bei jedem
 -- Start und muss idempotent sein. Ohne diese Zusage legten zwei gleichzeitig
 -- geladene Tabs zwei Zeilen für dasselbe Gerät an, und `key_wraps` zeigte
--- danach auf eine davon — welche, entschiede der Zufall. Der Client kann sich
+-- danach auf eine davon; welche, entschiede der Zufall. Der Client kann sich
 -- darauf verlassen und mit `on conflict` registrieren, statt vorher zu suchen.
 create unique index device_keys_pk_unique on device_keys (user_id, public_key);
 

@@ -101,7 +101,7 @@ describe('Beitreten (§6)', () => {
 
   it('sagt es, sobald der Code abgelaufen ist', async () => {
     // Ohne diese Uhr stünde der tote Code weiter groß auf dem Screen, und
-    // jemand läse ihn vor, während die andere Seite „abgelaufen" zurückbekommt.
+    // jemand läse ihn vor, während die andere Seite "abgelaufen" zurückbekommt.
     vi.useFakeTimers()
 
     try {

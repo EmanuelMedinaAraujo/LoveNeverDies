@@ -13,7 +13,7 @@ import { workerDateikrypto } from '../../src/core/crypto/workerDateikrypto'
 /**
  * Dateikryptographie und ihr Weg in den Worker (DESIGN.md §7).
  *
- * Zwei Sorten Zusage stehen hier nebeneinander. Die eine ist kryptographisch —
+ * Zwei Sorten Zusage stehen hier nebeneinander. Die eine ist kryptographisch:
  * eine Datei kommt heraus, wie sie hineinging, und unter einem fremden
  * Schlüssel gar nicht. Die andere ist das Protokoll: Antworten finden ihren
  * Auftrag, ein Fehlschlag reist als Feld statt als Wurf, und ein abgestürzter
@@ -97,7 +97,7 @@ describe('direkteDateikrypto', () => {
 
 /**
  * Ein Worker-Doppel: Es stellt zu, was `postMessage` bekommt, und antwortet
- * über denselben Weg wie der echte — mit derselben Verzögerung um einen Tick.
+ * über denselben Weg wie der echte, mit derselben Verzögerung um einen Tick.
  */
 function attrappe() {
   const hoerer = new Map<string, ((ereignis: unknown) => void)[]>()
@@ -152,7 +152,7 @@ describe('workerDateikrypto', () => {
     doppel.antworte({ nummer: doppel.auftraege[0]!.nummer, ok: true, daten: textBytes('eins') })
 
     // Die Antworten kommen in umgekehrter Reihenfolge zurück und finden
-    // trotzdem ihren Auftrag — dafür ist die Nummer da.
+    // trotzdem ihren Auftrag, dafür ist die Nummer da.
     expect(bytesText(await erste)).toBe('eins')
     expect(bytesText(await zweite)).toBe('zwei')
   })
@@ -221,7 +221,7 @@ describe('workerDateikrypto', () => {
     const laeuft = krypto.verschluessele(erzeugeDek(), INHALT)
 
     // Der Screen verschwindet mitten in der Verschlüsselung. Dahinter steht
-    // eine Datei, die gleich hochgeladen wird — die Promise-Kette lebt weiter,
+    // eine Datei, die gleich hochgeladen wird. Die Promise-Kette lebt weiter,
     // auch wenn niemand mehr hinsieht.
     krypto.schliesse()
 

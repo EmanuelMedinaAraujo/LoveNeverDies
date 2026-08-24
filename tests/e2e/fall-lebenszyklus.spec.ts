@@ -4,9 +4,9 @@ import { gotoVerlaesslich } from './helpers.ts'
 /**
  * Wartet darauf, dass eine Änderung den Server erreicht hat (DESIGN.md §5).
  *
- * Seit dem Delta-Sync ist „sichtbar" nicht mehr dasselbe wie „gespeichert":
- * Jede Mutation wird sofort angezeigt und geht über die Offline-Queue hinaus —
- * das ist der Sinn der Queue. Wer unmittelbar danach neu lädt, muss also
+ * Seit dem Delta-Sync ist "sichtbar" nicht mehr dasselbe wie "gespeichert":
+ * Jede Mutation wird sofort angezeigt und geht über die Offline-Queue hinaus.
+ * Das ist der Sinn der Queue. Wer unmittelbar danach neu lädt, muss also
  * abwarten, sonst prüft er den Server auf etwas, das noch unterwegs ist.
  *
  * Gewartet wird auf den Schreibvorgang selbst und nicht auf eine feste Zeit:
@@ -26,12 +26,12 @@ function gespeichert(page: Page, methode: 'POST' | 'PATCH'): Promise<unknown> {
  * Den ganzen Weg aus DESIGN.md §7 einmal durch: ohne Fall → Trauerfall anlegen
  * → der angelegte Fall erscheint überall, wo er auftauchen soll.
  *
- * **Ein einziger Test, nicht mehrere.** Jeder Playwright-`test()` bekommt einen
- * frischen Browserkontext und damit eine leere IndexedDB — und die Geräte-
+ * Ein einziger Test, nicht mehrere. Jeder Playwright-`test()` bekommt einen
+ * frischen Browserkontext und damit eine leere IndexedDB. Die Geräte-
  * identität liegt in IndexedDB (keystore.ts), nicht im von `auth.setup.ts`
  * gesicherten `storageState` (das deckt nur Cookies und localStorage ab). Zwei
  * separate Tests wären zwei verschiedene Geräte: Das zweite bekäme den Fall
- * zwar über die Mitgliedschaft zu sehen, aber gesperrt — sein Schlüssel liegt
+ * zwar über die Mitgliedschaft zu sehen, aber gesperrt: Sein Schlüssel liegt
  * für keinen Wrap dieses Falls vor (`Für dieses Gerät liegt noch kein
  * Schlüssel zu diesem Fall vor`). `test.step` haelt dagegen alles im selben
  * Kontext, also demselben Geraet, so wie eine reale Sitzung es auch waere.
@@ -41,7 +41,7 @@ test('Trauerfall anlegen', async ({ page }) => {
    * Mehr als die üblichen 30 Sekunden, weil dieser eine Test absichtlich der
    * ganze Lebenszyklus ist (siehe oben) und mit jedem Slice länger wird: Er
    * erzeugt einmal die Geräteschlüssel, legt einen Fall an und navigiert danach
-   * ein gutes Dutzend Mal wirklich neu — auf einem langsameren Browser reicht
+   * ein gutes Dutzend Mal wirklich neu. Auf einem langsameren Browser reicht
    * die Voreinstellung dafür nicht. Die Zusagen je Schritt hängen weiterhin an
    * `expect.timeout` aus der Konfiguration; hier steht nur die Summe.
    */
@@ -72,7 +72,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Profil' })).toBeVisible()
 
     /*
-     * Warten, bis dieses Gerät in der Liste steht — und zwar nicht nur der
+     * Warten, bis dieses Gerät in der Liste steht, und zwar nicht nur der
      * Vollständigkeit halber: Die Geräteanmeldung läuft still im Hintergrund
      * (§7) und braucht erst die Schlüsselerzeugung, dann einen Rundlauf zum
      * Server. Die Fallanlage im nächsten Schritt setzt sie voraus und scheitert
@@ -166,7 +166,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     /*
      * Die Aufgaben der Juristinnen kommen unzugewiesen in den Fall (§8): Wer
      * sie übernimmt, entscheidet die Familie. Start zeigt deshalb genau nichts,
-     * obwohl der Fall gerade vierzig Aufgaben bekommen hat — und sagt, wo man
+     * obwohl der Fall gerade vierzig Aufgaben bekommen hat, und sagt, wo man
      * eine findet.
      */
     await expect(page.getByText(/Ihnen ist gerade nichts zugewiesen/)).toBeVisible()
@@ -178,13 +178,13 @@ test('Trauerfall anlegen', async ({ page }) => {
    * Gezählt statt aus dem Katalog importiert: Die Zahl ändert sich mit jedem
    * `npm run import:content`, und dieser Test soll davon nichts wissen.
    *
-   * Gezählt werden **Zeilen und nicht Häkchen**: Eine Aufgabe mit
+   * Gezählt werden Zeilen und nicht Häkchen: Eine Aufgabe mit
    * Unteraufgaben hat kein eigenes Häkchen (§7), steht aber als Zeile da.
    */
   let katalogZeilen = 0
 
   await test.step('der neue Fall bringt die Aufgaben der Juristinnen mit', async () => {
-    // §8: „Ein neu angelegter Trauerfall ist nicht mehr leer." Instanziiert hat
+    // §8: "Ein neu angelegter Trauerfall ist nicht mehr leer." Instanziiert hat
     // ihn die Fallanlage, verschlüsselt wie jedes andere Item.
     await page.getByRole('link', { name: 'Alle Aufgaben' }).click()
 
@@ -199,8 +199,8 @@ test('Trauerfall anlegen', async ({ page }) => {
     expect(katalogZeilen).toBeGreaterThan(1)
 
     /*
-     * §7: „Blockierte Aufgaben erscheinen ausgegraut mit 'Zuerst: …'." Der
-     * Katalog sagt, dass das Standesamt die Todesbescheinigung braucht — und
+     * §7: "Blockierte Aufgaben erscheinen ausgegraut mit 'Zuerst: ...'." Der
+     * Katalog sagt, dass das Standesamt die Todesbescheinigung braucht, und
      * die ist am ersten Tag noch offen.
      */
     // `.first()`: Mehrere Katalogaufgaben warten auf dieselbe Todesbescheinigung.
@@ -211,7 +211,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     /*
      * §7: Fristen sind sichtbar, als Badge mit der Restzeit. Der Sterbefall
      * liegt in diesem Test Jahre zurück, also ist die Drei-Tage-Frist aus
-     * § 28 PStG abgelaufen — und das Badge sagt genau das, statt bei null
+     * § 28 PStG abgelaufen, und das Badge sagt genau das, statt bei null
      * stehen zu bleiben. Gerechnet wird es bei jedem Rendern, gespeichert nie
      * (§8); deshalb steht hier ein Muster und keine Zahl.
      */
@@ -229,7 +229,7 @@ test('Trauerfall anlegen', async ({ page }) => {
   await test.step('das Aufgabendetail zeigt die juristische Arbeit (§7, §8)', async () => {
     /*
      * Der Screen, an dem §8 sichtbar wird: Rechtsgrundlage, Quelle, zuständige
-     * Stelle und Frist stehen im Item — beim Instanziieren aus dem Katalog
+     * Stelle und Frist stehen im Item, beim Instanziieren aus dem Katalog
      * kopiert und seither mit der Aufgabe gealtert.
      */
     await page
@@ -250,14 +250,14 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     /*
      * Das Fristende wird gerechnet und nirgends gespeichert (§8): 15. März 2024
-     * plus die drei Tage aus § 28 PStG. Keine Zeile trägt dieses Datum — es
+     * plus die drei Tage aus § 28 PStG. Keine Zeile trägt dieses Datum: Es
      * entsteht aus `{fristTage, fristAb}` und dem Sterbedatum des Falls.
      */
     await expect(page.getByText(/endet am 18. März 2024/)).toBeVisible()
     // Zweimal auf dem Schirm: als Badge neben dem Titel und in der Fristzeile.
     await expect(page.getByText(/überfällig/).first()).toBeVisible()
 
-    // §7: „Zuerst: …" auch hier, und der Weg dorthin ist ein Link.
+    // §7: "Zuerst: ..." auch hier, und der Weg dorthin ist ein Link.
     await expect(
       page.getByRole('link', { name: 'Ärztliche Todesbescheinigung ausstellen lassen' }),
     ).toBeVisible()
@@ -267,7 +267,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     /*
      * Bis hierher gehört diese Aufgabe niemandem: Sie kommt aus dem Katalog,
      * und §7 lässt nur bearbeiten, wem sie zugewiesen ist. Also erst
-     * eintragen — das ist die Reservierung, mit der eine Familie sich die
+     * eintragen: Das ist die Reservierung, mit der eine Familie sich die
      * Arbeit teilt.
      */
     await expect(page.getByText('Zuständig: Niemand')).toBeVisible()
@@ -295,7 +295,7 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     /*
      * Eine Unteraufgabe ist eine Zeile wie jede andere und trägt deshalb ihre
-     * eigene Zuweisung (§7) — die der Elternaufgabe gilt für sie nicht. Genau
+     * eigene Zuweisung (§7), die der Elternaufgabe gilt für sie nicht. Genau
      * das ist der Punkt: Die Bank ruft der eine an, zum Standesamt geht die
      * andere. Abgehakt wird sie also erst, nachdem jemand sich eingetragen hat.
      */
@@ -321,7 +321,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     // §7: Sind alle Kinder erledigt, gilt die Aufgabe zwingend als erledigt.
     await expect(page.getByText('Erledigt: alle 1 Unteraufgaben sind abgehakt.')).toBeVisible()
 
-    // Eine weitere Unteraufgabe macht sie wieder offen — das ist der Weg, den
+    // Eine weitere Unteraufgabe macht sie wieder offen. Das ist der Weg, den
     // §7 anbietet, wenn inhaltlich noch etwas fehlt.
     const angelegt = gespeichert(page, 'POST')
     await page.getByLabel('Neue Unteraufgabe').fill('Sechs Ausfertigungen abholen')
@@ -383,7 +383,7 @@ test('Trauerfall anlegen', async ({ page }) => {
   await test.step('die Reihenfolge bleibt, wenn eine Aufgabe geändert wird', async () => {
     /*
      * `seq` steigt bei jedem Schreibvorgang (§4) und taugt deshalb nicht als
-     * Anzeigereihenfolge — danach sortiert wanderte die gerade abgehakte
+     * Anzeigereihenfolge. Danach sortiert wanderte die gerade abgehakte
      * Aufgabe ans Ende. Sortiert wird über die UUIDv7 der Zeile.
      */
     const abgehakt = gespeichert(page, 'PATCH')
@@ -403,10 +403,10 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     /*
      * Aufgeräumt, damit die folgenden Schritte wieder mit genau einer selbst
-     * angelegten Aufgabe arbeiten — und **abgewartet**, bis der Tombstone
+     * angelegten Aufgabe arbeiten und abgewartet, bis der Tombstone
      * draußen ist. `toHaveCount` ist schon erfüllt, sobald die Queue die
      * Mutation überlagert hat (§5); die PATCH-Antwort kommt später. Ohne dieses
-     * Warten löste sie im nächsten Schritt das dortige `gespeichert(…)` aus,
+     * Warten löste sie im nächsten Schritt das dortige `gespeichert(...)` aus,
      * die Navigation käme dem eigentlichen Schreibvorgang zuvor, und der
      * Schritt prüfte einen Server, der die Änderung nie gesehen hat.
      */
@@ -421,7 +421,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     /*
      * Der eigentliche Punkt des Slices: Der Stand liegt nicht im Speicher des
      * Tabs, sondern verschlüsselt auf dem Server. Neu geladen wird über eine
-     * echte Navigation und nicht über `page.reload()` — dieselbe Absicherung
+     * echte Navigation und nicht über `page.reload()`: Dieselbe Absicherung
      * gegen den JWT-Jitter aus helpers.ts greift dann mit.
      *
      * Beide Richtungen, weil das Häkchen aus dem vorigen Schritt noch steht:
@@ -469,14 +469,14 @@ test('Trauerfall anlegen', async ({ page }) => {
     /*
      * Die Türklingel aus §5: Eine Realtime-Subscription auf die `cases`-Zeile,
      * deren `version` der Trigger bei jeder Inhaltsänderung mithebt. Was sich
-     * geändert hat, holt danach das Delta — die Klingel trägt keine Nutzlast.
+     * geändert hat, holt danach das Delta. Die Klingel trägt keine Nutzlast.
      *
-     * **Zweiter Tab und nicht zweiter Browser.** Beide Seiten teilen sich den
+     * Zweiter Tab und nicht zweiter Browser: Beide Seiten teilen sich den
      * Kontext und damit IndexedDB, also auch die Geräteidentität aus §3.1. Ein
      * eigener Kontext wäre ein zweites Gerät, für das kein Wrap dieses Falls
      * vorliegt; es sähe den Fall gesperrt. Was zwei wirklich getrennte Geräte
      * angeht, hängt an der Kopplung und gehört dorthin. Der Weg, um den es hier
-     * geht — Änderung → Trigger → Klingel → Delta → Bildschirm — ist derselbe.
+     * geht von der Änderung über Trigger, Klingel und Delta bis zum Bildschirm, ist derselbe.
      */
     const zweiterTab = await page.context().newPage()
 
@@ -520,10 +520,10 @@ test('Trauerfall anlegen', async ({ page }) => {
 
   await test.step('eine gelöschte Katalogaufgabe kommt nicht wieder', async () => {
     /*
-     * §8: Der Katalog initialisiert, mehr nicht — danach ist es ein
+     * §8: Der Katalog initialisiert, mehr nicht. Danach ist es ein
      * gewöhnliches Item. Der Tombstone steht im Bestand (§5), und die
      * Instanziierung beim nächsten Laden übergeht ihn. Käme die Aufgabe wieder,
-     * wäre „löschen" bei genau diesen Aufgaben eine Lüge.
+     * wäre "löschen" bei genau diesen Aufgaben eine Lüge.
      */
     // Auch das Löschen ist Bearbeiten (§7): erst eintragen, dann löschen.
     const uebernommen = gespeichert(page, 'PATCH')
@@ -548,7 +548,7 @@ test('Trauerfall anlegen', async ({ page }) => {
   await test.step('Start zeigt genau die eigenen Aufgaben (§7)', async () => {
     /*
      * Der Screen aus §7, jetzt mit Inhalt: Übernommen wurden die Aufgabe beim
-     * Standesamt und eine ihrer Unteraufgaben — und genau die beiden stehen
+     * Standesamt und eine ihrer Unteraufgaben, und genau die beiden stehen
      * hier. Gefiltert wird clientseitig, nach dem Entschlüsseln (§3.3): Der
      * Server kann nach `assignee` nicht filtern, weil er ihn nicht lesen kann.
      */
@@ -569,9 +569,9 @@ test('Trauerfall anlegen', async ({ page }) => {
     ).toBeVisible()
 
     /*
-     * Was niemand übernommen hat, steht hier nicht — es steht in "Alle".
+     * Was niemand übernommen hat, steht hier nicht, es steht in "Alle".
      * Geprüft am Detaillink und nicht am Titel: Der Titel taucht auf Start noch
-     * einmal auf, im „Zuerst: …" der Aufgabe, die auf ihn wartet (§7).
+     * einmal auf, im "Zuerst: ..." der Aufgabe, die auf ihn wartet (§7).
      */
     await expect(
       page.getByRole('link', { name: /^Details.*Ärztliche Todesbescheinigung/ }),
@@ -591,7 +591,7 @@ test('Trauerfall anlegen', async ({ page }) => {
       page.getByRole('button', { name: /^Übernehmen.*Sterbefall beim Standesamt anzeigen/ }),
     ).toBeVisible()
 
-    // Und damit ist sie von Start verschwunden — die Unteraufgabe bleibt, denn
+    // Und damit ist sie von Start verschwunden. Die Unteraufgabe bleibt, denn
     // sie trägt ihre eigene Zuweisung.
     await gotoVerlaesslich(page, '/')
     await expect(

@@ -10,16 +10,16 @@ import { alsBenutzer, fallMitMitgliedern, frischeDatenbank } from './postgres'
  * Drei Zusagen dieses Slices sind Zusagen der Datenbank und keine des Clients:
  *
  *   1. `seq` vergibt ausschließlich der Trigger, und er hebt dabei
- *      `cases.version` — der Zähler, an dem der Delta-Sync hängt (§5).
+ *      `cases.version`: der Zähler, an dem der Delta-Sync hängt (§5).
  *   2. Ein `deleted → false` weist die Datenbank ab. Ohne Durchsetzung wäre
- *      „Löschen gewinnt endgültig" eine Hoffnung (§4).
+ *      "Löschen gewinnt endgültig" eine Hoffnung (§4).
  *   3. Auf `items` gibt es kein DELETE, für niemanden.
  *
  * Deshalb laufen sie hier gegen echtes Postgres.
  *
- * **Was hier nicht steht: echte Nebenläufigkeit.** PGlite hat genau eine
+ * Was hier nicht steht: echte Nebenläufigkeit. PGlite hat genau eine
  * Verbindung, zwei Transaktionen laufen also nie wirklich gleichzeitig. Die
- * Monotonie hängt an der Zeilensperre, die `update cases … returning` nimmt —
+ * Monotonie hängt an der Zeilensperre, die `update cases ... returning` nimmt:
  * geprüft wird stattdessen, was aus ihr folgt und einzeln beobachtbar ist:
  * jede Schreiboperation bekommt eine eigene, höhere Nummer, ein abgebrochener
  * Schreibvorgang lässt keine Lücke, und zwei Zeilen desselben Falls können
@@ -134,7 +134,7 @@ describe('items_assign_seq (§4, §5)', () => {
   })
 
   it('überschreibt ein seq, das der Client selbst mitbringt', async () => {
-    // §4: „vom Trigger, nie vom Client". Ein Client, der seq setzen dürfte,
+    // §4: "vom Trigger, nie vom Client". Ein Client, der seq setzen dürfte,
     // könnte sich an jedem Wasserzeichen vorbeischreiben.
     const fall = await fallMitMitgliedern(db, ANNA)
 
@@ -153,7 +153,7 @@ describe('items_assign_seq (§4, §5)', () => {
      * Der Grund, aus dem §4 `bigserial` ausschließt: Eine Sequenz vergibt
      * Nummern vor dem Commit und behält sie auch dann, wenn die Transaktion
      * zurückrollt. Ein Client mit Wasserzeichen 1 wartete dann ewig auf die
-     * verbrannte 2 — oder überspränge sie und mit ihr eine echte Zeile.
+     * verbrannte 2 oder überspränge sie und mit ihr eine echte Zeile.
      * `cases.version` rollt mit zurück.
      */
     const fall = await fallMitMitgliedern(db, ANNA)
@@ -178,7 +178,7 @@ describe('items_assign_seq (§4, §5)', () => {
     /*
      * Die Monotonie hängt an der Zeilensperre in `items_assign_seq`. Der
      * eindeutige Index ist das Netz darunter, und über den Trigger ist es
-     * nicht zu erreichen — er überschreibt jede mitgebrachte Nummer. Also
+     * nicht zu erreichen, da er jede mitgebrachte Nummer überschreibt. Also
      * wird der Trigger für diesen einen Fall abgeschaltet: Das ist genau der
      * Zustand, gegen den der Index steht, nämlich ein Schreibweg, der die
      * Nummer nicht mehr unter Sperre vergibt.
@@ -207,13 +207,13 @@ describe('items_assign_seq (§4, §5)', () => {
 
   it('laesst die Anlagereihenfolge über die id auch nach einer Änderung stehen', async () => {
     /*
-     * Die Kehrseite von „seq steigt bei jedem Schreibvorgang": Als
+     * Die Kehrseite von "seq steigt bei jedem Schreibvorgang": Als
      * Anzeigereihenfolge taugt sie nicht, sonst wandert eine gerade abgehakte
      * Aufgabe ans Ende der Liste. Der Adapter sortiert deshalb über die `id`.
      *
      * Dass das trägt, hängt an Postgres: Der Typ `uuid` vergleicht byteweise,
      * und eine UUIDv7 trägt die Millisekunden in ihren führenden 48 Bit. Beides
-     * zusammen ergibt die Anlagereihenfolge — geprüft hier, gegen echtes
+     * zusammen ergibt die Anlagereihenfolge: geprüft hier, gegen echtes
      * Postgres statt gegen die Annahme.
      */
     const fall = await fallMitMitgliedern(db, ANNA)
@@ -365,7 +365,7 @@ describe('RLS auf items (§4)', () => {
   })
 
   it('schließt DELETE für jedes Mitglied aus', async () => {
-    // §4: „kein DELETE: Löschen erfolgt ausschließlich über deleted = true".
+    // §4: "kein DELETE: Löschen erfolgt ausschließlich über deleted = true".
     // Die Zeilen liegen in den Ciphertext-Caches aller Geräte; ein hartes
     // Löschen käme dort nie an, weil der Delta-Sync nur Zuwachs trägt.
     const fall = await fallMitMitgliedern(db, ANNA, BERND)

@@ -8,7 +8,7 @@ import { DekFehler, entpackeDek, erzeugeDek, wrappeDek } from '../../src/core/cr
  *
  * Die Kette ist zweistufig, und das ist ihr ganzer Zweck: `payload` liegt unter
  * dem DEK, der DEK unter `K_c`. Eine Rotation von `K_c` (§3.4) wrappt danach
- * 32 Byte neu und laesst den Payload unberuehrt — bei einer 15-MB-Datei ist das
+ * 32 Byte neu und laesst den Payload unberuehrt: Bei einer 15-MB-Datei ist das
  * der Unterschied zwischen wenigen Kilobyte und einem neuen Upload.
  */
 
@@ -40,7 +40,7 @@ describe('wrappeDek und entpackeDek', () => {
     const kc = erzeugeAesSchluessel()
     const gewrappt = await wrappeDek(kc, erzeugeDek())
 
-    // Der Envelope traegt Kopf, Nonce und 48 Byte Nutzlast (§3.2) — nichts,
+    // Der Envelope traegt Kopf, Nonce und 48 Byte Nutzlast (§3.2), nichts,
     // worin der Fallschluessel oder der DEK im Klartext stuende.
     expect(gewrappt).toHaveLength(2 + 2 + 12 + 32 + 16)
     expect(Array.from(gewrappt)).not.toEqual(expect.arrayContaining(Array.from(kc)))
@@ -48,7 +48,7 @@ describe('wrappeDek und entpackeDek', () => {
 
   it('weist einen DEK falscher Laenge zurueck', async () => {
     // Ein zu kurzer Schluessel waere schwaecher, als das Format verspricht,
-    // und faellt spaeter erst beim Importieren auf — dann aber ohne Bezug zu
+    // und faellt spaeter erst beim Importieren auf, dann aber ohne Bezug zu
     // der Stelle, an der er entstanden ist.
     await expect(wrappeDek(erzeugeAesSchluessel(), new Uint8Array(16))).rejects.toThrow(DekFehler)
   })

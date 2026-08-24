@@ -36,7 +36,7 @@ beforeEach(() => {
 /**
  * Einen Trauerfall anlegen (DESIGN.md §2, §3.1).
  *
- * Der Screen selbst verschlüsselt nichts — das tut `fallService`, geprüft in
+ * Der Screen selbst verschlüsselt nichts. Das tut `fallService`, geprüft in
  * `tests/services/fallService.test.ts`. Hier geht es darum, was das Formular
  * mit den Eingaben macht und was es zeigt, wenn das Anlegen scheitert.
  */

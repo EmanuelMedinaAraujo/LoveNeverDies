@@ -13,7 +13,7 @@ type ButtonProps = ComponentPropsWithoutRef<'button'> & {
   volleBreite?: boolean
   /**
    * Zusaetzlicher Text zum Vorlesen (§7). Pflicht, sobald die Schaltflaeche
-   * kein sichtbares Label traegt — sonst hoert eine blinde Person "Schaltflaeche"
+   * kein sichtbares Label traegt. Sonst hoert eine blinde Person "Schaltflaeche"
    * und sonst nichts.
    */
   vorleseText?: string

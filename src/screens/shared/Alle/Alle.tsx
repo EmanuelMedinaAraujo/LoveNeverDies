@@ -12,6 +12,7 @@ import { Card } from '../../../ui/Card/Card.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
 import { darfBearbeiten, istFrei, zuweisungText } from '../../../services/zuweisung.ts'
+import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../Meldungen/Meldungen.tsx'
 import stile from './Alle.module.css'
 
@@ -592,13 +593,7 @@ export function Alle() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
-        <Ladeanzeige
-          text={
-            zustand.status === 'schluessel-erneuerung'
-              ? 'Schlüssel werden erneuert…'
-              : 'Ihre Daten werden geladen…'
-          }
-        />
+        <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
   }

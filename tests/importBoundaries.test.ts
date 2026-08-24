@@ -9,7 +9,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
  *
  * `core/crypto` importiert weder React noch Supabase, und Abhaengigkeiten zeigen
  * ausschliesslich nach unten. Getestet wird der echte Lint-Lauf gegen die echte
- * Konfiguration — nicht die Konfiguration als Datenstruktur. Deshalb `lintText`
+ * Konfiguration und nicht die Konfiguration als Datenstruktur. Deshalb `lintText`
  * mit einem virtuellen Dateipfad: Es entstehen keine Fixture-Dateien, die der
  * normale `npm run lint` mitlinten und daran scheitern wuerde.
  */

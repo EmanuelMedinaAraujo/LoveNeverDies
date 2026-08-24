@@ -7,10 +7,10 @@ import type { Kopplungsanfrage } from '../../src/services/kopplungService.ts'
 /**
  * Die drei Kopplungs-Hooks (DESIGN.md §6, §3.6).
  *
- * Dienste und Adapter sind ersetzt — was gewrappt und was geprüft wird, steht
+ * Dienste und Adapter sind ersetzt. Was gewrappt und was geprüft wird, steht
  * in `tests/services/kopplungService.test.ts` und in `tests/db/kopplung.test.ts`.
  * Hier geht es um die Zustandsführung: wann ein Code geholt wird, dass der
- * Prüfcode aus der **lokalen** Identität kommt, und dass die Wache aufhört zu
+ * Prüfcode aus der lokalen Identität kommt, und dass die Wache aufhört zu
  * pollen, sobald sie ihre Antwort hat.
  */
 
@@ -300,10 +300,10 @@ describe('useKopplungswache (§6, Schritt 7)', () => {
 
   it('lässt einen langsamen Abruf die Freigabe nicht überschreiben', async () => {
     /*
-     * Ein Abruf, der nach einem schnelleren zurückkommt, dürfte „wartet" nicht
-     * über ein bereits gemeldetes „freigeschaltet" schreiben: Der Takt ist dann
+     * Ein Abruf, der nach einem schnelleren zurückkommt, dürfte "wartet" nicht
+     * über ein bereits gemeldetes "freigeschaltet" schreiben: Der Takt ist dann
      * abgeräumt, es sähe nie wieder jemand nach, und der Screen bliebe auf
-     * „Warten auf die Bestätigung…" stehen, obwohl längst alles da ist.
+     * "Warten auf die Bestätigung..." stehen, obwohl längst alles da ist.
      */
     let langsamAufloesen: ((faelle: unknown[]) => void) | null = null
 
@@ -316,18 +316,18 @@ describe('useKopplungswache (§6, Schritt 7)', () => {
     const { result } = renderHook(() => useKopplungswache(true))
     await erstesNachsehen()
 
-    // Der langsame Abruf startet …
+    // Der langsame Abruf startet ...
     await act(async () => {
       await vi.advanceTimersByTimeAsync(WACHE_ABSTAND_MS)
     })
-    // … der nächste überholt ihn und gibt frei …
+    // ... der nächste überholt ihn und gibt frei ...
     await act(async () => {
       await vi.advanceTimersByTimeAsync(WACHE_ABSTAND_MS)
     })
 
     expect(result.current.status).toBe('freigeschaltet')
 
-    // … und erst danach kommt der langsame mit seinem alten Bild zurück.
+    // ... und erst danach kommt der langsame mit seinem alten Bild zurück.
     await act(async () => {
       langsamAufloesen?.([])
       await vi.advanceTimersByTimeAsync(0)
@@ -338,7 +338,7 @@ describe('useKopplungswache (§6, Schritt 7)', () => {
 
   it('meldet nicht frei, wenn schon am Anfang etwas lesbar war', async () => {
     // Ein zweites Gerät kann zwei von drei Fällen längst lesen und auf den
-    // dritten warten. „Mindestens einer lesbar" wäre hier sofort erfüllt.
+    // dritten warten. "Mindestens einer lesbar" wäre hier sofort erfüllt.
     ladeFaelle.mockResolvedValue([fall('fall-1'), fall('fall-2', 'gesperrt')])
 
     const { result } = renderHook(() => useKopplungswache(true))
@@ -388,7 +388,7 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
   it('bestätigt nichts, solange die Fallliste noch lädt', async () => {
     /*
      * Der Code ist zu diesem Zeitpunkt eingelöst und verbrannte an einer Liste,
-     * die es noch gar nicht gibt — bei `device` mit der Meldung „0 von 0 Fällen
+     * die es noch gar nicht gibt: bei `device` mit der Meldung "0 von 0 Fällen
      * freigeschaltet", die wie ein Erfolg aussieht.
      */
     useCase.mockReturnValue({ zustand: { status: 'laedt' }, legeTrauerfallAn: vi.fn() })
@@ -410,7 +410,7 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
   it('hält das Angebot fest, wenn das Bestätigen scheitert', async () => {
     /*
      * Zurück ins Eingabefeld wäre eine Sackgasse: Der Code ist eingelöst und
-     * käme nur noch als „bereits eingelöst" zurück, obwohl
+     * käme nur noch als "bereits eingelöst" zurück, obwohl
      * `schliesse_kopplung_ab` ihn weiterhin annähme.
      */
     useCase.mockReturnValue({

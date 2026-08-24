@@ -2,22 +2,22 @@
 --
 -- §5 verlangt drei Dinge in dieser Reihenfolge: einen billigen Check
 -- (`select version from cases`), ein Delta (`seq > watermark`) und eine
--- Türklingel. Die ersten beiden sind Abfragen und brauchen nichts weiter — den
+-- Türklingel. Die ersten beiden sind Abfragen und brauchen nichts weiter. Den
 -- Zähler, gegen den sie laufen, gibt es seit `items_assign_seq`. Die dritte
 -- braucht diese Migration.
 --
--- **Warum `cases` und nicht `items`.** Die Türklingel trägt keine Nutzlast. Sie
--- sagt „da war was", und was es war, holt der Delta-Sync über PostgREST — durch
+-- Warum `cases` und nicht `items`. Die Türklingel trägt keine Nutzlast. Sie
+-- signalisiert eine Änderung, und was es war, holt der Delta-Sync über PostgREST durch
 -- die RLS und mit den Bytes, die der Client ohnehin entschlüsseln muss. Stünde
 -- `items` in der Publikation, liefe daneben ein zweiter Auslieferungsweg für
 -- dieselben Daten, mit eigener Reihenfolge, eigener Rechteprüfung und der
 -- Möglichkeit, dass ein Gerät eine Zeile über den einen Weg sieht und über den
 -- anderen nicht. Die eine Zeile in `cases` reicht: Ihr `version` hebt der
--- Trigger bei **jeder** Inhaltsänderung des Falls mit (§4).
+-- Trigger bei jeder Inhaltsänderung des Falls mit (§4).
 --
 -- `replica identity` bleibt auf der Voreinstellung. Realtime prüft die
--- Leseregel gegen die geänderte Zeile, und `cases_read` fragt `is_member(id)` —
--- die `id` ist der Primärschlüssel und liegt damit ohnehin bei.
+-- Leseregel gegen die geänderte Zeile, und `cases_read` fragt `is_member(id)`.
+-- Die `id` ist der Primärschlüssel und liegt damit ohnehin bei.
 
 do $$
 begin

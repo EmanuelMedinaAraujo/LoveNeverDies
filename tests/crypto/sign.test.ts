@@ -16,7 +16,7 @@ import {
  * Nahtstelle: die zusammengesetzte Signatur aus ML-DSA-65 und Ed25519
  * (DESIGN.md §3.2, §3.6).
  *
- * Sie ist gültig, wenn **beide** Hälften verifizieren, und sonst nie. Sie hängt
+ * Sie ist gültig, wenn beide Hälften verifizieren, und sonst nie. Sie hängt
  * an einem Domain-Präfix, damit eine Freigabesignatur nicht als Wrap-Signatur
  * durchgeht.
  */
@@ -89,7 +89,7 @@ describe('Signieren und Verifizieren', () => {
 
   it('scheitert, wenn die beiden Hälften von verschiedenen Geräten stammen', () => {
     // Beide Hälften sind für sich gültig. Genau das ist der Fall, gegen den
-    // „beide müssen verifizieren“ steht: Ein Angreifer, der eine der beiden
+    // "beide müssen verifizieren" steht: Ein Angreifer, der eine der beiden
     // Signaturen fälschen kann, kommt mit der anderen nicht durch.
     const einesGeraet = erzeugeSignaturSchluesselpaar()
     const anderesGeraet = erzeugeSignaturSchluesselpaar()

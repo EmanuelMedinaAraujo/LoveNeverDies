@@ -6,7 +6,7 @@ import { alsHex, fehler, stubClient } from './supabaseAdapter'
 /**
  * `items` über Supabase (DESIGN.md §4).
  *
- * Hier geht es um die Übersetzung zwischen PostgREST-Antwort und Port — welche
+ * Hier geht es um die Übersetzung zwischen PostgREST-Antwort und Port: welche
  * Spalten der Adapter verlangt, was er aus `bytea` macht und was aus einem
  * Fehler wird. Ob die Tabelle selbst tut, was §4 von ihr behauptet, steht
  * daneben in `inhalte.test.ts` gegen echtes Postgres.
@@ -52,7 +52,7 @@ describe('legeAlleNeuen', () => {
     /*
      * `ignoreDuplicates` ist PostgRESTs `Prefer: resolution=ignore-duplicates`.
      * Ohne das wäre die zweite von zwei gleichzeitigen Instanziierungen ein
-     * Fehler statt eines Nulleffekts — und mit `ignoreDuplicates: false` ein
+     * Fehler statt eines Nulleffekts und mit `ignoreDuplicates: false` ein
      * Upsert, der die womöglich längst geänderte Zeile überschriebe.
      */
     const { client, gesehen } = stubClient({ data: null, error: null })
@@ -130,7 +130,7 @@ describe('seit', () => {
   })
 
   it('holt bei Wasserzeichen 0 den vollständigen Stand', async () => {
-    // §5: „Vollständige Resynchronisation ist `seq > 0`." Kein eigener Weg,
+    // §5: "Vollständige Resynchronisation ist `seq > 0`." Kein eigener Weg,
     // derselbe Weg mit 0.
     const { client, gesehen } = stubClient({ data: [ZEILE], error: null })
 
@@ -237,7 +237,7 @@ describe('schreibePayload', () => {
 
   it('macht aus einem PostgREST-Fehler einen InhalteFehler', async () => {
     // Der andere Fall: nicht null Zeilen, sondern gar keine Antwort. Beides
-    // heißt „nicht gespeichert", und beides muss so ankommen.
+    // heißt "nicht gespeichert", und beides muss so ankommen.
     const { client } = stubClient({ data: null, error: fehler('deadlock detected', '40P01') })
 
     await expect(
@@ -274,14 +274,14 @@ describe('abgelehnt oder nur nicht angekommen', () => {
   /*
    * Die Unterscheidung, an der die Offline-Queue hängt (§5).
    *
-   * Eine Mutation, die der Server **abgelehnt** hat, gehört aus der Queue heraus
-   * und als Mitteilung auf den Bildschirm — ein zweiter Versuch änderte nichts.
+   * Eine Mutation, die der Server abgelehnt hat, gehört aus der Queue heraus
+   * und als Mitteilung auf den Bildschirm. Ein zweiter Versuch änderte nichts.
    * Eine Mutation, die den Server nie erreicht hat, gehört in der Queue stehen
    * und beim nächsten Reconnect erneut abgeschickt. Von außen sehen beide gleich
    * aus: ein abgelehntes Versprechen. Wer den Unterschied kennt, ist der
    * Adapter, denn nur er weiss, ob überhaupt jemand geantwortet hat.
    *
-   * `supabase-js` verpackt auch einen Netzwerkabbruch als `PostgrestError` —
+   * `supabase-js` verpackt auch einen Netzwerkabbruch als `PostgrestError`,
    * dann allerdings ohne SQLSTATE. Der leere `code` ist das Erkennungszeichen.
    */
 
@@ -299,7 +299,7 @@ describe('abgelehnt oder nur nicht angekommen', () => {
 
   it('nennt eine abgewiesene Auferstehung abgelehnt', async () => {
     // §4: `items_forbid_undelete` wirft mit SQLSTATE 23514. Ein Wiederholen
-    // brächte dasselbe Ergebnis — Löschen gewinnt endgültig.
+    // brächte dasselbe Ergebnis: Löschen gewinnt endgültig.
     const { client } = stubClient({
       data: null,
       error: fehler('Ein geloeschtes Item kann nicht wiederbelebt werden.', '23514'),
@@ -331,7 +331,7 @@ describe('abgelehnt oder nur nicht angekommen', () => {
 
   it('nennt einen Fehlschlag beim Abrufen nicht abgelehnt', async () => {
     // Abrufen ist keine Mutation und landet nie in der Queue. Trotzdem darf ein
-    // Lesefehler nicht als „abgelehnt" durchgehen: Er beendete sonst eine
+    // Lesefehler nicht als "abgelehnt" durchgehen: Er beendete sonst eine
     // Wiederholung, die es gar nicht gibt.
     const { client } = stubClient({ data: null, error: fehler('permission denied', '42501') })
 

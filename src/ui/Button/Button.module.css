@@ -1,6 +1,6 @@
 /*
  * Alle Masse kommen aus den Dichtetokens. Der Button weiss nicht, ob er in der
- * einfachen oder der erweiterten Ansicht steht — das entscheidet `data-dichte`
+ * einfachen oder der erweiterten Ansicht steht. Das entscheidet `data-dichte`
  * auf der Wurzel (DESIGN.md §7).
  */
 

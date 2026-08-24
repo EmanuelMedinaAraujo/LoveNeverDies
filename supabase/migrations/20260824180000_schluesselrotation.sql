@@ -37,6 +37,10 @@ create policy personal_key_wraps_delete on personal_key_wraps for delete
 grant select, insert, delete on personal_key_wraps to authenticated;
 
 -- 2. Trigger: Austritt setzt rotation_pending, löscht Shares & tombstonet private Items
+alter table cases
+  add column if not exists rotation_request_seq int not null default 0,
+  add column if not exists rotation_claimed_seq int not null default 0;
+
 create or replace function public.on_membership_deleted() returns trigger
   language plpgsql security definer set search_path = public as $fn$
 begin
@@ -55,13 +59,14 @@ begin
 
   update cases
      set rotation_pending      = true,
+         rotation_request_seq  = rotation_request_seq + 1,
          vault_resplit_pending = (status = 'vorsorge')
    where id = old.case_id;
   return old;
 end $fn$;
 
 -- 3. claim_rotation: Mandat für 2 Minuten mit Zeilensperre -------------------
-create function public.claim_rotation(
+create or replace function public.claim_rotation(
   p_case_id             uuid,
   p_expected_generation int,
   p_device_id           uuid
@@ -107,6 +112,7 @@ begin
 
   update cases
      set rotation_claimed_by       = p_device_id,
+         rotation_claimed_seq      = rotation_request_seq,
          rotation_claim_expires_at = now() + interval '2 minutes'
    where id = p_case_id;
 
@@ -117,17 +123,19 @@ revoke execute on function public.claim_rotation(uuid, int, uuid) from public;
 grant execute on function public.claim_rotation(uuid, int, uuid) to authenticated;
 
 -- 4. commit_rotation: Compare-and-Swap auf key_generation -------------------
-create function public.commit_rotation(
+create or replace function public.commit_rotation(
   p_case_id             uuid,
   p_expected_generation int,
   p_new_kid             text,
   p_device_id           uuid,
-  p_payload             bytea default null
+  p_payload             bytea default null,
+  p_items               jsonb default '[]'::jsonb
 ) returns boolean
   language plpgsql security definer set search_path = public as $fn$
 declare
-  v_user      text := (select auth.jwt()) ->> 'sub';
-  v_fall      cases%rowtype;
+  v_user          text := (select auth.jwt()) ->> 'sub';
+  v_fall          cases%rowtype;
+  v_still_pending boolean;
 begin
   if v_user is null then
     raise exception 'Ohne Anmeldung wird keine Rotation bestätigt.' using errcode = '42501';
@@ -153,13 +161,17 @@ begin
     return false;
   end if;
 
+  if not v_fall.rotation_pending then
+    return false;
+  end if;
+
   if v_fall.key_generation <> p_expected_generation then
     return false;
   end if;
 
-  if v_fall.rotation_claimed_by is not null
-     and v_fall.rotation_claimed_by <> p_device_id
-     and v_fall.rotation_claim_expires_at > now() then
+  if v_fall.rotation_claimed_by is null
+     or v_fall.rotation_claimed_by <> p_device_id
+     or v_fall.rotation_claim_expires_at <= now() then
     return false;
   end if;
 
@@ -167,11 +179,22 @@ begin
     raise exception 'Ein neuer kid muss angegeben werden.' using errcode = '22023';
   end if;
 
+  if p_items is not null and jsonb_array_length(p_items) > 0 then
+    update items i
+       set kid = p_new_kid,
+           wrapped_dek = decode(substring(r.wrapped_dek from 3), 'hex')
+      from jsonb_to_recordset(p_items) as r(id uuid, wrapped_dek text)
+     where i.id = r.id
+       and i.case_id = p_case_id;
+  end if;
+
+  v_still_pending := (v_fall.rotation_request_seq > v_fall.rotation_claimed_seq);
+
   update cases
      set key_generation            = p_expected_generation + 1,
          current_kid               = p_new_kid,
          payload                   = coalesce(p_payload, payload),
-         rotation_pending          = false,
+         rotation_pending          = v_still_pending,
          rotation_claimed_by       = null,
          rotation_claim_expires_at = null
    where id = p_case_id;
@@ -179,5 +202,5 @@ begin
   return true;
 end $fn$;
 
-revoke execute on function public.commit_rotation(uuid, int, text, uuid, bytea) from public;
-grant execute on function public.commit_rotation(uuid, int, text, uuid, bytea) to authenticated;
+revoke execute on function public.commit_rotation(uuid, int, text, uuid, bytea, jsonb) from public;
+grant execute on function public.commit_rotation(uuid, int, text, uuid, bytea, jsonb) to authenticated;

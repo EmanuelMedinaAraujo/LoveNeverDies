@@ -7,15 +7,15 @@ import type { InhaltZeile } from '../../src/core/db/inhalte'
 /**
  * Nahtstelle: der Ciphertext-Cache (DESIGN.md §5).
  *
- * Die Zusage aus §5 ist wörtlich zu nehmen: „Der lokale Cache speichert
+ * Die Zusage aus §5 ist wörtlich zu nehmen: "Der lokale Cache speichert
  * Ciphertext, byteidentisch zum Server, und entschlüsselt beim Start in den
  * Speicher. Der Cache auf dem Gerät ist damit genauso verschlüsselt wie der
  * Server."
  *
- * Deshalb prüft dieser Test nicht nur, dass etwas zurückkommt, sondern **was**
+ * Deshalb prüft dieser Test nicht nur, dass etwas zurückkommt, sondern was
  * in IndexedDB liegt: dieselben Bytes, kein Klartext, kein entschlüsseltes
  * Nebenfeld. Ein Cache, der beim Schreiben freundlich mitentschlüsselte, wäre
- * von aussen nicht zu unterscheiden — bis jemand die Browserdaten ausliest.
+ * von aussen nicht zu unterscheiden, bis jemand die Browserdaten ausliest.
  */
 
 function zeile(id: string, seq: number, ueberschreibung: Partial<InhaltZeile> = {}): InhaltZeile {
@@ -49,7 +49,7 @@ afterEach(async () => {
 
 describe('Ciphertext-Cache', () => {
   it('gibt für einen unbekannten Fall einen leeren Stand zurück', async () => {
-    // Wasserzeichen 0 heisst „vollständige Resynchronisation" (§5) und ist der
+    // Wasserzeichen 0 heisst "vollständige Resynchronisation" (§5) und ist der
     // richtige Startwert für ein Gerät, das den Fall noch nie gesehen hat.
     expect(await frisch().lies('fall-1')).toEqual({ zeilen: [], wasserzeichen: 0 })
   })
@@ -66,7 +66,7 @@ describe('Ciphertext-Cache', () => {
   })
 
   it('überdauert einen Kaltstart', async () => {
-    // Der Fall aus §5: „Ein Kaltstart ohne Netz zeigt den zuletzt gecachten
+    // Der Fall aus §5: "Ein Kaltstart ohne Netz zeigt den zuletzt gecachten
     // Stand." Ein zweiter Cache über derselben IndexedDB ist genau das.
     await frisch().schreibe('fall-1', [zeile('a', 1)], 1)
 
@@ -113,7 +113,7 @@ describe('Ciphertext-Cache', () => {
   it('legt Zeilen und Wasserzeichen zusammen ab oder gar nicht', async () => {
     /*
      * Rückte das Wasserzeichen vor den Zeilen, verlöre ein Gerät, dem beim
-     * Schreiben der Strom ausgeht, genau die Zeilen dazwischen — und holte sie
+     * Schreiben der Strom ausgeht, genau die Zeilen dazwischen, und holte sie
      * nie wieder, weil der nächste Delta-Abruf oberhalb des Wasserzeichens
      * ansetzt. Beides gehört in eine Transaktion.
      */
@@ -129,7 +129,7 @@ describe('Ciphertext-Cache', () => {
   it('legt ausschliesslich Ciphertext ab, byteidentisch zum Server', async () => {
     /*
      * Die Zusage aus §5, an ihrer einzig prüfbaren Stelle: in der abgelegten
-     * Zeile selbst. Verglichen wird gegen die Bytes, die vom Server kamen —
+     * Zeile selbst. Verglichen wird gegen die Bytes, die vom Server kamen,
      * nicht gegen das, was `lies` zurückgibt, denn ein Cache, der beim
      * Schreiben entschlüsselt und beim Lesen wieder verschlüsselt, bestände
      * jeden Rundlauftest.

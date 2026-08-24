@@ -14,9 +14,8 @@ import stile from './Profil.module.css'
  */
 
 /*
- * Die Gruppierung — am Telefon liest niemand "vierhunderteinundachtzigtausend"
- * — steht im `kopplungService`: Dieselben sechs Ziffern zeigt die andere Seite
- * beim Koppeln, und sie müssen dort gleich aussehen (§3.6).
+ * Die Gruppierung steht im `kopplungService`. Dieselben sechs Ziffern zeigt
+ * die andere Seite beim Koppeln, und sie müssen dort gleich aussehen (§3.6).
  */
 
 function Zeile({
@@ -134,7 +133,7 @@ export function Geraeteliste() {
 
   if (zustand.geraete.length === 0) {
     // Nach einer erfolgreichen Anmeldung steht hier immer mindestens dieses
-    // Gerät. Leer heißt: Die Registrierung kam nicht durch — kein Grund für
+    // Gerät. Leer heißt: Die Registrierung kam nicht durch, kein Grund für
     // eine Fehlermeldung, aber auch keiner, eine leere Liste zu behaupten.
     return (
       <p className={stile.hinweis} role="status">

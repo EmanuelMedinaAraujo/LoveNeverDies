@@ -5,13 +5,13 @@ import { brauchtDelta, geruecktesWasserzeichen } from '../../src/core/sync/water
 /**
  * Nahtstelle: das Wasserzeichen (DESIGN.md §5).
  *
- * Zwei Zeilen Rechnung, an denen der ganze Delta-Sync hängt — und beide sind
+ * Zwei Zeilen Rechnung, an denen der ganze Delta-Sync hängt, und beide sind
  * leicht falsch zu schreiben:
  *
  *   1. Der billige Check vergleicht `cases.version` mit dem Wasserzeichen.
  *      Gleich heisst kein Fetch.
  *   2. Nach einem Delta rückt das Wasserzeichen auf die höchste `seq`, die
- *      **im Delta stand** — nie auf die `version`, die der billige Check
+ *      im Delta stand, nie auf die `version`, die der billige Check
  *      geliefert hat.
  */
 
@@ -45,15 +45,15 @@ describe('brauchtDelta', () => {
 
   it('spart den Abruf bei einem leeren Fall', () => {
     // Ein frisch angelegter Fall steht auf `version = 0` und hat noch kein
-    // Item. Ein Abruf brächte eine leere Liste — und dieselbe leere Liste bei
+    // Item. Ein Abruf brächte eine leere Liste, und dieselbe leere Liste bei
     // jeder Türklingel danach.
     expect(brauchtDelta(0, 0)).toBe(false)
   })
 
   it('holt ab, wenn die version unter dem Wasserzeichen liegt', () => {
     /*
-     * Kann nicht passieren, solange `cases.version` nur steigt. Wenn doch —
-     * eine wiederhergestellte Datenbank, ein bösartiger Server (§11) —, ist
+     * Kann nicht passieren, solange `cases.version` nur steigt. Wenn doch,
+     * etwa durch eine wiederhergestellte Datenbank oder einen bösartigen Server (§11), ist
      * ein Abruf die einzige Antwort, die keinen Stand einfriert.
      */
     expect(brauchtDelta(2, 7)).toBe(true)
@@ -78,14 +78,14 @@ describe('geruecktesWasserzeichen', () => {
   it('geht nie zurück', () => {
     // Ein Delta trägt ausschliesslich Zeilen oberhalb des Wasserzeichens. Käme
     // trotzdem eine niedrigere Nummer an, dürfte sie den Stand nicht
-    // zurückdrehen — der nächste Abruf holte sonst Zeilen doppelt.
+    // zurückdrehen: Der nächste Abruf holte sonst Zeilen doppelt.
     expect(geruecktesWasserzeichen(9, [zeile(3)])).toBe(9)
   })
 
   it('übernimmt nicht die version, wenn nebenher weitergeschrieben wurde', () => {
     /*
      * Der Fehler, der jede Zeile zwischen zwei Abrufen verschluckt: Zwischen
-     * `select version` (sagt 9) und `select … where seq > 2` (liefert 3 und 4)
+     * `select version` (sagt 9) und `select ... where seq > 2` (liefert 3 und 4)
      * committet ein anderes Gerät die Nummern 5 bis 9. Wer das Wasserzeichen
      * jetzt auf 9 setzt, sieht 5 bis 9 nie wieder. Deshalb rechnet diese
      * Funktion ausschliesslich mit dem, was wirklich angekommen ist, und

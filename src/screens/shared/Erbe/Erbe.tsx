@@ -11,6 +11,7 @@ import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
+import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import stile from './Erbe.module.css'
 
 function Ladeanzeige({ text }: { text: string }) {
@@ -149,7 +150,7 @@ function TresorInhalte({
  * Freigabestand und Todesbestätigung (DESIGN.md §3.5, §7).
  *
  * §7 verlangt beides im Tab Erbe: den Freigabestatus und die Aktion "Todesfall
- * bestätigen", mit Bestätigungsdialog. Der Dialog ist keine Höflichkeit — eine
+ * bestätigen", mit Bestätigungsdialog. Der Dialog ist keine Höflichkeit: Eine
  * versehentlich abgeschickte Todesbestätigung nimmt niemand zurück (§5).
  *
  * Der Zähler steht hier als Anzeige und nicht als Auslöser (§3.5). Erreicht er
@@ -267,7 +268,7 @@ function Todesfallfreigabe({
             Kein Sterbedatum an dieser Stelle: Eine Freigabe trägt es nicht mit
             (§3.5, §4), und ein Feld, dessen Inhalt beim Absenden verfiele, wäre
             eine Auskunft, die man abgibt und die niemand bekommt. Gefragt wird
-            danach dort, wo es wirklich in den Fall geht — beim Öffnen.
+            danach dort, wo es wirklich in den Fall geht, nämlich beim Öffnen.
           */}
 
           <div className={stile.gefahrGruppe}>
@@ -510,13 +511,7 @@ export function Erbe() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
-        <Ladeanzeige
-          text={
-            zustand.status === 'schluessel-erneuerung'
-              ? 'Schlüssel werden erneuert…'
-              : 'Ihre Daten werden geladen…'
-          }
-        />
+        <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
   }

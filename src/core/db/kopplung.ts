@@ -58,7 +58,7 @@ export type Kopplungsangebot = {
 }
 
 /**
- * `Exclude<…, 'ok'>` in der zweiten Variante, damit TypeScript am `status`
+ * `Exclude<..., 'ok'>` in der zweiten Variante, damit TypeScript am `status`
  * unterscheiden kann: Stünde dort der volle Statustyp, wäre `ok` in beiden
  * Varianten möglich und `angebot` nie sicher da.
  */

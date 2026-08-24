@@ -8,16 +8,16 @@ import type { Mutation } from '../../src/core/sync/queue'
 /**
  * Der Rundlauf des Delta-Syncs (DESIGN.md §5).
  *
- * Die vier Bausteine haben eigene Tests — `tests/sync/*`. Hier geht es um das,
+ * Die vier Bausteine haben eigene Tests in `tests/sync/*`. Hier geht es um das,
  * was erst beim Zusammensetzen entsteht und in keinem von ihnen steht:
  *
- * - Der **Kaltstart** rendert aus dem Cache, bevor das Netz antwortet, und
+ * - Der Kaltstart rendert aus dem Cache, bevor das Netz antwortet, und
  *   auch dann, wenn es nie antwortet.
- * - Der **billige Check** spart den Abruf. `version` gleich Wasserzeichen →
+ * - Der billige Check spart den Abruf. `version` gleich Wasserzeichen:
  *   kein `seit`.
- * - Die **Queue** geht zuerst hinaus, und was der Server verwirft, kommt als
+ * - Die Queue geht zuerst hinaus, und was der Server verwirft, kommt als
  *   Mitteilung zurück statt still zu verschwinden.
- * - Die **Türklingel** und der **Reconnect** stossen dieselbe Runde an.
+ * - Die Türklingel und der Reconnect stossen dieselbe Runde an.
  *
  * Der Server ist ein Doppel: eine Tabelle, ein Zähler, keine Meinung. Ob
  * Postgres `seq` richtig vergibt, prüft `tests/db/delta.test.ts` gegen eine
@@ -69,7 +69,7 @@ function bytes(...werte: number[]): Uint8Array {
  * Bytes als Zahlenliste vergleichen.
  *
  * Was durch IndexedDB gegangen ist, kommt als `Uint8Array` aus einem anderen
- * Realm zurück — inhaltlich dasselbe, für `toEqual` aber ein anderer Typ. Die
+ * Realm zurück: inhaltlich dasselbe, für `toEqual` aber ein anderer Typ. Die
  * Frage hier ist der Inhalt.
  */
 function alsListe(werte: Uint8Array | undefined): number[] {
@@ -296,7 +296,7 @@ describe('useSync', () => {
   })
 
   it('zeigt den zuletzt gecachten Stand, auch wenn das Netz nicht antwortet', async () => {
-    // §5: „Gecachte Inhalte werden sofort gerendert." Ein Kaltstart im
+    // §5: "Gecachte Inhalte werden sofort gerendert." Ein Kaltstart im
     // Flugmodus zeigt den Fall, statt ihn für leer zu erklären.
     server.fremdeZeile('item-1', bytes(7))
 
@@ -334,7 +334,7 @@ describe('useSync', () => {
       await result.current.mutiere(anlegen('item-neu', bytes(4, 5)))
     })
 
-    // Noch nichts auf dem Server — und trotzdem steht die Zeile da (§5).
+    // Noch nichts auf dem Server, und trotzdem steht die Zeile da (§5).
     expect(result.current.zustand.zeilen).toHaveLength(1)
     expect(result.current.zustand.zeilen[0]).toMatchObject({ id: 'item-neu', seq: 0 })
 
@@ -400,19 +400,19 @@ describe('useSync', () => {
      * untergehen.
      *
      * Wer antippt, während eine Runde läuft, hängt seine Mutation an und
-     * vermerkt „gleich nochmal" — mehr kann er nicht tun, denn zwei Runden
+     * vermerkt "gleich nochmal". Mehr kann er nicht tun, denn zwei Runden
      * nebeneinander holten dasselbe Delta zweimal. Bricht die laufende Runde
      * danach ab, muss der Vermerk sie überleben: Sonst wartet die Aufgabe auf
      * ein Ereignis, das nicht kommt. Die Türklingel läutet nur, wenn jemand
      * *anders* schreibt, `online` feuert nicht, wer nie offline war, und das
-     * Polling schweigt, solange Realtime steht. Sichtbar wäre sie trotzdem —
+     * Polling schweigt, solange Realtime steht. Sichtbar wäre sie trotzdem:
      * optimistisch angezeigt, aber auf keinem Server, und genau dieses stille
      * Auseinanderlaufen schliesst §5 aus.
      */
     /*
      * `netzfehler` ist hier ein *vorübergehender* Zustand: Die gescheiterte
      * Runde setzt ihn, die sofort folgende Wiederholung räumt ihn wieder ab.
-     * Ein `waitFor` darauf ist deshalb ein Wettlauf — es sieht den Wert nur,
+     * Ein `waitFor` darauf ist deshalb ein Wettlauf: Es sieht den Wert nur,
      * wenn es zwischen beidem einmal nachsieht, und unter Last tut es das
      * manchmal nicht. Mitgeschrieben wird er stattdessen bei jedem Rendern.
      */
@@ -428,7 +428,7 @@ describe('useSync', () => {
     await waitFor(() => expect(result.current.zustand.gecacht).toBe(true))
     await waitFor(() => expect(result.current.zustand.laedtNetz).toBe(false))
 
-    // Eine Runde beim billigen Check anhalten …
+    // Eine Runde beim billigen Check anhalten ...
     const entscheide = server.haltVersionAn()
 
     act(() => {
@@ -437,7 +437,7 @@ describe('useSync', () => {
 
     await waitFor(() => expect(result.current.zustand.laedtNetz).toBe(true))
 
-    // … und währenddessen eine Aufgabe anlegen.
+    // ... und währenddessen eine Aufgabe anlegen.
     await act(async () => {
       await result.current.mutiere(anlegen('item-neu', bytes(4)))
     })
@@ -452,7 +452,7 @@ describe('useSync', () => {
 
     /*
      * Auf den sichtbaren Netzfehler wird hier ausdrücklich *nicht* gewartet.
-     * Die nachgeholte Runde startet sofort und räumt ihn wieder weg — ob ein
+     * Die nachgeholte Runde startet sofort und räumt ihn wieder weg. Ob ein
      * `waitFor` das Zwischenbild erwischt, hängt an der Maschine und nicht an
      * der Zusage. Das Mitschreiben oben sieht ihn dagegen zuverlässig, weil es
      * an jedem Rendern hängt und nicht am Zeitpunkt des Nachsehens.
@@ -462,7 +462,7 @@ describe('useSync', () => {
      */
     await waitFor(() => expect(result.current.zustand.zeilen[0]?.seq).toBe(1))
 
-    // Gemeldet wurde der Fehlschlag trotzdem — und danach wieder abgeräumt.
+    // Gemeldet wurde der Fehlschlag trotzdem und danach wieder abgeräumt.
     expect(gesehen.some((fehler) => fehler !== null)).toBe(true)
     expect(result.current.zustand.netzfehler).toBeNull()
   })
@@ -487,7 +487,7 @@ describe('useSync', () => {
   })
 
   it('arbeitet die Queue beim Reconnect ab', async () => {
-    // §5: „beim Reconnect abgearbeitet." Was im Flugmodus angehängt wurde, geht
+    // §5: "beim Reconnect abgearbeitet." Was im Flugmodus angehängt wurde, geht
     // hinaus, sobald das Gerät wieder Netz hat.
     const { result } = renderHook(() => useSync(FALL))
     await waitFor(() => expect(result.current.zustand.gecacht).toBe(true))
@@ -540,7 +540,7 @@ describe('useSync', () => {
   })
 
   it('legt im Cache ausschliesslich die Bytes des Servers ab', async () => {
-    // §5: „byteidentisch zum Server". Der Beweis ist ein zweiter Kaltstart —
+    // §5: "byteidentisch zum Server". Der Beweis ist ein zweiter Kaltstart:
     // was er zeigt, kam aus IndexedDB und nirgendwoher sonst.
     server.fremdeZeile('item-1', bytes(0xde, 0xad, 0xbe, 0xef))
 
@@ -559,8 +559,8 @@ describe('useSync', () => {
   it('lässt einen Tombstone den Bestand erreichen, ohne ihn dazwischen zurückzunehmen', async () => {
     /*
      * §5: Jede Mutation wird optimistisch lokal angewandt. Das trägt nur, wenn
-     * die Anzeige zwischen „bestätigt" und „Delta da" nicht kurz auf den Stand
-     * davor zurückfällt — sonst käme die gerade gelöschte Aufgabe für die Dauer
+     * die Anzeige zwischen "bestätigt" und "Delta da" nicht kurz auf den Stand
+     * davor zurückfällt. Sonst käme die gerade gelöschte Aufgabe für die Dauer
      * eines Rundlaufs wieder, und zwar ausgerechnet dann, wenn alles geklappt
      * hat.
      */

@@ -19,8 +19,8 @@ import {
  *
  * §10 verlangt genau diese Fälle: Die Function weist eine Freigabe ab, wenn
  * eine der beiden Signaturen falsch ist, wenn `device_id` einer anderen Person
- * gehört oder wenn die Mitgliedschaft fehlt — jeweils **ohne eine Zeile zu
- * schreiben**. Und sie nimmt die `user_id` aus dem geprüften Token, nie aus dem
+ * gehört oder wenn die Mitgliedschaft fehlt, jeweils ohne eine Zeile zu
+ * schreiben. Zudem nimmt sie die `user_id` aus dem geprüften Token, nie aus dem
  * Request-Body.
  *
  * Geprüft wird die Entscheidungslogik, nicht die Deno-Laufzeit: `index.ts`

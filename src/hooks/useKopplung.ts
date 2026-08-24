@@ -217,7 +217,7 @@ export function useKopplungswache(aktiv: boolean): WacheZustand {
          * schnelleren zurückkommen, der längst freigegeben hat. Ohne diese
          * Sperre schriebe er "wartet" darüber, und weil der Takt dann schon
          * abgeräumt ist, sähe niemand je wieder nach. Der Screen bliebe auf
-         * "Warten auf die Bestätigung…" stehen, obwohl er offen ist.
+         * "Warten auf die Bestätigung..." stehen, obwohl er offen ist.
          */
         if (abgeraeumt || fertig) {
           return

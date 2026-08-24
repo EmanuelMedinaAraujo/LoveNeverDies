@@ -5,7 +5,7 @@ import { fehler, stubClient } from './supabaseAdapter'
 /**
  * `memberships` über Supabase (DESIGN.md §4).
  *
- * Ein `select`, mehr gibt die Policy `memberships_read` her — und mehr braucht
+ * Ein `select`, mehr gibt die Policy `memberships_read` her. Mehr braucht
  * die Zuweisung nicht: Kennungen im Klartext (§3.3), Namen kommen von
  * anderswoher. Geprüft wird die Übersetzung: Spaltennamen in camelCase, die
  * Reihenfolge der Beitritte, und aus einem PostgREST-`error` ein Wurf statt

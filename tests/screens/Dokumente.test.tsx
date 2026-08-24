@@ -17,7 +17,7 @@ const { Dokumente } = await import('../../src/screens/shared/Aufgabe/Dokumente.t
 /**
  * Die Dokumente einer Aufgabe (DESIGN.md §7).
  *
- * Geprüft wird, was §7 der Oberfläche zusagt: Die Aktion heißt „Dokument
+ * Geprüft wird, was §7 der Oberfläche zusagt: Die Aktion heißt "Dokument
  * einfach abfotografieren" und öffnet die Kamera; ohne Verbindung ist sie zu
  * und sagt, warum; wer die Aufgabe nicht hat, sieht die Dokumente trotzdem und
  * löscht keines; vor dem Löschen wird gefragt; und ein Fehlschlag steht als
@@ -79,7 +79,7 @@ beforeEach(() => {
   useDokumente.mockReset()
 
   // jsdom kennt keine Objekt-URLs. Der Screen erzeugt beim Ansehen eine und
-  // widerruft sie wieder — beides soll hier stattfinden können.
+  // widerruft sie wieder: Beides soll hier stattfinden können.
   globalThis.URL.createObjectURL = vi.fn(() => 'blob:dokument')
   globalThis.URL.revokeObjectURL = vi.fn()
 })

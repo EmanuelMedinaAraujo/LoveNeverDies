@@ -9,12 +9,12 @@ import stile from './Meldungen.module.css'
  *
  * Zwei Mitteilungen, dieselbe Regel: Nichts verschwindet still, und nichts
  * verschwindet von selbst. Ein Zeitablauf wäre wieder das stille Verschwinden,
- * das §5 ausschließt — weg geht die Mitteilung nur, wenn jemand sie zur
+ * das §5 ausschließt. Weg geht die Mitteilung nur, wenn jemand sie zur
  * Kenntnis nimmt.
  *
  * Sie stehen hier und nicht in einem Screen, weil beide auf mehreren Screens
  * auftreten können: Wer auf Start ein Häkchen setzt, muss dort erfahren, dass
- * der Server es verworfen hat, und nicht erst in „Alle".
+ * der Server es verworfen hat, und nicht erst in "Alle".
  */
 
 /** Wie die drei Operationen heissen, wenn eine Mitteilung von ihnen erzählt. */
@@ -27,10 +27,10 @@ const WAS: Record<AbgelehnteAenderung['was'], string> = {
 /**
  * Was der Server verworfen hat (§5).
  *
- * „Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern mit
+ * "Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern mit
  * ihrem entschlüsselten Inhalt als Mitteilung angezeigt." Beides steht hier:
  * die Zahl, weil drei verlorene Änderungen etwas anderes sind als eine, und der
- * Titel, weil „eine Änderung konnte nicht gespeichert werden" niemandem sagt,
+ * Titel, weil "eine Änderung konnte nicht gespeichert werden" niemandem sagt,
  * was er noch einmal tippen muss.
  */
 export function Abgelehnt({
@@ -53,7 +53,7 @@ export function Abgelehnt({
           <li key={`${aenderung.itemId}:${stelle}`} className={stile.hinweis}>
             {/*
               Ohne Titel bleibt es beim Vorgang. Das passiert, wenn die Zeile
-              inzwischen ein Tombstone ist — dann gibt es keinen DEK mehr, unter
+              inzwischen ein Tombstone ist. Dann gibt es keinen DEK mehr, unter
               dem sich der Payload lesen liesse (§5).
             */}
             {aenderung.titel === ''
@@ -73,10 +73,10 @@ export function Abgelehnt({
 /**
  * Reservierungen, die an jemand anderen gegangen sind (§7).
  *
- * „Greifen zwei gleichzeitig zu, gewinnt LWW, und die unterlegene Person
+ * "Greifen zwei gleichzeitig zu, gewinnt LWW, und die unterlegene Person
  * bekommt 'Bert hat diese Aufgabe übernommen' statt eines stillen Verlusts."
- * Genau dieser Satz steht hier — mit dem Titel dabei, denn in einer Liste von
- * vierzig Aufgaben ist „diese" keine Auskunft.
+ * Genau dieser Satz steht hier, mit dem Titel dabei, denn in einer Liste von
+ * vierzig Aufgaben ist "diese" keine Auskunft.
  */
 export function Uebernahmen({
   uebernahmen,

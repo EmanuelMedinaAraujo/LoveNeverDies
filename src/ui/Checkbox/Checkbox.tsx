@@ -10,7 +10,7 @@ import stile from './Checkbox.module.css'
  * Ansage mit, ohne dass jemand daran denken muss.
  *
  * Die Beschriftung ist Pflicht und umschliesst das Feld. Damit trifft auch ein
- * ungenauer Fingertipp — die Trefferflaeche ist die ganze Zeile, nicht das
+ * ungenauer Fingertipp. Die Trefferflaeche ist die ganze Zeile, nicht das
  * Kaestchen.
  */
 

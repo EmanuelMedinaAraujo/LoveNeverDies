@@ -15,10 +15,10 @@ import {
  * Der gewöhnliche Weg steht in `keystore.test.ts`. Hier geht es um die zwei
  * Zusagen, die man erst bemerkt, wenn sie fehlen:
  *
- * 1. **Ein unlesbarer Seed wird nicht ersetzt.** Neu erzeugen sähe aus wie ein
+ * 1. Ein unlesbarer Seed wird nicht ersetzt. Neu erzeugen sähe aus wie ein
  *    frisches Gerät und machte stillschweigend alles unlesbar, was an den alten
- *    Schlüssel gewrappt ist — der Fall wäre weg, ohne Fehlermeldung.
- * 2. **Ein gescheiterter Versuch vergiftet den nächsten nicht.** Der Hook ruft
+ *    Schlüssel gewrappt ist. Der Fall wäre weg, ohne Fehlermeldung.
+ * 2. Ein gescheiterter Versuch vergiftet den nächsten nicht. Der Hook ruft
  *    erneut auf; stünde die gescheiterte Zusage weiter im Modul, bliebe das
  *    Gerät für den Rest der Sitzung ohne Identität.
  */
@@ -80,7 +80,7 @@ describe('Ein Seed, der nicht zu entschluesseln ist', () => {
   it('wird gemeldet statt stillschweigend ersetzt', async () => {
     const { ladeOderErzeugeIdentitaet } = await import('../../src/core/crypto/keystore')
 
-    // Beides da, aber der Schluessel passt nicht zum Envelope — so sieht ein
+    // Beides da, aber der Schluessel passt nicht zum Envelope. So sieht ein
     // teilweise wiederhergestelltes Backup aus.
     await schreibeRoh({
       [WRAPPING_SCHLUESSEL]: await fremderSchluessel(),
@@ -106,7 +106,7 @@ describe('Ein Seed, der nicht zu entschluesseln ist', () => {
   it('laesst den naechsten Versuch wieder zu', async () => {
     /*
      * Der erste Aufruf scheitert an der Datenbank. Danach ist der abgelegte
-     * Satz in Ordnung — und der zweite Aufruf muss ihn bekommen, statt die
+     * Satz in Ordnung, und der zweite Aufruf muss ihn bekommen, statt die
      * gescheiterte Zusage von vorhin zurueckzugeben.
      */
     const { ladeOderErzeugeIdentitaet } = await import('../../src/core/crypto/keystore')

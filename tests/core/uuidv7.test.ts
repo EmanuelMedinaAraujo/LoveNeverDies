@@ -43,7 +43,7 @@ describe('uuidv7', () => {
 
   it('steigt streng, auch innerhalb derselben Millisekunde', () => {
     // Ohne den Zaehler in `rand_a` waeren zwei IDs derselben Millisekunde in
-    // zufaelliger Reihenfolge — und eine Liste, die nach ID sortiert, zeigte
+    // zufaelliger Reihenfolge. Eine Liste, die nach ID sortiert, zeigte
     // zwei gleichzeitig angelegte Aufgaben mal so und mal so herum.
     vi.spyOn(Date, 'now').mockReturnValue(1_800_000_000_000)
 

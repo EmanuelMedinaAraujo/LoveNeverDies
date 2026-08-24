@@ -6,7 +6,7 @@
 
 /*
  * Die Aufnahme ist eine Schaltflaeche und kein Dateifeld, das nach
- * "Durchsuchen…" aussieht (§7). Das eigentliche <input> liegt unsichtbar
+ * "Durchsuchen..." aussieht (§7). Das eigentliche <input> liegt unsichtbar
  * darunter; sichtbar ist das <label>, das es ausloest.
  */
 .aufnahme {

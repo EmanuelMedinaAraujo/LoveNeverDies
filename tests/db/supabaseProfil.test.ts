@@ -23,7 +23,7 @@ describe('speichere (§3.3)', () => {
       display_name: 'Anna Müller',
       email: 'anna@example.de',
     })
-    // Ohne `onConflict` legte der zweite Start eine zweite Zeile an — und der
+    // Ohne `onConflict` legte der zweite Start eine zweite Zeile an, und der
     // Primärschlüssel wiese sie ab, bei jeder Anmeldung aufs Neue.
     expect(gesehen.hochgeladen?.optionen).toEqual({ onConflict: 'user_id' })
   })

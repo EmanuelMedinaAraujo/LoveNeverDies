@@ -46,7 +46,7 @@ export type VaultReleaseZeile = {
 /**
  * Eine Freigabe auf dem Weg zur Edge Function `vault-release` (§3.5, §9).
  *
- * Ohne `user_id`? Nein, mit — aber sie steht hier nur, weil sie in die
+ * Ohne `user_id`? Nein, mit, aber sie steht hier nur, weil sie in die
  * Signatur eingeht. Die Function nimmt die Kennung ausdrücklich aus dem
  * geprüften Token und nie aus diesem Body.
  */
@@ -104,7 +104,7 @@ export type TresorTabelle = {
    *
    * Der Weg über eine RPC und nicht über ein `insert`: `vault_shares` hat
    * keine Schreib-Policy, weil die Verteilung dem Preparer gehört. Stelle und
-   * Hash nimmt die Datenbank aus der bestehenden Zeile, nicht von hier — sonst
+   * Hash nimmt die Datenbank aus der bestehenden Zeile, nicht von hier. Sonst
    * liesse sich ein erfundener Anteil samt passendem Hash unterschieben.
    */
   uebergibShare(
@@ -121,8 +121,8 @@ export type TresorTabelle = {
    * Schickt eine Freigabe an die Edge Function `vault-release` (§3.5, §9).
    *
    * Der einzige Weg in `vault_releases`: Direktes INSERT ist per RLS für alle
-   * ausgeschlossen. Und der einzige Schreibweg dieser App, der **nicht** durch
-   * die Offline-Queue geht (§5) — eine versehentlich abgeschickte
+   * ausgeschlossen. Und der einzige Schreibweg dieser App, der nicht durch
+   * die Offline-Queue geht (§5). Eine versehentlich abgeschickte
    * Todesbestätigung nimmt niemand zurück.
    */
   sendeFreigabe(freigabe: NeueFreigabe): Promise<void>
@@ -133,7 +133,7 @@ export type TresorTabelle = {
    * @param proof `SHA-256("LN-open-v1" ‖ K_v)`.
    * @param katalogVersion der Stand, den dieser Client mitbringt (§8).
    * @param payload `{personName, sterbedatum}` unter `K_c`.
-   * @returns die gültige `catalog_version` — die eigene oder die eines
+   * @returns die gültige `catalog_version`: die eigene oder die eines
    * schnelleren Clients. Wer sie nicht kennt, instanziiert nicht.
    */
   oeffneTresor(

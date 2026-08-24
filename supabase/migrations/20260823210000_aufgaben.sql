@@ -8,7 +8,7 @@
 -- Im Klartext bleiben nur die Spalten aus §3.3. Titel, Beschreibung, Typ und
 -- Erledigt-Status liegen im Payload, verschlüsselt unter einem DEK, der pro
 -- Item erzeugt und unter `K_c` gewrappt wird (§3.1). Der Server kann eine
--- Aufgabe zählen, datieren und ausliefern — lesen kann er sie nie.
+-- Aufgabe zählen, datieren und ausliefern, lesen kann er sie nie.
 
 create table items (
   id           uuid primary key,                   -- UUIDv7 vom Client (§5)
@@ -29,8 +29,8 @@ create table items (
  * der ganze Delta-Sync ist (§5). Er ist zusätzlich eindeutig.
  *
  * Die strenge Monotonie trägt die Zeilensperre in `items_assign_seq`. Der
- * eindeutige Index ändert daran nichts und macht die Zusage auch nicht wahr —
- * er sorgt dafür, dass sie nicht still gebrochen werden kann. Ein Trigger, der
+ * eindeutige Index ändert daran nichts und macht die Zusage auch nicht wahr.
+ * Er sorgt dafür, dass sie nicht still gebrochen werden kann. Ein Trigger, der
  * die Sperre eines Tages verlöre, schriebe sonst zwei Zeilen mit derselben
  * Nummer, und ein Client mit dieser Nummer als Wasserzeichen sähe eine davon
  * nie wieder. Kosten: keine, denn genau diese Spalten stünden ohnehin im Index.
@@ -42,7 +42,7 @@ create unique index items_case_seq_idx on items (case_id, seq);
  *
  * `bigserial` scheidet aus zwei Gründen aus: Es inkrementiert bei UPDATE nicht,
  * also übersähe der Delta-Sync jedes Edit und jeden Soft-Delete, und es vergibt
- * Nummern vor dem Commit — eine Transaktion mit `seq = 41` könnte nach einer
+ * Nummern vor dem Commit: Eine Transaktion mit `seq = 41` könnte nach einer
  * mit `seq = 42` committen, und ein Client, der 42 gesehen hat, bekäme 41 nie
  * zu Gesicht.
  *
@@ -55,7 +55,7 @@ create unique index items_case_seq_idx on items (case_id, seq);
  * eine einzige Wahrheit, gegen die der billige Check aus §5 läuft
  * (`version > watermark`) und auf der die Realtime-Subscription sitzt.
  *
- * **`security definer`, anders als in der Skizze in §4.** Auf `cases` gibt es
+ * `security definer`, anders als in der Skizze in §4. Auf `cases` gibt es
  * bewusst keine UPDATE-Policy und kein UPDATE-Recht für `authenticated`: Wer
  * einen Fall ändern darf, entscheidet nicht diese Tabelle. Liefe der Trigger
  * als Aufrufer, träfe sein `update` auf keine Zeile, `v` bliebe NULL und jeder
@@ -73,7 +73,7 @@ begin
    returning version into v;
 
   -- Der Fremdschlüssel greift erst am Ende der Anweisung. Ohne diese Zeile
-  -- meldete ein Item ohne Fall „seq darf nicht NULL sein" statt zu sagen, was
+  -- meldete ein Item ohne Fall "seq darf nicht NULL sein" statt zu sagen, was
   -- wirklich fehlt.
   if v is null then
     raise exception 'Zu diesem Item gibt es keinen Fall %.', new.case_id using errcode = '23503';
@@ -90,13 +90,13 @@ create trigger items_seq before insert or update on items
 /*
  * Löschen gewinnt endgültig (§5).
  *
- * `items_assign_seq` hebt `seq` auch bei einem `deleted → false`, und
+ * `items_assign_seq` hebt `seq` auch bei einem `deleted -> false`, und
  * Last-Write-Wins trüge die Auferstehung an jedes Gerät. Ohne Durchsetzung
  * wäre die Regel eine Hoffnung.
  *
  * Der Trigger heißt `items_no_undelete` und läuft damit vor `items_seq`:
  * Postgres feuert BEFORE-Trigger in alphabetischer Reihenfolge. Am Ergebnis
- * ändert das nichts — eine Ausnahme rollt die ganze Anweisung zurück —, aber
+ * ändert das nichts, eine Ausnahme rollt die ganze Anweisung zurück, aber
  * die abgewiesene Auferstehung fasst so keine zweite Tabelle an.
  *
  * Verboten ist ausschließlich der Rückweg. Ein UPDATE auf einem bereits
@@ -125,7 +125,7 @@ create policy items_write on items for insert with check (is_member(case_id));
 /*
  * Kein eigenes `with check`: Fehlt es, nimmt Postgres den `using`-Ausdruck
  * auch für die geänderte Zeile. Das ist hier die richtige Regel und nicht bloß
- * die kürzere — sonst schöbe ein Mitglied seine Items per `case_id` in einen
+ * die kürzere: Sonst schöbe ein Mitglied seine Items per `case_id` in einen
  * fremden Fall, in dem es nichts zu suchen hat.
  */
 create policy items_edit on items for update using (is_member(case_id));
@@ -136,7 +136,7 @@ create policy items_edit on items for update using (is_member(case_id));
  * Nicht bloß keine Policy, sondern auch kein Recht: Die Zeilen wurden zuvor an
  * alle Mitglieder synchronisiert und liegen in deren Ciphertext-Caches. Ein
  * hartes Löschen käme dort nie an, weil der Delta-Sync ausschließlich Zuwachs
- * trägt — die Aufgabe verschwände auf einem Gerät und bliebe auf allen
+ * trägt: Die Aufgabe verschwände auf einem Gerät und bliebe auf allen
  * anderen stehen. Gelöscht wird über `deleted = true`, und das ist ein UPDATE,
  * das `seq` hebt und deshalb wie jede andere Änderung ankommt.
  */

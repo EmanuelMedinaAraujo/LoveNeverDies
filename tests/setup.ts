@@ -7,7 +7,7 @@ import { afterEach } from 'vitest'
  *
  * `cleanup` von Hand: Testing Library hängt sich selbst nur ein, wenn das
  * Testframework `afterEach` global bereitstellt. Vitest tut das ohne
- * `globals: true` nicht — ohne diesen Aufruf sammelten sich die gerenderten
+ * `globals: true` nicht. Ohne diesen Aufruf sammelten sich die gerenderten
  * Bäume im selben `document`, und `getByRole` fände ab dem zweiten Test
  * jeweils mehrere Treffer.
  */

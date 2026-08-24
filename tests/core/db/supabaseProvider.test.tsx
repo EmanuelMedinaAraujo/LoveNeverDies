@@ -11,7 +11,7 @@ import {
  * Der eine Client für die ganze App (DESIGN.md §4, §5).
  *
  * Was hier zählt, ist nicht, was Supabase tut, sondern wann der Provider einen
- * Client anlegt und wann er ihn wegräumt — beides hat einen Grund, der im
+ * Client anlegt und wann er ihn wegräumt. Beides hat einen Grund, der im
  * Modul selbst als Kommentar steht, und beides ginge ohne Test lautlos kaputt.
  */
 
@@ -73,7 +73,7 @@ describe('SupabaseProvider', () => {
   it('legt keinen Client an, solange niemand danach fragt', () => {
     /*
      * Der Grund steht im Modul: Fehlt die Projektkonfiguration, wirft das
-     * Anlegen — und ein Wurf beim Rendern des Providers naehme die
+     * Anlegen. Ein Wurf beim Rendern des Providers naehme die
      * Anmeldeseite mit, die von Supabase gar nichts braucht.
      */
     render(
@@ -103,7 +103,7 @@ describe('SupabaseProvider', () => {
     /*
      * Clerk gibt bei jeder Erneuerung eine neue Geberfunktion heraus. Haenge
      * der Client daran, entstuende er dauernd neu. Er haengt deshalb an einer
-     * Referenz — und die muss auf den *aktuellen* Geber zeigen, sonst fragte
+     * Referenz. Die muss auf den *aktuellen* Geber zeigen, sonst fragte
      * er fuer den Rest der Sitzung ein abgelaufenes Token ab.
      */
     const alterGeber = vi.fn().mockResolvedValue('altes-token')

@@ -29,7 +29,7 @@ import {
  * Die beiden Hälften des heikelsten Ablaufs im Projekt, jede für sich
  * prüfbar: Eine Freigabe entsteht auf dem Gerät eines Angehörigen und prüft
  * ihren eigenen Share, bevor irgendetwas hinausgeht. Das Öffnen setzt zusammen,
- * was ankam, und misst das Ergebnis am `vault_commitment` — nicht am Zähler.
+ * was ankam, und misst das Ergebnis am `vault_commitment`, nicht am Zähler.
  */
 
 const FALL = '11111111-1111-4111-8111-111111111111'

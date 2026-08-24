@@ -16,7 +16,7 @@ import {
  *
  * Der gewöhnliche Weg steht in `geraeteService.test.ts` gegen eine Tabelle,
  * die sich wie `device_keys` verhält. Hier stehen die Fälle, die sich mit
- * einer sich korrekt verhaltenden Tabelle **nicht** herstellen lassen: der
+ * einer sich korrekt verhaltenden Tabelle nicht herstellen lassen: der
  * Wettlauf, der in beiden Richtungen verliert, und die Namensprüfung.
  */
 
@@ -59,7 +59,7 @@ describe('registriereGeraet', () => {
   it('gibt auf, wenn sich das Geraet weder finden noch anlegen laesst', async () => {
     /*
      * `legeAn` meldet einen Konflikt (jemand war schneller), aber das
-     * anschliessende `finde` liefert nichts — die Zeile ist also weder da noch
+     * anschliessende `finde` liefert nichts: Die Zeile ist also weder da noch
      * anzulegen. Eine Geraeteliste ohne das eigene Geraet waere schlimmer als
      * ein Abbruch: Sie saehe vollstaendig aus.
      */

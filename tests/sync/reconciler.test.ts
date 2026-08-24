@@ -7,11 +7,11 @@ import { vereine, wendeAn } from '../../src/core/sync/reconciler'
  *
  * Zwei Regeln, beide ohne Client-Uhr:
  *
- *   1. **Last-Write-Wins über die serverseitig vergebene `seq`.** Wer die
- *      höhere Nummer trägt, gewinnt — und zwar auch dann, wenn ein Delta in
+ *   1. Last-Write-Wins über die serverseitig vergebene `seq`. Wer die
+ *      höhere Nummer trägt, gewinnt, und zwar auch dann, wenn ein Delta in
  *      falscher Reihenfolge ankommt oder zweimal verarbeitet wird.
- *   2. **Löschen gewinnt endgültig.** Die Datenbank weist ein
- *      `deleted → false` ab (§4); hier steht dieselbe Regel noch einmal,
+ *   2. Löschen gewinnt endgültig. Die Datenbank weist ein
+ *      `deleted -> false` ab (§4); hier steht dieselbe Regel noch einmal,
  *      damit ein Bestand, der einen Tombstone kennt, ihn nicht durch eine
  *      alte Zeile aus dem Cache verliert.
  *
@@ -52,7 +52,7 @@ describe('vereine', () => {
   it('lässt eine niedrigere seq nicht gewinnen', () => {
     // Ein zweimal verarbeitetes oder verspätet eintreffendes Delta darf den
     // Stand nicht zurückdrehen. Ohne diese Regel bräuchte die Verrechnung eine
-    // verlässliche Reihenfolge — die es über zwei Geräte hinweg nicht gibt.
+    // verlässliche Reihenfolge, die es über zwei Geräte hinweg nicht gibt.
     const { zeilen } = vereine([zeile('a', 5)], [zeile('a', 2)])
 
     expect(zeilen).toEqual([zeile('a', 5)])
@@ -61,7 +61,7 @@ describe('vereine', () => {
   it('belebt ein gelöschtes Item auch dann nicht wieder, wenn ein Edit höher zählt', () => {
     /*
      * Die Zusage aus §5 in ihrer schärfsten Form. Die Datenbank weist ein
-     * `deleted → false` ab, dieses Delta kann es also gar nicht geben — aber
+     * `deleted -> false` ab, dieses Delta kann es also gar nicht geben, aber
      * ein bösartiger Server ist Teil des Bedrohungsmodells (§11), und eine
      * Regel, die nur an einer Stelle steht, ist keine.
      */
@@ -89,7 +89,7 @@ describe('vereine', () => {
   })
 
   it('nennt genau die Zeilen, die sich wirklich geändert haben', () => {
-    // §5: „sichtbare Screens aktualisieren sich nur für tatsächlich geänderte
+    // §5: "sichtbare Screens aktualisieren sich nur für tatsächlich geänderte
     // Zeilen". Ohne diese Liste entschlüsselte ein Kaltstart bei jeder
     // Türklingel den ganzen Fall neu.
     const { geaendert } = vereine(
@@ -109,12 +109,12 @@ describe('vereine', () => {
 
 describe('wendeAn', () => {
   /*
-   * §5: „Jede Mutation wird optimistisch lokal angewandt und angehängt."
+   * §5: "Jede Mutation wird optimistisch lokal angewandt und angehängt."
    *
-   * Das „optimistisch" liegt hier und nicht im Cache: Der Cache trägt
+   * Das "optimistisch" liegt hier und nicht im Cache: Der Cache trägt
    * ausschliesslich, was der Server bestätigt hat, und was noch in der Queue
    * steht, wird bei jedem Rendern darübergelegt. Das ist der Grund, aus dem eine
-   * abgelehnte Mutation sich von selbst zurücknimmt — sie verlässt die Queue,
+   * abgelehnte Mutation sich von selbst zurücknimmt: Sie verlässt die Queue,
    * und mit ihr verschwindet ihre Wirkung. Läge sie stattdessen im Cache, bliebe
    * ein abgelehntes Edit dort für immer stehen: Der Delta-Sync brächte es nie
    * zurück, weil sich auf dem Server nichts geändert hat.
@@ -146,7 +146,7 @@ describe('wendeAn', () => {
 
   it('gibt einer noch nicht übertragenen Zeile die seq 0', () => {
     // `seq` vergibt ausschliesslich der Server (§4). Bis er es getan hat, steht
-    // 0 da — niedriger als jedes Delta, also gewinnt die bestätigte Zeile,
+    // 0 da: niedriger als jedes Delta, also gewinnt die bestätigte Zeile,
     // sobald sie kommt.
     const [zeile] = wendeAn([], [
       {
@@ -180,14 +180,14 @@ describe('wendeAn', () => {
     const [gelöscht] = wendeAn([zeile('a', 4)], [{ op: 'loeschen', itemId: 'a', ts: 17 }])
 
     expect(gelöscht?.geloescht).toBe(true)
-    // Payload und DEK werden geleert, so wie der Server es täte (§5) — sonst
+    // Payload und DEK werden geleert, so wie der Server es täte (§5). Sonst
     // stünde der Ciphertext einer gelöschten Aufgabe weiter im Cache.
     expect(gelöscht?.payload).toEqual(new Uint8Array())
     expect(gelöscht?.wrappedDek).toEqual(new Uint8Array())
   })
 
   it('wendet mehrere Mutationen in Reihenfolge an', () => {
-    // Anlegen, ändern, abhaken — alles im Flugmodus, alles auf demselben Item.
+    // Anlegen, ändern, abhaken: alles im Flugmodus, alles auf demselben Item.
     const zeilen = wendeAn(
       [],
       [
@@ -210,7 +210,7 @@ describe('wendeAn', () => {
 
   it('lässt ein Edit auf eine unbekannte Zeile fallen', () => {
     // Kein Anlegen dazu, keine bestätigte Zeile: Es gibt nichts, worüber sich
-    // etwas legen liesse. Eine erfundene Zeile wäre schlimmer — sie erschiene
+    // etwas legen liesse. Eine erfundene Zeile wäre schlimmer: Sie erschiene
     // als Aufgabe ohne Inhalt.
     expect(wendeAn([], [{ op: 'aendern', itemId: 'weg', payload: new Uint8Array(), ts: 1 }])).toEqual(
       [],
