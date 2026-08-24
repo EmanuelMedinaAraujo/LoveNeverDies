@@ -34,6 +34,7 @@ import {
   type Aufgabenpayload,
   type Fallschluessel,
 } from './aufgabenService'
+import { NIEMAND } from './zuweisung'
 
 /** Die Instanziierung war nicht durchzuführen. */
 export class KatalogFehler extends Error {
@@ -104,6 +105,9 @@ function payloadAus(
     notizen: '',
     parentId: null,
     dependsOn,
+    // Die Aufgaben der Juristinnen kommen unzugewiesen in den Fall (§7): Wer
+    // sie übernimmt, entscheidet die Familie, nicht der Katalog.
+    assignee: NIEMAND,
     katalog: { ...uebriges, aufgabeId: id, version },
   }
 }
@@ -124,6 +128,7 @@ function unterpayloadAus(titel: string, parentId: string): Aufgabenpayload {
     notizen: '',
     parentId,
     dependsOn: [],
+    assignee: NIEMAND,
     katalog: null,
   }
 }

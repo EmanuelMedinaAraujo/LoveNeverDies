@@ -14,6 +14,7 @@ import {
   type Aufgabe,
   type Fallschluessel,
 } from '../../src/services/aufgabenService'
+import { ALLE, NIEMAND, personen } from '../../src/services/zuweisung'
 
 /**
  * Aufgaben anlegen, ändern, abhaken und löschen (DESIGN.md §3.1, §3.3, §5).
@@ -627,5 +628,118 @@ describe('beschreibeAbgelehnte', () => {
 
     expect(beschrieben?.titel).toBe('')
     expect(beschrieben?.grund).toMatch(/nicht mehr da/)
+  })
+})
+
+describe('Zuweisung (§7)', () => {
+  const ANNA = { userId: 'user_anna', name: 'Anna Müller' }
+  const BERT = { userId: 'user_bert', name: 'Bert Müller' }
+
+  it('legt eine Aufgabe ohne Angabe unzugewiesen an', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const aufgabe = await legeAn(inhalte, k, 'Sterbeurkunde beantragen')
+
+    expect(aufgabe.assignee).toEqual(NIEMAND)
+  })
+
+  it('trägt die anlegende Person gleich ein', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    await uebertrage(inhalte, await mutationAnlegen(k, 'Konto kündigen', null, ANNA))
+
+    const { aufgaben } = await lies(inhalte, k)
+
+    expect(aufgaben[0]?.assignee).toEqual(personen([ANNA]))
+  })
+
+  it('weist einer zweiten Person zu, ohne die erste zu verdrängen', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const aufgabe = await legeAn(inhalte, k, 'Sterbeurkunde beantragen')
+    await uebertrage(inhalte, await mutationAendern(aufgabe, { assignee: personen([ANNA, BERT]) }))
+
+    const { aufgaben } = await lies(inhalte, k)
+
+    expect(aufgaben[0]?.assignee).toEqual(personen([ANNA, BERT]))
+  })
+
+  it('trägt "Alle" als eigenen Wert ein und nicht als Liste aller Namen', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const aufgabe = await legeAn(inhalte, k, 'Sterbeurkunde beantragen')
+    await uebertrage(inhalte, await mutationAendern(aufgabe, { assignee: ALLE }))
+
+    const { aufgaben } = await lies(inhalte, k)
+
+    expect(aufgaben[0]?.assignee).toEqual(ALLE)
+  })
+
+  it('lässt die Zuweisung stehen, wenn jemand nur ein Häkchen setzt', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const aufgabe = await legeAn(inhalte, k, 'Sterbeurkunde beantragen')
+    await uebertrage(inhalte, await mutationAendern(aufgabe, { assignee: personen([BERT]) }))
+
+    const [mitZuweisung] = (await lies(inhalte, k)).aufgaben
+    await uebertrage(inhalte, await mutationAendern(mitZuweisung!, { erledigt: true }))
+
+    const { aufgaben } = await lies(inhalte, k)
+
+    expect(aufgaben[0]?.assignee).toEqual(personen([BERT]))
+    expect(aufgaben[0]?.erledigt).toBe(true)
+  })
+
+  it('gibt eine Reservierung wieder frei', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const aufgabe = await legeAn(inhalte, k, 'Sterbeurkunde beantragen')
+    await uebertrage(inhalte, await mutationAendern(aufgabe, { assignee: NIEMAND }))
+
+    const { aufgaben } = await lies(inhalte, k)
+
+    expect(aufgaben[0]?.assignee).toEqual(NIEMAND)
+  })
+
+  it('schickt die Zuweisung ausschließlich verschlüsselt hinaus (§3.3)', async () => {
+    const { inhalte, zeilen } = server()
+    const k = fall()
+
+    await uebertrage(inhalte, await mutationAnlegen(k, 'Konto kündigen', null, ANNA))
+
+    const alles = zeilen.flatMap((zeile) => [...zeile.payload]).join(',')
+    const bytes = (text: string) => [...new TextEncoder().encode(text)].join(',')
+
+    expect(alles).not.toContain(bytes(ANNA.userId))
+    expect(alles).not.toContain(bytes(ANNA.name))
+  })
+
+  it('liest eine Aufgabe von vor diesem Slice als unzugewiesen', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const dek = erzeugeDek()
+
+    await inhalte.lege({
+      id: 'item-alt',
+      fallId: k.id,
+      art: 'item',
+      kid: k.kid,
+      wrappedDek: await wrappeDek(k.kc, dek),
+      payload: await verschluessele(
+        dek,
+        textBytes(JSON.stringify({ typ: 'aufgabe', titel: 'Alte Aufgabe' })),
+      ),
+    })
+
+    const { aufgaben } = await lies(inhalte, k)
+
+    expect(aufgaben[0]?.assignee).toEqual(NIEMAND)
   })
 })

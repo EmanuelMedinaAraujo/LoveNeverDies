@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Aufgabe, Katalogherkunft } from '../../src/services/aufgabenService'
 import { baueBaum } from '../../src/services/aufgabenbaum'
 import { ERINNERUNGSTAGE, planeErinnerungen } from '../../src/services/erinnerungen'
+import { NIEMAND } from '../../src/services/zuweisung'
 
 /**
  * Lokale Erinnerungen (DESIGN.md §7).
@@ -25,6 +26,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     notizen: '',
     parentId: null,
     dependsOn: [],
+    assignee: NIEMAND,
     katalog: null,
     dek: new Uint8Array([9]),
     kid: 'case_fall-1:1',

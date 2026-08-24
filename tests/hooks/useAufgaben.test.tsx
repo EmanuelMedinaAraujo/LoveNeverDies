@@ -6,6 +6,7 @@ import type { Syncdaten, SyncZustand } from '../../src/hooks/useSync.ts'
 import type { Aufgabe } from '../../src/services/aufgabenService.ts'
 import type { Aufgabenfall } from '../../src/hooks/useAufgaben.ts'
 import { baueBaum } from '../../src/services/aufgabenbaum.ts'
+import { ALLE, NIEMAND, personen } from '../../src/services/zuweisung.ts'
 
 /**
  * Die Aufgaben eines Falls (DESIGN.md §3.1, §5, §7).
@@ -37,6 +38,15 @@ vi.mock('../../src/services/aufgabenService.ts', () => ({
 const useSync = vi.fn<(fallId: string) => Syncdaten>()
 
 vi.mock('../../src/hooks/useSync.ts', () => ({ useSync: (fallId: string) => useSync(fallId) }))
+
+/** Die angemeldete Person. Sie ist das, was in eine Zuweisung geschrieben wird (§7). */
+const ICH = { userId: 'user_anna', name: 'Anna Müller' }
+
+vi.mock('../../src/core/auth/authProvider.ts', () => ({
+  useAuth: () => ({
+    zustand: { status: 'angemeldet', benutzer: { id: ICH.userId, anzeigename: ICH.name } },
+  }),
+}))
 
 /** Der Zugang zum Server. Angefasst wird er nicht — der Katalog ist ersetzt. */
 vi.mock('../../src/core/db/supabaseProvider.tsx', () => ({ useSupabase: () => () => ({}) }))
@@ -83,6 +93,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     notizen: '',
     parentId: null,
     dependsOn: [],
+    assignee: NIEMAND,
     katalog: null,
     dek: new Uint8Array([9]),
     kid: FALL.kid,
@@ -251,7 +262,9 @@ describe('useAufgaben', () => {
     await act(async () => {
       await result.current.legeAn('Konten kündigen')
     })
-    expect(mutationAnlegen).toHaveBeenCalledWith(FALL, 'Konten kündigen', null)
+    // Die anlegende Person geht mit hinaus: Wer etwas aufschreibt, ist damit
+    // eingetragen (§7).
+    expect(mutationAnlegen).toHaveBeenCalledWith(FALL, 'Konten kündigen', null, ICH)
     expect(mutiere).toHaveBeenCalledWith(angelegt)
 
     await act(async () => {
@@ -475,5 +488,219 @@ describe('useAufgaben', () => {
         }),
       )
     })
+  })
+})
+
+/**
+ * Zuweisung und der verlorene Zugriff (DESIGN.md §7).
+ *
+ * Was eine Zuweisung bedeutet, steht in `zuweisung.test.ts`. Hier steht, was
+ * dieser Hook damit tut: die richtige Mutation bauen — und mitbekommen, wenn
+ * eine Reservierung an jemand anderen gegangen ist.
+ */
+describe('Zuweisung', () => {
+  const BERT = { userId: 'user_bert', name: 'Bert Müller' }
+
+  function mitAufgabe(zuweisung = NIEMAND, ueberschreibung: Partial<Aufgabe> = {}) {
+    const eine = aufgabe({ assignee: zuweisung, ...ueberschreibung })
+
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], uebersprungeneIds: [] })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile(eine.id)] }))
+
+    return eine
+  }
+
+  it('trägt die angemeldete Person ein, wenn sie übernimmt', async () => {
+    const eine = mitAufgabe()
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.uebernimm(eine)
+    })
+
+    expect(mutationAendern).toHaveBeenCalledWith(eine, { assignee: personen([ICH]) })
+  })
+
+  it('wirft beim Übernehmen niemanden hinaus, der schon eingetragen ist', async () => {
+    const eine = mitAufgabe(personen([BERT]))
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.uebernimm(eine)
+    })
+
+    expect(mutationAendern).toHaveBeenCalledWith(eine, { assignee: personen([BERT, ICH]) })
+  })
+
+  it('löst auch eine fremde Reservierung (§7)', async () => {
+    const eine = mitAufgabe(personen([BERT]))
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.gibFrei(eine)
+    })
+
+    expect(mutationAendern).toHaveBeenCalledWith(eine, { assignee: NIEMAND })
+  })
+
+  it('setzt "Alle" als eigenen Wert', async () => {
+    const eine = mitAufgabe()
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.weiseZu(eine, ALLE)
+    })
+
+    expect(mutationAendern).toHaveBeenCalledWith(eine, { assignee: ALLE })
+  })
+
+  it('beobachtet auch das Ankreuzen im Aufgabendetail', async () => {
+    /*
+     * Sich selbst anzukreuzen ist dasselbe wie „Übernehmen" — und muss deshalb
+     * dieselbe Mitteilung nach sich ziehen, wenn ein anderes Gerät gewinnt (§7).
+     */
+    const eine = mitAufgabe()
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result, rerender } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.weiseZu(eine, personen([ICH]))
+    })
+
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [aufgabe({ assignee: personen([BERT]) })],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
+    rerender()
+
+    await waitFor(() =>
+      expect(result.current.uebernahmen).toEqual([
+        { itemId: eine.id, titel: eine.titel, name: 'Bert Müller' },
+      ]),
+    )
+  })
+
+  it('schweigt, wenn man die Aufgabe selbst weitergegeben hat', async () => {
+    const eine = mitAufgabe()
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result, rerender } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.uebernimm(eine)
+    })
+
+    await act(async () => {
+      await result.current.weiseZu(eine, personen([BERT]))
+    })
+
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [aufgabe({ assignee: personen([BERT]) })],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
+    rerender()
+
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+    expect(result.current.uebernahmen).toEqual([])
+  })
+
+  it('meldet, wer die Aufgabe stattdessen bekommen hat', async () => {
+    /*
+     * Der Fall aus §7: Zwei greifen gleichzeitig zu, die höhere `seq` gewinnt.
+     * Hier tippt die angemeldete Person auf „Übernehmen"; im nächsten Delta
+     * steht Bert. Statt eines stillen Verlusts gibt es einen Satz.
+     */
+    const eine = mitAufgabe()
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result, rerender } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.uebernimm(eine)
+    })
+
+    expect(result.current.uebernahmen).toEqual([])
+
+    // Bert war schneller.
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [aufgabe({ assignee: personen([BERT]) })],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
+    rerender()
+
+    await waitFor(() =>
+      expect(result.current.uebernahmen).toEqual([
+        { itemId: eine.id, titel: eine.titel, name: 'Bert Müller' },
+      ]),
+    )
+
+    act(() => {
+      result.current.bestaetigeUebernahmen()
+    })
+
+    expect(result.current.uebernahmen).toEqual([])
+  })
+
+  it('schweigt, wenn die eigene Reservierung durchgekommen ist', async () => {
+    const eine = mitAufgabe()
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result, rerender } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.uebernimm(eine)
+    })
+
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [aufgabe({ assignee: personen([ICH, BERT]) })],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
+    rerender()
+
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+    expect(result.current.uebernahmen).toEqual([])
+  })
+
+  it('schweigt, wenn die Aufgabe wieder freigegeben wurde', async () => {
+    const eine = mitAufgabe()
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result, rerender } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.uebernimm(eine)
+    })
+
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [aufgabe({ assignee: NIEMAND })],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
+    rerender()
+
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+    expect(result.current.uebernahmen).toEqual([])
   })
 })

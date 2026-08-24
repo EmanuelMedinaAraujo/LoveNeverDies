@@ -8,13 +8,28 @@ import type { Erinnerungsdaten } from '../../src/hooks/useErinnerungen.ts'
 import type { Aufgabe as Aufgabendatensatz, Katalogherkunft } from '../../src/services/aufgabenService.ts'
 import { baueBaum } from '../../src/services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
-import { rendereMitProvidern } from './harness.tsx'
+import { BENUTZER, rendereMitProvidern } from './harness.tsx'
+import { ALLE, NIEMAND, personen } from '../../src/services/zuweisung.ts'
 
 const useCase = vi.fn<() => Falldaten>()
 const useAufgaben = vi.fn<() => Aufgabendaten>()
 
 vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
 vi.mock('../../src/hooks/useAufgaben.ts', () => ({ useAufgaben: () => useAufgaben() }))
+
+/*
+ * Die Mitgliederliste kommt vom Server (§4). Hier steht sie fest: Der Screen
+ * soll zeigen, was er aus ihr macht, nicht ob Supabase antwortet.
+ */
+let useMitgliederfehler: string | null = null
+
+vi.mock('../../src/hooks/useMitglieder.ts', () => ({
+  useMitglieder: () => ({
+    userIds: [BENUTZER.id, 'user_bert'],
+    ich: { userId: BENUTZER.id, name: BENUTZER.anzeigename },
+    fehler: useMitgliederfehler,
+  }),
+}))
 
 const { Aufgabe } = await import('../../src/screens/shared/Aufgabe/Aufgabe.tsx')
 
@@ -77,6 +92,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabendatensatz> = {}): Aufgabendate
     notizen: '',
     parentId: null,
     dependsOn: [],
+    assignee: personen([{ userId: BENUTZER.id, name: BENUTZER.anzeigename }]),
     katalog: herkunft(),
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,
@@ -112,6 +128,12 @@ function aufgabendaten(
     schreibe: vi.fn().mockResolvedValue(undefined),
     hakeAb: vi.fn().mockResolvedValue(undefined),
     loesche: vi.fn().mockResolvedValue(undefined),
+    ich: { userId: BENUTZER.id, name: BENUTZER.anzeigename },
+    uebernimm: vi.fn().mockResolvedValue(undefined),
+    gibFrei: vi.fn().mockResolvedValue(undefined),
+    weiseZu: vi.fn().mockResolvedValue(undefined),
+    uebernahmen: [],
+    bestaetigeUebernahmen: vi.fn(),
     ...rest,
   }
 }
@@ -129,6 +151,7 @@ function zeigeDetail(id = 'item-1') {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  useMitgliederfehler = null
   useCase.mockReturnValue({
     zustand: { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
     legeTrauerfallAn: vi.fn().mockResolvedValue(undefined),
@@ -448,5 +471,190 @@ describe('Aufgabendetail (§7, §8)', () => {
     await userEvent.click(screen.getByRole('link', { name: 'Zurück zu allen Aufgaben' }))
 
     await waitFor(() => expect(screen.getByText('Alle Aufgaben')).toBeVisible())
+  })
+})
+
+/**
+ * Zuständigkeit im Aufgabendetail (DESIGN.md §7).
+ *
+ * Der Screen, auf dem eine Familie die Arbeit verteilt: übernehmen, freigeben,
+ * jemanden eintragen, „Alle". Die Sperre gilt für das Bearbeiten — nicht für
+ * das Lesen und nicht für die Zuweisung selbst. Wer nicht eingetragen ist, soll
+ * die Rechtsgrundlage sehen und sich eintragen können.
+ */
+describe('Zuständigkeit (§7)', () => {
+  const BERT = { userId: 'user_bert', name: 'Bert Müller' }
+
+  function mitAufgabe(ueberschreibung: Partial<Aufgabendatensatz>) {
+    const daten = aufgabendaten({
+      zustand: {
+        status: 'bereit',
+        aufgaben: [aufgabe(ueberschreibung)],
+        uebersprungen: 0,
+        ...NETZ,
+      },
+    })
+
+    useAufgaben.mockReturnValue(daten)
+
+    return daten
+  }
+
+  it('nennt die zuständige Person', () => {
+    mitAufgabe({ assignee: personen([BERT]) })
+
+    zeigeDetail()
+
+    expect(screen.getByText('Zuständig: Bert Müller')).toBeVisible()
+  })
+
+  it('lässt eine unzugewiesene Aufgabe übernehmen', async () => {
+    const daten = mitAufgabe({ assignee: NIEMAND })
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Übernehmen' }))
+
+    expect(daten.weiseZu).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item-1' }),
+      personen([{ userId: BENUTZER.id, name: BENUTZER.anzeigename }]),
+    )
+  })
+
+  it('lässt jedes Mitglied eine fremde Reservierung lösen', async () => {
+    const daten = mitAufgabe({ assignee: personen([BERT]) })
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Freigeben' }))
+
+    expect(daten.weiseZu).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), NIEMAND)
+  })
+
+  it('weist einer zweiten Person zu, ohne die erste zu verdrängen', async () => {
+    const daten = mitAufgabe({ assignee: personen([{ userId: BENUTZER.id, name: BENUTZER.anzeigename }]) })
+
+    zeigeDetail()
+
+    /*
+     * „Weiteres Mitglied": Bert steht in `memberships`, aber sein Name ist
+     * diesem Gerät noch nirgends begegnet. Die Namenstabelle `profiles` kommt
+     * mit der Kopplung (#10, §3.3) — bis dahin ist eine namenlose Person immer
+     * noch besser als eine unsichtbare.
+     */
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Weiteres Mitglied' }))
+
+    expect(daten.weiseZu).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item-1' }),
+      personen([{ userId: BENUTZER.id, name: BENUTZER.anzeigename }, { userId: BERT.userId, name: '' }]),
+    )
+  })
+
+  it('setzt "Alle" als eigenen Wert und nicht als Liste aller Namen', async () => {
+    const daten = mitAufgabe({ assignee: NIEMAND })
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Alle' }))
+
+    expect(daten.weiseZu).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), ALLE)
+  })
+
+  it('macht aus "Alle" die eine Person, die angetippt wird', async () => {
+    /*
+     * Bei „Alle" stehen alle Häkchen, ein Tipp kommt also als „abwählen" an —
+     * gemeint ist aber „nur sie". Ein Klick, der sichtbar nichts tut, wäre die
+     * schlechtere Antwort.
+     */
+    const daten = mitAufgabe({ assignee: ALLE })
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Sie' }))
+
+    expect(daten.weiseZu).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item-1' }),
+      personen([{ userId: BENUTZER.id, name: BENUTZER.anzeigename }]),
+    )
+  })
+
+  it('zeigt bei "Alle" jedes Mitglied als zugewiesen', () => {
+    mitAufgabe({ assignee: ALLE })
+
+    zeigeDetail()
+
+    expect(screen.getByRole('checkbox', { name: 'Alle' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Sie' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Weiteres Mitglied' })).toBeChecked()
+  })
+
+  it('kennt den Namen eines Mitglieds, sobald er in einer Zuweisung steht', () => {
+    // Der Name kommt aus dem Payload, in dem er ohnehin steht — nicht aus einer
+    // Tabelle, die es noch nicht gibt (§3.3, #10).
+    mitAufgabe({ assignee: personen([BERT]) })
+
+    zeigeDetail()
+
+    expect(screen.getByRole('checkbox', { name: 'Bert Müller' })).toBeChecked()
+  })
+
+  it('sperrt Häkchen, Notizen und Unteraufgaben, wenn die Aufgabe nicht mir gehört', () => {
+    mitAufgabe({ assignee: personen([BERT]) })
+
+    zeigeDetail()
+
+    expect(screen.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toBeDisabled()
+    expect(
+      screen.getByText(/Diese Aufgabe ist Ihnen nicht zugewiesen/),
+    ).toBeVisible()
+  })
+
+  it('sagt es, wenn die Mitglieder nicht abrufbar sind', () => {
+    useMitgliederfehler = 'Kein Netz.'
+    mitAufgabe({ assignee: NIEMAND })
+
+    zeigeDetail()
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Die Mitglieder dieses Falls sind gerade nicht abrufbar. Kein Netz.',
+    )
+
+    // Übernehmen geht trotzdem: Dafür braucht es nur die eigene Person.
+    expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeEnabled()
+  })
+
+  it('lässt die Rechtsgrundlage trotzdem lesen', () => {
+    mitAufgabe({ assignee: personen([BERT]) })
+
+    zeigeDetail()
+
+    expect(screen.getByText('§ 28 PStG')).toBeVisible()
+  })
+
+  it('sperrt das Häkchen einer Unteraufgabe, die einer anderen Person gehört', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({ id: 'item-1' }),
+            aufgabe({
+              id: 'item-2',
+              titel: 'Urkunden bestellen',
+              parentId: 'item-1',
+              katalog: null,
+              assignee: personen([BERT]),
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    expect(screen.getByRole('checkbox', { name: 'Urkunden bestellen' })).toBeDisabled()
   })
 })

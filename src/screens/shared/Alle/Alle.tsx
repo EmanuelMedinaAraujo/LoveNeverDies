@@ -3,7 +3,6 @@ import { Link, Navigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
-import type { AbgelehnteAenderung } from '../../../services/aufgabenService.ts'
 import { sortiereNachFrist, type Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
 import { fristlage, fristText, heuteIso, type Fristlage } from '../../../services/fristen.ts'
@@ -12,6 +11,8 @@ import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
+import { darfBearbeiten, istFrei, zuweisungText } from '../../../services/zuweisung.ts'
+import { Abgelehnt, Uebernahmen } from '../Meldungen/Meldungen.tsx'
 import stile from './Alle.module.css'
 
 /**
@@ -61,18 +62,25 @@ function Aufgabenzeile({
   knoten,
   lage,
   gesperrt,
+  ichUserId,
   aufHaken,
   aufSpeichern,
   aufLoeschen,
+  aufUebernehmen,
+  aufFreigeben,
 }: {
   knoten: Aufgabenknoten
   lage: Fristlage
   gesperrt: boolean
+  /** Die angemeldete Person. Ob sie bearbeiten darf, entscheidet die Zuweisung (§7). */
+  ichUserId: string
   /** @returns ob die Änderung angehängt wurde. Sonst nimmt die Zeile sie zurück. */
   aufHaken: (erledigt: boolean) => Promise<boolean>
   /** `false`, wenn nichts gespeichert wurde. Die Zeile bleibt dann offen. */
   aufSpeichern: (titel: string, beschreibung: string) => Promise<boolean>
   aufLoeschen: () => void
+  aufUebernehmen: () => void
+  aufFreigeben: () => void
 }) {
   const { aufgabe, unteraufgaben, istBlatt, erledigt: giltAlsErledigt, blockiertVon } = knoten
 
@@ -216,13 +224,20 @@ function Aufgabenzeile({
   const badge = fristText(lage)
   const blockiert = blockiertVon.length > 0
 
+  /*
+   * §7: „Bearbeiten darf nur, wem sie zugewiesen ist." Wer nicht darunter
+   * steht, sieht die Aufgabe vollständig — Titel, Frist, Stand — und findet
+   * statt der Schaltflächen den einen Weg, der ihm offensteht: sie übernehmen.
+   */
+  const darfAendern = darfBearbeiten(aufgabe.assignee, ichUserId)
+
   return (
     <li className={[stile.zeile, blockiert ? stile.blockiert : null].filter(Boolean).join(' ')}>
       <div className={stile.titelzeile}>
         {istBlatt ? (
           <Checkbox
             checked={erledigt}
-            disabled={gesperrt}
+            disabled={gesperrt || !darfAendern}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label={aufgabe.titel}
           />
@@ -263,6 +278,8 @@ function Aufgabenzeile({
         <p className={stile.beschreibung}>{aufgabe.beschreibung}</p>
       )}
 
+      <p className={stile.hinweis}>Zuständig: {zuweisungText(aufgabe.assignee, ichUserId)}</p>
+
       <div className={stile.aktionen}>
         {/*
           Der Weg ins ganzseitige Detail (§7). Der Titel geht zum Vorlesen mit,
@@ -272,8 +289,9 @@ function Aufgabenzeile({
           Details
           <span className="nur-vorlesen">: „{aufgabe.titel}"</span>
         </Link>
+
         {/*
-          Beide Schaltflächen tragen den Titel zum Vorlesen mit. Ohne ihn hörte
+          Jede Schaltfläche trägt den Titel zum Vorlesen mit. Ohne ihn hörte
           eine blinde Person in einer Liste von zwanzig Aufgaben zwanzigmal
           „Ändern" und wüsste nie, welche gemeint ist (§7).
 
@@ -282,74 +300,51 @@ function Aufgabenzeile({
           ab, ein führendes Leerzeichen fiele also weg und beide Teile klebten
           aneinander.
         */}
-        <Button variante="sekundaer" onClick={beginneAendern} vorleseText={`: „${aufgabe.titel}"`}>
-          Ändern
-        </Button>
-        <Button
-          variante="sekundaer"
-          onClick={() => setzeModus('loeschen')}
-          vorleseText={`: „${aufgabe.titel}"`}
-        >
-          Löschen
-        </Button>
+        {darfAendern ? (
+          <>
+            <Button
+              variante="sekundaer"
+              onClick={beginneAendern}
+              vorleseText={`: „${aufgabe.titel}"`}
+            >
+              Ändern
+            </Button>
+            <Button
+              variante="sekundaer"
+              onClick={() => setzeModus('loeschen')}
+              vorleseText={`: „${aufgabe.titel}"`}
+            >
+              Löschen
+            </Button>
+          </>
+        ) : (
+          <Button
+            disabled={gesperrt}
+            onClick={aufUebernehmen}
+            vorleseText={`: „${aufgabe.titel}"`}
+          >
+            Übernehmen
+          </Button>
+        )}
+
+        {/*
+          §7: „Eine Reservierung ist von jedem wieder lösbar, nicht nur von der
+          reservierenden Person." In einer Familie fällt jemand aus, und eine
+          Aufgabe, die niemand mehr freigeben kann, blockiert eine gesetzliche
+          Frist.
+        */}
+        {istFrei(aufgabe.assignee) ? null : (
+          <Button
+            variante="sekundaer"
+            disabled={gesperrt}
+            onClick={aufFreigeben}
+            vorleseText={`: „${aufgabe.titel}"`}
+          >
+            Freigeben
+          </Button>
+        )}
       </div>
     </li>
-  )
-}
-
-/** Wie die drei Operationen heissen, wenn eine Mitteilung von ihnen erzählt. */
-const WAS: Record<AbgelehnteAenderung['was'], string> = {
-  anlegen: 'Anlegen',
-  aendern: 'Ändern',
-  loeschen: 'Löschen',
-}
-
-/**
- * Was der Server verworfen hat (§5).
- *
- * „Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern mit
- * ihrem entschlüsselten Inhalt als Mitteilung angezeigt." Beides steht hier:
- * die Zahl, weil drei verlorene Änderungen etwas anderes sind als eine, und der
- * Titel, weil „eine Änderung konnte nicht gespeichert werden" niemandem sagt,
- * was er noch einmal tippen muss.
- *
- * Weg geht die Mitteilung nur, wenn jemand sie zur Kenntnis nimmt. Ein
- * Zeitablauf wäre wieder das stille Verschwinden, das §5 ausschliesst.
- */
-function Abgelehnt({
-  aenderungen,
-  aufBestaetigen,
-}: {
-  aenderungen: AbgelehnteAenderung[]
-  aufBestaetigen: () => void
-}) {
-  return (
-    <Card>
-      <p role="alert">
-        {aenderungen.length === 1
-          ? 'Eine Änderung konnte nicht gespeichert werden.'
-          : `${aenderungen.length} Änderungen konnten nicht gespeichert werden.`}
-      </p>
-
-      <ul className={stile.liste}>
-        {aenderungen.map((aenderung, stelle) => (
-          <li key={`${aenderung.itemId}:${stelle}`} className={stile.hinweis}>
-            {/*
-              Ohne Titel bleibt es beim Vorgang. Das passiert, wenn die Zeile
-              inzwischen ein Tombstone ist — dann gibt es keinen DEK mehr, unter
-              dem sich der Payload lesen liesse (§5).
-            */}
-            {aenderung.titel === ''
-              ? `${WAS[aenderung.was]} einer Aufgabe: ${aenderung.grund}`
-              : `${WAS[aenderung.was]} von „${aenderung.titel}“: ${aenderung.grund}`}
-          </li>
-        ))}
-      </ul>
-
-      <Button variante="sekundaer" onClick={aufBestaetigen}>
-        Verstanden
-      </Button>
-    </Card>
   )
 }
 
@@ -392,8 +387,21 @@ function Erinnerungshinweis({ erinnerungen }: { erinnerungen: Erinnerungsdaten }
 }
 
 function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
-  const { zustand, erinnerungen, abgelehnt, bestaetige, legeAn, schreibe, hakeAb, loesche } =
-    useAufgaben(fall)
+  const {
+    zustand,
+    erinnerungen,
+    abgelehnt,
+    bestaetige,
+    legeAn,
+    schreibe,
+    hakeAb,
+    loesche,
+    ich,
+    uebernimm,
+    gibFrei,
+    uebernahmen,
+    bestaetigeUebernahmen,
+  } = useAufgaben(fall)
 
   const [neuerTitel, setzeNeuerTitel] = useState('')
   const [sortierung, setzeSortierung] = useState<Sortierung>('reihenfolge')
@@ -464,6 +472,10 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
         <p className={stile.hinweis} role="alert">
           {fehler}
         </p>
+      )}
+
+      {uebernahmen.length === 0 ? null : (
+        <Uebernahmen uebernahmen={uebernahmen} aufBestaetigen={bestaetigeUebernahmen} />
       )}
 
       {abgelehnt.length === 0 ? null : (
@@ -542,11 +554,14 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
                     knoten={knoten}
                     lage={fristlage(knoten.aufgabe.katalog, fall.sterbedatum, heute)}
                     gesperrt={laeuft}
+                    ichUserId={ich.userId}
                     aufHaken={(erledigt) => fuehreAus(() => hakeAb(knoten.aufgabe, erledigt))}
                     aufSpeichern={(titel, beschreibung) =>
                       fuehreAus(() => schreibe(knoten.aufgabe, { titel, beschreibung }))
                     }
                     aufLoeschen={() => void fuehreAus(() => loesche(knoten.aufgabe))}
+                    aufUebernehmen={() => void fuehreAus(() => uebernimm(knoten.aufgabe))}
+                    aufFreigeben={() => void fuehreAus(() => gibFrei(knoten.aufgabe))}
                   />
                 ))}
               </ul>
