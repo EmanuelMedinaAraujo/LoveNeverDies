@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
+import { useTodesfall } from '../../../hooks/useTodesfall.ts'
 import { useTresor } from '../../../hooks/useTresor.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
 import type { TresorItem } from '../../../services/tresorService.ts'
@@ -144,6 +145,201 @@ function TresorInhalte({
   )
 }
 
+/**
+ * Freigabestand und Todesbestätigung (DESIGN.md §3.5, §7).
+ *
+ * §7 verlangt beides im Tab Erbe: den Freigabestatus und die Aktion "Todesfall
+ * bestätigen", mit Bestätigungsdialog. Der Dialog ist keine Höflichkeit — eine
+ * versehentlich abgeschickte Todesbestätigung nimmt niemand zurück (§5).
+ *
+ * Der Zähler steht hier als Anzeige und nicht als Auslöser (§3.5). Erreicht er
+ * `k`, heisst das ausschliesslich, dass ein Versuch sich lohnt; ob der Tresor
+ * aufgeht, entscheidet erst das Zusammensetzen.
+ */
+function Todesfallfreigabe({
+  fall,
+  onFallAktualisieren,
+}: {
+  fall: LesbarerFall
+  onFallAktualisieren: () => void
+}) {
+  const {
+    freigaben,
+    k,
+    kannFreigeben,
+    eigeneFreigabe,
+    schwelleErreicht,
+    laedt,
+    laeuft,
+    fehler,
+    unbrauchbare,
+    bestaetigeTodesfall,
+    oeffneTresor,
+  } = useTodesfall(fall, onFallAktualisieren)
+
+  const [dialog, setzeDialog] = useState<'zu' | 'bestaetigen' | 'oeffnen'>('zu')
+  const [sterbedatum, setzeSterbedatum] = useState('')
+
+  async function bestaetigen(ereignis: FormEvent) {
+    ereignis.preventDefault()
+
+    try {
+      await bestaetigeTodesfall()
+      setzeDialog('zu')
+    } catch {
+      /* Die Meldung steht in `fehler`. */
+    }
+  }
+
+  async function oeffnen(ereignis: FormEvent) {
+    ereignis.preventDefault()
+
+    try {
+      await oeffneTresor(sterbedatum)
+      setzeDialog('zu')
+    } catch {
+      /* Die Meldung steht in `fehler`, samt der Namen in `unbrauchbare`. */
+    }
+  }
+
+  if (laedt) {
+    return <Ladeanzeige text="Freigaben werden geladen..." />
+  }
+
+  return (
+    <Card>
+      <div className={stile.statusKopf}>
+        <h2 className={stile.abschnitt}>Todesfall bestätigen</h2>
+        <Badge lage={schwelleErreicht ? 'knapp' : 'ruhig'}>
+          {k === null
+            ? 'Keine Freigaben möglich'
+            : `${freigaben.length} von ${k} Freigaben`}
+        </Badge>
+      </div>
+
+      <p className={stile.hinweis}>
+        Erst wenn genügend Angehörige den Todesfall bestätigt haben, lässt sich der Tresor
+        öffnen. Eine Bestätigung lässt sich nicht zurücknehmen.
+      </p>
+
+      {freigaben.length === 0 ? (
+        <p className={stile.hinweis}>Bisher hat niemand den Todesfall bestätigt.</p>
+      ) : (
+        <ul className={stile.liste}>
+          {freigaben.map((freigabe) => (
+            <li key={freigabe.userId} className={stile.item}>
+              <p className={stile.itemTitel}>
+                {freigabe.name}
+                {freigabe.eigene ? ' (Sie)' : ''}
+              </p>
+              <p className={stile.hinweis}>
+                Freigegeben am {new Date(freigabe.freigegebenAm).toLocaleDateString('de-DE')}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {unbrauchbare.length > 0 ? (
+        <p className={stile.warnung} role="alert">
+          {unbrauchbare.length === 1
+            ? `Der Schlüsselanteil von ${unbrauchbare[0]} ist unbrauchbar.`
+            : `Die Schlüsselanteile von ${unbrauchbare.join(', ')} sind unbrauchbar.`}{' '}
+          Bitten Sie {unbrauchbare.length === 1 ? 'diese Person' : 'diese Personen'}, den
+          Todesfall erneut zu bestätigen — der zweite Versuch ersetzt den ersten.
+        </p>
+      ) : null}
+
+      {fehler !== null && unbrauchbare.length === 0 ? (
+        <p className={stile.warnung} role="alert">
+          {fehler}
+        </p>
+      ) : null}
+
+      {dialog === 'bestaetigen' ? (
+        <form className={stile.formular} onSubmit={(ereignis) => void bestaetigen(ereignis)}>
+          <p className={stile.warnung}>
+            Bestätigen Sie, dass {fall.personName} verstorben ist? Diese Bestätigung lässt sich
+            nicht zurücknehmen.
+          </p>
+
+          {/*
+            Kein Sterbedatum an dieser Stelle: Eine Freigabe trägt es nicht mit
+            (§3.5, §4), und ein Feld, dessen Inhalt beim Absenden verfiele, wäre
+            eine Auskunft, die man abgibt und die niemand bekommt. Gefragt wird
+            danach dort, wo es wirklich in den Fall geht — beim Öffnen.
+          */}
+
+          <div className={stile.gefahrGruppe}>
+            <Button type="submit" disabled={laeuft}>
+              Ja, Todesfall bestätigen
+            </Button>
+            <Button
+              variante="sekundaer"
+              type="button"
+              disabled={laeuft}
+              onClick={() => setzeDialog('zu')}
+            >
+              Abbrechen
+            </Button>
+          </div>
+        </form>
+      ) : null}
+
+      {dialog === 'oeffnen' ? (
+        <form className={stile.formular} onSubmit={(ereignis) => void oeffnen(ereignis)}>
+          <p className={stile.warnung}>
+            Der Tresor wird jetzt geöffnet und der Fall zum Trauerfall. Das lässt sich nicht
+            rückgängig machen.
+          </p>
+
+          <div className={stile.feld}>
+            <label htmlFor="oeffnen-sterbedatum">Sterbedatum</label>
+            <input
+              id="oeffnen-sterbedatum"
+              type="date"
+              className={stile.eingabe}
+              value={sterbedatum}
+              onChange={(ereignis) => setzeSterbedatum(ereignis.target.value)}
+              required
+            />
+          </div>
+
+          <div className={stile.gefahrGruppe}>
+            <Button type="submit" disabled={laeuft}>
+              Tresor jetzt öffnen
+            </Button>
+            <Button
+              variante="sekundaer"
+              type="button"
+              disabled={laeuft}
+              onClick={() => setzeDialog('zu')}
+            >
+              Abbrechen
+            </Button>
+          </div>
+        </form>
+      ) : null}
+
+      {dialog === 'zu' && kannFreigeben && !eigeneFreigabe ? (
+        <Button volleBreite disabled={laeuft} onClick={() => setzeDialog('bestaetigen')}>
+          Todesfall bestätigen
+        </Button>
+      ) : null}
+
+      {dialog === 'zu' && eigeneFreigabe ? (
+        <p className={stile.hinweis}>Sie haben den Todesfall bereits bestätigt.</p>
+      ) : null}
+
+      {dialog === 'zu' && schwelleErreicht ? (
+        <Button volleBreite disabled={laeuft} onClick={() => setzeDialog('oeffnen')}>
+          Tresor öffnen
+        </Button>
+      ) : null}
+    </Card>
+  )
+}
+
 function VorsorgeTresor({
   fall,
   onLoescheFall,
@@ -243,6 +439,8 @@ function VorsorgeTresor({
           </>
         ) : null}
       </Card>
+
+      <Todesfallfreigabe fall={fall} onFallAktualisieren={onFallAktualisieren} />
 
       {istPreparer ? (
         <>

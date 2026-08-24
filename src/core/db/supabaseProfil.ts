@@ -21,6 +21,24 @@ export class ProfilFehler extends Error {
 
 export function supabaseProfil(client: SupabaseClient): ProfilTabelle {
   return {
+    async namen(userIds: string[]) {
+      if (userIds.length === 0) {
+        return new Map()
+      }
+
+      const { data, error } = await client
+        .from(TABELLE)
+        .select('user_id, display_name')
+        .in('user_id', userIds)
+        .returns<{ user_id: string; display_name: string }[]>()
+
+      if (error !== null) {
+        throw new ProfilFehler('Die Namen der Angehörigen waren nicht abzurufen', error)
+      }
+
+      return new Map(data.map((zeile) => [zeile.user_id, zeile.display_name]))
+    },
+
     async speichere(angaben: Profilangaben) {
       /*
        * `upsert` statt `insert` mit Fehlerbehandlung: Die Zeile existiert nach

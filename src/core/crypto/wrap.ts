@@ -26,16 +26,16 @@
  * Trennzeichen trägt.
  */
 
-import { SCHLUESSEL_LAENGE, entschluessele, verschluessele } from './aead'
-import { sha256, textBytes, verkette } from './bytes'
-import { DOMAIN_SEPARATION } from './domain'
-import { entkapsele, kapsele } from './kem'
+import { SCHLUESSEL_LAENGE, entschluessele, verschluessele } from './aead.ts'
+import { sha256, textBytes, verkette } from './bytes.ts'
+import { DOMAIN_SEPARATION } from './domain.ts'
+import { entkapsele, kapsele } from './kem.ts'
 import {
   signiere,
   verifiziere,
   type GeheimerSignaturSchluessel,
   type OeffentlicherSignaturSchluessel,
-} from './sign'
+} from './sign.ts'
 
 /** Die drei Byte-Felder, die eine Zeile in `key_wraps` trägt (§4). */
 export type Wrap = {

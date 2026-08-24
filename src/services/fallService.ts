@@ -90,8 +90,14 @@ export type Fall = LesbarerFall | GesperrterFall
 
 const STERBEDATUM_FORM = /^(\d{4})-(\d{2})-(\d{2})$/
 
-/** `2026-02-30` besteht die Form, ist aber kein Kalendertag. */
-function istGueltigesDatum(sterbedatum: string): boolean {
+/**
+ * `2026-02-30` besteht die Form, ist aber kein Kalendertag.
+ *
+ * Exportiert, weil der Übergang aus der Vorsorge dasselbe Datum prüft, bevor
+ * er es in den Fall-Payload schreibt (§3.5). Zwei Prüfungen wären zwei
+ * Gelegenheiten, verschieden streng zu sein.
+ */
+export function istGueltigesSterbedatum(sterbedatum: string): boolean {
   const treffer = STERBEDATUM_FORM.exec(sterbedatum)
 
   if (treffer === null) {
@@ -115,7 +121,7 @@ function pruefeAngaben(angaben: Trauerfallangaben): void {
     throw new FallFehler('Der Name der verstorbenen Person darf nicht leer sein.')
   }
 
-  if (!istGueltigesDatum(angaben.sterbedatum)) {
+  if (!istGueltigesSterbedatum(angaben.sterbedatum)) {
     throw new FallFehler(`"${angaben.sterbedatum}" ist kein gültiges Sterbedatum.`)
   }
 }

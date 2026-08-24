@@ -39,6 +39,10 @@ function mockDb() {
     wrapFuerGeraet: () => Promise.resolve(null),
     legeWrapAn: () => Promise.reject(new Error('nicht gebraucht')),
     sharesFuerFall: () => Promise.resolve([]),
+    uebergibShare: () => Promise.reject(new Error('nicht gebraucht')),
+    freigabenFuerFall: () => Promise.resolve([]),
+    sendeFreigabe: () => Promise.reject(new Error('nicht gebraucht')),
+    oeffneTresor: () => Promise.reject(new Error('nicht gebraucht')),
     resplitVault: (_fallId, n, k, shares) => {
       gespeichertesN = n
       gespeichertesK = k

@@ -120,9 +120,10 @@ function serverDoppel() {
   }
 
   const inhalte: InhalteTabelle = {
-    // Der Weg des Rechtskatalogs (§8). `useSync` nimmt ihn nie, der Port
-    // verlangt ihn trotzdem.
+    // Der Weg des Rechtskatalogs (§8) und der des Tresorübergangs (§3.5).
+    // `useSync` nimmt beide nie, der Port verlangt sie trotzdem.
     legeAlleNeuen: () => Promise.reject(new Error('nicht gebraucht')),
+    umwrappe: () => Promise.reject(new Error('nicht gebraucht')),
 
     seit(fallId, wasserzeichen) {
       gesehen.seit += 1

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { verschluessele } from '../../src/core/crypto/aead'
+import { sha256 } from '../../src/core/crypto/bytes'
 import { geraetePruefcode } from '../../src/core/crypto/fingerprint'
-import { erzeugeKemSchluesselpaar } from '../../src/core/crypto/kem'
+import { erzeugeKemSchluesselpaar, kapsele } from '../../src/core/crypto/kem'
 import type { Geraeteidentitaet } from '../../src/core/crypto/keystore'
 import { erzeugeSignaturSchluesselpaar, pkSigBytes } from '../../src/core/crypto/sign'
 import type {
@@ -19,7 +21,7 @@ import type {
   GeraeteschluesselZeile,
 } from '../../src/core/db/geraeteschluessel'
 import type { Einloesung, KopplungTabelle, Kopplungszweck } from '../../src/core/db/kopplung'
-import type { TresorTabelle, VaultKeyWrapZeile } from '../../src/core/db/tresor'
+import type { TresorTabelle, VaultKeyWrapZeile, VaultShareZeile } from '../../src/core/db/tresor'
 import {
   ladeFaelle,
   legeTrauerfallAn,
@@ -36,6 +38,7 @@ import {
   normalisiereKopplungscode,
   schalteGeraetFrei,
 } from '../../src/services/kopplungService'
+import { entpackeEigenenAnteil } from '../../src/services/todesfallService'
 
 /**
  * Der ganze Ablauf aus DESIGN.md §6, ohne Server: Code ausgeben, einlösen,
@@ -97,6 +100,7 @@ function server() {
   const profile = new Map<string, { anzeigename: string; email: string | null }>()
   const codes = new Map<string, Codezeile>()
 
+  const vaultShareZeilen: VaultShareZeile[] = []
   let naechsterCode = 0
 
   function meldeGeraetAn(id: string, eigene: Geraeteidentitaet, userId: string) {
@@ -198,6 +202,8 @@ function server() {
         return Promise.resolve()
       },
 
+      umwrappe: () => Promise.reject(new Error('nicht gebraucht')),
+
       legeAlleNeuen: (neue: NeuerInhalt[]) => {
         for (const neu of neue) {
           if (!itemZeilen.some((zeile) => zeile.id === neu.id)) {
@@ -267,8 +273,44 @@ function server() {
         return Promise.resolve()
       },
 
-      sharesFuerFall: () => Promise.resolve([]),
+      sharesFuerFall: (fallId) =>
+        Promise.resolve(vaultShareZeilen.filter((zeile) => zeile.fallId === fallId)),
+
       resplitVault: () => Promise.reject(new Error('nicht gebraucht')),
+
+      /*
+       * Dieselbe Regel wie die RPC `uebergib_tresoranteil` (§3.5): Stelle und
+       * Hash kommen aus der bestehenden Zeile dieser Person, nie vom Aufrufer,
+       * und das Zielgerät muss ihr gehören.
+       */
+      uebergibShare(fallId, geraeteId, kemCt, wrappedShare) {
+        const eigener = vaultShareZeilen.find(
+          (zeile) => zeile.fallId === fallId && zeile.userId === userId,
+        )
+
+        if (eigener === undefined) {
+          return Promise.reject(new Error('Zu diesem Fall halten Sie keinen Anteil.'))
+        }
+
+        if (!geraeteZeilen.some((zeile) => zeile.id === geraeteId && zeile.userId === userId)) {
+          return Promise.reject(new Error('Das Gerät gehört nicht zur angemeldeten Person.'))
+        }
+
+        vaultShareZeilen.push({
+          fallId,
+          userId,
+          geraeteId,
+          shareIndex: eigener.shareIndex,
+          shareHash: eigener.shareHash,
+          kemCt,
+          wrappedShare,
+        })
+
+        return Promise.resolve()
+      },
+      freigabenFuerFall: () => Promise.resolve([]),
+      sendeFreigabe: () => Promise.reject(new Error('nicht gebraucht')),
+      oeffneTresor: () => Promise.reject(new Error('nicht gebraucht')),
     }
 
     const kopplung: KopplungTabelle = {
@@ -353,7 +395,16 @@ function server() {
     return { faelle, inhalte, wraps, geraete, kopplung, tresor }
   }
 
-  return { alsPerson, meldeGeraetAn, profile, wrapZeilen, vaultWrapZeilen, mitglieder, faelleZeilen }
+  return {
+    alsPerson,
+    meldeGeraetAn,
+    profile,
+    wrapZeilen,
+    vaultWrapZeilen,
+    vaultShareZeilen,
+    mitglieder,
+    faelleZeilen,
+  }
 }
 
 /** Bernd hat einen Fall, Anna hat ein Gerät und ein Profil, sonst nichts. */
@@ -754,5 +805,87 @@ describe('freischaltungText (§4)', () => {
     expect(freischaltungText({ freigeschaltet: 2, gesamt: 3 })).toBe('2 von 3 Fällen freigeschaltet')
     expect(freischaltungText({ freigeschaltet: 1, gesamt: 1 })).toBe('1 von 1 Fall freigeschaltet')
     expect(freischaltungText({ freigeschaltet: 0, gesamt: 2 })).toBe('0 von 2 Fällen freigeschaltet')
+  })
+})
+
+describe('Gerätewechsel eines Angehörigen vor dem Öffnen (§3.5, §6)', () => {
+  const BERNDS_ZWEITES = 'b0000000-0000-4000-8000-000000000009'
+
+  it('wrappt den eigenen Schlüsselanteil an das neue Gerät, ohne den Preparer', async () => {
+    const lage = await ausgangslage()
+
+    // Anna sorgt vor, Bernd ist ihr Angehöriger und hält einen Anteil.
+    const vorsorge = await legeVorsorgefallAn(
+      lage.anna.faelle,
+      lage.annasIdentitaet,
+      ANNAS_GERAET,
+      { personName: 'Anna Müller' },
+    )
+    // Bernd tritt dem Vorsorgefall bei — danach liest sein Gerät ihn.
+    const { code: beitritt } = await lage.bernd.kopplung.erzeugeCode(BERNDS_GERAET, 'join')
+    await fuegeZumFallHinzu(
+      lage.anna.kopplung,
+      await loeseKopplungscodeEin(lage.anna.kopplung, beitritt),
+      vorsorge,
+      lage.annasIdentitaet,
+      ANNAS_GERAET,
+    )
+
+    const kv = vorsorge.kv
+    if (kv === null) {
+      throw new Error('Der Vorsorgefall hat keinen K_v.')
+    }
+
+    const kapselung = kapsele(lage.berndsIdentitaet.pkKem)
+    lage.s.vaultShareZeilen.push({
+      fallId: vorsorge.id,
+      userId: BERND,
+      geraeteId: BERNDS_GERAET,
+      shareIndex: 1,
+      shareHash: await sha256(kv),
+      kemCt: kapselung.kemCt,
+      wrappedShare: await verschluessele(kapselung.geteiltesGeheimnis, kv),
+    })
+
+    // Bernd koppelt ein zweites Gerät. Anna — die vorsorgende Person — ist an
+    // diesem Ablauf nicht beteiligt.
+    const zweitesGeraet = identitaet()
+    lage.s.meldeGeraetAn(BERNDS_ZWEITES, zweitesGeraet, BERND)
+
+    const { code } = await lage.bernd.kopplung.erzeugeCode(BERNDS_ZWEITES, 'device')
+    const anfrage = await loeseKopplungscodeEin(lage.bernd.kopplung, code)
+
+    const faelle = await ladeFaelle(
+      lage.bernd.faelle,
+      lage.bernd.wraps,
+      lage.bernd.geraete,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+      lage.bernd.tresor,
+    )
+
+    await schalteGeraetFrei(
+      lage.bernd.kopplung,
+      lage.bernd.tresor,
+      anfrage,
+      faelle,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+    )
+
+    const neuer = lage.s.vaultShareZeilen.find((zeile) => zeile.geraeteId === BERNDS_ZWEITES)
+
+    expect(neuer).toBeDefined()
+    expect(neuer?.userId).toBe(BERND)
+    expect(neuer?.shareIndex).toBe(1)
+
+    // Und das neue Gerät liest denselben Anteil: Es kann den Todesfall
+    // bestätigen, ohne dass die vorsorgende Person noch einmal verteilt.
+    const gelesen = await entpackeEigenenAnteil(
+      neuer ?? { ...lage.s.vaultShareZeilen[0]! },
+      zweitesGeraet,
+    )
+
+    expect(Array.from(gelesen)).toEqual(Array.from(kv))
   })
 })

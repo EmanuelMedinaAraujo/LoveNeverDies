@@ -25,7 +25,7 @@
  * die steht.
  */
 
-import { entschluessele, verschluessele } from './aead'
+import { entschluessele, verschluessele } from './aead.ts'
 
 /** Eine Datei war nicht zu ver- oder zu entschlüsseln. */
 export class DateikryptoFehler extends Error {

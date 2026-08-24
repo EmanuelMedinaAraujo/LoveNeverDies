@@ -162,6 +162,7 @@ function server() {
     },
 
     schreibePayload: () => Promise.reject(new Error('nicht gebraucht')),
+    umwrappe: () => Promise.reject(new Error('nicht gebraucht')),
     loesche: () => Promise.reject(new Error('nicht gebraucht')),
   }
 
@@ -181,6 +182,10 @@ function server() {
     legeWrapAn: () => Promise.reject(new Error('nicht gebraucht')),
     sharesFuerFall: () => Promise.resolve([]),
     resplitVault: () => Promise.resolve(),
+    uebergibShare: () => Promise.reject(new Error('nicht gebraucht')),
+    freigabenFuerFall: () => Promise.resolve([]),
+    sendeFreigabe: () => Promise.reject(new Error('nicht gebraucht')),
+    oeffneTresor: () => Promise.reject(new Error('nicht gebraucht')),
   }
 
   const geraete: GeraeteschluesselTabelle = {

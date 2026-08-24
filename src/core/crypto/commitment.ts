@@ -16,8 +16,8 @@
  * Bytes.
  */
 
-import { hmacSha256, sha256, textBytes, verkette, gleichZeitkonstant } from './bytes'
-import { DOMAIN_SEPARATION } from './domain'
+import { hmacSha256, sha256, textBytes, verkette, gleichZeitkonstant } from './bytes.ts'
+import { DOMAIN_SEPARATION } from './domain.ts'
 
 /**
  * `vault_commitment = SHA-256("LN-open-v1" ‖ K_v)`, Klartextspalte auf `cases`.

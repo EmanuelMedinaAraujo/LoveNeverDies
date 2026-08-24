@@ -65,6 +65,9 @@ was einmal eingespielt ist, ist eingespielt.
 | `20260824110000_profile.sql`            | `profiles`: Anzeigename und E-Mail je Person       |
 | `20260824110100_mitgliedschaft.sql`     | `on_membership_created`: Beitritt setzt Re-Split   |
 | `20260824110200_kopplung.sql`           | `pairing_codes` und die drei Kopplungs-RPCs (§6)   |
+| `20260824140000_dokumente.sql`          | Bucket `documents`, Pfad-CHECK, Aufräum-RPC (§7)   |
+| `20260824150000_tresor.sql`             | Tresor: `vault_*`, Vorsorgefall, Re-Split (§3.5)   |
+| `20260824170000_todesfall.sql`          | `open_vault`, `vault_releases.kid`, Service-Rechte |
 
 `pairing_codes` und `pairing_attempts` haben als einzige Tabellen weder Policy
 noch `grant`. Das ist kein Versehen: §4 verlangt, dass Kopplungscodes nicht
@@ -125,6 +128,49 @@ Migrationskette, sondern hier.
 Tage existieren allein, damit der Job kein Objekt unter einem Client wegzieht,
 der gerade mitten im Download ist.
 
+## Tresorfreigabe: `vault-release`
+
+Die einzige Edge Function mit Service-Role, die eine Zeile schreibt, die kein
+Client schreiben darf. `vault_releases` ist für jedes Mitglied lesbar und für
+niemanden schreibbar (§4); der Primärschlüssel `(case_id, user_id)` setzt
+durch, dass **Personen** gezählt werden und nicht Geräte, und das trägt nur,
+wenn niemand daran vorbei einfügen kann.
+
+Sie prüft in dieser Reihenfolge: Gehört `device_id` der angemeldeten Person?
+Besteht die Mitgliedschaft? Verifizieren **beide** Signaturen — ML-DSA-65 und
+Ed25519 — über `"LN-rel-v1" ‖ case_id ‖ user_id ‖ kid ‖ SHA-256(released_share)`?
+Erst danach schreibt sie, und zwar als `insert … on conflict (case_id, user_id)
+do update`: Eine Freigabe muss ersetzbar sein, sonst machte ein einziger
+kaputter Share den Tresor endgültig unöffenbar (§3.5).
+
+Ob der Share der **richtige** ist, kann sie nicht prüfen — er liegt unter
+`K_c`. Deshalb löst der Zähler der Freigaben nichts aus. Der Übergang nach
+`trauerfall` hängt allein an `open_vault(case_id, proof, catalog_version,
+payload)`, und dieses `proof` hat nur, wer `K_v` wirklich rekonstruiert hat.
+
+Die Entscheidungslogik steht in `functions/vault-release/freigabe.ts` und ist in
+`tests/functions/vaultRelease.test.ts` geprüft; `index.ts` daneben ist die
+Verdrahtung von Token, Datenbank und HTTP. Die Kryptographie kommt aus
+`src/core/crypto` — dieselben Domain-Präfixe und dieselbe
+`@noble/post-quantum`-Version wie im Client (§9). Die Versionen sind in
+`functions/deno.json` gepinnt.
+
+**Die `user_id` kommt aus dem Token, nie aus dem Body.** Geprüft wird es von
+PostgREST: Die Function ruft `angemeldete_kennung()` mit dem Token des
+Aufrufers auf. Ausgeliefert wird sie deshalb ohne die eingebaute JWT-Prüfung
+des Gateways — die Anmeldung kommt von Clerk, und geprüft wird sie hier
+ausdrücklich selbst:
+
+```bash
+supabase functions deploy vault-release --no-verify-jwt
+```
+
+Von Hand ausprobieren, gegen den lokalen Stack:
+
+```bash
+supabase functions serve --no-verify-jwt
+```
+
 ## Clerk als Auth-Anbieter eintragen
 
 Supabase prüft die Token nicht selbst, sondern akzeptiert die von Clerk. Im
@@ -165,8 +211,8 @@ Der Publishable Key ist öffentlich und liegt ohnehin im ausgelieferten
 JavaScript. Was jemand damit sieht, entscheidet die RLS. Der **Secret Key**
 (`sb_secret_...`, früher `service_role`) umgeht sie vollständig; er gehört
 niemals in eine `VITE_`-Variable und niemals ins Repo.
-Gebraucht wird er serverseitig: von `dokumente-aufraeumen` (§7, siehe oben) und
-später von `vault-release` (§3.5). In beiden Fällen setzt Supabase ihn selbst
+Gebraucht wird er serverseitig: von `dokumente-aufraeumen` (§7) und von
+`vault-release` (§3.5, siehe oben). In beiden Fällen setzt Supabase ihn selbst
 als `SUPABASE_SERVICE_ROLE_KEY` in die Laufzeit der Funktion — einzutragen ist
 er nirgends.
 

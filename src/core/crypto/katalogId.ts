@@ -29,8 +29,8 @@
  * Fälle auch dann, wenn zwei Schlüssel je dasselbe wären.
  */
 
-import { alsBufferSource, hexText, hmacSha256, textBytes, verkette, webcrypto } from './bytes'
-import { DOMAIN_SEPARATION } from './domain'
+import { alsBufferSource, hexText, hmacSha256, textBytes, verkette, webcrypto } from './bytes.ts'
+import { DOMAIN_SEPARATION } from './domain.ts'
 
 /** Ein UUID-Textwert, wie ihn Postgres und `crypto.randomUUID` schreiben. */
 const UUID_FORM = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i

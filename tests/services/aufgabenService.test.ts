@@ -53,6 +53,7 @@ function server() {
 
   const inhalte: InhalteTabelle = {
     legeAlleNeuen: () => Promise.reject(new Error('nicht gebraucht')),
+    umwrappe: () => Promise.reject(new Error('nicht gebraucht')),
 
     seit(fallId, wasserzeichen) {
       // Sortiert über die `id` statt über `seq`: Der Reconciler stellt die
