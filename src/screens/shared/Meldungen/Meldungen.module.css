@@ -1,0 +1,14 @@
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}

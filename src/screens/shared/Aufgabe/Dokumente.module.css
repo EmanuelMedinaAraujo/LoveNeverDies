@@ -1,0 +1,105 @@
+.karte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Die Aufnahme ist eine Schaltflaeche und kein Dateifeld, das nach
+ * "Durchsuchen…" aussieht (§7). Das eigentliche <input> liegt unsichtbar
+ * darunter; sichtbar ist das <label>, das es ausloest.
+ */
+.aufnahme {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--dichte-abstand-klein);
+
+  width: 100%;
+  padding: var(--dichte-abstand-klein) var(--dichte-abstand);
+
+  border: 0.125rem solid transparent;
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-akzent);
+  color: var(--farbe-auf-akzent);
+
+  font-size: var(--dichte-schrift);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-wrap: balance;
+  cursor: pointer;
+}
+
+/*
+ * Der Fokus sitzt auf dem unsichtbaren <input>. Ohne diese Regel waere er
+ * nirgends zu sehen, und §7 nennt einen unsichtbaren Fokus eine Sackgasse.
+ */
+.aufnahme:focus-within {
+  outline: 0.1875rem solid var(--farbe-akzent);
+  outline-offset: 0.125rem;
+}
+
+.gesperrt {
+  border-color: var(--farbe-kartenrand);
+  background: var(--farbe-karte);
+  color: var(--farbe-text-sekundaer);
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/*
+ * Nicht `display: none`: Ein verstecktes Feld ist fuer die Tastatur und fuer
+ * eine Vorlesestimme gar nicht da, und das <label> allein loest nichts aus.
+ * So bleibt es bedienbar und ist trotzdem nicht zu sehen.
+ */
+.feld {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.zeile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+
+  padding: var(--dichte-abstand-klein);
+  border: 1px solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-karte);
+}
+
+.name {
+  overflow-wrap: anywhere;
+}
+
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dichte-abstand-klein);
+}
+
+.vorschau {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--dichte-radius);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}

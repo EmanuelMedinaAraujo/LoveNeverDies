@@ -1,0 +1,12 @@
+# `catalog.de.json` wird aus `rechtskatalog.de.csv` erzeugt, und
+# `tests/content/katalog.test.ts` vergleicht die Datei byteweise mit dem, was
+# der Import ausgibt (§8) — das ist die Zusage, dass der eingecheckte Stand
+# wirklich aus der Quelltabelle stammt und niemand von Hand hineingeschrieben
+# hat.
+#
+# Der Import schreibt LF. Mit `core.autocrlf=true` — der Voreinstellung unter
+# Windows — legt Git die Datei beim Auschecken aber mit CRLF ab, und dann
+# scheitert der Vergleich auf jeder Windows-Maschine, ohne dass irgendetwas an
+# ihr falsch waere. Beide Dateien bleiben deshalb LF.
+src/content/catalog.de.json eol=lf
+src/content/rechtskatalog.de.csv eol=lf

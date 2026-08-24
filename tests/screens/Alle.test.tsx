@@ -7,7 +7,8 @@ import type { Erinnerungsdaten } from '../../src/hooks/useErinnerungen.ts'
 import type { Aufgabe, Katalogherkunft } from '../../src/services/aufgabenService.ts'
 import { baueBaum } from '../../src/services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
-import { Huelle, rendereMitProvidern } from './harness.tsx'
+import { BENUTZER, Huelle, rendereMitProvidern } from './harness.tsx'
+import { NIEMAND, personen } from '../../src/services/zuweisung.ts'
 
 const useCase = vi.fn<() => Falldaten>()
 const useAufgaben = vi.fn<() => Aufgabendaten>()
@@ -47,6 +48,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     notizen: '',
     parentId: null,
     dependsOn: [],
+    assignee: personen([{ userId: BENUTZER.id, name: BENUTZER.anzeigename }]),
     katalog: null,
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,
@@ -97,6 +99,8 @@ function aufgabendaten(
   return {
     zustand:
       zustand.status === 'laedt' ? zustand : { ...zustand, baum: baueBaum(zustand.aufgaben) },
+    zeilen: [],
+    aktualisiere: vi.fn(),
     erinnerungen: ERINNERUNGEN,
     abgelehnt: [],
     bestaetige: vi.fn(),
@@ -104,6 +108,12 @@ function aufgabendaten(
     schreibe: vi.fn().mockResolvedValue(undefined),
     hakeAb: vi.fn().mockResolvedValue(undefined),
     loesche: vi.fn().mockResolvedValue(undefined),
+    ich: { userId: BENUTZER.id, name: BENUTZER.anzeigename },
+    uebernimm: vi.fn().mockResolvedValue(undefined),
+    gibFrei: vi.fn().mockResolvedValue(undefined),
+    weiseZu: vi.fn().mockResolvedValue(undefined),
+    uebernahmen: [],
+    bestaetigeUebernahmen: vi.fn(),
     ...rest,
   }
 }
@@ -825,5 +835,91 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
     })
 
     expect(screen.queryByRole('button', { name: 'Erinnerungen einschalten' })).toBeNull()
+  })
+})
+
+/**
+ * Zuweisung in der Liste (DESIGN.md §7).
+ *
+ * „Bearbeiten darf nur, wem sie zugewiesen ist." In der Liste heißt das: Wer
+ * nicht zugewiesen ist, sieht die Aufgabe vollständig und findet statt der
+ * Schaltflächen den einen Weg, der ihm offensteht.
+ */
+describe('Zuweisung', () => {
+  const BERT = { userId: 'user_bert', name: 'Bert Müller' }
+
+  function mitAufgabe(ueberschreibung: Partial<Aufgabe>) {
+    const daten = aufgabendaten({
+      zustand: {
+        status: 'bereit',
+        aufgaben: [aufgabe(ueberschreibung)],
+        uebersprungen: 0,
+        ...NETZ,
+      },
+    })
+
+    useAufgaben.mockReturnValue(daten)
+
+    return daten
+  }
+
+  it('nennt bei jeder Aufgabe, wer zuständig ist', () => {
+    mitAufgabe({ assignee: personen([BERT]) })
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByText('Zuständig: Bert Müller')).toBeVisible()
+  })
+
+  it('lässt eine fremde Aufgabe sehen, aber nicht bearbeiten', () => {
+    mitAufgabe({ assignee: personen([BERT]) })
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByRole('checkbox', { name: /Sterbeurkunde beantragen/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /^Ändern/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Löschen/ })).toBeNull()
+  })
+
+  it('lässt eine unzugewiesene Aufgabe übernehmen', async () => {
+    const daten = mitAufgabe({ assignee: NIEMAND })
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Übernehmen/ }))
+
+    expect(daten.uebernimm).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }))
+  })
+
+  it('bietet bei einer freien Aufgabe nichts zum Freigeben an', () => {
+    mitAufgabe({ assignee: NIEMAND })
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.queryByRole('button', { name: /Freigeben/ })).toBeNull()
+  })
+
+  it('lässt jedes Mitglied eine fremde Reservierung lösen (§7)', async () => {
+    const daten = mitAufgabe({ assignee: personen([BERT]) })
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Freigeben/ }))
+
+    expect(daten.gibFrei).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }))
+  })
+
+  it('meldet, wer eine Aufgabe stattdessen übernommen hat', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        uebernahmen: [{ itemId: 'item-1', titel: 'Konto kündigen', name: 'Bert Müller' }],
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Bert Müller hat diese Aufgabe übernommen: „Konto kündigen“',
+    )
   })
 })

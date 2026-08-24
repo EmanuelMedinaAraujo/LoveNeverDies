@@ -1,0 +1,28 @@
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/* Wie ueberall: nebeneinander, aber mit Umbruch bei grosser Schrift (§7). */
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dichte-abstand-klein);
+}
+
+.auswahl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.legende {
+  padding: 0;
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}
