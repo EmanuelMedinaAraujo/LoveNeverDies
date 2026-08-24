@@ -1,0 +1,213 @@
+{
+  "sprache": "de",
+  "stand": "2026-08",
+  "version": "2026-08+a6bb317e",
+  "aufgaben": [
+    {
+      "id": "todesbescheinigung",
+      "titel": "Ärztliche Todesbescheinigung ausstellen lassen",
+      "kurzbeschreibung": "Eine Ärztin oder ein Arzt stellt die Todesbescheinigung aus. Ohne sie beurkundet das Standesamt den Sterbefall nicht.",
+      "fristTage": null,
+      "fristAb": null,
+      "rechtsgrundlage": "",
+      "zustaendigeStelle": "Ärztin oder Arzt",
+      "benoetigteDokumente": [
+        "Personalausweis der verstorbenen Person"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [],
+      "hinweis": "Die Leichenschau regeln die Bestattungsgesetze der Länder. Wie schnell sie zu veranlassen ist, steht dort und unterscheidet sich je nach Bundesland.",
+      "quelleUrl": "",
+      "kategorie": "Sofort",
+      "reihenfolge": 10
+    },
+    {
+      "id": "sterbefall-anzeigen",
+      "titel": "Sterbefall beim Standesamt anzeigen",
+      "kurzbeschreibung": "Das Standesamt des Sterbeortes beurkundet den Sterbefall und stellt die Sterbeurkunden aus.",
+      "fristTage": 3,
+      "fristAb": "sterbedatum",
+      "rechtsgrundlage": "§ 28 PStG",
+      "zustaendigeStelle": "Standesamt des Sterbeortes",
+      "benoetigteDokumente": [
+        "Todesbescheinigung",
+        "Personalausweis",
+        "Geburtsurkunde oder Eheurkunde"
+      ],
+      "unteraufgaben": [
+        "Sterbeurkunden in ausreichender Zahl bestellen"
+      ],
+      "haengtAbVon": [
+        "todesbescheinigung"
+      ],
+      "hinweis": "§ 28 PStG nennt den dritten auf den Tod folgenden Werktag. Wochenenden und Feiertage zählen nicht mit, die angezeigte Frist ist deshalb die knappere.",
+      "quelleUrl": "https://www.gesetze-im-internet.de/pstg/__28.html",
+      "kategorie": "Sofort",
+      "reihenfolge": 20
+    },
+    {
+      "id": "bestattung-beauftragen",
+      "titel": "Bestattungsunternehmen beauftragen",
+      "kurzbeschreibung": "Das Bestattungsunternehmen übernimmt Überführung, Bestattung und meist auch den Gang zum Standesamt.",
+      "fristTage": null,
+      "fristAb": null,
+      "rechtsgrundlage": "",
+      "zustaendigeStelle": "Bestattungsunternehmen",
+      "benoetigteDokumente": [
+        "Todesbescheinigung",
+        "Sterbeurkunde"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [
+        "todesbescheinigung"
+      ],
+      "hinweis": "Die Bestattungsfristen stehen in den Bestattungsgesetzen der Länder und unterscheiden sich.",
+      "quelleUrl": "",
+      "kategorie": "Sofort",
+      "reihenfolge": 30
+    },
+    {
+      "id": "testament-abliefern",
+      "titel": "Testament beim Nachlassgericht abliefern",
+      "kurzbeschreibung": "Wer ein Testament der verstorbenen Person besitzt, muss es beim Nachlassgericht abliefern.",
+      "fristTage": null,
+      "fristAb": null,
+      "rechtsgrundlage": "§ 2259 BGB",
+      "zustaendigeStelle": "Nachlassgericht (Amtsgericht)",
+      "benoetigteDokumente": [
+        "Testament",
+        "Sterbeurkunde"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [],
+      "hinweis": "Das Gesetz verlangt die Ablieferung unverzüglich, nennt aber keine Zahl von Tagen.",
+      "quelleUrl": "https://www.gesetze-im-internet.de/bgb/__2259.html",
+      "kategorie": "Erbe",
+      "reihenfolge": 40
+    },
+    {
+      "id": "erbausschlagung-pruefen",
+      "titel": "Ausschlagung der Erbschaft prüfen",
+      "kurzbeschreibung": "Wer erbt, haftet auch für die Schulden. Ausschlagen lässt sich die Erbschaft nur innerhalb der Frist.",
+      "fristTage": 42,
+      "fristAb": "kenntnis",
+      "rechtsgrundlage": "§ 1944 BGB",
+      "zustaendigeStelle": "Nachlassgericht (Amtsgericht)",
+      "benoetigteDokumente": [
+        "Sterbeurkunde",
+        "Personalausweis"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [],
+      "hinweis": "Sechs Wochen ab Ihrer Kenntnis von Anfall und Berufungsgrund — nicht ab dem Sterbetag. Wer erst spät erfährt, hat auch später Frist.",
+      "quelleUrl": "https://www.gesetze-im-internet.de/bgb/__1944.html",
+      "kategorie": "Erbe",
+      "reihenfolge": 50
+    },
+    {
+      "id": "erbschein-pruefen",
+      "titel": "Erbschein beantragen oder Notwendigkeit prüfen",
+      "kurzbeschreibung": "Banken und Grundbuchamt verlangen oft einen Erbschein. Ein notarielles Testament ersetzt ihn häufig.",
+      "fristTage": null,
+      "fristAb": null,
+      "rechtsgrundlage": "§ 2353 BGB",
+      "zustaendigeStelle": "Nachlassgericht (Amtsgericht)",
+      "benoetigteDokumente": [
+        "Sterbeurkunde",
+        "Testament oder Erbvertrag"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [
+        "erbausschlagung-pruefen"
+      ],
+      "hinweis": "Ein Erbschein kostet Gebühren nach dem Nachlasswert. Vor dem Antrag lohnt die Frage, ob er überhaupt gebraucht wird.",
+      "quelleUrl": "https://www.gesetze-im-internet.de/bgb/__2353.html",
+      "kategorie": "Erbe",
+      "reihenfolge": 60
+    },
+    {
+      "id": "rentenzahlung-melden",
+      "titel": "Rentenzahlung melden",
+      "kurzbeschreibung": "Renten, die nach dem Sterbemonat weiterlaufen, werden zurückgefordert. Die Meldung stoppt sie.",
+      "fristTage": null,
+      "fristAb": null,
+      "rechtsgrundlage": "§ 118 Abs. 3 SGB VI",
+      "zustaendigeStelle": "Deutsche Post Rentenservice",
+      "benoetigteDokumente": [
+        "Sterbeurkunde",
+        "Rentenversicherungsnummer"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [
+        "sterbefall-anzeigen"
+      ],
+      "hinweis": "Zu viel gezahlte Beträge holt sich der Rentenservice auch von der Bank zurück, auf die sie überwiesen wurden.",
+      "quelleUrl": "https://www.gesetze-im-internet.de/sgb_6/__118.html",
+      "kategorie": "Behörden",
+      "reihenfolge": 70
+    },
+    {
+      "id": "krankenkasse-melden",
+      "titel": "Krankenkasse benachrichtigen",
+      "kurzbeschreibung": "Die Krankenkasse beendet die Mitgliedschaft und rechnet offene Beiträge ab.",
+      "fristTage": null,
+      "fristAb": null,
+      "rechtsgrundlage": "",
+      "zustaendigeStelle": "Krankenkasse",
+      "benoetigteDokumente": [
+        "Sterbeurkunde",
+        "Versichertennummer"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [
+        "sterbefall-anzeigen"
+      ],
+      "hinweis": "",
+      "quelleUrl": "",
+      "kategorie": "Behörden",
+      "reihenfolge": 80
+    },
+    {
+      "id": "lebensversicherung-melden",
+      "titel": "Lebensversicherung melden",
+      "kurzbeschreibung": "Eine Lebensversicherung zahlt nur, wenn sie vom Todesfall erfährt.",
+      "fristTage": null,
+      "fristAb": null,
+      "rechtsgrundlage": "",
+      "zustaendigeStelle": "Versicherungsunternehmen",
+      "benoetigteDokumente": [
+        "Versicherungsschein",
+        "Sterbeurkunde"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [
+        "sterbefall-anzeigen"
+      ],
+      "hinweis": "Versicherungsbedingungen setzen oft sehr kurze Meldefristen, häufig 48 bis 72 Stunden. Das ist eine vertragliche Frist und keine gesetzliche; sie steht in der Police.",
+      "quelleUrl": "",
+      "kategorie": "Versicherungen",
+      "reihenfolge": 90
+    },
+    {
+      "id": "erbschaftsteuer-anzeigen",
+      "titel": "Erwerb beim Finanzamt anzeigen",
+      "kurzbeschreibung": "Jeder Erwerb von Todes wegen ist dem Finanzamt anzuzeigen, auch wenn am Ende keine Steuer anfällt.",
+      "fristTage": null,
+      "fristAb": null,
+      "rechtsgrundlage": "§ 30 Abs. 1 ErbStG",
+      "zustaendigeStelle": "Erbschaftsteuerfinanzamt",
+      "benoetigteDokumente": [
+        "Sterbeurkunde",
+        "Aufstellung des Nachlasses"
+      ],
+      "unteraufgaben": [],
+      "haengtAbVon": [
+        "erbausschlagung-pruefen"
+      ],
+      "hinweis": "Das Gesetz nennt drei Monate ab Kenntnis vom Anfall. Monate lassen sich nicht verlustfrei in Tage umrechnen, deshalb steht hier keine Tagesfrist.",
+      "quelleUrl": "https://www.gesetze-im-internet.de/erbstg_1974/__30.html",
+      "kategorie": "Behörden",
+      "reihenfolge": 100
+    }
+  ]
+}

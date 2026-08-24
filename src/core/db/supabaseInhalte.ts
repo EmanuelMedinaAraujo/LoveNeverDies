@@ -163,6 +163,43 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
       }
     },
 
+    async legeAlleNeuen(neue) {
+      if (neue.length === 0) {
+        // Kein Aufruf ohne Zeilen: PostgREST machte daraus ein leeres INSERT,
+        // und der Normalfall — es ist längst alles da — kostete trotzdem einen
+        // Rundlauf.
+        return
+      }
+
+      /*
+       * `ignoreDuplicates` ist PostgRESTs `Prefer: resolution=ignore-duplicates`
+       * und damit das `on conflict do nothing` aus §8. Anders als bei einem
+       * Upsert bleibt die vorhandene Zeile dabei unangetastet — genau richtig
+       * für den Katalog: Eine bereits instanziierte Aufgabe ist ein
+       * gewöhnliches Item, das jemand geändert oder gelöscht haben kann, und
+       * eine zweite Instanziierung darf das nicht überschreiben.
+       */
+      const { error } = await client.from(TABELLE).upsert(
+        neue.map((neu) => ({
+          id: neu.id,
+          case_id: neu.fallId,
+          kind: neu.art,
+          kid: neu.kid,
+          wrapped_dek: alsBytea(neu.wrappedDek),
+          payload: alsBytea(neu.payload),
+        })),
+        { ignoreDuplicates: true },
+      )
+
+      if (error !== null) {
+        throw new InhalteFehler(
+          'Die Aufgaben aus dem Rechtskatalog waren nicht anzulegen',
+          error,
+          istUrteil(error),
+        )
+      }
+    },
+
     schreibePayload(id, payload) {
       return aendere(id, { payload: alsBytea(payload) }, 'Die Aufgabe war nicht zu ändern')
     },

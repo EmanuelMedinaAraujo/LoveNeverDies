@@ -30,10 +30,9 @@
  * entscheidet ohnehin `seq` vom Server (§4), nicht die ID.
  */
 
-import { zufallsBytes } from './crypto/bytes'
+import { hexText, zufallsBytes } from './crypto/bytes'
 
 const ZAEHLER_MAXIMUM = 0xfff
-const HEX = '0123456789abcdef'
 
 /** Der zuletzt vergebene Zeitstempel. Er wandert ausschließlich vorwärts. */
 let letzteZeit = -1
@@ -49,17 +48,6 @@ function frischerZaehler(): number {
   const [hoch = 0, niedrig = 0] = zufallsBytes(2)
 
   return (((hoch << 8) | niedrig) & ZAEHLER_MAXIMUM) >> 1
-}
-
-function hex(bytes: Uint8Array): string {
-  let text = ''
-
-  for (const byte of bytes) {
-    text += HEX[byte >> 4]
-    text += HEX[byte & 0x0f]
-  }
-
-  return text
 }
 
 /** Eine neue Item-ID. Streng steigend über alle Aufrufe dieses Tabs hinweg. */
@@ -96,7 +84,7 @@ export function uuidv7(): string {
   bytes.set(zufallsBytes(8), 8)
   bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80
 
-  const text = hex(bytes)
+  const text = hexText(bytes)
 
   return `${text.slice(0, 8)}-${text.slice(8, 12)}-${text.slice(12, 16)}-${text.slice(16, 20)}-${text.slice(20)}`
 }

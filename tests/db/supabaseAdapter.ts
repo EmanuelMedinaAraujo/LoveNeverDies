@@ -22,6 +22,7 @@ export type Aufzeichnung = {
   rpc?: string
   rpcArgumente?: Record<string, unknown>
   eingefuegt?: unknown
+  hochgeladen?: { werte: unknown; optionen: unknown }
   aktualisiert?: unknown
   filter: Record<string, unknown>
   groesserAls?: Record<string, unknown>
@@ -41,6 +42,10 @@ export function stubClient(antwort: Antwort) {
     },
     insert(werte: unknown) {
       gesehen.eingefuegt = werte
+      return kette
+    },
+    upsert(werte: unknown, optionen: unknown) {
+      gesehen.hochgeladen = { werte, optionen }
       return kette
     },
     update(werte: unknown) {

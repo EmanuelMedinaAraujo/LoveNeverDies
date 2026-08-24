@@ -120,6 +120,10 @@ function serverDoppel() {
   }
 
   const inhalte: InhalteTabelle = {
+    // Der Weg des Rechtskatalogs (§8). `useSync` nimmt ihn nie, der Port
+    // verlangt ihn trotzdem.
+    legeAlleNeuen: () => Promise.reject(new Error('nicht gebraucht')),
+
     seit(fallId, wasserzeichen) {
       gesehen.seit += 1
 

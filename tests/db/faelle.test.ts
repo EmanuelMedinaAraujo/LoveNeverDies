@@ -46,11 +46,11 @@ function legeAn(
   fuehreAus: FuehreAus,
   fallId: string,
   geraet: string,
-  abweichung: { kidFall?: string; kidKatalog?: string } = {},
+  abweichung: { kidFall?: string; kidKatalog?: string; katalogVersion?: string } = {},
 ) {
   return fuehreAus(
     `select lege_trauerfall_an(
-       $1, $2, $3, $4, $5,
+       $1, $2, $3, $4, $5, $6,
        '\\x01'::bytea, '\\x02'::bytea, '\\x03'::bytea,
        '\\x04'::bytea, '\\x05'::bytea, '\\x06'::bytea) as id`,
     [
@@ -58,10 +58,14 @@ function legeAn(
       abweichung.kidFall ?? kidFall(fallId),
       abweichung.kidKatalog ?? kidKatalog(fallId),
       new Uint8Array([0xaa, 0xbb]),
+      abweichung.katalogVersion ?? KATALOGSTAND,
       geraet,
     ],
   )
 }
+
+/** Der Katalogstand, mit dem die Testfälle eingefroren werden (§8). */
+const KATALOGSTAND = '2026-08+testtest'
 
 /** Eine neue UUID, ohne Runde über die Datenbank. */
 function fallId(): string {
@@ -79,6 +83,57 @@ function ohneAnmeldung<T>(arbeit: (fuehreAus: FuehreAus) => Promise<T>): Promise
     return arbeit((sql, parameter = []) => tx.query(sql, parameter))
   }) as Promise<T>
 }
+
+describe('Katalogstand (§8)', () => {
+  it('friert den Katalogstand bei der Anlage ein', async () => {
+    // §8: Eingefroren wird beim Übergang nach `trauerfall`. Ein direkt dort
+    // angelegter Fall friert sofort ein, nach derselben Regel.
+    const geraet = await geraeteschluessel(db, ANNA)
+    const id = fallId()
+
+    await alsBenutzer(db, ANNA)((fuehreAus) => legeAn(fuehreAus, id, geraet))
+
+    const { rows } = await db.query<{ catalog_version: string }>(
+      'select catalog_version from cases where id = $1',
+      [id],
+    )
+
+    expect(rows[0]?.catalog_version).toBe(KATALOGSTAND)
+  })
+
+  it('legt keinen Fall ohne Katalogstand an', async () => {
+    const geraet = await geraeteschluessel(db, ANNA)
+
+    await expect(
+      alsBenutzer(db, ANNA)((fuehreAus) =>
+        legeAn(fuehreAus, fallId(), geraet, { katalogVersion: '   ' }),
+      ),
+    ).rejects.toThrow(/Katalogstand/)
+  })
+
+  it('weist einen Trauerfall ohne Katalogstand auch an der RLS vorbei ab', async () => {
+    // Der CHECK und nicht die Funktion trägt die Regel: Der zweite Weg in den
+    // Status `trauerfall` — der Übergang aus der Vorsorge — ist noch nicht
+    // geschrieben, und er soll sie nicht neu erfinden müssen.
+    await expect(
+      db.query(
+        `insert into cases (status, current_kid, payload)
+         values ('trauerfall', 'case_test:1', '\\x00')`,
+      ),
+    ).rejects.toThrow(/cases_trauerfall_hat_katalogstand/)
+  })
+
+  it('lässt einen Vorsorgefall ohne Katalogstand zu', async () => {
+    // §8: Bis zum Übergang bleibt `catalog_version` NULL — ein 2026 angelegter
+    // Vorsorgefall instanziierte sonst 2031 das Recht von 2026.
+    await expect(
+      db.query(
+        `insert into cases (status, current_kid, payload)
+         values ('vorsorge', 'case_test:1', '\\x00')`,
+      ),
+    ).resolves.toBeDefined()
+  })
+})
 
 describe('lege_trauerfall_an (§2, §4)', () => {
   it('legt Fall, Mitgliedschaft und beide Wraps in einem Zug an', async () => {

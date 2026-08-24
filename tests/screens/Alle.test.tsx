@@ -33,6 +33,7 @@ const LESBAR: LesbarerFall = {
   kid: 'case_fall-1:1',
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
+  katalogVersion: '2026-08+testtest',
 }
 
 function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
@@ -41,6 +42,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     titel: 'Sterbeurkunde beantragen',
     beschreibung: '',
     erledigt: false,
+    katalog: null,
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,
     ...ueberschreibung,

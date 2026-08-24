@@ -22,6 +22,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { InhaltZeile } from '../core/db/inhalte.ts'
+import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
+import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import {
   aufgabenAusZeilen,
   beschreibeAbgelehnte,
@@ -31,8 +33,8 @@ import {
   type AbgelehnteAenderung,
   type Aufgabe,
   type Aufgabenaenderung,
-  type Fallschluessel,
 } from '../services/aufgabenService.ts'
+import { instanziiereKatalog, type Katalogfall } from '../services/katalogService.ts'
 import { useSync } from './useSync.ts'
 
 export type AufgabenZustand =
@@ -69,8 +71,33 @@ const VERWORFEN = Symbol('verworfen')
 /** Nichts abgelehnt — als eine Liste, damit sie ihre Identität behält. */
 const KEINE: AbgelehnteAenderung[] = []
 
-export function useAufgaben(fall: Fallschluessel): Aufgabendaten {
+/**
+ * Die Aufgaben der Juristinnen zuerst, in ihrer Reihenfolge (§8) — danach, was
+ * jemand selbst angelegt hat, in der Anlagereihenfolge.
+ *
+ * Ohne diesen Schritt stünde die Rechtsliste in der Reihenfolge ihrer IDs, und
+ * die sind ein UUIDv5 über einen HMAC (§8): zufällig. Die Ausschlagungsfrist
+ * käme dann irgendwo zwischen Krankenkasse und Bestattung zu stehen.
+ *
+ * `sort` ist stabil, also bleibt innerhalb derselben `reihenfolge` — und unter
+ * allen selbst angelegten Aufgaben — die Reihenfolge aus `sync.zeilen` stehen.
+ */
+function nachReihenfolge(links: Aufgabe, rechts: Aufgabe): number {
+  const hier = links.katalog?.reihenfolge
+  const dort = rechts.katalog?.reihenfolge
+
+  if (hier === undefined || dort === undefined) {
+    // Keine von beiden aus dem Katalog: Die Reihenfolge aus `sync.zeilen`
+    // bleibt. Nur eine: Die aus dem Katalog steht davor.
+    return hier === dort ? 0 : hier === undefined ? 1 : -1
+  }
+
+  return hier - dort
+}
+
+export function useAufgaben(fall: Katalogfall): Aufgabendaten {
   const { zustand: sync, mutiere, bestaetige } = useSync(fall.id)
+  const zugang = useSupabase()
 
   const [liste, setzeListe] = useState(LEER)
   const [abgelehnt, setzeAbgelehnt] = useState<AbgelehnteAenderung[]>([])
@@ -126,9 +153,9 @@ export function useAufgaben(fall: Fallschluessel): Aufgabendaten {
       const eintraege = sync.zeilen.map((zeile) => bekannt.get(zeile))
 
       setzeListe({
-        aufgaben: eintraege.filter(
-          (eintrag): eintrag is Aufgabe => eintrag !== undefined && eintrag !== VERWORFEN,
-        ),
+        aufgaben: eintraege
+          .filter((eintrag): eintrag is Aufgabe => eintrag !== undefined && eintrag !== VERWORFEN)
+          .sort(nachReihenfolge),
         uebersprungen: eintraege.filter((eintrag) => eintrag === VERWORFEN).length,
       })
     })()
@@ -159,6 +186,53 @@ export function useAufgaben(fall: Fallschluessel): Aufgabendaten {
       aktuell = false
     }
   }, [fall, sync.abgelehnt, sync.zeilen])
+
+  /**
+   * Der Rechtskatalog, sobald der Bestand einmal wirklich vollständig ist (§8).
+   *
+   * Angelegt wird er bei der Fallanlage. Diese Stelle ist der zweite Anlauf für
+   * die Fälle, bei denen das nicht durchkam: eine Verbindung, die mitten in der
+   * Anlage abbrach, oder — sobald es die Vorsorge gibt (#15) — ein Übergang
+   * nach `trauerfall`, den ein anderes Gerät vollzogen hat.
+   *
+   * **Erst nach dem Abgleich.** Vor dem ersten Abruf ist `zeilen` der Cache,
+   * und ein leerer Cache heisst nicht, dass der Fall leer ist. Wer daraus
+   * schlösse, es fehle der Katalog, legte ihn bei jedem Start erneut an — ohne
+   * Duplikate, dank der deterministischen IDs, aber mit vierzig
+   * Schreibversuchen, die alle nichts tun.
+   *
+   * **Und höchstens einmal je Fall.** Der Bestand ändert sich mit jedem Delta;
+   * ein zweiter Lauf brächte nur dieselbe Feststellung. Was danach fehlt, hat
+   * jemand gelöscht, und gelöscht bleibt gelöscht (§5).
+   */
+  const instanziiert = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!sync.abgeglichen || fall.katalogVersion === null || instanziiert.current === fall.id) {
+      return
+    }
+
+    instanziiert.current = fall.id
+
+    void (async () => {
+      try {
+        await instanziiereKatalog(
+          supabaseInhalte(zugang()),
+          fall,
+          sync.zeilen.map((zeile) => zeile.id),
+        )
+      } catch {
+        /*
+         * Kein Wurf und keine Mitteilung. Was hier scheitert, ist entweder das
+         * Netz — dann kommt die nächste Runde ohnehin — oder ein Katalogstand,
+         * den dieser Build nicht kennt. Im zweiten Fall wäre die Meldung eine
+         * Zumutung: Angehörige können daran nichts ändern, und die Aufgaben
+         * eines anderen Mitglieds kommen mit dem nächsten Delta von selbst.
+         */
+        instanziiert.current = null
+      }
+    })()
+  }, [fall, sync.abgeglichen, sync.zeilen, zugang])
 
   const legeAn = useCallback(
     async (titel: string) => mutiere(await mutationAnlegen(fall, titel)),

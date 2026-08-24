@@ -43,7 +43,11 @@ export type InhaltZeile = {
 }
 
 export type NeuerInhalt = {
-  /** Clientseitig erzeugte UUIDv7, damit Anlegen später offline funktioniert (§5). */
+  /**
+   * Clientseitig erzeugte UUIDv7, damit Anlegen später offline funktioniert
+   * (§5) — bei einer Aufgabe aus dem Rechtskatalog stattdessen die
+   * deterministische UUIDv5 aus `katalogItemId` (§8).
+   */
   id: string
   fallId: string
   art: Inhaltsart
@@ -89,6 +93,25 @@ export type InhalteTabelle = {
   seit(fallId: string, wasserzeichen: number): Promise<InhaltZeile[]>
 
   lege(neu: NeuerInhalt): Promise<void>
+
+  /**
+   * Legt mehrere Items in einem Zug an und übergeht dabei, was es schon gibt —
+   * `insert … on conflict do nothing` (§8).
+   *
+   * Der Weg, den der Rechtskatalog nimmt. Die IDs sind deterministisch
+   * (`katalogItemId`), also rechnen zwei gleichzeitig instanziierende
+   * Mitglieder dieselben aus, und die zweite Einfügung ist ein Nulleffekt statt
+   * eines Duplikats oder eines Fehlers.
+   *
+   * **Warum nicht {@link lege} in einer Schleife.** Erstens die Zusage: Ein
+   * Duplikat ist hier kein Fehlschlag, sondern der Normalfall des Rennens.
+   * Zweitens die Kosten — vierzig Aufgaben wären vierzig Rundläufe.
+   *
+   * Ein Aufrufer, der nur die fehlenden Zeilen übergibt, drückt sich damit
+   * nicht: Das `on conflict` fängt genau die Zeilen, die zwischen seinem Blick
+   * auf den Bestand und diesem Aufruf entstanden sind.
+   */
+  legeAlleNeuen(neue: NeuerInhalt[]): Promise<void>
 
   /**
    * Schreibt einen neuen Payload. Der DEK bleibt, wo er ist: Er ändert sich

@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabaseFaelle } from '../core/db/supabaseFaelle.ts'
 import { supabaseFallschluessel } from '../core/db/supabaseFallschluessel.ts'
 import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
+import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import { alsNachricht } from '../core/fehler.ts'
 import {
@@ -86,7 +87,15 @@ export function useCase(): Falldaten {
         throw new Error('Ohne angemeldetes Gerät lässt sich kein Fall anlegen.')
       }
 
-      await legeTrauerfallAnDienst(supabaseFaelle(zugang()), identitaet, geraetId, angaben)
+      const client = zugang()
+
+      await legeTrauerfallAnDienst(
+        supabaseFaelle(client),
+        supabaseInhalte(client),
+        identitaet,
+        geraetId,
+        angaben,
+      )
       // Die Liste kommt vom Server zurück, statt den frischen Fall lokal
       // anzuhängen: Was `ladeFaelle` liefert, hat den vollen Weg aus §3.6
       // durchlaufen — Wrap lesen, Signatur prüfen, entpacken — und genau das

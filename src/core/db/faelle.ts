@@ -23,6 +23,14 @@ export type FallZeile = {
   keyGeneration: number
   /** Sync-Zähler und Wasserzeichen zugleich (§4, §5). */
   version: number
+  /**
+   * Der eingefrorene Katalogstand (§8), oder `null` bei einem Vorsorgefall,
+   * der noch keine Aufgaben hat.
+   *
+   * Eine Herkunftsangabe, keine lebende Verknüpfung: Rechtsgrundlage und
+   * Quelle stehen im Item selbst und altern mit ihm.
+   */
+  katalogVersion: string | null
   /** `{personName, sterbedatum}` unter `K_c` (§3.2). */
   payload: Uint8Array
   angelegtAm: string
@@ -34,6 +42,8 @@ export type NeuerTrauerfall = {
   kidFall: string
   kidKatalog: string
   payload: Uint8Array
+  /** Der Katalogstand, der mit diesem Fall eingefroren wird (§8). */
+  katalogVersion: string
   /** Das anlegende Gerät: Empfänger und Absender beider Wraps zugleich. */
   geraeteId: string
   wrapFall: Wrap
