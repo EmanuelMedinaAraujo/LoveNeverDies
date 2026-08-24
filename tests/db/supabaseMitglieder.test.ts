@@ -47,3 +47,24 @@ describe('imFall', () => {
     await expect(supabaseMitglieder(client).imFall('fall-1')).rejects.toThrow(MitgliederFehler)
   })
 })
+
+describe('verlasseFall', () => {
+  it('löscht die Mitgliedschaft für den Fall', async () => {
+    const { client, gesehen } = stubClient({ data: null, error: null })
+
+    await supabaseMitglieder(client).verlasseFall('fall-1')
+
+    expect(gesehen.tabelle).toBe('memberships')
+    expect(gesehen.geloescht).toBe(true)
+    expect(gesehen.filter).toEqual({ case_id: 'fall-1' })
+  })
+
+  it('macht aus einem PostgREST-Fehler einen MitgliederFehler', async () => {
+    const { client } = stubClient({ data: null, error: fehler('permission denied') })
+
+    await expect(supabaseMitglieder(client).verlasseFall('fall-1')).rejects.toThrow(
+      /Der Fall konnte nicht verlassen werden: permission denied/,
+    )
+  })
+})
+

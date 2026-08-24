@@ -14,11 +14,19 @@ import type { Fall } from '../../src/services/fallService.ts'
 
 const ladeFaelle = vi.fn()
 const legeTrauerfallAnDienst = vi.fn()
+const verlasseFallDienst = vi.fn()
+const rotiereFallschluesselDienst = vi.fn()
 const useGeraeteanmeldung = vi.fn()
 
 vi.mock('../../src/services/fallService.ts', () => ({
   ladeFaelle: (...a: unknown[]) => ladeFaelle(...a),
   legeTrauerfallAn: (...a: unknown[]) => legeTrauerfallAnDienst(...a),
+  legeVorsorgefallAn: vi.fn(),
+  loescheVorsorgefall: vi.fn(),
+  verlasseFall: (...a: unknown[]) => verlasseFallDienst(...a),
+}))
+vi.mock('../../src/services/rotationService.ts', () => ({
+  rotiereFallschluessel: (...a: unknown[]) => rotiereFallschluesselDienst(...a),
 }))
 vi.mock('../../src/hooks/useGeraete.ts', () => ({
   useGeraeteanmeldung: () => useGeraeteanmeldung(),
@@ -30,6 +38,11 @@ vi.mock('../../src/core/db/supabaseFallschluessel.ts', () => ({
 vi.mock('../../src/core/db/supabaseGeraeteschluessel.ts', () => ({
   supabaseGeraeteschluessel: () => ({}),
 }))
+vi.mock('../../src/core/db/supabaseInhalte.ts', () => ({ supabaseInhalte: () => ({}) }))
+vi.mock('../../src/core/db/supabaseMitglieder.ts', () => ({ supabaseMitglieder: () => ({}) }))
+vi.mock('../../src/core/db/supabaseTresor.ts', () => ({ supabaseTresor: () => ({}) }))
+vi.mock('../../src/core/db/idb.ts', () => ({ idbCiphertextcache: () => ({}) }))
+
 // Siehe useGeraete.test.tsx: Der Zugang muss stabil bleiben, sonst dreht sich
 // der Effekt endlos.
 vi.mock('../../src/core/db/supabaseProvider.tsx', () => {
@@ -48,6 +61,8 @@ const LESBAR: Fall = {
   personName: 'Hans Weber',
   sterbedatum: '2024-03-15',
   kid: 'case_fall-1:1',
+  keyGeneration: 1,
+  rotationPending: false,
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
   kv: null,
@@ -157,4 +172,66 @@ describe('useCase', () => {
       { personName: 'Hans Weber', sterbedatum: '2024-03-15' },
     )
   })
+
+  it('ruft verlasseFall auf und lädt danach neu', async () => {
+    ladeFaelle.mockResolvedValue([LESBAR])
+    const { result } = renderHook(() => useCase())
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    ladeFaelle.mockResolvedValue([])
+    await result.current.verlasseFall('fall-1')
+
+    expect(verlasseFallDienst).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'fall-1',
+    )
+    await waitFor(() => expect(result.current.zustand.status).toBe('kein-fall'))
+  })
+
+  it('führt bei rotationPending automatisch Schlüsselrotation durch', async () => {
+    const rotierenderFall: Fall = {
+      ...LESBAR,
+      rotationPending: true,
+    }
+    const fertigRotierterFall: Fall = {
+      ...LESBAR,
+      keyGeneration: 2,
+      rotationPending: false,
+    }
+
+    ladeFaelle.mockResolvedValueOnce([rotierenderFall])
+    rotiereFallschluesselDienst.mockResolvedValueOnce({
+      status: 'erfolg',
+      kidNeu: 'case_fall-1:2',
+      kcNeu: new Uint8Array(32),
+      keyGeneration: 2,
+    })
+    ladeFaelle.mockResolvedValueOnce([fertigRotierterFall])
+
+    const { result } = renderHook(() => useCase())
+
+    await waitFor(() => expect(rotiereFallschluesselDienst).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+    expect(result.current.zustand).toMatchObject({ aktiver: fertigRotierterFall })
+  })
+
+  it('zeigt schluessel-erneuerung, wenn Mandat verweigert wurde', async () => {
+    const rotierenderFall: Fall = {
+      ...LESBAR,
+      rotationPending: true,
+    }
+
+    ladeFaelle.mockResolvedValue([rotierenderFall])
+    rotiereFallschluesselDienst.mockResolvedValue({
+      status: 'mandat_verweigert',
+    })
+
+    const { result } = renderHook(() => useCase())
+
+    await waitFor(() =>
+      expect(result.current.zustand.status).toBe('schluessel-erneuerung'),
+    )
+  })
 })
+

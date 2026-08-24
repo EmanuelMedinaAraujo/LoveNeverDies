@@ -644,10 +644,16 @@ export function Aufgabe() {
   const { id } = useParams()
   const { zustand } = useCase()
 
-  if (zustand.status === 'laedt') {
+  if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
-        <Ladeanzeige text="Ihre Daten werden geladen…" />
+        <Ladeanzeige
+          text={
+            zustand.status === 'schluessel-erneuerung'
+              ? 'Schlüssel werden erneuert…'
+              : 'Ihre Daten werden geladen…'
+          }
+        />
       </main>
     )
   }

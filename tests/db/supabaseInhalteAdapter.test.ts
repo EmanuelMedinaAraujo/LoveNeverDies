@@ -340,3 +340,23 @@ describe('abgelehnt oder nur nicht angekommen', () => {
     })
   })
 })
+
+describe('rotiereItem', () => {
+  it('aktualisiert kid und wrapped_dek', async () => {
+    const { client, gesehen } = stubClient({ data: [{ id: 'item-1' }], error: null })
+
+    await supabaseInhalte(client).rotiereItem(
+      'item-1',
+      'case_fall-1:2',
+      new Uint8Array([0xaa, 0xbb]),
+    )
+
+    expect(gesehen.tabelle).toBe('items')
+    expect(gesehen.filter).toEqual({ id: 'item-1' })
+    expect(gesehen.aktualisiert).toEqual({
+      kid: 'case_fall-1:2',
+      wrapped_dek: alsBytea(new Uint8Array([0xaa, 0xbb])),
+    })
+  })
+})
+

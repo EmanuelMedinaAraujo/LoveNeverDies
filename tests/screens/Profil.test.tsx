@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Falldaten } from '../../src/hooks/useCase.ts'
 import { authWert, rendereMitProvidern } from './harness.tsx'
@@ -16,13 +17,18 @@ const { Profil } = await import('../../src/screens/shared/Profil/Profil.tsx')
 
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 
-function falldaten(zustand: Falldaten['zustand'] = { status: 'kein-fall' }): Falldaten {
+function falldaten(
+  zustand: Falldaten['zustand'] = { status: 'kein-fall' },
+  ueberschreibung: Partial<Falldaten> = {},
+): Falldaten {
   return {
     zustand,
     legeTrauerfallAn: vi.fn(),
     legeVorsorgefallAn: vi.fn(),
     loescheVorsorgefall: vi.fn(),
+    verlasseFall: vi.fn(),
     aktualisiere: vi.fn(),
+    ...ueberschreibung,
   }
 }
 
@@ -33,6 +39,8 @@ const LESBAR: LesbarerFall = {
   personName: 'Hans Weber',
   sterbedatum: '2024-03-15',
   kid: 'case_fall-1:1',
+  keyGeneration: 1,
+  rotationPending: false,
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
   kv: null,
@@ -154,4 +162,85 @@ describe('Profil', () => {
 
     expect(screen.getByText('Freigabe nötig')).toBeVisible()
   })
+
+  it('zeigt den Bereich Fall verlassen für einen aktiven Fall', () => {
+    useCase.mockReturnValue(
+      falldaten({ status: 'bereit', faelle: [LESBAR], aktiver: LESBAR }),
+    )
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByRole('heading', { name: 'Fall verlassen' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Fall verlassen' })).toBeVisible()
+  })
+
+  it('fragt nach Bestätigung und ruft verlasseFall auf', async () => {
+    const user = userEvent.setup()
+    const mockVerlasseFall = vi.fn().mockResolvedValue(undefined)
+    useCase.mockReturnValue(
+      falldaten(
+        { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
+        { verlasseFall: mockVerlasseFall },
+      ),
+    )
+
+    rendereMitProvidern(<Profil />)
+
+    await user.click(screen.getByRole('button', { name: 'Fall verlassen' }))
+
+    expect(screen.getByText(/Möchten Sie den Fall für „Hans Weber“ wirklich verlassen\?/)).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Ja, Fall verlassen' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Ja, Fall verlassen' }))
+
+    expect(mockVerlasseFall).toHaveBeenCalledWith('fall-1')
+  })
+
+  it('bricht die Bestätigung ab', async () => {
+    const user = userEvent.setup()
+    useCase.mockReturnValue(
+      falldaten({ status: 'bereit', faelle: [LESBAR], aktiver: LESBAR }),
+    )
+
+    rendereMitProvidern(<Profil />)
+
+    await user.click(screen.getByRole('button', { name: 'Fall verlassen' }))
+    expect(screen.getByRole('button', { name: 'Ja, Fall verlassen' })).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    expect(screen.queryByRole('button', { name: 'Ja, Fall verlassen' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Fall verlassen' })).toBeVisible()
+  })
+
+  it('zeigt Hinweis für den Preparer eines versiegelten Vorsorgefalls', () => {
+    const versiegelterVorsorgeFall: LesbarerFall = {
+      ...LESBAR,
+      id: 'fall-vorsorge',
+      status: 'vorsorge',
+      preparerId: 'user_1',
+      vaultCommitment: new Uint8Array([1, 2, 3]),
+    }
+
+    useCase.mockReturnValue(
+      falldaten({
+        status: 'bereit',
+        faelle: [versiegelterVorsorgeFall],
+        aktiver: versiegelterVorsorgeFall,
+      }),
+    )
+
+    rendereMitProvidern(<Profil />, {
+      auth: authWert({
+        status: 'angemeldet',
+        benutzer: { id: 'user_1', anzeigename: 'Anna Müller', email: 'anna@example.de' },
+      }),
+    })
+
+    expect(
+      screen.getByText(/Als Ersteller dieses versiegelten Vorsorgefalls können Sie die Mitgliedschaft nicht verlassen/),
+    ).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Fall verlassen' })).toBeNull()
+  })
 })
+

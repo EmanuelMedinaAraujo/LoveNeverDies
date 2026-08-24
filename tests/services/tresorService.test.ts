@@ -25,6 +25,7 @@ function mockDb() {
 
   const mitgliederDb: MitgliederTabelle = {
     imFall: () => Promise.resolve(mitglieder),
+    verlasseFall: () => Promise.reject(new Error('nicht gebraucht')),
   }
 
   const geraeteDb: GeraeteschluesselTabelle = {

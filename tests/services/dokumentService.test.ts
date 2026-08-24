@@ -104,6 +104,7 @@ function inhalte() {
     },
     legeAlleNeuen: () => Promise.resolve(),
     umwrappe: () => Promise.resolve(),
+    rotiereItem: () => Promise.resolve(),
     schreibePayload: () => Promise.resolve(),
     loesche(id) {
       if (loescheFehler !== null) {

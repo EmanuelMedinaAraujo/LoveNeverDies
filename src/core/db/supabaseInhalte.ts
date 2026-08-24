@@ -219,6 +219,14 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
       )
     },
 
+    rotiereItem(id, kid, wrappedDek) {
+      return aendere(
+        id,
+        { kid, wrapped_dek: alsBytea(wrappedDek) },
+        'Das Item konnte nicht auf den neuen Fallschlüssel aktualisiert werden',
+      )
+    },
+
     loesche(id) {
       return aendere(
         id,

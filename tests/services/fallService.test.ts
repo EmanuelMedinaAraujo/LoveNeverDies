@@ -74,6 +74,9 @@ function server() {
         vaultResplitPending: false,
         vaultK: null,
         vaultN: null,
+        rotationPending: false,
+        rotationClaimedBy: null,
+        rotationClaimExpiresAt: null,
         angelegtAm: '2026-08-23T12:00:00Z',
       })
 
@@ -107,6 +110,9 @@ function server() {
         vaultResplitPending: false,
         vaultK: null,
         vaultN: 0,
+        rotationPending: false,
+        rotationClaimedBy: null,
+        rotationClaimExpiresAt: null,
         angelegtAm: '2026-08-23T12:00:00Z',
       })
 
@@ -141,6 +147,9 @@ function server() {
       return Promise.resolve()
     },
 
+    claimRotation: () => Promise.resolve(true),
+    commitRotation: () => Promise.resolve(true),
+
     eigene: () => Promise.resolve(faelleZeilen),
   }
 
@@ -163,6 +172,7 @@ function server() {
 
     schreibePayload: () => Promise.reject(new Error('nicht gebraucht')),
     umwrappe: () => Promise.reject(new Error('nicht gebraucht')),
+    rotiereItem: () => Promise.reject(new Error('nicht gebraucht')),
     loesche: () => Promise.reject(new Error('nicht gebraucht')),
   }
 
@@ -171,6 +181,7 @@ function server() {
       Promise.resolve(
         wrapZeilen.filter((zeile) => zeile.fallId === fallId && zeile.geraeteId === geraeteId),
       ),
+    schreibeWraps: () => Promise.resolve(),
   }
 
   const tresor: TresorTabelle = {

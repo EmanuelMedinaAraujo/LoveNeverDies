@@ -34,6 +34,8 @@ const LESBAR: LesbarerFall = {
   personName: 'Hans Weber',
   sterbedatum: '2024-03-15',
   kid: 'case_fall-1:1',
+  keyGeneration: 1,
+  rotationPending: false,
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
   kv: null,
@@ -68,6 +70,7 @@ function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
     legeTrauerfallAn: vi.fn().mockResolvedValue(undefined),
     legeVorsorgefallAn: vi.fn().mockResolvedValue(undefined),
     loescheVorsorgefall: vi.fn().mockResolvedValue(undefined),
+    verlasseFall: vi.fn().mockResolvedValue(undefined),
     aktualisiere: vi.fn(),
     ...ueberschreibung,
   }

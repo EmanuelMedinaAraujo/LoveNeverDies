@@ -76,6 +76,8 @@ const LESBAR: LesbarerFall = {
   personName: 'Hans Weber',
   sterbedatum: heute(),
   kid: 'case_fall-1:1',
+  keyGeneration: 1,
+  rotationPending: false,
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
   kv: null,
@@ -183,6 +185,7 @@ beforeEach(() => {
     legeTrauerfallAn: vi.fn().mockResolvedValue(undefined),
     legeVorsorgefallAn: vi.fn().mockResolvedValue(undefined),
     loescheVorsorgefall: vi.fn().mockResolvedValue(undefined),
+    verlasseFall: vi.fn().mockResolvedValue(undefined),
     aktualisiere: vi.fn(),
   })
   useAufgaben.mockReturnValue(aufgabendaten())

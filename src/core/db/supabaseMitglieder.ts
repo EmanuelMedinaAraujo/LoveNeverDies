@@ -44,5 +44,13 @@ export function supabaseMitglieder(client: SupabaseClient): MitgliederTabelle {
         (roh): MitgliedZeile => ({ userId: roh.user_id, beigetretenAm: roh.joined_at }),
       )
     },
+
+    async verlasseFall(fallId) {
+      const { error } = await client.from(TABELLE).delete().eq('case_id', fallId)
+
+      if (error !== null) {
+        throw new MitgliederFehler('Der Fall konnte nicht verlassen werden', error)
+      }
+    },
   }
 }

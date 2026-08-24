@@ -100,6 +100,9 @@ describe('eigene', () => {
           vault_resplit_pending: false,
           vault_k: null,
           vault_n: null,
+          rotation_pending: false,
+          rotation_claimed_by: null,
+          rotation_claim_expires_at: null,
           created_at: '2026-08-23T10:00:00Z',
         },
       ],
@@ -123,6 +126,9 @@ describe('eigene', () => {
         vaultResplitPending: false,
         vaultK: null,
         vaultN: null,
+        rotationPending: false,
+        rotationClaimedBy: null,
+        rotationClaimExpiresAt: null,
         angelegtAm: '2026-08-23T10:00:00Z',
       },
     ])
@@ -198,3 +204,60 @@ describe('version', () => {
     await expect(supabaseFaelle(client).version('fall-1')).rejects.toThrow(FaelleFehler)
   })
 })
+
+describe('claimRotation', () => {
+  it('ruft claim_rotation RPC mit Argumenten auf', async () => {
+    const { client, gesehen } = stubClient({ data: true, error: null })
+
+    const ergebnis = await supabaseFaelle(client).claimRotation('fall-1', 1, 'geraet-1')
+
+    expect(ergebnis).toBe(true)
+    expect(gesehen.rpc).toBe('claim_rotation')
+    expect(gesehen.rpcArgumente).toEqual({
+      p_case_id: 'fall-1',
+      p_expected_generation: 1,
+      p_device_id: 'geraet-1',
+    })
+  })
+
+  it('wirft FaelleFehler bei PostgREST-Fehler', async () => {
+    const { client } = stubClient({ data: null, error: fehler('forbidden') })
+
+    await expect(supabaseFaelle(client).claimRotation('fall-1', 1, 'geraet-1')).rejects.toThrow(
+      FaelleFehler,
+    )
+  })
+})
+
+describe('commitRotation', () => {
+  it('ruft commit_rotation RPC mit Argumenten und bytea-Payload auf', async () => {
+    const { client, gesehen } = stubClient({ data: true, error: null })
+
+    const ergebnis = await supabaseFaelle(client).commitRotation(
+      'fall-1',
+      1,
+      'case_fall-1:2',
+      'geraet-1',
+      new Uint8Array([0xaa, 0xbb]),
+    )
+
+    expect(ergebnis).toBe(true)
+    expect(gesehen.rpc).toBe('commit_rotation')
+    expect(gesehen.rpcArgumente).toEqual({
+      p_case_id: 'fall-1',
+      p_expected_generation: 1,
+      p_new_kid: 'case_fall-1:2',
+      p_device_id: 'geraet-1',
+      p_payload: alsBytea(new Uint8Array([0xaa, 0xbb])),
+    })
+  })
+
+  it('wirft FaelleFehler bei PostgREST-Fehler', async () => {
+    const { client } = stubClient({ data: null, error: fehler('forbidden') })
+
+    await expect(
+      supabaseFaelle(client).commitRotation('fall-1', 1, 'case_fall-1:2', 'geraet-1'),
+    ).rejects.toThrow(FaelleFehler)
+  })
+})
+

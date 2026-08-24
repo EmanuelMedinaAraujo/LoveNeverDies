@@ -138,6 +138,9 @@ function server() {
           vaultResplitPending: false,
           vaultK: null,
           vaultN: null,
+          rotationPending: false,
+          rotationClaimedBy: null,
+          rotationClaimExpiresAt: null,
           angelegtAm: '2026-08-23T12:00:00Z',
         })
         mitglieder.push({ fallId: neu.id, userId })
@@ -165,6 +168,9 @@ function server() {
           vaultResplitPending: false,
           vaultK: null,
           vaultN: 0,
+          rotationPending: false,
+          rotationClaimedBy: null,
+          rotationClaimExpiresAt: null,
           angelegtAm: '2026-08-24T12:00:00Z',
         })
         mitglieder.push({ fallId: neu.id, userId })
@@ -186,6 +192,8 @@ function server() {
         return Promise.resolve()
       },
       loescheVorsorgefall: () => Promise.reject(new Error('nicht gebraucht')),
+      claimRotation: () => Promise.resolve(true),
+      commitRotation: () => Promise.resolve(true),
     }
 
     /*
@@ -203,6 +211,7 @@ function server() {
       },
 
       umwrappe: () => Promise.reject(new Error('nicht gebraucht')),
+      rotiereItem: () => Promise.reject(new Error('nicht gebraucht')),
 
       legeAlleNeuen: (neue: NeuerInhalt[]) => {
         for (const neu of neue) {
@@ -233,6 +242,7 @@ function server() {
         Promise.resolve(
           wrapZeilen.filter((zeile) => zeile.fallId === fallId && zeile.geraeteId === geraeteId),
         ),
+      schreibeWraps: () => Promise.resolve(),
     }
 
     const geraete: GeraeteschluesselTabelle = {

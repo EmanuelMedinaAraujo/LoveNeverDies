@@ -43,6 +43,8 @@ function erstelleFall(ueberschreibung: Partial<LesbarerFall> = {}): LesbarerFall
     personName: 'Anna Vorsorge',
     sterbedatum: null,
     kid: 'case_fall-tresor-1:1',
+    keyGeneration: 1,
+    rotationPending: false,
     kc: erzeugeAesSchluessel(),
     kcat: erzeugeAesSchluessel(),
     kv: erzeugeAesSchluessel(),
