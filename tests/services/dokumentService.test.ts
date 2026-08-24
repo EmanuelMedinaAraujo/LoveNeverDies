@@ -103,6 +103,7 @@ function inhalte() {
       return Promise.resolve()
     },
     legeAlleNeuen: () => Promise.resolve(),
+    umwrappe: () => Promise.resolve(),
     schreibePayload: () => Promise.resolve(),
     loesche(id) {
       if (loescheFehler !== null) {

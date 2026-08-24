@@ -21,9 +21,9 @@
 
 import { ed25519 } from '@noble/curves/ed25519.js'
 import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js'
-import { textBytes, verkette } from './bytes'
-import type { DomainSeparationPrefix } from './domain'
-import { leseSignatur, serialisiereSignatur } from './envelope'
+import { textBytes, verkette } from './bytes.ts'
+import type { DomainSeparationPrefix } from './domain.ts'
+import { leseSignatur, serialisiereSignatur } from './envelope.ts'
 
 export const MLDSA_OEFFENTLICH_LAENGE = 1952
 export const MLDSA_GEHEIM_LAENGE = 4032

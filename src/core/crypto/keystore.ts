@@ -21,20 +21,20 @@
  * ein zweites Gerät oder eine zweite Person im Fall.
  */
 
-import { entschluessele, verschluessele } from './aead'
-import { webcrypto, zufallsBytes } from './bytes'
-import { geraetePruefcode, fingerabdruck } from './fingerprint'
+import { entschluessele, verschluessele } from './aead.ts'
+import { webcrypto, zufallsBytes } from './bytes.ts'
+import { geraetePruefcode, fingerabdruck } from './fingerprint.ts'
 import {
   KEM_GEHEIM_LAENGE,
   erzeugeKemSchluesselpaar,
   type KemSchluesselpaar,
-} from './kem'
+} from './kem.ts'
 import {
   SIGNATUR_SEED_LAENGE,
   erzeugeSignaturSchluesselpaar,
   pkSigBytes,
   type SignaturSchluesselpaar,
-} from './sign'
+} from './sign.ts'
 
 export const KEYSTORE_DB = 'loveneverdies-keystore'
 

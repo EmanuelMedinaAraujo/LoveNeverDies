@@ -158,8 +158,8 @@ describe('resplit_vault RPC (§3.5, §4)', () => {
 
     // Alte Releases und Shares simulieren
     await db.query(
-      `insert into vault_releases (case_id, user_id, signed_by_device, released_share, signature)
-       values ($1, $2, $3, '\\x11', '\\x22')`,
+      `insert into vault_releases (case_id, user_id, signed_by_device, kid, released_share, signature)
+       values ($1, $2, $3, 'case_test:1', '\\x11', '\\x22')`,
       [id, BERND, berndsGeraet],
     )
 

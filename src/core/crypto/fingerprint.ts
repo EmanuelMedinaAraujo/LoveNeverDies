@@ -22,8 +22,8 @@
  * nachträglich.
  */
 
-import { sha256, textBytes } from './bytes'
-import { DOMAIN_SEPARATION } from './domain'
+import { sha256, textBytes } from './bytes.ts'
+import { DOMAIN_SEPARATION } from './domain.ts'
 
 /** So viele Bytes des Fingerprints gehen in den Prüfcode. */
 const PRUEFCODE_BYTES = 3

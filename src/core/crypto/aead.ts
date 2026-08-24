@@ -12,13 +12,13 @@
  * Schlüssel unweigerlich auf denselben Zähler, und genau das bricht GCM.
  */
 
-import { alsBufferSource, webcrypto, zufallsBytes } from './bytes'
+import { alsBufferSource, webcrypto, zufallsBytes } from './bytes.ts'
 import {
   GCM_TAG_LAENGE,
   NONCE_LAENGE,
   leseChiffretext,
   serialisiereChiffretext,
-} from './envelope'
+} from './envelope.ts'
 
 /** AES-256: 32 Byte. */
 export const SCHLUESSEL_LAENGE = 32

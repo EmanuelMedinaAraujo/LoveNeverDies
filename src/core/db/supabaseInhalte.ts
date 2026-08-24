@@ -211,6 +211,14 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
       return aendere(id, { payload: alsBytea(payload) }, 'Die Aufgabe konnte nicht geändert werden')
     },
 
+    umwrappe(id, kid, wrappedDek) {
+      return aendere(
+        id,
+        { kid, wrapped_dek: alsBytea(wrappedDek), in_vault: false },
+        'Der Tresor-Eintrag konnte nicht übernommen werden',
+      )
+    },
+
     loesche(id) {
       return aendere(
         id,

@@ -28,7 +28,7 @@ import {
   erzeugeAesSchluessel,
   verschluessele,
   type SchluesselMaterial,
-} from './aead'
+} from './aead.ts'
 
 /** Ein DEK war nicht zu wrappen oder das Entpackte war keiner. */
 export class DekFehler extends Error {

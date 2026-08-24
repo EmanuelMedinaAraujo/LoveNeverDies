@@ -408,6 +408,14 @@ seinem Tod auch nicht mehr verfügbar.
 > hat. Das bleibt folgenlos, weil der Übergang einmalig und idempotent ist. Ein bösartiger
 > Server kann `status` ohnehin direkt setzen. Das Proof-Gate schützt gegen ein bösartiges
 > Mitglied, und genau darauf ist das Bedrohungsmodell in §11 zugeschnitten.
+>
+> Dafür braucht es allerdings eine zweite Bedingung, denn `proof` **ist** derselbe Wert wie
+> `vault_commitment`, und die Spalte liegt im Klartext auf `cases`, wo jedes Mitglied sie
+> liest. Abschreiben genügte sonst. Deshalb verlangt `open_vault` zusätzlich, dass
+> mindestens `k` Freigaben vorliegen — ein Boden, kein Auslöser: Der Zähler kann den
+> Übergang weiterhin nur verhindern, nie herbeiführen, und er blockiert keinen
+> berechtigten, weil jede gelungene Rekonstruktion ohnehin `k` Freigaben aus `k`
+> verschiedenen Zeilen braucht.
 
 ### 3.6 Geräte
 
@@ -598,6 +606,7 @@ create table vault_releases (
   case_id          uuid references cases(id) on delete cascade,
   user_id          text not null,                  -- eine Person = eine Zeile
   signed_by_device uuid not null references device_keys(id) on delete restrict,
+  kid              text not null,                  -- K_c-Generation, §3.5
   released_share   bytea not null,                 -- Share unter K_c
   signature        bytea not null,                 -- "LN-rel-v1", §3.2
   released_at      timestamptz not null default now(),

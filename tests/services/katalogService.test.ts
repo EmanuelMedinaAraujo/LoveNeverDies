@@ -101,6 +101,7 @@ function itemtabelle() {
   const inhalte: InhalteTabelle = {
     seit: () => Promise.resolve(zeilen),
     lege: () => Promise.reject(new Error('nicht gebraucht')),
+    umwrappe: () => Promise.reject(new Error('nicht gebraucht')),
     schreibePayload: () => Promise.reject(new Error('nicht gebraucht')),
     loesche: () => Promise.reject(new Error('nicht gebraucht')),
 

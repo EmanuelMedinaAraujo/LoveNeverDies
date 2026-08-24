@@ -12,7 +12,7 @@
  * leert, wäre eine Falle für die nächste Zeile in seinem Code.
  */
 
-import { fuehreAuftragAus, type Kryptoantwort, type Kryptoauftrag } from './dateikrypto'
+import { fuehreAuftragAus, type Kryptoantwort, type Kryptoauftrag } from './dateikrypto.ts'
 
 /**
  * `globalThis` im Worker ist ein `DedicatedWorkerGlobalScope`, den die

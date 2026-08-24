@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FallZustand } from '../../src/hooks/useCase.ts'
+import type { Todesfalldaten } from '../../src/hooks/useTodesfall.ts'
 import type { Tresordaten } from '../../src/hooks/useTresor.ts'
 import { Erbe } from '../../src/screens/shared/Erbe/Erbe.tsx'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
@@ -13,9 +14,12 @@ const mockLoescheVorsorgefall = vi.fn()
 const mockLegeItemAn = vi.fn()
 const mockLoescheItem = vi.fn()
 const mockVerteileShares = vi.fn()
+const mockBestaetigeTodesfall = vi.fn()
+const mockOeffneTresor = vi.fn()
 
 let mockFallZustand: FallZustand
 let mockTresor: Tresordaten
+let mockTodesfall: Todesfalldaten
 let mockAufgabenZustand: { status: 'laedt' } | { status: 'bereit' }
 
 vi.mock('react-router-dom', async () => {
@@ -59,6 +63,10 @@ vi.mock('../../src/hooks/useTresor.ts', () => ({
   useTresor: () => mockTresor,
 }))
 
+vi.mock('../../src/hooks/useTodesfall.ts', () => ({
+  useTodesfall: () => mockTodesfall,
+}))
+
 function standardFall(ueberschreibung: Partial<LesbarerFall> = {}): LesbarerFall {
   return {
     zustand: 'lesbar',
@@ -88,6 +96,8 @@ describe('Erbe Screen (§3.5, §7)', () => {
     mockLoescheItem.mockClear()
 
     mockVerteileShares.mockReset()
+    mockBestaetigeTodesfall.mockReset()
+    mockOeffneTresor.mockReset()
 
     const fall = standardFall()
     mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
@@ -102,6 +112,20 @@ describe('Erbe Screen (§3.5, §7)', () => {
       verteileShares: mockVerteileShares,
       resplitLaeuft: false,
       resplitFehler: null,
+    }
+    mockTodesfall = {
+      freigaben: [],
+      k: null,
+      kannFreigeben: false,
+      eigeneFreigabe: false,
+      schwelleErreicht: false,
+      laedt: false,
+      laeuft: false,
+      fehler: null,
+      unbrauchbare: [],
+      bestaetigeTodesfall: mockBestaetigeTodesfall,
+      oeffneTresor: mockOeffneTresor,
+      aktualisiere: vi.fn(),
     }
   })
 
@@ -225,5 +249,90 @@ describe('Erbe Screen (§3.5, §7)', () => {
     ).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Inhalt in Tresor legen' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Vorsorge löschen' })).toBeNull()
+  })
+  it('zeigt den Freigabestand des Falls', () => {
+    mockTodesfall.k = 2
+    mockTodesfall.freigaben = [
+      {
+        userId: 'user_2',
+        name: 'Bernd Weber',
+        freigegebenAm: '2026-08-24T09:00:00Z',
+        eigene: false,
+      },
+    ]
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByRole('heading', { name: 'Todesfall bestätigen' })).toBeVisible()
+    expect(screen.getByText('1 von 2 Freigaben')).toBeVisible()
+    expect(screen.getByText('Bernd Weber')).toBeVisible()
+  })
+
+  it('bestätigt den Todesfall erst nach dem Bestätigungsdialog', async () => {
+    mockTodesfall.k = 1
+    mockTodesfall.kannFreigeben = true
+    mockBestaetigeTodesfall.mockResolvedValue(undefined)
+
+    rendereMitProvidern(<Erbe />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Todesfall bestätigen' }))
+    expect(mockBestaetigeTodesfall).not.toHaveBeenCalled()
+
+    expect(
+      screen.getByText(/Bestätigen Sie, dass Anna Müller verstorben ist\?/),
+    ).toBeVisible()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ja, Todesfall bestätigen' }))
+    expect(mockBestaetigeTodesfall).toHaveBeenCalledTimes(1)
+  })
+
+  it('bietet die Bestätigung nicht an, wenn dieses Gerät keinen Schlüsselanteil hält', () => {
+    mockTodesfall.kannFreigeben = false
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.queryByRole('button', { name: 'Todesfall bestätigen' })).toBeNull()
+  })
+
+  it('sagt es, wenn die eigene Bestätigung schon steht', () => {
+    mockTodesfall.k = 1
+    mockTodesfall.kannFreigeben = true
+    mockTodesfall.eigeneFreigabe = true
+    mockTodesfall.freigaben = [
+      { userId: 'user_1', name: 'Anna Müller', freigegebenAm: '2026-08-24T09:00:00Z', eigene: true },
+    ]
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByText('Sie haben den Todesfall bereits bestätigt.')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Todesfall bestätigen' })).toBeNull()
+  })
+
+  it('öffnet den Tresor mit Sterbedatum, sobald die Schwelle erreicht ist', async () => {
+    mockTodesfall.k = 1
+    mockTodesfall.schwelleErreicht = true
+    mockOeffneTresor.mockResolvedValue(undefined)
+
+    rendereMitProvidern(<Erbe />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tresor öffnen' }))
+    await userEvent.type(screen.getByLabelText('Sterbedatum'), '2026-05-12')
+    await userEvent.click(screen.getByRole('button', { name: 'Tresor jetzt öffnen' }))
+
+    expect(mockOeffneTresor).toHaveBeenCalledWith('2026-05-12')
+  })
+
+  it('benennt die Person, deren Schlüsselanteil scheitert, und bittet um einen zweiten Versuch', () => {
+    mockTodesfall.k = 2
+    mockTodesfall.schwelleErreicht = true
+    mockTodesfall.fehler = 'Es liegen 1 brauchbare Freigaben vor, nötig sind 2.'
+    mockTodesfall.unbrauchbare = ['Clara Weber']
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /Der Schlüsselanteil von Clara Weber ist unbrauchbar/,
+    )
+    expect(screen.getByRole('alert')).toHaveTextContent(/erneut zu bestätigen/)
   })
 })

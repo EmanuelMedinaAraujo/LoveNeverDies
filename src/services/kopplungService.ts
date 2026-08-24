@@ -40,6 +40,7 @@ import type {
 } from '../core/db/kopplung'
 import type { TresorTabelle } from '../core/db/tresor'
 import type { Fall, LesbarerFall } from './fallService'
+import { entpackeEigenenAnteil } from './todesfallService'
 
 /** Die 32 Zeichen aus §6: kein O, keine 0, kein I, keine 1. */
 export const KOPPLUNGSCODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
@@ -253,6 +254,57 @@ async function uebergebeTresorschluessel(
   })
 }
 
+/**
+ * Reicht den eigenen Schlüsselanteil an ein weiteres Gerät derselben Person
+ * weiter (§3.5).
+ *
+ * §3.5: "Wechselt ein Angehöriger das Gerät, bevor der Tresor geöffnet ist,
+ * wrappt sein altes Gerät den eigenen Share an das neue. Der Preparer wird
+ * dafür nicht gebraucht — und ist nach seinem Tod auch nicht mehr verfügbar."
+ *
+ * Ohne diesen Schritt könnte das neue Gerät den Todesfall nicht bestätigen,
+ * und der Anteil dieser Person fiele für die Schwelle aus, sobald das alte
+ * Gerät weg ist.
+ *
+ * Ein Anteil, der auf diesem Gerät nicht aufgeht oder nicht zu seinem Hash
+ * passt, wird nicht weitergegeben und hält die Kopplung trotzdem nicht auf:
+ * Der Fall selbst ist freigeschaltet, und einen kaputten Anteil repariert nur
+ * eine neue Verteilung durch den Preparer, nicht ein zweites Gerät.
+ */
+async function uebergebeTresoranteil(
+  tresor: TresorTabelle,
+  anfrage: Kopplungsanfrage,
+  fall: LesbarerFall,
+  identitaet: Geraeteidentitaet,
+  geraeteId: string,
+): Promise<void> {
+  if (fall.status !== 'vorsorge') {
+    return
+  }
+
+  const eigener = (await tresor.sharesFuerFall(fall.id)).find(
+    (share) => share.geraeteId === geraeteId,
+  )
+
+  if (eigener === undefined) {
+    return
+  }
+
+  try {
+    const teil = await entpackeEigenenAnteil(eigener, identitaet)
+    const kapselung = kapsele(anfrage.angebot.pkKem)
+
+    await tresor.uebergibShare(
+      fall.id,
+      anfrage.angebot.geraeteId,
+      kapselung.kemCt,
+      await verschluessele(kapselung.geteiltesGeheimnis, teil),
+    )
+  } catch {
+    /* Ein kaputter Anteil wandert nicht mit (§3.5). */
+  }
+}
+
 /** Was ein freigeschaltetes Gerät danach lesen kann. */
 export type Freischaltung = {
   freigeschaltet: number
@@ -305,6 +357,7 @@ export async function schalteGeraetFrei(
   for (const fall of lesbare) {
     await uebergebeFallschluessel(kopplung, anfrage, fall, identitaet, geraeteId)
     await uebergebeTresorschluessel(tresor, anfrage, fall)
+    await uebergebeTresoranteil(tresor, anfrage, fall, identitaet, geraeteId)
   }
 
   return { freigeschaltet: lesbare.length, gesamt: faelle.length }

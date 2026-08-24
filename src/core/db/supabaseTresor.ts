@@ -5,9 +5,11 @@
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
 import { alsBytea, ausBytea } from './bytea'
 import type {
+  NeueFreigabe,
   ResplitShareInput,
   TresorTabelle,
   VaultKeyWrapZeile,
+  VaultReleaseZeile,
   VaultShareZeile,
 } from './tresor'
 
@@ -32,6 +34,23 @@ type RohShareZeile = {
   share_hash: unknown
   kem_ct: unknown
   wrapped_share: unknown
+}
+
+const TABELLE_FREIGABEN = 'vault_releases'
+const SPALTEN_FREIGABEN =
+  'case_id, user_id, signed_by_device, kid, released_share, signature, released_at'
+
+/** Der Name der Edge Function aus §9. */
+const FUNKTION_FREIGABE = 'vault-release'
+
+type RohFreigabeZeile = {
+  case_id: string
+  user_id: string
+  signed_by_device: string
+  kid: string
+  released_share: unknown
+  signature: unknown
+  released_at: string
 }
 
 export class TresorFehler extends Error {
@@ -60,6 +79,45 @@ function alsShareZeile(roh: RohShareZeile): VaultShareZeile {
     shareHash: ausBytea(roh.share_hash),
     kemCt: ausBytea(roh.kem_ct),
     wrappedShare: ausBytea(roh.wrapped_share),
+  }
+}
+
+/**
+ * Der Grund, den die Edge Function genannt hat.
+ *
+ * `functions.invoke` meldet bei jedem Nicht-2xx dasselbe ("non-2xx status
+ * code") und legt die Antwort selbst nach `context`. Der Satz, der die Person
+ * vor dem Bildschirm etwas angeht — "Dieses Gerät gehört nicht zur
+ * angemeldeten Person", "Die Signatur dieser Freigabe stimmt nicht" — steht
+ * ausschliesslich dort.
+ */
+async function grundAusAntwort(fehler: unknown): Promise<string> {
+  const kontext = (fehler as { context?: unknown }).context
+
+  if (kontext instanceof Response) {
+    try {
+      const koerper = (await kontext.clone().json()) as { fehler?: unknown }
+
+      if (typeof koerper.fehler === 'string' && koerper.fehler !== '') {
+        return koerper.fehler
+      }
+    } catch {
+      /* Keine JSON-Antwort: Dann bleibt die Meldung des Clients. */
+    }
+  }
+
+  return fehler instanceof Error ? fehler.message : String(fehler)
+}
+
+function alsFreigabeZeile(roh: RohFreigabeZeile): VaultReleaseZeile {
+  return {
+    fallId: roh.case_id,
+    userId: roh.user_id,
+    geraeteId: roh.signed_by_device,
+    kid: roh.kid,
+    releasedShare: ausBytea(roh.released_share),
+    signatur: ausBytea(roh.signature),
+    freigegebenAm: roh.released_at,
   }
 }
 
@@ -137,6 +195,81 @@ export function supabaseTresor(client: SupabaseClient): TresorTabelle {
       if (error !== null) {
         throw new TresorFehler('Der Re-Split des Tresors ist fehlgeschlagen', error)
       }
+    },
+
+    async uebergibShare(fallId, geraeteId, kemCt, wrappedShare) {
+      const { error } = await client.rpc('uebergib_tresoranteil', {
+        p_fall_id: fallId,
+        p_geraet: geraeteId,
+        p_kem_ct: alsBytea(kemCt),
+        p_wrapped_share: alsBytea(wrappedShare),
+      })
+
+      if (error !== null) {
+        throw new TresorFehler('Der Schlüsselanteil war nicht weiterzugeben', error)
+      }
+    },
+
+    async freigabenFuerFall(fallId) {
+      const { data, error } = await client
+        .from(TABELLE_FREIGABEN)
+        .select(SPALTEN_FREIGABEN)
+        .eq('case_id', fallId)
+        .order('released_at', { ascending: true })
+        .returns<RohFreigabeZeile[]>()
+
+      if (error !== null) {
+        throw new TresorFehler('Die Freigaben waren nicht abzurufen', error)
+      }
+
+      return data.map(alsFreigabeZeile)
+    },
+
+    async sendeFreigabe(freigabe: NeueFreigabe) {
+      /*
+       * Über `functions.invoke` und nicht über `from(...).insert`: In
+       * `vault_releases` schreibt kein Client, für niemanden gibt es eine
+       * Policy (§4). Der Client trägt sein Clerk-Token bereits im Kopf jeder
+       * Anfrage; die Function nimmt die Kennung daraus und nie aus diesem
+       * Body (§3.5).
+       *
+       * `user_id` steht trotzdem darin, weil sie in die Signatur eingeht: Der
+       * Empfänger prüft gegen die Kennung aus dem Token, und eine Signatur
+       * über eine fremde ergibt keine gültige Nachricht.
+       */
+      const { error } = await client.functions.invoke(FUNKTION_FREIGABE, {
+        body: {
+          caseId: freigabe.caseId,
+          userId: freigabe.userId,
+          deviceId: freigabe.geraeteId,
+          kid: freigabe.kid,
+          releasedShare: alsBytea(freigabe.releasedShare),
+          signatur: alsBytea(freigabe.signatur),
+        },
+      })
+
+      if (error !== null) {
+        throw new TresorFehler(
+          `Die Freigabe wurde nicht angenommen: ${await grundAusAntwort(error)}`,
+        )
+      }
+    },
+
+    async oeffneTresor(fallId, proof, katalogVersion, payload) {
+      const { data, error } = await client.rpc('open_vault', {
+        p_fall_id: fallId,
+        p_proof: alsBytea(proof),
+        p_katalog_version: katalogVersion,
+        p_payload: alsBytea(payload),
+      })
+
+      if (error !== null) {
+        throw new TresorFehler('Der Tresor liess sich nicht öffnen', error)
+      }
+
+      // Die gültige `catalog_version`: die eigene oder die eines schnelleren
+      // Clients (§3.5, §8).
+      return typeof data === 'string' && data !== '' ? data : null
     },
   }
 }

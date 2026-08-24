@@ -5,6 +5,12 @@
  * beiden Hashes aus WebCrypto. §9 verlangt, dass dieser Ordner ohne
  * Browser-only-Abhängigkeiten jenseits von WebCrypto auskommt, damit die Edge
  * Function `vault-release` denselben Code benutzen kann.
+ *
+ * Daher auch die `.ts` an jedem Import in diesem Ordner: Deno löst einen
+ * relativen Import ohne Endung nicht auf, und die Function lädt diese Dateien
+ * unverändert. Ohne sie liefe sie erst beim Ausliefern auf einen Fehler — an
+ * einer Stelle, die niemand mit einem weggelassenen Suffix in Verbindung
+ * brächte.
  */
 
 /** Der WebCrypto-Zugang. In Deno, im Browser und in Node ab 20 dasselbe Objekt. */

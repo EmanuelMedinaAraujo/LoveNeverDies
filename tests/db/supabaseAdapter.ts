@@ -28,9 +28,17 @@ export type Aufzeichnung = {
   groesserAls?: Record<string, unknown>
   spalten?: string
   sortierung?: { spalte: string; optionen: unknown }
+  hineingeschickt?: Record<string, unknown>
+  funktion?: { name: string; optionen: unknown }
 }
 
-export function stubClient(antwort: Antwort) {
+/** Was `functions.invoke` zurückgibt: kein PostgREST-Fehler, sondern ein Error. */
+export type Funktionsantwort = { data: unknown; error: Error | null }
+
+export function stubClient(
+  antwort: Antwort,
+  funktionsantwort: Funktionsantwort = { data: null, error: null },
+) {
   const gesehen: Aufzeichnung = { filter: {} }
 
   const kette = {
@@ -94,6 +102,12 @@ export function stubClient(antwort: Antwort) {
       gesehen.rpc = name
       gesehen.rpcArgumente = argumente
       return kette
+    },
+    functions: {
+      invoke(name: string, optionen: unknown) {
+        gesehen.funktion = { name, optionen }
+        return Promise.resolve(funktionsantwort)
+      },
     },
   } as unknown as SupabaseClient
 

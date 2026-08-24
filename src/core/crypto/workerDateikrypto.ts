@@ -21,7 +21,7 @@ import {
   type Dateikrypto,
   type Kryptoantwort,
   type Kryptoauftrag,
-} from './dateikrypto'
+} from './dateikrypto.ts'
 
 /**
  * Der Worker aus dem eigenen Bündel.

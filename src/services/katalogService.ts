@@ -134,6 +134,18 @@ function unterpayloadAus(titel: string, parentId: string): Aufgabenpayload {
 }
 
 /**
+ * Der Katalogstand, den dieser Build mitbringt (§8).
+ *
+ * Als Funktion und nicht als Konstante, weil `hooks` die Schicht `content`
+ * nicht sehen darf (§9): Der Übergang nach `trauerfall` friert genau diesen
+ * Stand ein, und er muss ihn benennen können, ohne den Katalog selbst zu
+ * kennen.
+ */
+export function ausgelieferterKatalogstand(): string {
+  return ausgelieferterKatalog().version
+}
+
+/**
  * Prüft, dass dieser Build den Stand kennt, der für den Fall eingefroren ist.
  *
  * Ein Fall trägt seinen Katalogstand (§8). Ein Client mit einem anderen Build
