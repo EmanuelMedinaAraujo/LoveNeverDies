@@ -3,7 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
-import type { Aufgabe } from '../../../services/aufgabenService.ts'
+import type { AbgelehnteAenderung, Aufgabe } from '../../../services/aufgabenService.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
@@ -48,7 +48,8 @@ function Aufgabenzeile({
 }: {
   aufgabe: Aufgabe
   gesperrt: boolean
-  aufHaken: (erledigt: boolean) => void
+  /** @returns ob die Änderung angehängt wurde. Sonst nimmt die Zeile sie zurück. */
+  aufHaken: (erledigt: boolean) => Promise<boolean>
   /** `false`, wenn nichts gespeichert wurde. Die Zeile bleibt dann offen. */
   aufSpeichern: (titel: string, beschreibung: string) => Promise<boolean>
   aufLoeschen: () => void
@@ -56,6 +57,47 @@ function Aufgabenzeile({
   const [modus, setzeModus] = useState<ZeilenModus>('anzeigen')
   const [titel, setzeTitel] = useState(aufgabe.titel)
   const [beschreibung, setzeBeschreibung] = useState(aufgabe.beschreibung)
+
+  /*
+   * Das Häkchen folgt dem Finger und nicht dem Rundlauf.
+   *
+   * Angewandt wird eine Mutation sofort — aber eine Ebene tiefer, in der Queue,
+   * und der Weg dorthin kostet ein paar Millisekunden: verschlüsseln, anhängen,
+   * überlagern, wieder entschlüsseln. Eine kontrollierte Checkbox liest in
+   * dieser Zeit noch `aufgabe.erledigt`, und React setzt sie beim nächsten
+   * Rendern auf den alten Wert zurück. Sichtbar, und auf einem Telefon der
+   * Anlass, ein zweites Mal zu tippen — §5 nennt genau das als den Grund für
+   * die optimistische Anzeige.
+   *
+   * Die Führung gibt die Zeile ab, sobald der Bestand nachgezogen hat: auch
+   * dann, wenn er die Änderung zurücknimmt, weil der Server sie verworfen hat.
+   */
+  const [erledigt, setzeErledigt] = useState(aufgabe.erledigt)
+  const [zuletztGesehen, setzeZuletztGesehen] = useState(aufgabe.erledigt)
+
+  if (zuletztGesehen !== aufgabe.erledigt) {
+    setzeZuletztGesehen(aufgabe.erledigt)
+    setzeErledigt(aufgabe.erledigt)
+  }
+
+  /**
+   * Nimmt das Häkchen zurück, wenn die Mutation nie angehängt wurde.
+   *
+   * Der Bestand zieht nur nach, wenn etwas in der Queue gelandet ist. Kam es
+   * gar nicht so weit — kein Platz in IndexedDB, kein IndexedDB —, dann bleibt
+   * `aufgabe.erledigt`, wie es war, der Abgleich oben findet keinen
+   * Unterschied, und das Häkchen stünde für den Rest der Sitzung auf einem
+   * Wert, den niemand gespeichert hat. Die Meldung darüber sagte „ging nicht",
+   * das Kästchen daneben sagte „erledigt", und §5 verlangt das Gegenteil von
+   * genau dieser Zweideutigkeit.
+   */
+  async function haken(gewuenscht: boolean) {
+    setzeErledigt(gewuenscht)
+
+    if (!(await aufHaken(gewuenscht))) {
+      setzeErledigt(aufgabe.erledigt)
+    }
+  }
 
   function beginneAendern() {
     setzeTitel(aufgabe.titel)
@@ -152,9 +194,9 @@ function Aufgabenzeile({
   return (
     <li className={stile.zeile}>
       <Checkbox
-        checked={aufgabe.erledigt}
+        checked={erledigt}
         disabled={gesperrt}
-        onChange={(ereignis) => aufHaken(ereignis.target.checked)}
+        onChange={(ereignis) => void haken(ereignis.target.checked)}
         label={aufgabe.titel}
       />
 
@@ -188,8 +230,64 @@ function Aufgabenzeile({
   )
 }
 
+/** Wie die drei Operationen heissen, wenn eine Mitteilung von ihnen erzählt. */
+const WAS: Record<AbgelehnteAenderung['was'], string> = {
+  anlegen: 'Anlegen',
+  aendern: 'Ändern',
+  loeschen: 'Löschen',
+}
+
+/**
+ * Was der Server verworfen hat (§5).
+ *
+ * „Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern mit
+ * ihrem entschlüsselten Inhalt als Mitteilung angezeigt." Beides steht hier:
+ * die Zahl, weil drei verlorene Änderungen etwas anderes sind als eine, und der
+ * Titel, weil „eine Änderung konnte nicht gespeichert werden" niemandem sagt,
+ * was er noch einmal tippen muss.
+ *
+ * Weg geht die Mitteilung nur, wenn jemand sie zur Kenntnis nimmt. Ein
+ * Zeitablauf wäre wieder das stille Verschwinden, das §5 ausschliesst.
+ */
+function Abgelehnt({
+  aenderungen,
+  aufBestaetigen,
+}: {
+  aenderungen: AbgelehnteAenderung[]
+  aufBestaetigen: () => void
+}) {
+  return (
+    <Card>
+      <p role="alert">
+        {aenderungen.length === 1
+          ? 'Eine Änderung konnte nicht gespeichert werden.'
+          : `${aenderungen.length} Änderungen konnten nicht gespeichert werden.`}
+      </p>
+
+      <ul className={stile.liste}>
+        {aenderungen.map((aenderung, stelle) => (
+          <li key={`${aenderung.itemId}:${stelle}`} className={stile.hinweis}>
+            {/*
+              Ohne Titel bleibt es beim Vorgang. Das passiert, wenn die Zeile
+              inzwischen ein Tombstone ist — dann gibt es keinen DEK mehr, unter
+              dem sich der Payload lesen liesse (§5).
+            */}
+            {aenderung.titel === ''
+              ? `${WAS[aenderung.was]} einer Aufgabe: ${aenderung.grund}`
+              : `${WAS[aenderung.was]} von „${aenderung.titel}“: ${aenderung.grund}`}
+          </li>
+        ))}
+      </ul>
+
+      <Button variante="sekundaer" onClick={aufBestaetigen}>
+        Verstanden
+      </Button>
+    </Card>
+  )
+}
+
 function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
-  const { zustand, legeAn, schreibe, hakeAb, loesche } = useAufgaben(fall)
+  const { zustand, abgelehnt, bestaetige, legeAn, schreibe, hakeAb, loesche } = useAufgaben(fall)
 
   const [neuerTitel, setzeNeuerTitel] = useState('')
   const [laeuft, setzeLaeuft] = useState(false)
@@ -254,20 +352,48 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
         </p>
       )}
 
-      {zustand.status === 'laedt' ? <Ladeanzeige text="Ihre Aufgaben werden geladen…" /> : null}
+      {abgelehnt.length === 0 ? null : (
+        <Abgelehnt aenderungen={abgelehnt} aufBestaetigen={bestaetige} />
+      )}
 
-      {zustand.status === 'fehler' ? (
-        <p className={stile.hinweis} role="alert">
-          Ihre Aufgaben sind gerade nicht abrufbar. {zustand.nachricht}
-        </p>
-      ) : null}
+      {/*
+        §5: „Die Ladeanzeige bezieht sich auf den Netzwerk-Fetch, nicht auf das
+        Entschlüsseln." Sie steht deshalb, solange es nichts zu zeigen gibt —
+        erst bis der Cache gelesen ist, danach so lange der erste Abruf läuft.
+
+        **Für die Runden danach gibt es bewusst keine.** Die Türklingel läutet
+        im geteilten Fall im Sekundentakt; eine Zeile, die dabei erscheint und
+        wieder verschwindet, verschöbe die Liste unter dem Finger, der gerade
+        ein Häkchen setzen will, und eine Vorlesestimme sagte alle paar Sekunden
+        „wird aktualisiert". Der Sinn der Türklingel ist, dass ihr niemand
+        zusehen muss.
+      */}
+      {zustand.status === 'laedt' ? <Ladeanzeige text="Ihre Aufgaben werden geladen…" /> : null}
 
       {zustand.status === 'bereit' ? (
         <>
-          {zustand.aufgaben.length === 0 ? (
-            <p className={stile.hinweis}>
-              Hier ist noch nichts. Tragen Sie oben ein, was zu tun ist.
+          {/*
+            Der Netzfehler nimmt die Liste nicht weg. Was gecacht ist, stimmte
+            zum Zeitpunkt des letzten Abrufs; ein leerer Bildschirm behauptete
+            stattdessen, es gebe nichts.
+          */}
+          {zustand.netzfehler === null ? null : (
+            <p className={stile.hinweis} role="alert">
+              Ihre Aufgaben sind gerade nicht abrufbar. {zustand.netzfehler}
             </p>
+          )}
+
+          {zustand.aufgaben.length === 0 ? (
+            // Ein leerer Cache und ein laufender erster Abruf sind nicht
+            // dasselbe wie ein leerer Fall. „Hier ist noch nichts" wäre in
+            // diesem Moment eine Behauptung, die der Abruf gleich widerlegt.
+            zustand.laedtNetz ? (
+              <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
+            ) : (
+              <p className={stile.hinweis}>
+                Hier ist noch nichts. Tragen Sie oben ein, was zu tun ist.
+              </p>
+            )
           ) : (
             <ul className={stile.liste}>
               {zustand.aufgaben.map((aufgabe) => (
@@ -275,7 +401,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
                   key={aufgabe.id}
                   aufgabe={aufgabe}
                   gesperrt={laeuft}
-                  aufHaken={(erledigt) => void fuehreAus(() => hakeAb(aufgabe, erledigt))}
+                  aufHaken={(erledigt) => fuehreAus(() => hakeAb(aufgabe, erledigt))}
                   aufSpeichern={(titel, beschreibung) =>
                     fuehreAus(() => schreibe(aufgabe, { titel, beschreibung }))
                   }
