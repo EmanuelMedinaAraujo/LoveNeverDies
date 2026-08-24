@@ -20,7 +20,7 @@
 
 import { entschluessele, erzeugeAesSchluessel, verschluessele } from '../core/crypto/aead'
 import { bytesText, textBytes } from '../core/crypto/bytes'
-import { tresorCommitment } from '../core/crypto/commitment'
+import { stimmtTresorCommitment, tresorCommitment } from '../core/crypto/commitment'
 import { entkapsele, kapsele } from '../core/crypto/kem'
 import type { Geraeteidentitaet } from '../core/crypto/keystore'
 import { signaturSchluesselAusBytes } from '../core/crypto/sign'
@@ -346,10 +346,17 @@ async function leseFall(
       const wrapKv = await tresor.wrapFuerGeraet(zeile.id, geraeteId)
       if (wrapKv !== null) {
         const geteiltesGeheimnis = entkapsele(wrapKv.kemCt, identitaet.kem.geheim)
-        kv = await entschluessele(geteiltesGeheimnis, wrapKv.wrappedKey)
+        const kandidatKv = await entschluessele(geteiltesGeheimnis, wrapKv.wrappedKey)
+        if (zeile.vaultCommitment !== null) {
+          const gueltig = await stimmtTresorCommitment(kandidatKv, zeile.vaultCommitment)
+          if (!gueltig) {
+            throw new FallFehler('Der Tresorschlüssel stimmt nicht mit dem hinterlegten Commitment überein.')
+          }
+        }
+        kv = kandidatKv
       }
-    } catch {
-      // Wenn K_v nicht entpackt werden kann, bleibt kv null (z. B. für Nicht-Preparer).
+    } catch (ursache) {
+      throw new FallFehler(`Der Tresorschlüssel konnte nicht entpackt werden: ${alsNachricht(ursache)}`)
     }
   }
 

@@ -22,6 +22,7 @@ function falldaten(zustand: Falldaten['zustand'] = { status: 'kein-fall' }): Fal
     legeTrauerfallAn: vi.fn(),
     legeVorsorgefallAn: vi.fn(),
     loescheVorsorgefall: vi.fn(),
+    aktualisiere: vi.fn(),
   }
 }
 

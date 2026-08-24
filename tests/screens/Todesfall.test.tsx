@@ -22,6 +22,7 @@ function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
     legeTrauerfallAn: vi.fn().mockResolvedValue(undefined),
     legeVorsorgefallAn: vi.fn().mockResolvedValue(undefined),
     loescheVorsorgefall: vi.fn().mockResolvedValue(undefined),
+    aktualisiere: vi.fn(),
     ...ueberschreibung,
   }
 }

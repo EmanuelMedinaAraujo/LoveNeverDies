@@ -41,6 +41,7 @@ export type Falldaten = {
   legeTrauerfallAn: (angaben: Trauerfallangaben) => Promise<void>
   legeVorsorgefallAn: (angaben: Vorsorgefallangaben) => Promise<void>
   loescheVorsorgefall: (fallId: string) => Promise<void>
+  aktualisiere: () => void
 }
 
 export function useCase(): Falldaten {
@@ -136,6 +137,8 @@ export function useCase(): Falldaten {
     [zugang],
   )
 
+  const aktualisiere = useCallback(() => setzeRunde((vorher) => vorher + 1), [])
+
   const zustand = useMemo<FallZustand>(() => {
     if (anmeldungFehler !== null) {
       return { status: 'fehler', nachricht: anmeldungFehler }
@@ -157,7 +160,7 @@ export function useCase(): Falldaten {
   }, [anmeldungFehler, ergebnis, geraetId, identitaet])
 
   return useMemo(
-    () => ({ zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall }),
-    [zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall],
+    () => ({ zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall, aktualisiere }),
+    [zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall, aktualisiere],
   )
 }

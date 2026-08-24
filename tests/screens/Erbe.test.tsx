@@ -31,6 +31,23 @@ vi.mock('../../src/hooks/useCase.ts', () => ({
     loescheVorsorgefall: mockLoescheVorsorgefall,
     legeVorsorgefallAn: vi.fn(),
     legeTrauerfallAn: vi.fn(),
+    aktualisiere: vi.fn(),
+  }),
+}))
+
+vi.mock('../../src/hooks/useAufgaben.ts', () => ({
+  useAufgaben: () => ({
+    zustand: { status: 'bereit', laedtNetz: false, netzfehler: null, aufgaben: [], baum: [], uebersprungen: 0 },
+    zeilen: [],
+    mutiere: vi.fn(),
+    bestaetige: vi.fn(),
+    aktualisiere: vi.fn(),
+    setzeZuweisung: vi.fn(),
+    schliesseAufgabe: vi.fn(),
+    oeffneAufgabe: vi.fn(),
+    legeAufgabeAn: vi.fn(),
+    aendereAufgabe: vi.fn(),
+    loescheAufgabe: vi.fn(),
   }),
 }))
 

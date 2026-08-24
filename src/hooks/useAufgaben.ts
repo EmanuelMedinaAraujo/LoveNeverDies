@@ -25,6 +25,7 @@ import { useAuth } from '../core/auth/authProvider.ts'
 import type { InhaltZeile } from '../core/db/inhalte.ts'
 import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
+import type { Mutation } from '../core/sync/queue.ts'
 import {
   aufgabenAusZeilen,
   beschreibeAbgelehnte,
@@ -99,6 +100,8 @@ export type Aufgabendaten = {
    * er über `art`.
    */
   zeilen: InhaltZeile[]
+  /** Stellt eine Mutation in die Offline-Queue des Sync-Streams (§5). */
+  mutiere: (mutation: Mutation) => void
   /**
    * Stösst eine Sync-Runde an.
    *
@@ -487,6 +490,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     () => ({
       zustand,
       zeilen: sync.zeilen,
+      mutiere,
       aktualisiere,
       erinnerungen,
       abgelehnt,
@@ -505,6 +509,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     [
       zustand,
       sync.zeilen,
+      mutiere,
       aktualisiere,
       erinnerungen,
       abgelehnt,

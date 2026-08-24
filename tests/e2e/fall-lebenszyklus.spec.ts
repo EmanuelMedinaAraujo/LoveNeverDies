@@ -57,9 +57,10 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(
       page.getByRole('button', { name: 'Ein Todesfall ist eingetreten' }),
     ).toBeEnabled()
+    // Seit Slice #14 offen: Der Weg führt auf /vorsorge und die Vorsorgeanlage (§2, §3.5).
     await expect(
       page.getByRole('button', { name: 'Ich möchte für später vorsorgen' }),
-    ).toBeDisabled()
+    ).toBeEnabled()
     // Seit §6 offen: Der Weg fuehrt auf /beitreten und den Kopplungscode.
     await expect(page.getByRole('button', { name: 'Ich wurde eingeladen' })).toBeEnabled()
   })
@@ -84,6 +85,57 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     await page.getByRole('link', { name: 'Zurück' }).click()
     await expect(page).toHaveURL(/\/$/)
+  })
+
+  await test.step('legt einen Vorsorgefall an und prüft den versiegelten Tresor (§2, §3.5)', async () => {
+    await page.getByRole('button', { name: 'Ich möchte für später vorsorgen' }).click()
+    await expect(page).toHaveURL(/\/vorsorge$/)
+    await expect(page.getByRole('heading', { name: 'Für später vorsorgen' })).toBeVisible()
+
+    await page.getByLabel('Ihr Name').fill('Erika Mustermann')
+    await page.getByRole('button', { name: 'Vorsorge anlegen' }).click()
+
+    await expect(page).toHaveURL(/\/erbe$/, { timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'Erbe & Tresor' })).toBeVisible()
+    await expect(page.getByText('Erika Mustermann · Vorsorge')).toBeVisible()
+    await expect(page.getByText('Versiegelt', { exact: true })).toBeVisible()
+    await expect(
+      page.getByText(/Der Tresor ist versiegelt, kann aber noch von niemandem geöffnet werden/),
+    ).toBeVisible()
+  })
+
+  await test.step('befüllt den Tresor und löscht den Eintrag wieder (§3.5)', async () => {
+    await page.getByRole('button', { name: 'Inhalt in Tresor legen' }).click()
+
+    await page.getByLabel('Titel').fill('Bankschließfach')
+    await page.getByLabel('Inhalt / Notiz').fill('Schlüssel im Arbeitszimmer')
+    
+    const angelegt = gespeichert(page, 'POST')
+    await page.getByRole('button', { name: 'Im Tresor speichern' }).click()
+    await angelegt
+
+    await expect(page.getByText('Bankschließfach')).toBeVisible()
+    await expect(page.getByText('Schlüssel im Arbeitszimmer')).toBeVisible()
+
+    const geloescht = gespeichert(page, 'PATCH')
+    await page.getByRole('button', { name: '"Bankschließfach" löschen' }).click()
+    await geloescht
+
+    await expect(page.getByText('Der Tresor ist noch leer.')).toBeVisible()
+  })
+
+  await test.step('löscht den Vorsorgefall samt Tresor (§3.5)', async () => {
+    await page.getByRole('button', { name: 'Vorsorge löschen' }).click()
+    await expect(
+      page.getByText(/Möchten Sie diesen Vorsorgefall samt Tresor wirklich unwiderruflich löschen/),
+    ).toBeVisible()
+
+    await page.getByRole('button', { name: 'Ja, Vorsorge löschen' }).click()
+    await expect(page).toHaveURL(/\/$/)
+
+    // Wieder im Zustand ohne Fall
+    await expect(page.getByRole('heading', { name: 'Willkommen' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Ein Todesfall ist eingetreten' })).toBeEnabled()
   })
 
   await test.step('legt einen Trauerfall an', async () => {

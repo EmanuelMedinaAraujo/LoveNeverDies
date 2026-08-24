@@ -486,4 +486,83 @@ describe('Einen Fall wieder lesen (§3.6)', () => {
 
     expect(await neuGeladen(s)).toEqual([expect.objectContaining({ zustand: 'gesperrt' })])
   })
+
+  it('holt K_v aus dem Vault-Wrap eines Vorsorgefalls zurück, wenn das Commitment stimmt', async () => {
+    const s = server()
+    const eigene = identitaet()
+    s.meldeGeraetAn(GERAET, eigene)
+
+    await legeVorsorgefallAn(s.faelle, eigene, GERAET, {
+      personName: 'Anna Vorsorge',
+    })
+
+    const geladen = await ladeFaelle(s.faelle, s.wraps, s.geraete, eigene, GERAET, s.tresor)
+    const [wieder] = geladen
+
+    expect(wieder).toBeDefined()
+    if (wieder?.zustand !== 'lesbar') {
+      throw new Error('Fall muss lesbar sein')
+    }
+
+    expect(wieder.status).toBe('vorsorge')
+    expect(wieder.kv).not.toBeNull()
+    expect(wieder.kv).toHaveLength(32)
+    expect(wieder.vaultCommitment).not.toBeNull()
+  })
+
+  it('sperrt den Fall, wenn das Tresor-Commitment nicht mit dem entpackten K_v übereinstimmt', async () => {
+    const s = server()
+    const eigene = identitaet()
+    s.meldeGeraetAn(GERAET, eigene)
+
+    await legeVorsorgefallAn(s.faelle, eigene, GERAET, {
+      personName: 'Anna Vorsorge',
+    })
+
+    // Manipuliere das in der Fall-Zeile gespeicherte vaultCommitment
+    const fallZeile = s.faelleZeilen[0]
+    if (!fallZeile || !fallZeile.vaultCommitment) {
+      throw new Error('Fallzeile oder vaultCommitment fehlt')
+    }
+    fallZeile.vaultCommitment = Uint8Array.from(fallZeile.vaultCommitment)
+    fallZeile.vaultCommitment[0] ^= 0xff
+
+    const geladen = await ladeFaelle(s.faelle, s.wraps, s.geraete, eigene, GERAET, s.tresor)
+    const [wieder] = geladen
+
+    expect(wieder).toEqual(
+      expect.objectContaining({
+        zustand: 'gesperrt',
+        grund: expect.stringContaining('Commitment'),
+      }),
+    )
+  })
+
+  it('sperrt den Fall, wenn der Vault-Wrap beschädigt/manipuliert ist', async () => {
+    const s = server()
+    const eigene = identitaet()
+    s.meldeGeraetAn(GERAET, eigene)
+
+    await legeVorsorgefallAn(s.faelle, eigene, GERAET, {
+      personName: 'Anna Vorsorge',
+    })
+
+    const vaultWrap = s.vaultWrapZeilen[0]
+    if (!vaultWrap) {
+      throw new Error('vaultWrap fehlt')
+    }
+    vaultWrap.wrappedKey = Uint8Array.from(vaultWrap.wrappedKey)
+    vaultWrap.wrappedKey[0] ^= 0xff
+
+    const geladen = await ladeFaelle(s.faelle, s.wraps, s.geraete, eigene, GERAET, s.tresor)
+    const [wieder] = geladen
+
+    expect(wieder).toEqual(
+      expect.objectContaining({
+        zustand: 'gesperrt',
+        grund: expect.stringContaining('Tresorschlüssel konnte nicht entpackt werden'),
+      }),
+    )
+  })
 })
+

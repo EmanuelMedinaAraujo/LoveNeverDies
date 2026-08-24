@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
+import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { useTresor } from '../../../hooks/useTresor.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
@@ -146,11 +147,32 @@ function TresorInhalte({
 function VorsorgeTresor({
   fall,
   onLoescheFall,
+  onFallAktualisieren,
 }: {
   fall: LesbarerFall
   onLoescheFall: (fallId: string) => Promise<void>
+  onFallAktualisieren: () => void
 }) {
-  const { zustand, legeItemAn, loescheItem, resplitLaeuft, resplitFehler } = useTresor(fall)
+  const { zustand: aufgabenZustand, zeilen, mutiere } = useAufgaben(fall)
+  const syncStatus = useMemo(
+    () =>
+      aufgabenZustand.status === 'laedt'
+        ? { gecacht: false, laedtNetz: false, netzfehler: null, abgeglichen: false }
+        : {
+            gecacht: true,
+            laedtNetz: aufgabenZustand.laedtNetz,
+            netzfehler: aufgabenZustand.netzfehler,
+            abgeglichen: !aufgabenZustand.laedtNetz,
+          },
+    [aufgabenZustand],
+  )
+  const { zustand, legeItemAn, loescheItem, resplitLaeuft, resplitFehler } = useTresor(
+    fall,
+    zeilen,
+    mutiere,
+    syncStatus,
+    onFallAktualisieren,
+  )
   const navigate = useNavigate()
 
   const [loeschenBestaetigen, setzeLoeschenBestaetigen] = useState(false)
@@ -281,7 +303,7 @@ function VorsorgeTresor({
 }
 
 export function Erbe() {
-  const { zustand, loescheVorsorgefall: onLoescheFall } = useCase()
+  const { zustand, loescheVorsorgefall: onLoescheFall, aktualisiere: onFallAktualisieren } = useCase()
 
   if (zustand.status === 'laedt') {
     return (
@@ -330,7 +352,11 @@ export function Erbe() {
       </div>
 
       {fall.status === 'vorsorge' ? (
-        <VorsorgeTresor fall={fall} onLoescheFall={onLoescheFall} />
+        <VorsorgeTresor
+          fall={fall}
+          onLoescheFall={onLoescheFall}
+          onFallAktualisieren={onFallAktualisieren}
+        />
       ) : (
         <Card>
           <div className={stile.statusKopf}>
