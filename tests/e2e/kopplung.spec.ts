@@ -86,6 +86,22 @@ async function pruefcodeVon(seite: Page, ueberschrift: string): Promise<string> 
   return (await sichtbar.textContent()) ?? ''
 }
 
+/**
+ * Der Startscreen zeigt diesen Fall (§7).
+ *
+ * Die H1 heißt seit dem Start-Screen „Meine Aufgaben" und nicht mehr nach der
+ * verstorbenen Person; um wessen Fall es geht, steht als Beschriftung darunter
+ * (§2). Geprüft wird beides — die Überschrift sagt, dass der Screen steht, der
+ * Name sagt, dass es der richtige Fall ist. Für die Kopplung zählt der Name:
+ * Wer beitritt, muss hinterher *diesen* Fall sehen.
+ */
+async function startscreenZeigt(seite: Page, name: string): Promise<void> {
+  await expect(seite.getByRole('heading', { name: 'Meine Aufgaben', level: 1 })).toBeVisible({
+    timeout: 30_000,
+  })
+  await expect(seite.getByText(new RegExp(name)).first()).toBeVisible({ timeout: 30_000 })
+}
+
 /** Legt einen Trauerfall an und wartet, bis er auf dem Startscreen steht. */
 async function trauerfallAnlegen(seite: Page, name: string, datum: string): Promise<void> {
   await gotoVerlaesslich(seite, '/todesfall')
@@ -95,7 +111,7 @@ async function trauerfallAnlegen(seite: Page, name: string, datum: string): Prom
   await seite.getByRole('button', { name: 'Fall anlegen' }).click()
 
   await expect(seite).toHaveURL(/\/$/)
-  await expect(seite.getByRole('heading', { name: new RegExp(name) })).toBeVisible()
+  await startscreenZeigt(seite, name)
 }
 
 /**
@@ -188,7 +204,7 @@ test('Angehörige einladen: beide Seiten sehen denselben Prüfcode', async ({ br
       await expect(bernd.getByText('Sie gehören jetzt zum Fall.')).toBeVisible({ timeout: 30_000 })
 
       await expect(bernd).toHaveURL(/\/$/, { timeout: 30_000 })
-      await expect(bernd.getByRole('heading', { name: /Margarete Vogt/ })).toBeVisible()
+      await startscreenZeigt(bernd, 'Margarete Vogt')
     })
 
     await test.step('Bernd liest die Aufgaben entschlüsselt', async () => {
@@ -226,9 +242,7 @@ test('Angehörige einladen: beide Seiten sehen denselben Prüfcode', async ({ br
         await expect(doris.getByText('Sie gehören jetzt zum Fall.')).toBeVisible({
           timeout: 30_000,
         })
-        await expect(doris.getByRole('heading', { name: /Margarete Vogt/ })).toBeVisible({
-          timeout: 30_000,
-        })
+        await startscreenZeigt(doris, 'Margarete Vogt')
       } finally {
         await doris.context().close()
       }
@@ -296,9 +310,7 @@ test('zweites Gerät freischalten', async ({ browser }) => {
         timeout: 30_000,
       })
 
-      await expect(tablet.getByRole('heading', { name: /Friedrich Kaiser/ })).toBeVisible({
-        timeout: 30_000,
-      })
+      await startscreenZeigt(tablet, 'Friedrich Kaiser')
 
       // Und die Freigabe ist damit erledigt — der Hinweis aus Profil ist fort.
       await gotoVerlaesslich(tablet, '/profil')
