@@ -530,6 +530,41 @@ describe('aufgabenAusZeilen', () => {
     expect(uebersprungeneIds).toEqual(['ohne-titel'])
   })
 
+  it('geht an Tresor-Inhalten vorbei, statt sie als Defekt zu zählen', async () => {
+    /*
+     * Ein Tresor-Eintrag trägt `art: 'item'` wie eine Aufgabe, sein DEK liegt
+     * aber unter `K_v` (§3.5). Ohne die Weiche hier scheiterte jeder Versuch
+     * und der eigene Tresor stünde als "übersprungene Einträge" im Dev-Modus.
+     */
+    const { inhalte } = server()
+    const k = fall()
+    const kv = erzeugeAesSchluessel()
+
+    await legeAn(inhalte, k, 'Eine Aufgabe')
+
+    const [zeile] = await inhalte.seit(k.id, 0)
+
+    if (zeile === undefined) {
+      throw new Error('Die angelegte Zeile fehlt.')
+    }
+
+    const dek = erzeugeDek()
+    const tresorZeile = {
+      ...zeile,
+      id: 'tresor-item',
+      seq: zeile.seq + 1,
+      kid: `vault_${k.id}`,
+      imTresor: true,
+      wrappedDek: await wrappeDek(kv, dek),
+      payload: await verschluessele(dek, textBytes('{"typ":"tresor","titel":"Geheim"}')),
+    }
+
+    const { aufgaben, uebersprungeneIds } = await aufgabenAusZeilen([zeile, tresorZeile], k)
+
+    expect(aufgaben.map((aufgabe) => aufgabe.titel)).toEqual(['Eine Aufgabe'])
+    expect(uebersprungeneIds).toEqual([])
+  })
+
   it('entschlüsselt ohne Netz, weil ihm keine Tabelle übergeben wird', async () => {
     /*
      * §5: „Gecachte Inhalte werden sofort gerendert." Das trägt nur, wenn das

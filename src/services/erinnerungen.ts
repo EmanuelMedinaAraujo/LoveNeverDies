@@ -65,12 +65,12 @@ function terminZeit(ende: string, vorlauf: number): number {
 
 function text(titel: string, vorlauf: number): string {
   if (vorlauf === 0) {
-    return `"${titel}" ist heute fällig.`
+    return `„${titel}" ist heute fällig.`
   }
 
   return vorlauf === 1
-    ? `"${titel}" ist morgen fällig.`
-    : `"${titel}" ist in ${vorlauf} Tagen fällig.`
+    ? `„${titel}" ist morgen fällig.`
+    : `„${titel}" ist in ${vorlauf} Tagen fällig.`
 }
 
 /**

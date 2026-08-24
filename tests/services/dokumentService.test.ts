@@ -244,7 +244,7 @@ describe('nimmDokumentAuf', () => {
     const w = werkzeug()
     w.hilfen.inhalte.scheitereBeimLegen(new Error('Die Aufgabe war nicht anzulegen'))
 
-    await expect(nimmDokumentAuf(w, datei())).rejects.toThrow(/nicht zu speichern/)
+    await expect(nimmDokumentAuf(w, datei())).rejects.toThrow(/konnte nicht gespeichert werden/)
 
     expect(w.hilfen.ablage.objekte.size).toBe(0)
     expect(w.hilfen.ablage.entfernt).toHaveLength(1)

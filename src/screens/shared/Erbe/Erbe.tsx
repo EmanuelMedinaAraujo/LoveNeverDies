@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
@@ -153,26 +153,20 @@ function VorsorgeTresor({
   onLoescheFall: (fallId: string) => Promise<void>
   onFallAktualisieren: () => void
 }) {
+  // Derselbe Sync-Stream wie bei den Aufgaben und Dokumenten (§5): ein Delta,
+  // ein Cache, eine Queue je Fall.
   const { zustand: aufgabenZustand, zeilen, mutiere } = useAufgaben(fall)
-  const syncStatus = useMemo(
-    () =>
-      aufgabenZustand.status === 'laedt'
-        ? { gecacht: false, laedtNetz: false, netzfehler: null, abgeglichen: false }
-        : {
-            gecacht: true,
-            laedtNetz: aufgabenZustand.laedtNetz,
-            netzfehler: aufgabenZustand.netzfehler,
-            abgeglichen: !aufgabenZustand.laedtNetz,
-          },
-    [aufgabenZustand],
-  )
-  const { zustand, legeItemAn, loescheItem, resplitLaeuft, resplitFehler } = useTresor(
-    fall,
-    zeilen,
-    mutiere,
-    syncStatus,
-    onFallAktualisieren,
-  )
+  const {
+    items,
+    schwelle,
+    istPreparer,
+    resplitPending,
+    legeItemAn,
+    loescheItem,
+    verteileShares,
+    resplitLaeuft,
+    resplitFehler,
+  } = useTresor(fall, zeilen, mutiere, onFallAktualisieren)
   const navigate = useNavigate()
 
   const [loeschenBestaetigen, setzeLoeschenBestaetigen] = useState(false)
@@ -192,11 +186,9 @@ function VorsorgeTresor({
     }
   }
 
-  if (zustand.status === 'laedt') {
+  if (aufgabenZustand.status === 'laedt') {
     return <Ladeanzeige text="Tresor wird geladen..." />
   }
-
-  const { items, schwelle, istPreparer, resplitPending } = zustand
 
   return (
     <>
@@ -233,10 +225,22 @@ function VorsorgeTresor({
         ) : null}
 
         {resplitLaeuft ? <p className={stile.hinweis}>Schlüssel werden neu verteilt...</p> : null}
-        {resplitFehler ? (
-          <p className={stile.hinweis} role="alert">
-            Schlüsselverteilung: {resplitFehler}
-          </p>
+        {resplitFehler !== null && !resplitLaeuft ? (
+          <>
+            <p className={stile.warnung} role="alert">
+              Die Schlüssel konnten nicht neu verteilt werden: {resplitFehler} Bis das
+              gelingt, können die zuletzt hinzugekommenen Angehörigen den Tresor nicht
+              freigeben.
+            </p>
+            {/*
+              Von Hand und nicht von allein: Ein automatischer zweiter Versuch
+              liefe bei einem dauerhaften Fehler in eine Schleife gegen den
+              Server. Der Preparer sieht den Stand und entscheidet.
+            */}
+            <Button volleBreite onClick={() => void verteileShares().catch(() => undefined)}>
+              Erneut versuchen
+            </Button>
+          </>
         ) : null}
       </Card>
 

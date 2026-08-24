@@ -92,7 +92,7 @@ function Dokumentzeile({
           variante="sekundaer"
           onClick={aufAnsehen}
           disabled={gesperrt}
-          vorleseText={`: "${dokument.name}"`}
+          vorleseText={`: „${dokument.name}"`}
         >
           Ansehen
         </Button>
@@ -101,7 +101,7 @@ function Dokumentzeile({
             variante="sekundaer"
             onClick={() => setzeFragt(true)}
             disabled={gesperrt}
-            vorleseText={`: "${dokument.name}"`}
+            vorleseText={`: „${dokument.name}"`}
           >
             Löschen
           </Button>

@@ -27,6 +27,7 @@ import { supabaseFaelle } from '../core/db/supabaseFaelle.ts'
 import { supabaseFallschluessel } from '../core/db/supabaseFallschluessel.ts'
 import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
 import { supabaseKopplung } from '../core/db/supabaseKopplung.ts'
+import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import { alsNachricht } from '../core/fehler.ts'
 import { ladeFaelle, type Fall, type LesbarerFall } from '../services/fallService.ts'
@@ -372,6 +373,7 @@ export function useEinloesung(): Einloesungsdaten {
         if (anfrage.angebot.zweck === 'device') {
           const freischaltung = await schalteGeraetFrei(
             kopplung,
+            supabaseTresor(zugang()),
             anfrage,
             faelle,
             identitaet,

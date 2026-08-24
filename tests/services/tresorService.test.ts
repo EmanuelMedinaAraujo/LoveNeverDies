@@ -37,6 +37,7 @@ function mockDb() {
 
   const tresorDb: TresorTabelle = {
     wrapFuerGeraet: () => Promise.resolve(null),
+    legeWrapAn: () => Promise.reject(new Error('nicht gebraucht')),
     sharesFuerFall: () => Promise.resolve([]),
     resplitVault: (_fallId, n, k, shares) => {
       gespeichertesN = n

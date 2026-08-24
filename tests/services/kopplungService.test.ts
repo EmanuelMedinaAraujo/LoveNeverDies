@@ -3,7 +3,12 @@ import { geraetePruefcode } from '../../src/core/crypto/fingerprint'
 import { erzeugeKemSchluesselpaar } from '../../src/core/crypto/kem'
 import type { Geraeteidentitaet } from '../../src/core/crypto/keystore'
 import { erzeugeSignaturSchluesselpaar, pkSigBytes } from '../../src/core/crypto/sign'
-import type { FaelleTabelle, FallZeile, NeuerTrauerfall } from '../../src/core/db/faelle'
+import type {
+  FaelleTabelle,
+  FallZeile,
+  NeuerTrauerfall,
+  NeuerVorsorgefall,
+} from '../../src/core/db/faelle'
 import type { InhalteTabelle, InhaltZeile, NeuerInhalt } from '../../src/core/db/inhalte'
 import type {
   SchluesselwrapTabelle,
@@ -14,7 +19,13 @@ import type {
   GeraeteschluesselZeile,
 } from '../../src/core/db/geraeteschluessel'
 import type { Einloesung, KopplungTabelle, Kopplungszweck } from '../../src/core/db/kopplung'
-import { ladeFaelle, legeTrauerfallAn, type Fall } from '../../src/services/fallService'
+import type { TresorTabelle, VaultKeyWrapZeile } from '../../src/core/db/tresor'
+import {
+  ladeFaelle,
+  legeTrauerfallAn,
+  legeVorsorgefallAn,
+  type Fall,
+} from '../../src/services/fallService'
 import {
   freischaltungText,
   fuegeZumFallHinzu,
@@ -80,6 +91,7 @@ function server() {
   const mitglieder: { fallId: string; userId: string }[] = []
   const wrapZeilen: SchluesselwrapZeile[] = []
   const geraeteZeilen: GeraeteschluesselZeile[] = []
+  const vaultWrapZeilen: VaultKeyWrapZeile[] = []
   const itemZeilen: InhaltZeile[] = []
   let naechsteSeq = 0
   const profile = new Map<string, { anzeigename: string; email: string | null }>()
@@ -135,7 +147,40 @@ function server() {
 
         return Promise.resolve()
       },
-      legeVorsorgefallAn: () => Promise.reject(new Error('nicht gebraucht')),
+      legeVorsorgefallAn(neu: NeuerVorsorgefall) {
+        faelleZeilen.push({
+          id: neu.id,
+          status: 'vorsorge',
+          currentKid: neu.kidFall,
+          keyGeneration: 1,
+          version: 0,
+          katalogVersion: null,
+          payload: neu.payload,
+          preparerId: userId,
+          vaultCommitment: neu.vaultCommitment,
+          vaultResplitPending: false,
+          vaultK: null,
+          vaultN: 0,
+          angelegtAm: '2026-08-24T12:00:00Z',
+        })
+        mitglieder.push({ fallId: neu.id, userId })
+
+        for (const [kid, wrap] of [
+          [neu.kidFall, neu.wrapFall],
+          [neu.kidKatalog, neu.wrapKatalog],
+        ] as const) {
+          wrapZeilen.push({ ...wrap, fallId: neu.id, kid, geraeteId: neu.geraeteId, wrappedBy: neu.geraeteId })
+        }
+
+        vaultWrapZeilen.push({
+          fallId: neu.id,
+          geraeteId: neu.geraeteId,
+          kemCt: neu.vaultKemCt,
+          wrappedKey: neu.vaultWrappedKey,
+        })
+
+        return Promise.resolve()
+      },
       loescheVorsorgefall: () => Promise.reject(new Error('nicht gebraucht')),
     }
 
@@ -190,6 +235,40 @@ function server() {
       legeAn: () => Promise.reject(new Error('nicht gebraucht')),
       fuerBenutzer: () => Promise.reject(new Error('nicht gebraucht')),
       benenneUm: () => Promise.reject(new Error('nicht gebraucht')),
+    }
+
+    /*
+     * `vault_key_wraps`, so schmal wie der Port und mit derselben Sperre wie
+     * die Policy: Nur der Preparer eines Falls schreibt hinein (§3.5, §4).
+     */
+    const tresor: TresorTabelle = {
+      wrapFuerGeraet: (fallId, geraeteId) =>
+        Promise.resolve(
+          vaultWrapZeilen.find(
+            (zeile) => zeile.fallId === fallId && zeile.geraeteId === geraeteId,
+          ) ?? null,
+        ),
+
+      legeWrapAn(wrap) {
+        const fall = faelleZeilen.find((zeile) => zeile.id === wrap.fallId)
+
+        if (fall?.preparerId !== userId) {
+          return Promise.reject(new Error('Nur der Preparer schreibt in vault_key_wraps.'))
+        }
+
+        if (
+          !vaultWrapZeilen.some(
+            (zeile) => zeile.fallId === wrap.fallId && zeile.geraeteId === wrap.geraeteId,
+          )
+        ) {
+          vaultWrapZeilen.push(wrap)
+        }
+
+        return Promise.resolve()
+      },
+
+      sharesFuerFall: () => Promise.resolve([]),
+      resplitVault: () => Promise.reject(new Error('nicht gebraucht')),
     }
 
     const kopplung: KopplungTabelle = {
@@ -271,10 +350,10 @@ function server() {
       },
     }
 
-    return { faelle, inhalte, wraps, geraete, kopplung }
+    return { faelle, inhalte, wraps, geraete, kopplung, tresor }
   }
 
-  return { alsPerson, meldeGeraetAn, profile, wrapZeilen, mitglieder }
+  return { alsPerson, meldeGeraetAn, profile, wrapZeilen, vaultWrapZeilen, mitglieder, faelleZeilen }
 }
 
 /** Bernd hat einen Fall, Anna hat ein Gerät und ein Profil, sonst nichts. */
@@ -448,7 +527,14 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     )
 
     expect(
-      await schalteGeraetFrei(lage.bernd.kopplung, anfrage, faelle, lage.berndsIdentitaet, BERNDS_GERAET),
+      await schalteGeraetFrei(
+        lage.bernd.kopplung,
+        lage.bernd.tresor,
+        anfrage,
+        faelle,
+        lage.berndsIdentitaet,
+        BERNDS_GERAET,
+      ),
     ).toEqual({ freigeschaltet: 2, gesamt: 2 })
 
     // Und das Neugerät liest beide Fälle wirklich, nicht bloß der Zahl nach.
@@ -464,6 +550,91 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     expect(aufDemNeugeraet.map((fall) => fall.id).sort()).toEqual(
       [lage.fall.id, zweiterFall.id].sort(),
     )
+  })
+
+  /*
+   * §3.5, "Versiegeln", Schritt 2: `K_v` an die *eigenen Geräte*. Ohne diesen
+   * Schritt liest das zweite Gerät den Fall zwar, den Tresor aber nicht: Es
+   * hielte sich für ein Gerät eines Angehörigen, zeigte keine Inhalte an und
+   * könnte keinen Re-Split fahren.
+   */
+  it('reicht K_v an das zweite Gerät des Preparers weiter', async () => {
+    const lage = await ausgangslage()
+
+    const vorsorge = await legeVorsorgefallAn(
+      lage.bernd.faelle,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+      { personName: 'Bernd Weber' },
+    )
+
+    const zweitesGeraet = identitaet()
+    lage.s.meldeGeraetAn(BERNDS_ZWEITES, zweitesGeraet, BERND)
+
+    const { code } = await lage.bernd.kopplung.erzeugeCode(BERNDS_ZWEITES, 'device')
+    const anfrage = await loeseKopplungscodeEin(lage.bernd.kopplung, code)
+
+    const faelle = await ladeFaelle(
+      lage.bernd.faelle,
+      lage.bernd.wraps,
+      lage.bernd.geraete,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+      lage.bernd.tresor,
+    )
+
+    await schalteGeraetFrei(
+      lage.bernd.kopplung,
+      lage.bernd.tresor,
+      anfrage,
+      faelle,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+    )
+
+    const aufDemNeugeraet = await ladeFaelle(
+      lage.bernd.faelle,
+      lage.bernd.wraps,
+      lage.bernd.geraete,
+      zweitesGeraet,
+      BERNDS_ZWEITES,
+      lage.bernd.tresor,
+    )
+
+    const derVorsorgefall = aufDemNeugeraet.find((fall) => fall.id === vorsorge.id)
+
+    expect(derVorsorgefall?.zustand).toBe('lesbar')
+    // Und es ist derselbe K_v, nicht bloß irgendeiner.
+    expect(derVorsorgefall?.zustand === 'lesbar' ? derVorsorgefall.kv : null).toEqual(vorsorge.kv)
+  })
+
+  it('lässt einen Trauerfall ohne Tresor unangetastet', async () => {
+    const lage = await ausgangslage()
+
+    const zweitesGeraet = identitaet()
+    lage.s.meldeGeraetAn(BERNDS_ZWEITES, zweitesGeraet, BERND)
+
+    const { code } = await lage.bernd.kopplung.erzeugeCode(BERNDS_ZWEITES, 'device')
+    const anfrage = await loeseKopplungscodeEin(lage.bernd.kopplung, code)
+
+    const faelle = await ladeFaelle(
+      lage.bernd.faelle,
+      lage.bernd.wraps,
+      lage.bernd.geraete,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+    )
+
+    await schalteGeraetFrei(
+      lage.bernd.kopplung,
+      lage.bernd.tresor,
+      anfrage,
+      faelle,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+    )
+
+    expect(lage.s.vaultWrapZeilen).toHaveLength(0)
   })
 
   it('lässt gesperrte Fälle gesperrt und benennt die Zahl', async () => {
@@ -502,6 +673,7 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
 
     const freischaltung = await schalteGeraetFrei(
       lage.bernd.kopplung,
+      lage.bernd.tresor,
       anfrage,
       faelle,
       lage.berndsIdentitaet,
@@ -529,7 +701,14 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     const nurGesperrt: Fall[] = [{ zustand: 'gesperrt', id: 'fall-x', grund: 'Kein Schlüssel.' }]
 
     await expect(
-      schalteGeraetFrei(lage.bernd.kopplung, anfrage, nurGesperrt, lage.berndsIdentitaet, BERNDS_GERAET),
+      schalteGeraetFrei(
+        lage.bernd.kopplung,
+        lage.bernd.tresor,
+        anfrage,
+        nurGesperrt,
+        lage.berndsIdentitaet,
+        BERNDS_GERAET,
+      ),
     ).rejects.toThrow(/keinen Fall lesen/)
 
     expect(lage.s.wrapZeilen.some((zeile) => zeile.geraeteId === BERNDS_ZWEITES)).toBe(false)
@@ -542,7 +721,14 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     const anfrage = await loeseKopplungscodeEin(lage.bernd.kopplung, code)
 
     await expect(
-      schalteGeraetFrei(lage.bernd.kopplung, anfrage, [], lage.berndsIdentitaet, BERNDS_GERAET),
+      schalteGeraetFrei(
+        lage.bernd.kopplung,
+        lage.bernd.tresor,
+        anfrage,
+        [],
+        lage.berndsIdentitaet,
+        BERNDS_GERAET,
+      ),
     ).rejects.toThrow(KopplungFehler)
   })
 })

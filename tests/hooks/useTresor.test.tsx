@@ -84,6 +84,11 @@ async function erstelleTresorZeile(
   }
 }
 
+/** Lässt die Mikrotasks des Effekts durchlaufen, ohne auf etwas zu warten. */
+async function ruhe(): Promise<void> {
+  await new Promise((fertig) => setTimeout(fertig, 50))
+}
+
 describe('useTresor Hook (§3.5)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -93,39 +98,22 @@ describe('useTresor Hook (§3.5)', () => {
   it('entschlüsselt Tresor-Items aus zeilen mit K_v', async () => {
     const fall = erstelleFall()
     const zeile = await erstelleTresorZeile(fall, 'Bankschließfach', 'Schlüssel im Arbeitszimmer')
-    const mutiere = vi.fn()
 
-    const { result } = renderHook(() =>
-      useTresor(fall, [zeile], mutiere, {
-        gecacht: true,
-        laedtNetz: false,
-        netzfehler: null,
-        abgeglichen: true,
-      }),
-    )
+    const { result } = renderHook(() => useTresor(fall, [zeile], vi.fn(), vi.fn()))
 
     await waitFor(() => {
-      expect(result.current.zustand.status).toBe('bereit')
-      if (result.current.zustand.status === 'bereit') {
-        expect(result.current.zustand.items).toHaveLength(1)
-        expect(result.current.zustand.items[0]?.titel).toBe('Bankschließfach')
-        expect(result.current.zustand.items[0]?.inhalt).toBe('Schlüssel im Arbeitszimmer')
-      }
+      expect(result.current.items).toHaveLength(1)
     })
+
+    expect(result.current.items[0]?.titel).toBe('Bankschließfach')
+    expect(result.current.items[0]?.inhalt).toBe('Schlüssel im Arbeitszimmer')
   })
 
   it('erzeugt Mutationen zum Anlegen und Löschen von Items', async () => {
     const fall = erstelleFall()
     const mutiere = vi.fn()
 
-    const { result } = renderHook(() =>
-      useTresor(fall, [], mutiere, {
-        gecacht: true,
-        laedtNetz: false,
-        netzfehler: null,
-        abgeglichen: true,
-      }),
-    )
+    const { result } = renderHook(() => useTresor(fall, [], mutiere, vi.fn()))
 
     await result.current.legeItemAn('Passwort', 'geheim123')
 
@@ -149,101 +137,142 @@ describe('useTresor Hook (§3.5)', () => {
   })
 
   it('zeigt den korrekten Schwellwert basierend auf vaultN und vaultK', () => {
-    const fallOhne = erstelleFall({ vaultN: 0, vaultK: null })
-    const mutiere = vi.fn()
-
     const { result: r0 } = renderHook(() =>
-      useTresor(fallOhne, [], mutiere, {
-        gecacht: true,
-        laedtNetz: false,
-        netzfehler: null,
-        abgeglichen: true,
-      }),
+      useTresor(erstelleFall({ vaultN: 0, vaultK: null }), [], vi.fn(), vi.fn()),
     )
 
-    if (r0.current.zustand.status === 'bereit') {
-      expect(r0.current.zustand.schwelle).toEqual({ n: 0, k: null })
-    }
+    expect(r0.current.schwelle).toEqual({ n: 0, k: null })
 
-    const fallMitDrei = erstelleFall({ vaultN: 3, vaultK: 2 })
     const { result: r3 } = renderHook(() =>
-      useTresor(fallMitDrei, [], mutiere, {
-        gecacht: true,
-        laedtNetz: false,
-        netzfehler: null,
-        abgeglichen: true,
-      }),
+      useTresor(erstelleFall({ vaultN: 3, vaultK: 2 }), [], vi.fn(), vi.fn()),
     )
 
-    if (r3.current.zustand.status === 'bereit') {
-      expect(r3.current.zustand.schwelle).toEqual({ n: 3, k: 2 })
-    }
+    expect(r3.current.schwelle).toEqual({ n: 3, k: 2 })
   })
 
-  it('führt Auto-Resplit genau einmal aus und ruft onFallAktualisieren auf', async () => {
+  it('führt Auto-Resplit genau einmal aus und ruft aktualisiereFall auf', async () => {
     mockVerteileShares.mockResolvedValue({ n: 2, k: 2 })
 
-    const onFallAktualisieren = vi.fn()
+    const aktualisiereFall = vi.fn()
     const fall = erstelleFall({ vaultResplitPending: true })
-    const mutiere = vi.fn()
 
     const { rerender } = renderHook(
-      (props: { fall: LesbarerFall }) =>
-        useTresor(
-          props.fall,
-          [],
-          mutiere,
-          {
-            gecacht: true,
-            laedtNetz: false,
-            netzfehler: null,
-            abgeglichen: true,
-          },
-          onFallAktualisieren,
-        ),
+      (props: { fall: LesbarerFall }) => useTresor(props.fall, [], vi.fn(), aktualisiereFall),
       { initialProps: { fall } },
     )
 
     await waitFor(() => {
       expect(mockVerteileShares).toHaveBeenCalledTimes(1)
-      expect(onFallAktualisieren).toHaveBeenCalledTimes(1)
+      expect(aktualisiereFall).toHaveBeenCalledTimes(1)
     })
 
-    // Re-Render mit unverändertem fall (da React-State erst auf Reload wartet)
+    // Derselbe Fall noch einmal: Solange nichts nachgeladen wurde, ist die
+    // Fahne dieselbe Auskunft wie vorhin und löst nichts Neues aus.
     rerender({ fall })
+    await ruhe()
 
-    await waitFor(() => {
-      // Darf NICHT noch einmal aufgerufen worden sein!
-      expect(mockVerteileShares).toHaveBeenCalledTimes(1)
-    })
+    expect(mockVerteileShares).toHaveBeenCalledTimes(1)
   })
 
-  it('erlaubt manuelles verteileShares und aktualisiert den Fall', async () => {
-    mockVerteileShares.mockResolvedValue({ n: 1, k: 1 })
-
-    const onFallAktualisieren = vi.fn()
-    const fall = erstelleFall()
-    const mutiere = vi.fn()
+  /*
+   * Die Regression aus 84572bf: Der Effekt setzte `resplitLaeuft` als Zustand
+   * und hatte ihn zugleich in seiner Abhängigkeitsliste. React räumte die alte
+   * Fassung auf, bevor die RPC antwortete, und das Zurücksetzen hing an genau
+   * diesem Aufräum-Flag. Die Anzeige blieb für immer stehen.
+   */
+  it('setzt resplitLaeuft nach dem Auto-Resplit wieder zurück', async () => {
+    mockVerteileShares.mockResolvedValue({ n: 2, k: 2 })
 
     const { result } = renderHook(() =>
-      useTresor(
-        fall,
-        [],
-        mutiere,
-        {
-          gecacht: true,
-          laedtNetz: false,
-          netzfehler: null,
-          abgeglichen: true,
-        },
-        onFallAktualisieren,
-      ),
+      useTresor(erstelleFall({ vaultResplitPending: true }), [], vi.fn(), vi.fn()),
     )
 
-    const ergebnis = await result.current.verteileShares()
+    await waitFor(() => expect(mockVerteileShares).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(result.current.resplitLaeuft).toBe(false))
+  })
 
-    expect(ergebnis).toEqual({ n: 1, k: 1 })
+  it('meldet einen fehlgeschlagenen Auto-Resplit, statt ihn zu verschlucken', async () => {
+    mockVerteileShares.mockRejectedValue(new Error('Netz weg'))
+
+    const aktualisiereFall = vi.fn()
+    const { result } = renderHook(() =>
+      useTresor(erstelleFall({ vaultResplitPending: true }), [], vi.fn(), aktualisiereFall),
+    )
+
+    await waitFor(() => expect(result.current.resplitFehler).toBe('Netz weg'))
+    expect(result.current.resplitLaeuft).toBe(false)
+    expect(aktualisiereFall).not.toHaveBeenCalled()
+  })
+
+  it('wiederholt einen fehlgeschlagenen Auto-Resplit nicht von allein', async () => {
+    mockVerteileShares.mockRejectedValue(new Error('Netz weg'))
+
+    const fall = erstelleFall({ vaultResplitPending: true })
+    const { rerender } = renderHook(
+      (props: { fall: LesbarerFall }) => useTresor(props.fall, [], vi.fn(), vi.fn()),
+      { initialProps: { fall } },
+    )
+
+    await waitFor(() => expect(mockVerteileShares).toHaveBeenCalledTimes(1))
+
+    rerender({ fall })
+    rerender({ fall })
+    await ruhe()
+
     expect(mockVerteileShares).toHaveBeenCalledTimes(1)
-    expect(onFallAktualisieren).toHaveBeenCalledTimes(1)
+  })
+
+  /*
+   * Nachgeladen heißt: neue Auskunft. Ein Beitritt, der während des ersten
+   * Re-Splits hereinkam, steht danach wieder als offene Fahne da und muss
+   * einen zweiten Lauf auslösen — auch dann, wenn `vault_n` zufällig dieselbe
+   * Zahl trägt wie vorher.
+   */
+  it('läuft nach einem Nachladen wieder, wenn die Fahne erneut steht', async () => {
+    mockVerteileShares.mockResolvedValue({ n: 2, k: 2 })
+
+    const { rerender } = renderHook(
+      (props: { fall: LesbarerFall }) => useTresor(props.fall, [], vi.fn(), vi.fn()),
+      { initialProps: { fall: erstelleFall({ vaultResplitPending: true, vaultN: 2 }) } },
+    )
+
+    await waitFor(() => expect(mockVerteileShares).toHaveBeenCalledTimes(1))
+
+    rerender({ fall: erstelleFall({ vaultResplitPending: true, vaultN: 2 }) })
+
+    await waitFor(() => expect(mockVerteileShares).toHaveBeenCalledTimes(2))
+  })
+
+  it('rührt den Tresor eines Nicht-Preparers nicht an', async () => {
+    const { result } = renderHook(() =>
+      useTresor(erstelleFall({ kv: null, vaultResplitPending: true }), [], vi.fn(), vi.fn()),
+    )
+
+    await ruhe()
+
+    expect(mockVerteileShares).not.toHaveBeenCalled()
+    expect(result.current.istPreparer).toBe(false)
+    expect(result.current.items).toEqual([])
+  })
+
+  it('erlaubt manuelles verteileShares und lädt den Fall nach', async () => {
+    mockVerteileShares.mockResolvedValue({ n: 1, k: 1 })
+
+    const aktualisiereFall = vi.fn()
+    const { result } = renderHook(() => useTresor(erstelleFall(), [], vi.fn(), aktualisiereFall))
+
+    expect(await result.current.verteileShares()).toEqual({ n: 1, k: 1 })
+    expect(mockVerteileShares).toHaveBeenCalledTimes(1)
+    expect(aktualisiereFall).toHaveBeenCalledTimes(1)
+  })
+
+  it('wirft beim manuellen Versuch weiter und merkt sich den Fehler', async () => {
+    mockVerteileShares.mockRejectedValue(new Error('Netz weg'))
+
+    const { result } = renderHook(() => useTresor(erstelleFall(), [], vi.fn(), vi.fn()))
+
+    await expect(result.current.verteileShares()).rejects.toThrow('Netz weg')
+    await waitFor(() => expect(result.current.resplitFehler).toBe('Netz weg'))
+    expect(result.current.resplitLaeuft).toBe(false)
   })
 })

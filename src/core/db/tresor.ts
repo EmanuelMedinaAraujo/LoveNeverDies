@@ -42,6 +42,14 @@ export type TresorTabelle = {
   wrapFuerGeraet(fallId: string, geraeteId: string): Promise<VaultKeyWrapZeile | null>
 
   /**
+   * Legt den `K_v`-Wrap für ein weiteres Gerät des Preparers an (§3.5).
+   *
+   * Ist für dieses Gerät schon einer da, bleibt er stehen: Der Aufruf läuft
+   * bei jeder Gerätefreigabe und darf einen bestehenden Wrap nicht ersetzen.
+   */
+  legeWrapAn(wrap: VaultKeyWrapZeile): Promise<void>
+
+  /**
    * Holt alle Shares eines Falls (z. B. zur Prüfung).
    */
   sharesFuerFall(fallId: string): Promise<VaultShareZeile[]>

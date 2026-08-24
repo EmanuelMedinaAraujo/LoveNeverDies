@@ -201,7 +201,7 @@ function Aufgabenzeile({
           ab. Das gehört vor die Aktion gesagt und nicht danach.
         */}
         <p>
-          "{aufgabe.titel}" wirklich löschen? Gelöschte Aufgaben kommen nicht zurück.
+          „{aufgabe.titel}" wirklich löschen? Gelöschte Aufgaben kommen nicht zurück.
         </p>
         <div className={stile.aktionen}>
           <Button
@@ -287,7 +287,7 @@ function Aufgabenzeile({
         */}
         <Link className={stile.detaillink} to={`/aufgabe/${aufgabe.id}`}>
           Details
-          <span className="nur-vorlesen">: "{aufgabe.titel}"</span>
+          <span className="nur-vorlesen">: „{aufgabe.titel}"</span>
         </Link>
 
         {/*
@@ -305,14 +305,14 @@ function Aufgabenzeile({
             <Button
               variante="sekundaer"
               onClick={beginneAendern}
-              vorleseText={`: "${aufgabe.titel}"`}
+              vorleseText={`: „${aufgabe.titel}"`}
             >
               Ändern
             </Button>
             <Button
               variante="sekundaer"
               onClick={() => setzeModus('loeschen')}
-              vorleseText={`: "${aufgabe.titel}"`}
+              vorleseText={`: „${aufgabe.titel}"`}
             >
               Löschen
             </Button>
@@ -321,7 +321,7 @@ function Aufgabenzeile({
           <Button
             disabled={gesperrt}
             onClick={aufUebernehmen}
-            vorleseText={`: "${aufgabe.titel}"`}
+            vorleseText={`: „${aufgabe.titel}"`}
           >
             Übernehmen
           </Button>
@@ -338,7 +338,7 @@ function Aufgabenzeile({
             variante="sekundaer"
             disabled={gesperrt}
             onClick={aufFreigeben}
-            vorleseText={`: "${aufgabe.titel}"`}
+            vorleseText={`: „${aufgabe.titel}"`}
           >
             Freigeben
           </Button>

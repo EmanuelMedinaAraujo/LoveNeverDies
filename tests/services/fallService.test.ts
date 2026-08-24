@@ -178,6 +178,7 @@ function server() {
         vaultWrapZeilen.find((zeile) => zeile.fallId === fallId && zeile.geraeteId === geraeteId) ??
           null,
       ),
+    legeWrapAn: () => Promise.reject(new Error('nicht gebraucht')),
     sharesFuerFall: () => Promise.resolve([]),
     resplitVault: () => Promise.resolve(),
   }

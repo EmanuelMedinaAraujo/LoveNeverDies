@@ -326,7 +326,12 @@ export async function aufgabenAusZeilen(
     // Tombstones werden vor jedem Entschlüsselungsversuch aussortiert: Sie sind
     // leer und zählten sonst als Defekt, obwohl sie das Gegenteil sind: ein
     // ordnungsgemäß gelöschtes Item (§5).
-    if (zeile.geloescht || zeile.art !== 'item') {
+    //
+    // Tresor-Inhalte ebenso, und die aus einem zweiten Grund: Sie tragen
+    // `art: 'item'` wie eine Aufgabe, ihr DEK liegt aber unter `K_v` und nicht
+    // unter `K_c` (§3.5). Jeder Versuch hier scheiterte zwangsläufig und
+    // zählte den Tresor als Defekt hoch.
+    if (zeile.geloescht || zeile.art !== 'item' || zeile.imTresor) {
       continue
     }
 

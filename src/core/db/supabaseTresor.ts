@@ -80,6 +80,28 @@ export function supabaseTresor(client: SupabaseClient): TresorTabelle {
       return data === null ? null : alsWrapZeile(data)
     },
 
+    async legeWrapAn(wrap) {
+      // `ignoreDuplicates`: ON CONFLICT DO NOTHING statt DO UPDATE. Die Policy
+      // auf vault_key_wraps gibt select, insert und delete frei, kein update;
+      // ein echtes Upsert liefe deshalb in einen Rechtefehler statt in den
+      // harmlosen Normalfall "steht schon da".
+      const { error } = await client
+        .from(TABELLE_WRAPS)
+        .upsert(
+          {
+            case_id: wrap.fallId,
+            device_id: wrap.geraeteId,
+            kem_ct: alsBytea(wrap.kemCt),
+            wrapped_key: alsBytea(wrap.wrappedKey),
+          },
+          { onConflict: 'case_id,device_id', ignoreDuplicates: true },
+        )
+
+      if (error !== null) {
+        throw new TresorFehler('Der Tresorschlüssel-Wrap war nicht anzulegen', error)
+      }
+    },
+
     async sharesFuerFall(fallId) {
       const { data, error } = await client
         .from(TABELLE_SHARES)
