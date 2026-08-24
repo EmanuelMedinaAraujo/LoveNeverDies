@@ -92,6 +92,7 @@ function fall(id: string, zustand: 'lesbar' | 'gesperrt' = 'lesbar'): Fall {
         personName: 'Hans Weber',
         sterbedatum: '2026-05-12',
         kid: `case_${id}:1`,
+        katalogVersion: '2026-08+testtest',
         kc: new Uint8Array([1]),
         kcat: new Uint8Array([2]),
       }

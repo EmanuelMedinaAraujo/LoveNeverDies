@@ -4,6 +4,7 @@ import { erzeugeKemSchluesselpaar } from '../../src/core/crypto/kem'
 import type { Geraeteidentitaet } from '../../src/core/crypto/keystore'
 import { erzeugeSignaturSchluesselpaar, pkSigBytes } from '../../src/core/crypto/sign'
 import type { FaelleTabelle, FallZeile, NeuerTrauerfall } from '../../src/core/db/faelle'
+import type { InhalteTabelle, InhaltZeile, NeuerInhalt } from '../../src/core/db/inhalte'
 import type {
   SchluesselwrapTabelle,
   SchluesselwrapZeile,
@@ -79,6 +80,8 @@ function server() {
   const mitglieder: { fallId: string; userId: string }[] = []
   const wrapZeilen: SchluesselwrapZeile[] = []
   const geraeteZeilen: GeraeteschluesselZeile[] = []
+  const itemZeilen: InhaltZeile[] = []
+  let naechsteSeq = 0
   const profile = new Map<string, { anzeigename: string; email: string | null }>()
   const codes = new Map<string, Codezeile>()
 
@@ -112,6 +115,7 @@ function server() {
           currentKid: neu.kidFall,
           keyGeneration: 1,
           version: 0,
+          katalogVersion: neu.katalogVersion,
           payload: neu.payload,
           angelegtAm: '2026-08-23T12:00:00Z',
         })
@@ -126,6 +130,44 @@ function server() {
 
         return Promise.resolve()
       },
+    }
+
+    /*
+     * `items`, so schmal wie der Port. Die Fallanlage instanziiert den
+     * Rechtskatalog hier hinein (§8); für die Kopplung selbst spielt der Inhalt
+     * keine Rolle, wohl aber, dass er entstehen kann.
+     */
+    const inhalte: InhalteTabelle = {
+      seit: (fallId) => Promise.resolve(itemZeilen.filter((zeile) => zeile.fallId === fallId)),
+
+      lege: (neu: NeuerInhalt) => {
+        itemZeilen.push(alsItem(neu))
+
+        return Promise.resolve()
+      },
+
+      legeAlleNeuen: (neue: NeuerInhalt[]) => {
+        for (const neu of neue) {
+          if (!itemZeilen.some((zeile) => zeile.id === neu.id)) {
+            itemZeilen.push(alsItem(neu))
+          }
+        }
+
+        return Promise.resolve()
+      },
+
+      schreibePayload: () => Promise.reject(new Error('nicht gebraucht')),
+      loesche: () => Promise.reject(new Error('nicht gebraucht')),
+    }
+
+    function alsItem(neu: NeuerInhalt): InhaltZeile {
+      return {
+        ...neu,
+        seq: (naechsteSeq += 1),
+        geloescht: false,
+        imTresor: false,
+        geaendertAm: '2026-08-23T12:00:00Z',
+      }
     }
 
     const wraps: SchluesselwrapTabelle = {
@@ -222,7 +264,7 @@ function server() {
       },
     }
 
-    return { faelle, wraps, geraete, kopplung }
+    return { faelle, inhalte, wraps, geraete, kopplung }
   }
 
   return { alsPerson, meldeGeraetAn, profile, wrapZeilen, mitglieder }
@@ -243,7 +285,13 @@ async function ausgangslage() {
   const bernd = s.alsPerson(BERND)
   const anna = s.alsPerson(ANNA)
 
-  const fall = await legeTrauerfallAn(bernd.faelle, berndsIdentitaet, BERNDS_GERAET, ANGABEN)
+  const fall = await legeTrauerfallAn(
+    bernd.faelle,
+    bernd.inhalte,
+    berndsIdentitaet,
+    BERNDS_GERAET,
+    ANGABEN,
+  )
 
   return { s, bernd, anna, berndsIdentitaet, annasIdentitaet, fall }
 }
@@ -372,6 +420,7 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     const lage = await ausgangslage()
     const zweiterFall = await legeTrauerfallAn(
       lage.bernd.faelle,
+      lage.bernd.inhalte,
       lage.berndsIdentitaet,
       BERNDS_GERAET,
       { personName: 'Erika Weber', sterbedatum: '2026-06-01' },
@@ -420,8 +469,10 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
      * stillschweigend weitervererben.
      */
     lage.s.mitglieder.push({ fallId: 'fremder-fall', userId: BERND })
+    const dritte = lage.s.alsPerson('user_dritte')
     const fremd = await legeTrauerfallAn(
-      lage.s.alsPerson('user_dritte').faelle,
+      dritte.faelle,
+      dritte.inhalte,
       identitaet(),
       'c0000000-0000-4000-8000-000000000003',
       { personName: 'Ottilie Weber', sterbedatum: '2026-07-01' },
