@@ -33,8 +33,8 @@ type RohZeile = {
  * Ein Schreib- oder Lesevorgang auf `items` ist gescheitert.
  *
  * `abgelehnt` trennt die beiden Sorten Fehlschlag, die die Offline-Queue
- * auseinanderhalten muss (§5): Eine **abgelehnte** Mutation hat der Server
- * gesehen und verworfen — sie gehört aus der Queue heraus und als Mitteilung
+ * auseinanderhalten muss (§5): Eine abgelehnte Mutation hat der Server
+ * gesehen und verworfen. Sie gehört aus der Queue heraus und als Mitteilung
  * auf den Bildschirm, denn ein zweiter Versuch brächte dasselbe Ergebnis. Eine
  * Mutation, die nie ankam, bleibt stehen und geht beim nächsten Reconnect
  * erneut hinaus.
@@ -56,7 +56,7 @@ export class InhalteFehler extends Error {
  *
  * `supabase-js` verpackt auch einen Netzwerkabbruch als `PostgrestError`, dann
  * allerdings ohne SQLSTATE. Der leere `code` ist damit das einzige verlässliche
- * Erkennungszeichen dafür, dass gar niemand geantwortet hat — und im Zweifel
+ * Erkennungszeichen dafür, dass gar niemand geantwortet hat: Im Zweifel
  * bleibt eine Mutation lieber in der Queue stehen, als still zu verschwinden.
  */
 function istUrteil(ursache: PostgrestError): boolean {
@@ -65,7 +65,7 @@ function istUrteil(ursache: PostgrestError): boolean {
 
 /**
  * `seq` ist `bigint`. PostgREST liefert es als Zeichenkette, sobald es die
- * sichere Ganzzahlgrenze überschreiten könnte — bei einem Zähler, der pro
+ * sichere Ganzzahlgrenze überschreiten könnte. Bei einem Zähler, der pro
  * Schreibvorgang um eins steigt, passiert das nie, aber die Konvertierung hier
  * ist billiger als ein Vergleich, der eines Tages Zeichenketten sortiert.
  */
@@ -88,7 +88,7 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
   /**
    * Ein UPDATE, das die RLS auf null Zeilen einschränkt, ist für PostgREST kein
    * Fehler. Ohne die zurückgegebenen Zeilen meldete jede Änderung Erfolg, und
-   * der neue Titel verschwände beim nächsten Laden wieder — ohne dass irgendwo
+   * der neue Titel verschwände beim nächsten Laden wieder, ohne dass irgendwo
    * gestanden hätte, dass er nie angekommen ist.
    */
   async function aendere(id: string, werte: Record<string, unknown>, was: string) {
@@ -106,7 +106,7 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
     if (data.length === 0) {
       // Null geänderte Zeilen ohne Fehler: Die RLS hat die Zeile nicht
       // hergegeben, oder es gibt sie nicht mehr. Beides bleibt beim zweiten
-      // Versuch so — also ein Urteil.
+      // Versuch so, also ein Urteil.
       throw new InhalteFehler(
         `${was}. Sie gehört zu keinem Ihrer Fälle oder ist nicht mehr da.`,
       )
@@ -122,7 +122,7 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
        * Sortiert wird über `seq` und nicht über die `id`, weil das
        * Wasserzeichen aus genau dieser Spalte kommt: Wer ein Delta halb
        * verarbeitet, hat dann trotzdem einen gültigen Stand. Für die Anzeige
-       * taugt `seq` nicht — sie steigt bei jedem Häkchen (§4) und schöbe eine
+       * taugt `seq` nicht: Sie steigt bei jedem Häkchen (§4) und schöbe eine
        * gerade abgehakte Aufgabe ans Ende der Liste. Diese Reihenfolge stellt
        * der Reconciler über die `id` her, die als UUIDv7 den Anlagezeitpunkt
        * trägt und sich nie ändert.
@@ -139,7 +139,7 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
         // Abrufen ist keine Mutation und landet nie in der Queue. `abgelehnt`
         // bleibt deshalb falsch: Es beendete sonst eine Wiederholung, die es
         // hier gar nicht gibt.
-        throw new InhalteFehler('Die Aufgaben waren nicht abzurufen', error, false)
+        throw new InhalteFehler('Die Aufgaben konnten nicht abgerufen werden', error, false)
       }
 
       return data.map(alsZeile)
@@ -159,21 +159,21 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
         in_vault: neu.imTresor ?? false,
         // `null` und nicht weggelassen: Bei einer Aufgabe *muss* die Spalte
         // leer bleiben (§7, CHECK auf `items`), und ein fehlendes Feld hiesse
-        // in PostgREST „nimm den Default" — der hier zufällig derselbe ist.
+        // in PostgREST "nimm den Default", der hier zufällig derselbe ist.
         // Ein Default, auf den sich eine Zusage stützt, ist eine Zusage, die
         // sich still ändern lässt.
         storage_path: neu.storagePfad ?? null,
       })
 
       if (error !== null) {
-        throw new InhalteFehler('Die Aufgabe war nicht anzulegen', error, istUrteil(error))
+        throw new InhalteFehler('Die Aufgabe konnte nicht angelegt werden', error, istUrteil(error))
       }
     },
 
     async legeAlleNeuen(neue) {
       if (neue.length === 0) {
         // Kein Aufruf ohne Zeilen: PostgREST machte daraus ein leeres INSERT,
-        // und der Normalfall — es ist längst alles da — kostete trotzdem einen
+        // und der Normalfall (es ist längst alles da) kostete trotzdem einen
         // Rundlauf.
         return
       }
@@ -181,7 +181,7 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
       /*
        * `ignoreDuplicates` ist PostgRESTs `Prefer: resolution=ignore-duplicates`
        * und damit das `on conflict do nothing` aus §8. Anders als bei einem
-       * Upsert bleibt die vorhandene Zeile dabei unangetastet — genau richtig
+       * Upsert bleibt die vorhandene Zeile dabei unangetastet: Genau richtig
        * für den Katalog: Eine bereits instanziierte Aufgabe ist ein
        * gewöhnliches Item, das jemand geändert oder gelöscht haben kann, und
        * eine zweite Instanziierung darf das nicht überschreiben.
@@ -200,7 +200,7 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
 
       if (error !== null) {
         throw new InhalteFehler(
-          'Die Aufgaben aus dem Rechtskatalog waren nicht anzulegen',
+          'Die Aufgaben aus dem Rechtskatalog konnten nicht angelegt werden',
           error,
           istUrteil(error),
         )
@@ -208,14 +208,14 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
     },
 
     schreibePayload(id, payload) {
-      return aendere(id, { payload: alsBytea(payload) }, 'Die Aufgabe war nicht zu ändern')
+      return aendere(id, { payload: alsBytea(payload) }, 'Die Aufgabe konnte nicht geändert werden')
     },
 
     loesche(id) {
       return aendere(
         id,
         { deleted: true, payload: alsBytea(new Uint8Array()), wrapped_dek: alsBytea(new Uint8Array()) },
-        'Die Aufgabe war nicht zu löschen',
+        'Die Aufgabe konnte nicht gelöscht werden',
       )
     },
   }

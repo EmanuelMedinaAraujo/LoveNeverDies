@@ -1,12 +1,12 @@
 /**
  * UUIDv7 für Item-IDs (DESIGN.md §5, RFC 9562 §5.7).
  *
- * `crypto.randomUUID()` liefert v4 und wäre für Fälle und Geräte richtig — für
+ * `crypto.randomUUID()` liefert v4 und wäre für Fälle und Geräte richtig, für
  * Items nicht. §5 verlangt v7, und zwar aus einem Grund, der nichts mit Mode zu
- * tun hat: Die ID wird **auf dem Gerät** vergeben, damit Anlegen offline
+ * tun hat: Die ID wird auf dem Gerät vergeben, damit Anlegen offline
  * funktioniert und die Offline-Queue eine Aufgabe benennen kann, die der Server
  * noch nie gesehen hat. Eine Zufalls-ID täte das auch; was v7 zusätzlich bringt,
- * ist die Zeit im Präfix — Items sortieren sich in Anlagereihenfolge, ohne dass
+ * ist die Zeit im Präfix: Items sortieren sich in Anlagereihenfolge, ohne dass
  * ein zweites Feld dafür da sein muss.
  *
  * ```
@@ -17,16 +17,16 @@
  * 62 Bit  rand_b       Zufall
  * ```
  *
- * **Warum `rand_a` ein Zähler ist und kein Zufall.** RFC 9562 §6.2 lässt beides
+ * Warum `rand_a` ein Zähler ist und kein Zufall: RFC 9562 §6.2 lässt beides
  * zu. Mit Zufall stünden zwei in derselben Millisekunde angelegte Aufgaben in
- * zufälliger Reihenfolge — und genau das passiert, wenn jemand zwei Häkchen
+ * zufälliger Reihenfolge. Genau das passiert, wenn jemand zwei Häkchen
  * schnell hintereinander setzt oder ein Katalog auf einen Schlag instanziiert
  * (§8). Der Zähler startet in der unteren Hälfte seines Bereichs, damit er
  * Platz zum Hochzählen hat, ohne sofort überzulaufen.
  *
  * Die Uhr des Geräts darf dabei springen, ohne dass eine ID kleiner wird als
  * die davor: Zurückgesetzt wird der Zeitstempel nie, er wandert nur vorwärts.
- * Das ist kein Ersatz für eine richtige Uhr — die Sortierung *zwischen* Geräten
+ * Das ist kein Ersatz für eine richtige Uhr: Die Sortierung zwischen Geräten
  * entscheidet ohnehin `seq` vom Server (§4), nicht die ID.
  */
 
@@ -70,7 +70,7 @@ export function uuidv7(): string {
   const bytes = new Uint8Array(16)
 
   // 48 Bit Zeit, big-endian. `Number` trägt 53 Bit ganzzahlig genau, also geht
-  // das ohne BigInt — aber nicht mit `>>`, das bei 32 Bit abschneidet.
+  // das ohne BigInt, aber nicht mit `>>`, das bei 32 Bit abschneidet.
   bytes[0] = Math.floor(letzteZeit / 2 ** 40) & 0xff
   bytes[1] = Math.floor(letzteZeit / 2 ** 32) & 0xff
   bytes[2] = Math.floor(letzteZeit / 2 ** 24) & 0xff

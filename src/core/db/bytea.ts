@@ -5,7 +5,7 @@
  * REST-Schicht kennt kein Binärformat und reicht `bytea` als Hex-Zeichenkette
  * mit `\x` davor durch, in beide Richtungen.
  *
- * Der Umweg über Hex kostet die doppelte Größe auf der Leitung — hinnehmbar bei
+ * Der Umweg über Hex kostet die doppelte Größe auf der Leitung. Das ist hinnehmbar bei
  * 1216 Byte Schlüssel und 3373 Byte Signatur, und der Preis dafür, dass die
  * Tabellen mit gewöhnlichen Werkzeugen lesbar bleiben. Dateien gehen ohnehin
  * nicht diesen Weg, sondern binär in den Storage-Bucket (§4).
@@ -18,8 +18,8 @@ const HEX_ZIFFERN = '0123456789abcdef'
  *
  * `parseInt` liest so weit, wie es kann, und gibt zurück, was es bis dahin
  * hatte: `parseInt('1g', 16)` ist 1, `parseInt('-1', 16)` ist -1 und landete
- * als 255 im Feld. Nur ein Paar ganz ohne führende Hex-Ziffer ergäbe `NaN` —
- * ein Test darauf prüft also den einen Fall, der ohnehin auffiele. Deshalb
+ * als 255 im Feld. Nur ein Paar ganz ohne führende Hex-Ziffer ergäbe `NaN`.
+ * Ein Test darauf prüft also den einen Fall, der ohnehin auffiele. Deshalb
  * wird hier die ganze Zeichenkette geprüft, bevor irgendein Byte entsteht.
  */
 const NUR_HEX = /^[0-9a-fA-F]*$/

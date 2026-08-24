@@ -3,9 +3,9 @@ import { createRoot } from 'react-dom/client'
 
 /*
  * Die Tokens und der Reset stehen vor den Komponenten-Importen. Vite gibt CSS in
- * der Reihenfolge aus, in der die Module ausgewertet werden — stuenden sie
- * unten, landete der Reset hinter den CSS-Modulen und uebersteuerte sie bei
- * gleicher Spezifitaet.
+ * der Reihenfolge aus, in der die Module ausgewertet werden; stünden sie
+ * unten, landete der Reset hinter den CSS-Modulen und übersteuerte sie bei
+ * gleicher Spezifität.
  */
 import './ui/tokens.css'
 import './ui/base.css'

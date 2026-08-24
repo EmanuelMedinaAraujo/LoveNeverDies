@@ -49,12 +49,12 @@ export class KopplungscodeFehler extends Error {
  * Der Umweg über `unknown` ist nötig, weil `supabase-js` den Rückgabetyp einer
  * RPC ohne generierte Datenbanktypen als einzelnes Objekt annimmt.
  * `erzeuge_kopplungscode` und `loese_kopplungscode_ein` sind aber
- * `returns table (...)`, PostgREST liefert also ein Array — die Kodierung ist
+ * `returns table (...)`, PostgREST liefert also ein Array. Die Kodierung ist
  * hier bekannt und die Typannahme daneben.
  *
  * Keine leere Antwort erwartet und trotzdem geprüft: Ein `null` aus einer
  * Funktion, die immer eine Zeile liefert, ist ein Zeichen dafür, dass die
- * Migration und dieser Client auseinanderlaufen — und das soll auffallen,
+ * Migration und dieser Client auseinanderlaufen. Das soll auffallen,
  * bevor es als fehlender Name durch die Oberfläche geht.
  */
 function ersteZeile<T>(daten: unknown, was: string): T {
@@ -76,7 +76,7 @@ export function supabaseKopplung(client: SupabaseClient): KopplungTabelle {
       })
 
       if (error !== null) {
-        throw new KopplungscodeFehler('Der Kopplungscode war nicht auszugeben', error)
+        throw new KopplungscodeFehler('Der Kopplungscode konnte nicht ausgegeben werden', error)
       }
 
       const zeile = ersteZeile<RohCode>(data, 'Der Kopplungscode')
@@ -88,7 +88,7 @@ export function supabaseKopplung(client: SupabaseClient): KopplungTabelle {
       const { data, error } = await client.rpc('loese_kopplungscode_ein', { p_code: code })
 
       if (error !== null) {
-        throw new KopplungscodeFehler('Der Kopplungscode war nicht einzulösen', error)
+        throw new KopplungscodeFehler('Der Kopplungscode konnte nicht eingelöst werden', error)
       }
 
       const zeile = ersteZeile<RohEinloesung>(data, 'Die Einlösung')
@@ -98,7 +98,7 @@ export function supabaseKopplung(client: SupabaseClient): KopplungTabelle {
       }
 
       /*
-       * Bei `ok` müssen alle Felder da sein — die Funktion füllt sie gemeinsam.
+       * Bei `ok` müssen alle Felder da sein: Die Funktion füllt sie gemeinsam.
        * Fehlt eines, ist die Antwort nicht halb brauchbar, sondern unbrauchbar:
        * Ein Angebot ohne Namen unterläuft §6, und ein Angebot ohne beide
        * Schlüssel ergäbe einen Prüfcode, der nichts abdeckt (§3.6).
@@ -142,7 +142,7 @@ export function supabaseKopplung(client: SupabaseClient): KopplungTabelle {
       })
 
       if (error !== null) {
-        throw new KopplungscodeFehler('Die Kopplung war nicht abzuschließen', error)
+        throw new KopplungscodeFehler('Die Kopplung konnte nicht abgeschlossen werden', error)
       }
     },
   }

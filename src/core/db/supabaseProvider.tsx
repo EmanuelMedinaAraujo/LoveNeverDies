@@ -8,19 +8,19 @@ import { erzeugeSupabaseClient } from './supabase.ts'
  *
  * Genau einer, weil er eine Realtime-Verbindung hält (§5) und weil zwei
  * Clients zwei Verbindungen hielten. Er entsteht neu, wenn eine andere Person
- * angemeldet ist — beim An- und Abmelden, und sonst nie.
+ * angemeldet ist: beim An- und Abmelden, und sonst nie.
  *
- * **Nicht am Token-Geber festgemacht.** Clerk gibt bei jeder Erneuerung eine
+ * Nicht am Token-Geber festgemacht: Clerk gibt bei jeder Erneuerung eine
  * neue Funktion heraus, und das passiert im Betrieb dauernd. Hinge der Client
  * daran, entstünde er dauernd neu; der alte hielte seine Verbindung weiter,
  * und aus dem einen Client würden über eine lange Sitzung viele. Der Client
- * fragt deshalb über eine Referenz nach dem Token — was er beim Anlegen
+ * fragt deshalb über eine Referenz nach dem Token. Was er beim Anlegen
  * vorfand, ist beim Absenden ohnehin abgelaufen.
  *
- * **Er entsteht erst, wenn ihn jemand braucht.** Der Kontext gibt keinen
+ * Er entsteht erst, wenn ihn jemand braucht: Der Kontext gibt keinen
  * Client heraus, sondern einen Zugang, der ihn beim ersten Aufruf anlegt. Der
  * Unterschied ist keine Feinheit: Fehlt die Projektkonfiguration, wirft das
- * Anlegen — und ein Wurf beim Rendern des Providers nähme die Anmeldeseite mit,
+ * Anlegen einen Fehler. Ein Fehler beim Rendern des Providers nähme die Anmeldeseite mit,
  * die von Supabase gar nichts braucht. So scheitert stattdessen der eine
  * Aufruf, der wirklich einen Server wollte, und die Meldung landet dort, wo
  * jemand etwas damit anfangen kann.
@@ -61,7 +61,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     // Beim Benutzerwechsel wird der Client weggeräumt, statt ihn liegen zu
     // lassen: Seine Kanäle sind an die Zeilen gebunden, die der vorigen Person
     // sichtbar waren, und der nächste Aufruf legt einen frischen an. React
-    // führt alle Aufräumer eines Commits vor allen Effekten aus — was hier
+    // führt alle Aufräumer eines Commits vor allen Effekten aus: Was hier
     // genullt wird, ist genullt, bevor ein Kind wieder `zugang()` ruft.
     return () => {
       void client.current?.removeAllChannels()

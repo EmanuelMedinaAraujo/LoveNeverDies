@@ -3,13 +3,13 @@
  *
  * Nach der Anmeldung meldet sich das Gerät still beim Server an: öffentliche
  * Schlüssel hoch, Label dazu, fertig. Sichtbar wird davon nichts, bis jemand in
- * Profil nachsieht — und der Prüfcode, der dort steht, wird erst beim Koppeln
+ * Profil nachsieht, und der Prüfcode, der dort steht, wird erst beim Koppeln
  * (§3.6) gebraucht. Stabil und ablesbar muss er trotzdem ab jetzt sein.
  *
- * Die Registrierung läuft bei **jedem** Start. Sie ist deshalb idempotent
+ * Die Registrierung läuft bei jedem Start. Sie ist deshalb idempotent
  * gebaut: suchen, anlegen, und wenn dabei jemand schneller war, das Ergebnis
  * des Schnelleren nehmen. Zwei Zeilen für dasselbe Gerät wären kein
- * Schönheitsfehler — `key_wraps` zeigte danach auf eine davon, und welche,
+ * Schönheitsfehler: `key_wraps` zeigte danach auf eine davon, und welche,
  * entschiede der Zufall.
  */
 
@@ -27,7 +27,7 @@ export const NOTNAME = 'Unbenanntes Gerät'
 export type Geraet = {
   id: string
   label: string
-  /** Die sechs Ziffern aus §3.6, über **beide** öffentlichen Schlüssel. */
+  /** Die sechs Ziffern aus §3.6, über beide öffentlichen Schlüssel. */
   pruefcode: string
   angelegtAm: string
   /** Das Gerät, an dem gerade jemand sitzt. Genau eines in der Liste. */
@@ -42,7 +42,7 @@ export class GeraeteFehler extends Error {
 }
 
 function istDasselbeGeraet(zeile: GeraeteschluesselZeile, identitaet: Geraeteidentitaet): boolean {
-  // Der öffentliche KEM-Schlüssel identifiziert die Zeile — er ist zusammen mit
+  // Der öffentliche KEM-Schlüssel identifiziert die Zeile: Er ist zusammen mit
   // `user_id` eindeutig. Über die `device_keys.id` liefe es auch, aber die
   // müsste dann irgendwo liegen, und der Keystore soll nichts aufbewahren, was
   // sich aus dem Seed ergibt.
@@ -116,7 +116,7 @@ export async function registriereGeraet(
 /**
  * Die eigenen Geräte, das aktuelle zuerst.
  *
- * Vorn steht, was die Person am Telefon vorlesen soll: „Dieses Gerät · iPhone
+ * Vorn steht, was die Person am Telefon vorlesen soll: "Dieses Gerät · iPhone
  * von Anna · Prüfcode 481 253". Danach nach Alter, damit die Reihenfolge sich
  * nicht bei jedem Aufruf ändert.
  */

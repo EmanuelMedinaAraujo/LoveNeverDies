@@ -1,7 +1,7 @@
 /**
  * Der Name, unter dem ein Gerät zum ersten Mal in Profil steht (DESIGN.md §3.6).
  *
- * Eine Vermutung aus dem User-Agent, mehr nicht — und sie darf falsch liegen,
+ * Eine Vermutung aus dem User-Agent, mehr nicht. Sie darf auch falsch liegen,
  * weil die Person den Namen ändern kann. Wozu sie überhaupt dient: Der Prüfcode
  * ist sechs Ziffern, und sechs Ziffern sagen am Telefon nicht, welches Gerät
  * gemeint ist. "iPhone von Anna · Prüfcode 481 253" sagt es.

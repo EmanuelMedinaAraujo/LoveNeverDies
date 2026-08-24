@@ -2,13 +2,13 @@
  * Dateien ver- und entschlüsseln, ohne die Oberfläche anzuhalten
  * (DESIGN.md §7, §3.1).
  *
- * §7: „Pro Datei ein zufälliger DEK, clientseitig AES-256-GCM […] Die
+ * §7: "Pro Datei ein zufälliger DEK, clientseitig AES-256-GCM [...] Die
  * Verschlüsselung läuft außerhalb des Main-Threads, damit die Oberfläche nicht
  * einfriert."
  *
  * Kryptographisch passiert hier nichts Neues: Eine Datei geht durch dieselben
  * beiden Funktionen aus `aead.ts` wie jeder Payload, unter demselben
- * Envelope-Format (§3.2). Neu ist ausschließlich der **Ort** — ein Worker
+ * Envelope-Format (§3.2). Neu ist ausschließlich der Ort: ein Worker
  * statt des Main-Threads.
  *
  * Dieses Modul trägt deshalb zwei Dinge und keine dritte Kryptographie:
@@ -35,13 +35,13 @@ export class DateikryptoFehler extends Error {
   }
 }
 
-/** Ver- und Entschlüsseln einer ganzen Datei — irgendwo. */
+/** Ver- und Entschlüsseln einer ganzen Datei. */
 export type Dateikrypto = {
   /** @param dek der Schlüssel dieser Datei, 32 Byte (§3.1). */
   verschluessele(dek: Uint8Array, klartext: Uint8Array): Promise<Uint8Array>
   entschluessele(dek: Uint8Array, blob: Uint8Array): Promise<Uint8Array>
   /**
-   * Gibt frei, was hinter dem Port steht. Ohne Worker ein Nulleffekt — und
+   * Gibt frei, was hinter dem Port steht. Ohne Worker ein Nulleffekt, und
    * genau deshalb steht die Methode am Port und nicht nur an der einen
    * Umsetzung, die etwas freizugeben hat.
    */
@@ -69,7 +69,7 @@ export type Kryptoantwort =
   | { nummer: number; ok: false; fehler: string }
 
 /**
- * Führt genau einen Auftrag aus — im Worker, im Test aber auch ohne ihn.
+ * Führt genau einen Auftrag aus: im Worker, im Test aber auch ohne ihn.
  *
  * Der Fehlschlag beim Entschlüsseln ist hier kein Sonderfall des privaten
  * Items (§3.7): Eine Datei, die sich unter ihrem eigenen DEK nicht öffnen
@@ -96,7 +96,7 @@ export async function fuehreAuftragAus(auftrag: Kryptoauftrag): Promise<Kryptoan
  * Die Umsetzung ohne Worker: dieselbe Kryptographie, auf dem Main-Thread.
  *
  * Sie ist kein Zweitweg, sondern der Rückfall für eine Laufzeit ohne `Worker`
- * — ältere Browser, `jsdom`, die Edge Function. Eine App, die dort gar keine
+ * (ältere Browser, `jsdom`, die Edge Function). Eine App, die dort gar keine
  * Dokumente mehr anzeigt, wäre der teurere Fehler als eine, die für einen
  * Moment steht.
  */

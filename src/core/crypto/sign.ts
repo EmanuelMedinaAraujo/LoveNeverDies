@@ -1,9 +1,9 @@
 /**
- * Zusammengesetzte Signatur: ML-DSA-65 **und** Ed25519 (DESIGN.md §3.2, §3.6).
+ * Zusammengesetzte Signatur: ML-DSA-65 und Ed25519 (DESIGN.md §3.2, §3.6).
  *
  * Ein KEM beweist, dass jemand lesen darf, nie wer etwas geschrieben hat.
  * Sobald eine einzelne hochgeladene Zeile darüber entscheidet, ob ein Fall in
- * den Trauerfall kippt, reicht das nicht — also bekommt jedes Gerät ein
+ * den Trauerfall kippt, reicht das nicht: Jedes Gerät bekommt ein
  * Signaturpaar dazu.
  *
  * Zusammengesetzt heißt: Beide Verfahren signieren dieselbe Nachricht, und
@@ -12,8 +12,8 @@
  * bei Wraps und Tresorfreigaben an, nicht bei gewöhnlichen Items.
  *
  * Jede Signatur trägt ein Domain-Präfix aus §3.2. Es geht in die signierten
- * Bytes ein, damit eine Freigabesignatur nicht als Wrap-Signatur durchgeht —
- * dieselbe Nachricht unter einem anderen Präfix ist eine andere Nachricht.
+ * Bytes ein, damit eine Freigabesignatur nicht als Wrap-Signatur durchgeht.
+ * Dieselbe Nachricht unter einem anderen Präfix ist eine andere Nachricht.
  *
  * Dieselbe Prüfung läuft in der Edge Function `vault-release` (§9), deshalb
  * kommt dieses Modul ohne Browser-Abhängigkeiten aus.
@@ -74,7 +74,7 @@ function pruefeLaenge(name: string, bytes: Uint8Array, erwartet: number): void {
 
 /**
  * @param seed {@link SIGNATUR_SEED_LAENGE} Byte. Ohne Angabe ziehen beide
- * Bibliotheken frischen Zufall. Mit Angabe ist das Paar reproduzierbar — genau
+ * Bibliotheken frischen Zufall. Mit Angabe ist das Paar reproduzierbar: Genau
  * so hält der Keystore es, ohne die langen geheimen Schlüssel abzulegen.
  */
 export function erzeugeSignaturSchluesselpaar(seed?: Uint8Array): SignaturSchluesselpaar {
@@ -152,8 +152,8 @@ export function signiere(
 /**
  * Prüft beide Hälften.
  *
- * @returns `true` nur, wenn ML-DSA-65 **und** Ed25519 verifizieren. Eine
- * kaputte Kodierung zählt als „verifiziert nicht“, nicht als Ausnahme: Eine
+ * @returns `true` nur, wenn ML-DSA-65 und Ed25519 verifizieren. Eine
+ * kaputte Kodierung zählt als "verifiziert nicht", nicht als Ausnahme: Eine
  * Signatur, die niemand lesen kann, ist keine gültige Signatur.
  * @throws {EnvelopeFehler} wenn der Blob aus einer Version stammt, die diese
  * App nicht kennt. Das ist etwas anderes als eine ungültige Signatur und darf

@@ -18,21 +18,21 @@ import stile from './Alle.module.css'
 /**
  * Der Tab "Alle": alle Aufgaben des Falls (DESIGN.md §7).
  *
- * Anlegen, abhaken, umbenennen, löschen — und nach jedem Neuladen stimmt der
+ * Anlegen, abhaken, umbenennen, löschen, und nach jedem Neuladen stimmt der
  * Stand, weil nichts davon nur lokal passiert. Verschlüsselt wird im
  * `aufgabenService`, bevor irgendetwas den Browser verlässt; dieser Screen
  * sieht ausschließlich Klartext, den es nur hier gibt.
  *
- * **Ein Screen statt zweier Bäume.** §7 sieht für "Alle" getrennte Bäume unter
+ * Ein Screen statt zweier Bäume: §7 sieht für "Alle" getrennte Bäume unter
  * `screens/senior` und `screens/advanced` vor. Solange die beiden Fassungen
  * dieselben Elemente in derselben Reihenfolge zeigten, wären das zwei Kopien,
  * die auseinanderlaufen; die Dichtetokens tragen den Größenunterschied bereits.
- * Getrennt wird, sobald die einfache Ansicht wirklich weniger zeigt — das ist
+ * Getrennt wird, sobald die einfache Ansicht wirklich weniger zeigt; das ist
  * der Slice #17. Was §7 für die einfache Ansicht ausdrücklich verlangt, steht
  * schon hier: Vor dem Löschen wird gefragt.
  *
- * **Die Liste zeigt Wurzelaufgaben.** Unteraufgaben stehen im Aufgabendetail,
- * unter der Aufgabe, zu der sie gehören (§7) — hier zählt nur, wie viele davon
+ * Die Liste zeigt Wurzelaufgaben: Unteraufgaben stehen im Aufgabendetail,
+ * unter der Aufgabe, zu der sie gehören (§7); hier zählt nur, wie viele davon
  * erledigt sind. Eine flache Liste aus vierzig Aufgaben und ihren
  * Unteraufgaben wäre nicht mehr zu lesen, und die Reihenfolge der Juristinnen
  * ginge darin unter.
@@ -91,12 +91,12 @@ function Aufgabenzeile({
   /*
    * Das Häkchen folgt dem Finger und nicht dem Rundlauf.
    *
-   * Angewandt wird eine Mutation sofort — aber eine Ebene tiefer, in der Queue,
+   * Angewandt wird eine Mutation sofort, aber eine Ebene tiefer, in der Queue,
    * und der Weg dorthin kostet ein paar Millisekunden: verschlüsseln, anhängen,
    * überlagern, wieder entschlüsseln. Eine kontrollierte Checkbox liest in
    * dieser Zeit noch `aufgabe.erledigt`, und React setzt sie beim nächsten
    * Rendern auf den alten Wert zurück. Sichtbar, und auf einem Telefon der
-   * Anlass, ein zweites Mal zu tippen — §5 nennt genau das als den Grund für
+   * Anlass, ein zweites Mal zu tippen: §5 nennt genau das als den Grund für
    * die optimistische Anzeige.
    *
    * Die Führung gibt die Zeile ab, sobald der Bestand nachgezogen hat: auch
@@ -114,11 +114,11 @@ function Aufgabenzeile({
    * Nimmt das Häkchen zurück, wenn die Mutation nie angehängt wurde.
    *
    * Der Bestand zieht nur nach, wenn etwas in der Queue gelandet ist. Kam es
-   * gar nicht so weit — kein Platz in IndexedDB, kein IndexedDB —, dann bleibt
+   * gar nicht so weit (kein Platz in IndexedDB, kein IndexedDB), dann bleibt
    * `aufgabe.erledigt`, wie es war, der Abgleich oben findet keinen
    * Unterschied, und das Häkchen stünde für den Rest der Sitzung auf einem
-   * Wert, den niemand gespeichert hat. Die Meldung darüber sagte „ging nicht",
-   * das Kästchen daneben sagte „erledigt", und §5 verlangt das Gegenteil von
+   * Wert, den niemand gespeichert hat. Die Meldung darüber sagte "ging nicht",
+   * das Kästchen daneben sagte "erledigt", und §5 verlangt das Gegenteil von
    * genau dieser Zweideutigkeit.
    */
   async function haken(gewuenscht: boolean) {
@@ -139,7 +139,7 @@ function Aufgabenzeile({
     ereignis.preventDefault()
 
     // Nur bei Erfolg zu. Ging es schief, steht die Meldung darüber und der
-    // eingetippte Text noch da — §5 verlangt, dass eine abgelehnte Änderung
+    // eingetippte Text noch da: §5 verlangt, dass eine abgelehnte Änderung
     // sichtbar bleibt, und ein geleertes Formular wäre das Gegenteil davon.
     if (await aufSpeichern(titel, beschreibung)) {
       setzeModus('anzeigen')
@@ -201,7 +201,7 @@ function Aufgabenzeile({
           ab. Das gehört vor die Aktion gesagt und nicht danach.
         */}
         <p>
-          „{aufgabe.titel}" wirklich löschen? Gelöschte Aufgaben kommen nicht zurück.
+          "{aufgabe.titel}" wirklich löschen? Gelöschte Aufgaben kommen nicht zurück.
         </p>
         <div className={stile.aktionen}>
           <Button
@@ -225,8 +225,8 @@ function Aufgabenzeile({
   const blockiert = blockiertVon.length > 0
 
   /*
-   * §7: „Bearbeiten darf nur, wem sie zugewiesen ist." Wer nicht darunter
-   * steht, sieht die Aufgabe vollständig — Titel, Frist, Stand — und findet
+   * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Wer nicht darunter
+   * steht, sieht die Aufgabe vollständig (Titel, Frist, Stand) und findet
    * statt der Schaltflächen den einen Weg, der ihm offensteht: sie übernehmen.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ichUserId)
@@ -245,7 +245,7 @@ function Aufgabenzeile({
           /*
            * §7: Eine Aufgabe mit Unteraufgaben hat kein eigenes Häkchen. Statt
            * eines Kästchens, das nichts speichert, steht hier der Stand ihrer
-           * Kinder — und abgehakt wird im Aufgabendetail, Kind für Kind.
+           * Kinder, und abgehakt wird im Aufgabendetail, Kind für Kind.
            */
           <p className={stile.titel}>{aufgabe.titel}</p>
         )}
@@ -262,7 +262,7 @@ function Aufgabenzeile({
       )}
 
       {/*
-        §7: „Blockierte Aufgaben erscheinen ausgegraut mit 'Zuerst: …'."
+        §7: "Blockierte Aufgaben erscheinen ausgegraut mit 'Zuerst: …'."
         Ausgegraut ist die Zeile, gesperrt ist sie nicht: Die Abhängigkeit kommt
         aus dem Katalog und ist ein Rat, kein Gesetz. Wer die Sache erledigt
         hat, muss das eintragen können, ohne erst eine andere Aufgabe abhaken
@@ -287,13 +287,13 @@ function Aufgabenzeile({
         */}
         <Link className={stile.detaillink} to={`/aufgabe/${aufgabe.id}`}>
           Details
-          <span className="nur-vorlesen">: „{aufgabe.titel}"</span>
+          <span className="nur-vorlesen">: "{aufgabe.titel}"</span>
         </Link>
 
         {/*
           Jede Schaltfläche trägt den Titel zum Vorlesen mit. Ohne ihn hörte
           eine blinde Person in einer Liste von zwanzig Aufgaben zwanzigmal
-          „Ändern" und wüsste nie, welche gemeint ist (§7).
+          "Ändern" und wüsste nie, welche gemeint ist (§7).
 
           Das Trennzeichen ist ein Doppelpunkt und kein Leerzeichen: Die
           Berechnung des zugänglichen Namens schneidet den Rand jedes Textknotens
@@ -305,14 +305,14 @@ function Aufgabenzeile({
             <Button
               variante="sekundaer"
               onClick={beginneAendern}
-              vorleseText={`: „${aufgabe.titel}"`}
+              vorleseText={`: "${aufgabe.titel}"`}
             >
               Ändern
             </Button>
             <Button
               variante="sekundaer"
               onClick={() => setzeModus('loeschen')}
-              vorleseText={`: „${aufgabe.titel}"`}
+              vorleseText={`: "${aufgabe.titel}"`}
             >
               Löschen
             </Button>
@@ -321,14 +321,14 @@ function Aufgabenzeile({
           <Button
             disabled={gesperrt}
             onClick={aufUebernehmen}
-            vorleseText={`: „${aufgabe.titel}"`}
+            vorleseText={`: "${aufgabe.titel}"`}
           >
             Übernehmen
           </Button>
         )}
 
         {/*
-          §7: „Eine Reservierung ist von jedem wieder lösbar, nicht nur von der
+          §7: "Eine Reservierung ist von jedem wieder lösbar, nicht nur von der
           reservierenden Person." In einer Familie fällt jemand aus, und eine
           Aufgabe, die niemand mehr freigeben kann, blockiert eine gesetzliche
           Frist.
@@ -338,7 +338,7 @@ function Aufgabenzeile({
             variante="sekundaer"
             disabled={gesperrt}
             onClick={aufFreigeben}
-            vorleseText={`: „${aufgabe.titel}"`}
+            vorleseText={`: "${aufgabe.titel}"`}
           >
             Freigeben
           </Button>
@@ -354,9 +354,9 @@ type Sortierung = 'reihenfolge' | 'frist'
 /**
  * Die Erinnerungen, sobald es welche zu planen gibt (§7).
  *
- * Gefragt wird erst, wenn eine Frist im Fall steht — eine Systemabfrage beim
+ * Gefragt wird erst, wenn eine Frist im Fall steht: Eine Systemabfrage beim
  * ersten Start, bevor die App überhaupt etwas zu melden hätte, beantworten die
- * meisten Menschen mit „nein", und dann ist die Tür für immer zu.
+ * meisten Menschen mit "nein", und dann ist die Tür für immer zu.
  */
 function Erinnerungshinweis({ erinnerungen }: { erinnerungen: Erinnerungsdaten }) {
   if (erinnerungen.geplant === 0 || erinnerungen.erlaubnis === 'nicht-verfuegbar') {
@@ -432,7 +432,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
 
   /*
    * Einmal je Rendern, nicht einmal je Zeile: Ein Fall mit vierzig Aufgaben
-   * fragte sonst vierzigmal nach dem heutigen Tag — und geriete um Mitternacht
+   * fragte sonst vierzigmal nach dem heutigen Tag und geriete um Mitternacht
    * an zwei verschiedene Antworten in derselben Liste.
    */
   const heute = heuteIso()
@@ -483,15 +483,15 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
       )}
 
       {/*
-        §5: „Die Ladeanzeige bezieht sich auf den Netzwerk-Fetch, nicht auf das
-        Entschlüsseln." Sie steht deshalb, solange es nichts zu zeigen gibt —
+        §5: "Die Ladeanzeige bezieht sich auf den Netzwerk-Fetch, nicht auf das
+        Entschlüsseln." Sie steht deshalb, solange es nichts zu zeigen gibt:
         erst bis der Cache gelesen ist, danach so lange der erste Abruf läuft.
 
-        **Für die Runden danach gibt es bewusst keine.** Die Türklingel läutet
+        Für die Runden danach gibt es bewusst keine: Die Türklingel läutet
         im geteilten Fall im Sekundentakt; eine Zeile, die dabei erscheint und
         wieder verschwindet, verschöbe die Liste unter dem Finger, der gerade
         ein Häkchen setzen will, und eine Vorlesestimme sagte alle paar Sekunden
-        „wird aktualisiert". Der Sinn der Türklingel ist, dass ihr niemand
+        "wird aktualisiert". Der Sinn der Türklingel ist, dass ihr niemand
         zusehen muss.
       */}
       {zustand.status === 'laedt' ? <Ladeanzeige text="Ihre Aufgaben werden geladen…" /> : null}
@@ -513,7 +513,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
 
           {zustand.baum.length === 0 ? (
             // Ein leerer Cache und ein laufender erster Abruf sind nicht
-            // dasselbe wie ein leerer Fall. „Hier ist noch nichts" wäre in
+            // dasselbe wie ein leerer Fall. "Hier ist noch nichts" wäre in
             // diesem Moment eine Behauptung, die der Abruf gleich widerlegt.
             zustand.laedtNetz ? (
               <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
@@ -525,9 +525,9 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
           ) : (
             <>
               {/*
-                §7: „Fristen sind sichtbar: als Badges und in sortierten
+                §7: "Fristen sind sichtbar: als Badges und in sortierten
                 Listen." Die Voreinstellung bleibt die Reihenfolge der
-                Juristinnen (§8) — sie beginnt mit dem, was in den ersten Tagen
+                Juristinnen (§8); sie beginnt mit dem, was in den ersten Tagen
                 ansteht, und das ist für die meisten der bessere Weg durch die
                 Liste als ein Fristenranking.
               */}
@@ -569,7 +569,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
           )}
 
           {/*
-            §3.7: Nicht entschlüsselbare Items verschwinden still — sie gehören
+            §3.7: Nicht entschlüsselbare Items verschwinden still: Sie gehören
             in aller Regel einer anderen Person. Einen Zähler dafür gibt es
             ausschließlich im Dev-Modus; `import.meta.env.DEV` ist zur Bauzeit
             bekannt, der Zweig fällt im Produktionsbündel ganz weg.

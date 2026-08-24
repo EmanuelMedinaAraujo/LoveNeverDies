@@ -2,8 +2,8 @@
  * `profiles` als schmale Tabelle (DESIGN.md §3.3, §4, §6).
  *
  * Anzeigename und E-Mail, im Klartext und mit Absicht: §6 zeigt der einladenden
- * Person den Namen der beitretenden, **bevor** ein gemeinsamer Schlüssel
- * existiert. Verschlüsselt ginge das nicht — es gäbe zu diesem Zeitpunkt
+ * Person den Namen der beitretenden, bevor ein gemeinsamer Schlüssel
+ * existiert. Verschlüsselt ginge das nicht: Es gäbe zu diesem Zeitpunkt
  * keinen Schlüssel, den beide Seiten hätten.
  *
  * Geschrieben wird ausschließlich das eigene Profil. Gelesen wird es hier gar

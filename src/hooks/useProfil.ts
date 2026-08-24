@@ -4,22 +4,22 @@
  * Läuft nach der Anmeldung still mit, wie die Geräteanmeldung daneben. Es gibt
  * dafür keinen Screen und keine Rückfrage: Clerk kennt Name und E-Mail
  * ohnehin, und §6 braucht sie in `profiles`, damit die einladende Person einen
- * echten Namen sieht, **bevor** ein gemeinsamer Schlüssel existiert.
+ * echten Namen sieht, bevor ein gemeinsamer Schlüssel existiert.
  *
- * **Warum bei jeder Anmeldung und nicht nur beim ersten Mal.** Wer bei Clerk
+ * Warum bei jeder Anmeldung und nicht nur beim ersten Mal: Wer bei Clerk
  * heiratet und den Namen ändert, ändert ihn nicht in dieser Tabelle. Ein
- * Kopplungsangebot zeigte dann jahrelang den alten Namen — und das ist genau
+ * Kopplungsangebot zeigte dann jahrelang den alten Namen. Das ist genau
  * der Wert, an dem jemand am Telefon entscheidet, ob er das Familiengeheimnis
  * weitergibt.
  *
- * **Ein Fehlschlag ist kein Grund, die App anzuhalten.** Ohne Profil scheitert
+ * Ein Fehlschlag ist kein Grund, die App anzuhalten: Ohne Profil scheitert
  * später `erzeuge_kopplungscode` mit einem Satz, der sagt, was fehlt (§6). Bis
  * dahin funktioniert alles andere, und eine Fehlermeldung beim Start, die
  * niemand einordnen kann, hilft niemandem.
  *
  * Er darf deshalb aber nicht folgenlos steckenbleiben: Ohne `nochmal` bliebe
  * die Sitzung nach einem einzigen misslungenen Rundlauf bis zum Neuladen ohne
- * Profil, und jede Kopplung scheiterte mit „Ohne hinterlegten Namen". Der
+ * Profil, und jede Kopplung scheiterte mit "Ohne hinterlegten Namen". Der
  * Kopplungscode-Hook wartet deshalb auf `bereit` und stößt bei Bedarf einen
  * neuen Versuch an.
  */
@@ -54,7 +54,7 @@ export function useProfilAbgleich(): Profildaten {
   /*
    * Am Inhalt festgemacht und nicht am Objekt: Clerk gibt bei jeder
    * Token-Erneuerung ein neues `benutzer`-Objekt heraus, ohne dass sich darin
-   * etwas geändert hätte — dieselbe Überlegung wie in `useGeraete.ts`.
+   * etwas geändert hätte, dieselbe Überlegung wie in `useGeraete.ts`.
    */
   const benutzerId = benutzer?.id ?? null
   const anzeigename = benutzer?.anzeigename ?? null

@@ -6,13 +6,13 @@
  * (`zeilen`). Ein zweiter `useSync` daneben hielte einen zweiten Cache, ein
  * zweites Wasserzeichen und eine zweite Queue für denselben Fall.
  *
- * **Geschrieben wird dagegen an der Queue vorbei** (§5): „Dokument-Uploads
+ * Geschrieben wird dagegen an der Queue vorbei (§5): "Dokument-Uploads
  * gehen nicht in die Offline-Queue." Deshalb tut dieser Hook zwei Dinge, die
- * `useAufgaben` nicht tut — er spricht direkt mit Storage und `items`, und er
+ * `useAufgaben` nicht tut: Er spricht direkt mit Storage und `items`, und er
  * stösst danach eine Sync-Runde an, damit die neue Zeile sofort im Bestand
  * steht statt erst beim nächsten Läuten.
  *
- * **Ohne Verbindung ist die Aufnahme gesperrt.** Das ist keine Bequemlichkeit,
+ * Ohne Verbindung ist die Aufnahme gesperrt: Das ist keine Bequemlichkeit,
  * sondern die Folge derselben Entscheidung: Was nicht in die Queue geht, kann
  * nicht auf den Reconnect warten. Eine Schaltfläche, die im Flugmodus eine
  * Fehlermeldung produziert, wäre die schlechtere Auskunft als eine, die sagt,
@@ -40,7 +40,7 @@ export type Dokumentdaten = {
   /**
    * Die Dokumente dieses Falls, entschlüsselt.
    *
-   * In der Reihenfolge von `zeilen` — der Reconciler ordnet über die `id`, und
+   * In der Reihenfolge von `zeilen`: Der Reconciler ordnet über die `id`, und
    * die ist eine UUIDv7 (§5). Das ist die Aufnahmereihenfolge, ohne dass hier
    * noch einmal sortiert werden müsste.
    */
@@ -60,15 +60,15 @@ export type Dokumentdaten = {
   loesche: (dokument: Dokument) => Promise<void>
 }
 
-/** Keine Dokumente — als eine Liste, damit sie ihre Identität behält. */
+/** Keine Dokumente, als eine Liste, damit sie ihre Identität behält. */
 const KEINE: Dokument[] = []
 
 /**
  * Ob dieses Gerät online ist.
  *
- * `navigator.onLine` ist notorisch optimistisch — es sagt „ja" auch im WLAN
+ * `navigator.onLine` ist notorisch optimistisch: Es sagt "ja" auch im WLAN
  * ohne Internet. Als Sperre reicht es trotzdem: Es liegt nie falsch, wenn es
- * „nein" sagt, und das ist die Richtung, um die es hier geht. Wer trotz „ja"
+ * "nein" sagt, und das ist die Richtung, um die es hier geht. Wer trotz "ja"
  * keine Verbindung hat, bekommt die Fehlermeldung des Uploads.
  */
 function useOnline(): boolean {
@@ -95,7 +95,7 @@ function useOnline(): boolean {
 
 /**
  * @param zeilen der Bestand als Ciphertext, aus `useAufgaben`.
- * @param aktualisiere stösst eine Sync-Runde an — der Weg, auf dem eine an der
+ * @param aktualisiere stösst eine Sync-Runde an: der Weg, auf dem eine an der
  * Queue vorbei geschriebene Zeile in den Bestand kommt.
  */
 export function useDokumente(
@@ -141,7 +141,7 @@ export function useDokumente(
   /*
    * Anders als bei den Aufgaben wird hier bei jedem Delta alles neu
    * entschlüsselt, ohne WeakMap davor. Ein Fall trägt Dutzende Aufgaben, aber
-   * eine Handvoll Dokumente, und entschlüsselt werden nur die Metadaten — die
+   * eine Handvoll Dokumente, und entschlüsselt werden nur die Metadaten. Die
    * Datei selbst liegt im Storage und wird erst beim Öffnen geholt.
    */
 
@@ -158,7 +158,7 @@ export function useDokumente(
     async (datei: Dateiauswahl, aufgabeId: string | null) => {
       if (!online) {
         throw new DokumentFehler(
-          'Ohne Verbindung lässt sich kein Dokument aufnehmen. Ihre Aufgaben können Sie weiter bearbeiten — sobald das Netz zurück ist, geht das Foto hinaus.',
+          'Ohne Verbindung lässt sich kein Dokument aufnehmen. Ihre Aufgaben können Sie weiter bearbeiten; sobald das Netz zurück ist, geht das Foto hinaus.',
         )
       }
 

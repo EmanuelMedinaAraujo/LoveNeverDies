@@ -10,7 +10,7 @@ import { createContext, useContext } from 'react'
  *
  * §3.6 nennt den Grund, warum diese Grenze mehr ist als Ordnungsliebe: Ein
  * gestohlenes Passwort reicht nicht zum Entschluesseln, weil `sk_u`
- * geraetegebunden bleibt. Die Anmeldung sagt, wer jemand ist — nie, was jemand
+ * geraetegebunden bleibt. Die Anmeldung sagt, wer jemand ist, nie, was jemand
  * lesen darf. Das entscheiden RLS und die Schluesselhierarchie.
  */
 
@@ -33,7 +33,7 @@ export type AuthKontextWert = {
    * Das Token, mit dem der Supabase-Client sich ausweist (§4).
    *
    * Es steht hier und nicht neben dem Client, weil sonst der Anbietername eine
-   * dritte Datei braeuchte. `null`, solange niemand angemeldet ist — dann
+   * dritte Datei braeuchte. `null`, solange niemand angemeldet ist. Dann
    * greift keine Policy, und PostgREST antwortet mit leeren Mengen statt mit
    * fremden Zeilen.
    */

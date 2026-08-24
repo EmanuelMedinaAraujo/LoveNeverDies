@@ -9,7 +9,7 @@ import stile from './Anmelden.module.css'
  * entstehen die beiden Keypairs und läuft `navigator.storage.persist()`.
  *
  * Clerk rendert das Formular selbst. Die Farben kommen aus §12, die Sprache aus
- * `deDE` — Clerks deutsche Übersetzung siezt durchgehend, was zu §1 passt.
+ * `deDE`, Clerks deutsche Übersetzung siezt durchgehend, was zu §1 passt.
  *
  * `routing="hash"` hält Anmeldung und Registrierung in dieser einen Komponente,
  * ohne dass die App dafür eigene Routen braucht.

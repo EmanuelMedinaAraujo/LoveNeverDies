@@ -2,7 +2,7 @@
  * KEM: ML-KEM-768 zusammen mit X25519 (DESIGN.md §3.1).
  *
  * Das Identitäts-Keypair jedes Geräts. Es beweist, dass jemand lesen darf, und
- * sonst nichts — wer etwas geschrieben hat, sagt erst die Signatur in
+ * sonst nichts. Wer etwas geschrieben hat, sagt erst die Signatur in
  * `sign.ts`.
  *
  * Hybrid statt ML-KEM allein: Bricht eines der beiden Verfahren, hält das
@@ -13,11 +13,11 @@
  * `kem_ct` trägt bewusst keinen eigenen Kopf (§3.2). Welches KEM ihn erzeugt
  * hat, sagt das `v` des `wrapped_key`, der neben ihm in derselben Zeile steht.
  *
- * **Zum Namen.** Benutzt wird `ml_kem768_x25519` aus `@noble/post-quantum`.
- * Warum das Verfahren nirgends „X-Wing“ heißt, obwohl es so aussieht, steht in
+ * Zum Namen: Benutzt wird `ml_kem768_x25519` aus `@noble/post-quantum`.
+ * Warum das Verfahren nirgends "X-Wing" heißt, obwohl es so aussieht, steht in
  * §1: Der Combiner hängt die Bezeichnung hinten an statt voran, und damit ist es
  * byteweise nicht das Verfahren aus draft-connolly-cfrg-xwing-kem. Für dieses
- * Modul folgt daraus genau eines — die Edge Function und jede zweite
+ * Modul folgt daraus genau eines: Die Edge Function und jede zweite
  * Implementierung (§9) brauchen diese Bibliothek in dieser Version, und ein
  * Wechsel der Konstruktion ist ein neues `v` (§3.2), keine Aktualisierung einer
  * Abhängigkeit.
@@ -68,7 +68,7 @@ function pruefeLaenge(name: string, bytes: Uint8Array, erwartet: number): void {
  * Erzeugt ein Identitäts-Keypair.
  *
  * @param seed 32 Byte. Ohne Angabe zieht die Bibliothek frischen Zufall. Mit
- * Angabe ist das Paar reproduzierbar — der Seed **ist** der geheime Schlüssel,
+ * Angabe ist das Paar reproduzierbar. Der Seed ist der geheime Schlüssel,
  * und der Keystore muss nichts weiter aufbewahren.
  */
 export function erzeugeKemSchluesselpaar(seed?: Uint8Array): KemSchluesselpaar {
@@ -101,7 +101,7 @@ export function kapsele(oeffentlich: Uint8Array): Kapselung {
  *
  * Ein Ciphertext, der nicht zu diesem Schlüssel gehört, liefert kein Scheitern,
  * sondern ein anderes Geheimnis: ML-KEM verwirft implizit. Bemerkt wird der
- * Irrtum erst am GCM-Tag des `wrapped_key` daneben, und das genügt — beides
+ * Irrtum erst am GCM-Tag des `wrapped_key` daneben, und das genügt: Beides
  * steht ohnehin in derselben Zeile.
  */
 export function entkapsele(kemCt: Uint8Array, geheim: Uint8Array): Uint8Array {

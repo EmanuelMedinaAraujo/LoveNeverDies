@@ -7,7 +7,7 @@
  * sonst.
  *
  * Dieses Modul ist bewusst frei von React, Supabase und jeder Laufzeit ausser
- * der Sprache selbst — die Import-Boundary-Regel in `eslint.config.js` setzt
+ * der Sprache selbst. Die Import-Boundary-Regel in `eslint.config.js` setzt
  * das durch.
  */
 

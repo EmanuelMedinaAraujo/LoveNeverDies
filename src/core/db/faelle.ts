@@ -2,7 +2,7 @@
  * `cases` als schmale Tabelle (DESIGN.md §2, §4).
  *
  * Der Port, den der `fallService` benutzt. Was hier durchgeht, ist entweder
- * öffentlich (`status`, `current_kid`, `version`) oder ein Envelope — der
+ * öffentlich (`status`, `current_kid`, `version`) oder ein Envelope. Der
  * Payload trägt Name und Sterbedatum, und beides sieht der Server nie (§3.3).
  *
  * Angelegt wird über eine RPC und nicht über ein Insert: Fall, Mitgliedschaft
@@ -87,12 +87,12 @@ export type FaelleTabelle = {
   /**
    * Der billige Check aus §5: ein Integer, kein Fetch.
    *
-   * Gleich dem Wasserzeichen heisst „nichts Neues" — dann wird kein Item
+   * Gleich dem Wasserzeichen heisst "nichts Neues", dann wird kein Item
    * abgerufen. `cases.version` trägt das, weil der Trigger `items_assign_seq`
    * ihn bei jeder Inhaltsänderung des Falls mithebt (§4).
    *
    * @returns `null`, wenn die RLS den Fall nicht hergibt. Ausdrücklich nicht
-   * `0` — das hiesse „alles neu holen".
+   * `0`: Das hiesse "alles neu holen".
    */
   version(fallId: string): Promise<number | null>
 }

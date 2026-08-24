@@ -1,17 +1,17 @@
 /**
  * {@link Dateikrypto} in einem Worker (DESIGN.md §7).
  *
- * §7 verlangt die Verschlüsselung „außerhalb des Main-Threads, damit die
+ * §7 verlangt die Verschlüsselung "außerhalb des Main-Threads, damit die
  * Oberfläche nicht einfriert". Dieses Modul ist die eine Stelle, an der ein
  * Worker vorkommt; alles darüber kennt nur den Port.
  *
- * **Ein Worker, mehrere Aufträge.** Er entsteht beim ersten Auftrag und bleibt
+ * Ein Worker, mehrere Aufträge: Er entsteht beim ersten Auftrag und bleibt
  * stehen, bis jemand {@link Dateikrypto.schliesse} ruft. Ein Worker je Datei
  * kostete bei jedem Klick einen Modulstart; einer, der nie entsteht, kostet
- * nichts — und die meisten Sitzungen laden nie ein Dokument hoch.
+ * nichts, und die meisten Sitzungen laden nie ein Dokument hoch.
  *
- * **Wo kein `Worker` ist, wird auf dem Main-Thread gerechnet.** Der Rückfall
- * steht in `dateikrypto.ts` und ist ausdrücklich benannt: Eine App, die ohne
+ * Wo kein `Worker` ist, wird auf dem Main-Thread gerechnet: Der Rückfall
+ * steht in `dateikrypto.ts` und ist ausdrücklich benannt. Eine App, die ohne
  * Worker gar keine Dokumente mehr öffnet, wäre der teurere Fehler.
  */
 
@@ -27,7 +27,7 @@ import {
  * Der Worker aus dem eigenen Bündel.
  *
  * `new URL(…, import.meta.url)` ist die Form, die der Bundler erkennt und
- * mitbaut — ein Pfad als Zeichenkette wäre nach dem Bauen ein 404. `module`,
+ * mitbaut. Ein Pfad als Zeichenkette wäre nach dem Bauen ein 404. `module`,
  * weil der Worker `dateikrypto.ts` importiert.
  */
 function standardWorker(): Worker {
@@ -45,8 +45,8 @@ type Offen = {
  * ein echter Worker ausser dem Zustellen von Nachrichten nichts beiträgt, was
  * hier zu prüfen wäre.
  *
- * Eine übergebene Werkbank schlägt den Rückfall: Wer eine mitbringt, hat eine
- * — die Frage nach `globalThis.Worker` stellt sich dann gar nicht.
+ * Eine übergebene Werkbank schlägt den Rückfall: Wer eine mitbringt, hat eine.
+ * Die Frage nach `globalThis.Worker` stellt sich dann gar nicht.
  */
 export function workerDateikrypto(erzeugeWorker?: () => Worker): Dateikrypto {
   if (erzeugeWorker === undefined && typeof Worker === 'undefined') {
@@ -66,7 +66,7 @@ export function workerDateikrypto(erzeugeWorker?: () => Worker): Dateikrypto {
    * Bricht alles Wartende ab.
    *
    * Ein Worker, der stirbt, nimmt jeden laufenden Auftrag mit. Ohne diese
-   * Zeile bliebe der Fortschrittsbalken für immer stehen — schlimmer als eine
+   * Zeile bliebe der Fortschrittsbalken für immer stehen. Das wäre schlimmer als eine
    * Fehlermeldung, weil niemand weiss, worauf er wartet.
    */
   function brichAb(grund: string) {
@@ -82,7 +82,7 @@ export function workerDateikrypto(erzeugeWorker?: () => Worker): Dateikrypto {
    *
    * Getrennt vom Abbrechen, und das ist der Punkt: Ein Aufruf von
    * {@link Dateikrypto.schliesse} kommt in aller Regel daher, dass ein Screen
-   * verschwindet — und der laufende Auftrag ist dann trotzdem echte Arbeit,
+   * verschwindet. Der laufende Auftrag ist dann trotzdem echte Arbeit,
    * hinter der eine Datei steht, die gleich hochgeladen wird. Die
    * Promise-Kette darüber lebt weiter, auch wenn niemand mehr hinsieht; das
    * Dokument kommt also an, und der nächste Abgleich zeigt es. Ihn hier
@@ -126,7 +126,7 @@ export function workerDateikrypto(erzeugeWorker?: () => Worker): Dateikrypto {
     })
 
     frisch.addEventListener('error', () => {
-      // Der Worker ist hin. Der nächste Auftrag baut einen neuen auf — was
+      // Der Worker ist hin. Der nächste Auftrag baut einen neuen auf. Was
       // ihn umgebracht hat, war entweder einmalig oder wiederholt sich, und
       // dann sagt es die nächste Fehlermeldung erneut.
       worker = null
@@ -149,7 +149,7 @@ export function workerDateikrypto(erzeugeWorker?: () => Worker): Dateikrypto {
        * Der Auftrag reist als Kopie, nicht als Transferable: Die Bytes gehören
        * dem Aufrufer, und ein Puffer, den das Absenden leert, wäre eine Falle
        * für seine nächste Zeile. Die Antwort kommt umgekehrt als Transferable
-       * zurück (siehe `dateiWorker.ts`) — sie gehört niemandem sonst.
+       * zurück (siehe `dateiWorker.ts`); sie gehört niemandem sonst.
        */
       werkbank().postMessage({ nummer, was, schluessel, daten } satisfies Kryptoauftrag)
     })
@@ -160,7 +160,7 @@ export function workerDateikrypto(erzeugeWorker?: () => Worker): Dateikrypto {
     entschluessele: (dek, blob) => beauftrage('entschluesseln', dek, blob),
 
     /**
-     * Gibt den Worker frei — nicht mitten im Satz, sondern nach dem letzten
+     * Gibt den Worker frei, nicht mitten im Satz, sondern nach dem letzten
      * Auftrag (siehe {@link beendeWennLeer}).
      */
     schliesse() {

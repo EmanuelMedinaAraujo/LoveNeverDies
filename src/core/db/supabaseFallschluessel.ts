@@ -2,7 +2,7 @@
  * `key_wraps` über Supabase (DESIGN.md §3.6, §4).
  *
  * Die Umsetzung des Ports aus `fallschluessel.ts`. Gelesen wird ausschließlich
- * `fuerGeraet` — was die RLS für ein fremdes Gerät zurückgibt, ist ohnehin
+ * `fuerGeraet`. Was die RLS für ein fremdes Gerät zurückgibt, ist ohnehin
  * leer (§4), und geschrieben wird an dieser Stelle gar nicht: Das läuft über
  * die RPC in `supabaseFaelle.ts`.
  */
@@ -56,7 +56,7 @@ export function supabaseFallschluessel(client: SupabaseClient): SchluesselwrapTa
         .returns<RohZeile[]>()
 
       if (error !== null) {
-        throw new FallschluesselFehler('Die Schlüsselwraps waren nicht abzurufen', error)
+        throw new FallschluesselFehler('Die Schlüsselwraps konnten nicht abgerufen werden', error)
       }
 
       return data.map(alsZeile)

@@ -14,7 +14,7 @@ import stile from './Beitreten.module.css'
  * Die beitretende Seite der Kopplung (DESIGN.md §6, Schritt 1 bis 3 und 7).
  *
  * Derselbe Screen für beide Zwecke, weil §6 ausdrücklich feststellt, dass der
- * Ablauf identisch ist — nur mit `purpose = device` und Einstieg über Profil.
+ * Ablauf identisch ist, nur mit `purpose = device` und Einstieg über Profil.
  * Zwei Screens, die sich in zwei Sätzen unterscheiden, wären zwei Stellen, an
  * denen der Prüfcode-Hinweis auseinanderlaufen kann.
  *
@@ -27,7 +27,7 @@ const TEXTE: Record<Kopplungszweck, { titel: string; einleitung: string; erfolg:
   join: {
     titel: 'Ich wurde eingeladen',
     einleitung:
-      'Nennen Sie diesen Code der Person, die Sie eingeladen hat — am Telefon oder persönlich. Sie gilt 15 Minuten und genau einmal.',
+      'Nennen Sie diesen Code der Person, die Sie eingeladen hat, am Telefon oder persönlich. Sie gilt 15 Minuten und genau einmal.',
     erfolg: 'Sie gehören jetzt zum Fall.',
   },
   device: {
@@ -38,7 +38,7 @@ const TEXTE: Record<Kopplungszweck, { titel: string; einleitung: string; erfolg:
   },
 }
 
-/** „12:34 Uhr", oder nichts, wenn der Zeitstempel keiner ist. */
+/** "12:34 Uhr", oder nichts, wenn der Zeitstempel keiner ist. */
 function uhrzeit(zeitpunkt: string): string | null {
   const datum = new Date(zeitpunkt)
 
@@ -58,7 +58,7 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
   const laeuftAbAm = zustand.status === 'bereit' ? zustand.laeuftAbAm : null
 
   /*
-   * Im State steht der Zeitpunkt, dessen Uhr abgelaufen ist — kein `boolean`.
+   * Im State steht der Zeitpunkt, dessen Uhr abgelaufen ist, kein `boolean`.
    * Ein frischer Code bringt einen anderen Zeitpunkt mit und gilt damit von
    * selbst wieder; ein Flag müsste jemand zurücksetzen, und genau das vergisst
    * man beim nächsten Zweig.
@@ -74,10 +74,10 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
     /*
      * §6: Ein Code gilt 15 Minuten. Ohne diese Uhr stünde er danach weiter groß
      * auf dem Screen, und jemand läse ihn am Telefon vor, während die andere
-     * Seite „abgelaufen" zurückbekommt.
+     * Seite "abgelaufen" zurückbekommt.
      *
      * Die Wache läuft trotzdem weiter, und das ist kein Versehen: Wer den Code
-     * *vor* dem Ablauf eingelöst hat, darf ihn danach noch bestätigen — der
+     * *vor* dem Ablauf eingelöst hat, darf ihn danach noch bestätigen; der
      * Abgleich am Telefon soll nicht unter Zeitdruck stehen
      * (`schliesse_kopplung_ab`). Diese Seite muss die Freigabe also weiter
      * mitbekommen.
@@ -85,7 +85,7 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
     const rest = new Date(laeuftAbAm).getTime() - Date.now()
 
     // Ein Zeitstempel, den niemand lesen kann, ist kein abgelaufener Code: Dann
-    // steht daneben „Er gilt 15 Minuten." und sonst nichts.
+    // steht daneben "Er gilt 15 Minuten." und sonst nichts.
     if (Number.isNaN(rest)) {
       return
     }
@@ -101,8 +101,8 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
     }
 
     /*
-     * §6, Schritt 7: „schaltet innerhalb von Sekunden frei". Der Weg nach `/`
-     * ist dabei mehr als Bequemlichkeit — der Startscreen lädt seine Fälle beim
+     * §6, Schritt 7: "schaltet innerhalb von Sekunden frei". Der Weg nach `/`
+     * ist dabei mehr als Bequemlichkeit: Der Startscreen lädt seine Fälle beim
      * Aufbau neu, und was dort steht, hat den vollen Weg aus §3.6 durchlaufen:
      * Wrap holen, Signatur prüfen, entpacken.
      *
@@ -185,7 +185,7 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
               <li>Sie nennen den Kopplungscode.</li>
               <li>Die andere Seite gibt ihn ein und sieht Ihren Namen und den Prüfcode.</li>
               <li>Sie vergleichen den Prüfcode miteinander.</li>
-              <li>Die andere Seite bestätigt — und diese Seite schaltet von selbst frei.</li>
+              <li>Die andere Seite bestätigt, und diese Seite schaltet von selbst frei.</li>
             </ol>
 
             <p className={stile.hinweis} role="status">

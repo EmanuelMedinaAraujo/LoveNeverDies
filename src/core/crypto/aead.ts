@@ -3,7 +3,7 @@
  *
  * Durch diese beiden Funktionen geht alles, was verschlüsselt auf dem Server
  * liegt. `payload`, `wrapped_dek` und `wrapped_key` unterscheiden sich nur
- * darin, was drinsteht, nicht in ihrer Behandlung — deshalb gibt es hier auch
+ * darin, was drinsteht, nicht in ihrer Behandlung. Deshalb gibt es hier auch
  * nur ein Paar Funktionen und nicht drei.
  *
  * Die Nonce ist 12 Byte Zufall und wird nie wiederverwendet, weil jeder Aufruf
@@ -24,8 +24,8 @@ import {
 export const SCHLUESSEL_LAENGE = 32
 
 /**
- * Der Schlüssel liegt entweder als rohe Bytes vor — frisch erzeugt, aus einem
- * Wrap entpackt — oder als `CryptoKey`, den WebCrypto nicht mehr herausgibt.
+ * Der Schlüssel liegt entweder als rohe Bytes vor (frisch erzeugt, aus einem
+ * Wrap entpackt) oder als `CryptoKey`, den WebCrypto nicht mehr herausgibt.
  * `sk_u` ist at-rest unter genau so einem nicht-extrahierbaren Schlüssel
  * verschlüsselt (§3.1), also muss beides durch dieselbe Tür passen.
  */
@@ -89,7 +89,7 @@ export async function verschluessele(
  * Liest den Envelope, prüft seine Version und entschlüsselt.
  *
  * @throws {EnvelopeFehler} wenn der Blob aus einer Version stammt, die diese App
- * nicht kennt — der Versions-Dispatch aus §3.2 läuft vor jeder Kryptographie.
+ * nicht kennt. Der Versions-Dispatch aus §3.2 läuft vor jeder Kryptographie.
  * @throws {AeadFehler} wenn der GCM-Tag nicht passt. Das ist der Normalfall bei
  * einem privaten Item einer anderen Person (§3.7): Der Aufrufer verwirft es
  * still, statt einen Defekt zu melden.
@@ -126,8 +126,8 @@ export async function entschluessele(
  *
  * WebCrypto wirft bei einem fehlgeschlagenen Tag `OperationError` und bei einem
  * Schlüssel ohne `decrypt`-Erlaubnis `InvalidAccessError`. Das auseinander zu
- * halten ist keine Kosmetik: Ein `AeadFehler` heißt für den Aufrufer „das gehört
- * jemand anderem, still verwerfen“ (§3.7). Ein Fehler im eigenen Code darf
+ * halten ist keine Kosmetik: Ein `AeadFehler` heißt für den Aufrufer "das gehört
+ * jemand anderem, still verwerfen" (§3.7). Ein Fehler im eigenen Code darf
  * niemals so aussehen, sonst verschluckt die App die Daten ihres eigenen
  * Benutzers.
  *

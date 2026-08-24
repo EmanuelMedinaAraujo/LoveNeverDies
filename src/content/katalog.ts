@@ -7,10 +7,10 @@
  * Trauerfalls nichts zu zeigen.
  *
  * Erzeugt wird die Datei ausschliesslich von `npm run import:content`. Wer sie
- * von Hand ändert, fällt in `tests/content/katalog.test.ts` auf — dort wird
+ * von Hand ändert, fällt in `tests/content/katalog.test.ts` auf. Dort wird
  * sie aus der Quelltabelle neu erzeugt und verglichen.
  *
- * **Der Katalog geht als Parameter durch die Dienste, nicht als Import.** Was
+ * Der Katalog geht als Parameter durch die Dienste, nicht als Import. Was
  * hier steht, ist der Stand dieses Builds; welcher Stand für einen Fall gilt,
  * entscheidet `cases.catalog_version` (§8). Ein Dienst, der den Katalog selbst
  * importierte, koennte diesen Unterschied nicht mehr machen.

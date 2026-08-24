@@ -2,7 +2,7 @@
  * `memberships` über Supabase (DESIGN.md §4).
  *
  * Die Umsetzung des Ports aus `mitglieder.ts`. Ein `select`, mehr gibt die
- * Policy `memberships_read` her — und mehr braucht es nicht: Wer den Fall nicht
+ * Policy `memberships_read` her, und mehr braucht es nicht: Wer den Fall nicht
  * sieht, bekommt eine leere Menge statt eines Fehlers.
  */
 
@@ -37,7 +37,7 @@ export function supabaseMitglieder(client: SupabaseClient): MitgliederTabelle {
         .returns<RohZeile[]>()
 
       if (error !== null) {
-        throw new MitgliederFehler('Die Mitglieder dieses Falls waren nicht abzurufen', error)
+        throw new MitgliederFehler('Die Mitglieder dieses Falls konnten nicht abgerufen werden', error)
       }
 
       return data.map(

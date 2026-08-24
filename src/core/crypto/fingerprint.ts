@@ -10,15 +10,15 @@
  * ein anderes Mitglied `K_c` an seinen öffentlichen Schlüssel wrappt. Bevor das
  * geschieht, vergleichen beide Seiten mündlich sechs Ziffern.
  *
- * **Der Fingerprint deckt beide Schlüssel ab.** Deckte er nur den
+ * Der Fingerprint deckt beide Schlüssel ab. Deckte er nur den
  * KEM-Schlüssel, könnte ein bösartiger Server den Signaturschlüssel
  * austauschen, ohne dass der mündliche Abgleich es bemerkt. Der Abgleich ist
  * bei dieser Zielgruppe die verletzlichste Stelle des Protokolls, also darf er
  * nicht die Hälfte übersehen.
  *
  * Sechs Ziffern sind rund 20 Bit. Das ist keine Kollisionsresistenz, sondern
- * die Grenze dessen, was zwei Menschen am Telefon zuverlässig vergleichen —
- * und der Angreifer müsste das passende Schlüsselpaar vorab finden, nicht
+ * die Grenze dessen, was zwei Menschen am Telefon zuverlässig vergleichen.
+ * Der Angreifer müsste das passende Schlüsselpaar vorab finden, nicht
  * nachträglich.
  */
 

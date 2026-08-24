@@ -1,20 +1,20 @@
 /**
  * Die Offline-Queue (DESIGN.md §5).
  *
- * §5: „Offline-Queue in IndexedDB: Jede Mutation wird optimistisch lokal
+ * §5: "Offline-Queue in IndexedDB: Jede Mutation wird optimistisch lokal
  * angewandt und angehängt (`{op, itemId, payload, ts}`), beim Reconnect
  * abgearbeitet. Item-IDs sind clientseitig erzeugte UUIDv7, damit Anlegen
  * offline funktioniert."
  *
- * **Warum jede Mutation hier durchgeht und nicht nur die im Flugmodus.** Ein
+ * Warum jede Mutation hier durchgeht und nicht nur die im Flugmodus: Ein
  * zweiter, direkter Schreibweg für den Onlinefall wäre ein zweites Verhalten
- * für dieselbe Handlung — mit eigener Reihenfolge, eigener Fehlerbehandlung und
- * der Frage, was passiert, wenn die Verbindung mitten im Tippen abbricht. Es
+ * für dieselbe Handlung. Das brächte eine eigene Reihenfolge, eigene Fehlerbehandlung und
+ * die Frage, was passiert, wenn die Verbindung mitten im Tippen abbricht. Es
  * gibt einen Weg: anhängen, dann abarbeiten. Steht das Netz, dauert das einen
  * Rundlauf; steht es nicht, dauert es bis zum Reconnect.
  *
- * **Was nicht hineingeht** (§5): Tresorfreigabe und `open_vault` — eine
- * versehentlich abgeschickte Todesbestätigung nimmt niemand zurück — und
+ * Was nicht hineingeht (§5): Tresorfreigabe und `open_vault` (eine
+ * versehentlich abgeschickte Todesbestätigung nimmt niemand zurück) und
  * Dokument-Uploads. Beides kommt in eigenen Slices.
  */
 
@@ -24,13 +24,13 @@ import { alsVersprechenAusStore, inTransaktion, QUEUE } from '../db/idb'
 /**
  * Eine angehängte Mutation.
  *
- * Die Form aus §5 — `{op, itemId, payload, ts}` — mit den Spalten, ohne die ein
+ * Die Form aus §5 (`{op, itemId, payload, ts}`) mit den Spalten, ohne die ein
  * INSERT nicht auskommt: Ein Item, das der Server noch nie gesehen hat, muss
  * seinen Fall, seine Art und sein `kid` mitbringen, und den DEK, unter dem sein
  * Payload liegt. Ein Edit braucht das alles nicht: Der DEK ändert sich nie
  * (§3.1), und deshalb kostet ein Edit genau eine Spalte.
  *
- * Alle Byte-Felder sind Ciphertext. Verschlüsselt wird vor dem Anhängen — die
+ * Alle Byte-Felder sind Ciphertext. Verschlüsselt wird vor dem Anhängen. Die
  * Queue liegt neben dem Cache und untersteht derselben Zusage aus §5.
  */
 export type Mutation =
@@ -84,8 +84,8 @@ export function idbWarteschlange(): Warteschlange {
           const store = transaktion.objectStore(QUEUE)
 
           // Schlüssel und Werte getrennt: `getAll` liefert die Mutationen,
-          // `getAllKeys` die Schlüssel, und beide in derselben Reihenfolge —
-          // der des `autoIncrement`, also der des Anhängens.
+          // `getAllKeys` die Schlüssel, und beide in derselben Reihenfolge,
+          // nämlich der des `autoIncrement` und damit des Anhängens.
           const [mutationen, schluessel] = await Promise.all([
             alsVersprechenAusStore(store.getAll()) as Promise<Mutation[]>,
             alsVersprechenAusStore(store.getAllKeys()),
@@ -123,7 +123,7 @@ export type Abarbeitung = {
   uebertragen: number
   /**
    * Was der Server verworfen hat. Der Aufrufer entschlüsselt den Payload und
-   * zeigt ihn an — §5 verlangt, dass eine abgelehnte Änderung nie
+   * zeigt ihn an: §5 verlangt, dass eine abgelehnte Änderung nie
    * stillschweigend verschwindet.
    */
   abgelehnt: AbgelehnteMutation[]
@@ -154,15 +154,15 @@ function fuehreAus(inhalte: InhalteTabelle, mutation: Mutation): Promise<void> {
 }
 
 /**
- * Arbeitet die Queue ab — der Reconnect aus §5.
+ * Arbeitet die Queue ab: der Reconnect aus §5.
  *
  * Strikt in Reihenfolge und beim ersten Netzproblem strikt zu Ende. Liefe die
  * Queue nach einem gescheiterten `lege` weiter, träfe das nächste
  * `schreibePayload` auf ein Item, das es auf dem Server nicht gibt: Der Server
  * lehnte ab, und eine Aufgabe, die nur wegen einer schlechten Verbindung noch
- * nicht angekommen war, erschiene als „konnte nicht gespeichert werden".
+ * nicht angekommen war, erschiene als "konnte nicht gespeichert werden".
  *
- * Ein **Urteil** des Servers beendet dagegen nur diese eine Mutation. Sie
+ * Ein Urteil des Servers beendet dagegen nur diese eine Mutation. Sie
  * verlässt die Queue, weil ein zweiter Versuch dasselbe Ergebnis brächte, und
  * kommt als {@link AbgelehnteMutation} zurück.
  */

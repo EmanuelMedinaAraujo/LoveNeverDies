@@ -4,17 +4,17 @@
  * Drei Hooks, weil an einer Kopplung drei Dinge hängen, die zu verschiedenen
  * Zeiten passieren:
  *
- * - `useKopplungscode` — die **beitretende** Seite: acht Zeichen holen und
+ * - `useKopplungscode`: die beitretende Seite: acht Zeichen holen und
  *   zeigen, dazu den eigenen Prüfcode zum Vorlesen.
- * - `useKopplungswache` — dieselbe Seite, während sie wartet: Ist der Fall
- *   schon lesbar? §6 verspricht „innerhalb von Sekunden, ohne Neuladen".
- * - `useEinloesung` — die **einladende** Seite: Code eingeben, Name und
+ * - `useKopplungswache`: dieselbe Seite, während sie wartet: Ist der Fall
+ *   schon lesbar? §6 verspricht "innerhalb von Sekunden, ohne Neuladen".
+ * - `useEinloesung`: die einladende Seite: Code eingeben, Name und
  *   Prüfcode sehen, nach dem mündlichen Abgleich bestätigen.
  *
- * **Warum die Wache pollt und nicht an der Türklingel hängt.** Die Klingel aus
+ * Warum die Wache pollt und nicht an der Türklingel hängt: Die Klingel aus
  * §5 sitzt auf der `cases`-Zeile eines Falls, in dem man schon ist. Hier wartet
  * jemand darauf, überhaupt in einen Fall zu kommen (`memberships`) oder einen
- * `key_wraps`-Eintrag zu bekommen — beides hebt `cases.version` nicht, und die
+ * `key_wraps`-Eintrag zu bekommen. Beides hebt `cases.version` nicht, und die
  * beitretende Seite darf die Zeile vorher nicht einmal abonnieren. Ein Poll
  * alle drei Sekunden ist deshalb nicht der billigere Weg, sondern der einzige.
  * Er läuft ausschließlich, solange der Wartescreen offen ist.
@@ -45,7 +45,7 @@ import { useProfilAbgleich } from './useProfil.ts'
 
 type Ergebnis<T> = { wert: T } | { nachricht: string }
 
-/** §6: „schaltet innerhalb von Sekunden frei". */
+/** §6: "schaltet innerhalb von Sekunden frei". */
 export const WACHE_ABSTAND_MS = 3_000
 
 export type KopplungscodeZustand =
@@ -62,17 +62,17 @@ export type Kopplungscodedaten = {
 /**
  * Holt einen Kopplungscode für dieses Gerät (§6, Schritt 1 und 2).
  *
- * Der Prüfcode daneben kommt aus der **lokalen** Identität und nicht aus der
+ * Der Prüfcode daneben kommt aus der lokalen Identität und nicht aus der
  * Zeile, die der Server zurückgibt: Verglichen wird, was dieses Gerät wirklich
  * besitzt, gegen das, was beim Gegenüber ankommt. Käme er vom Server, verglichen
  * beide Seiten dieselbe Serverangabe miteinander, und der Abgleich prüfte
  * nichts mehr (§3.6).
  *
- * **Erst das Profil, dann der Code.** `erzeuge_kopplungscode` weist einen Aufruf
+ * Erst das Profil, dann der Code: `erzeuge_kopplungscode` weist einen Aufruf
  * ohne Zeile in `profiles` ab, und zwar mit Absicht: §6 zeigt der einladenden
  * Person einen echten Namen, bevor sie das Familiengeheimnis weitergibt. Dieser
  * Hook wartet deshalb auf den Abgleich, statt in einen Fehler zu laufen, den
- * niemand einordnen kann — und `neuAnfordern` stößt beides gemeinsam an.
+ * niemand einordnen kann. `neuAnfordern` stößt beides gemeinsam an.
  */
 export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
   const anmeldung = useGeraeteanmeldung()
@@ -81,7 +81,7 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
 
   /*
    * Im State steht ausschließlich das Ergebnis der asynchronen Arbeit, nicht
-   * der Ladezustand — dasselbe Muster wie in `useGeraete.ts`. Was sich aus dem
+   * der Ladezustand, dasselbe Muster wie in `useGeraete.ts`. Was sich aus dem
    * Anmeldezustand ergibt, entsteht beim Rendern; ein Effekt, der synchron
    * `setState` ruft, erzeugte eine zweite Renderrunde für etwas, das schon
    * feststand.
@@ -171,8 +171,8 @@ export type WacheZustand =
 /**
  * Wartet darauf, dass die andere Seite bestätigt (§6, Schritt 7).
  *
- * „Freigeschaltet" heißt: **mehr** lesbare Fälle als beim Öffnen dieses
- * Screens. Nicht „mindestens einer" — ein zweites Gerät kann zwei von drei
+ * "Freigeschaltet" heißt: mehr lesbare Fälle als beim Öffnen dieses
+ * Screens. Nicht "mindestens einer": Ein zweites Gerät kann zwei von drei
  * Fällen längst lesen und auf den dritten warten, und dann wäre die Wache von
  * Anfang an fertig, ohne dass etwas geschehen ist.
  */
@@ -183,7 +183,7 @@ export function useKopplungswache(aktiv: boolean): WacheZustand {
   const [zustand, setzeZustand] = useState<WacheZustand>({ status: 'laedt' })
 
   // Die Ausgangszahl steht in einer Ref und nicht im State: Sie wird beim
-  // ersten Durchlauf gesetzt und danach nur noch gelesen — ein `setState`
+  // ersten Durchlauf gesetzt und danach nur noch gelesen. Ein `setState`
   // darauf löste eine Renderrunde für etwas aus, das niemand anzeigt.
   const ausgangszahl = useRef<number | null>(null)
 
@@ -214,9 +214,9 @@ export function useKopplungswache(aktiv: boolean): WacheZustand {
         /*
          * `fertig` neben `abgeraeumt`: Ein langsamer Abruf kann nach einem
          * schnelleren zurückkommen, der längst freigegeben hat. Ohne diese
-         * Sperre schriebe er „wartet" darüber — und weil der Takt dann schon
+         * Sperre schriebe er "wartet" darüber, und weil der Takt dann schon
          * abgeräumt ist, sähe niemand je wieder nach. Der Screen bliebe auf
-         * „Warten auf die Bestätigung…" stehen, obwohl er offen ist.
+         * "Warten auf die Bestätigung…" stehen, obwohl er offen ist.
          */
         if (abgeraeumt || fertig) {
           return
@@ -300,11 +300,11 @@ function lesbare(faelle: Fall[]): LesbarerFall[] {
  * die einzige Stelle, an der der Schlüsseltausch durch einen bösartigen Server
  * auffällt (§3.6).
  *
- * **Ein gescheitertes Bestätigen wirft das Angebot nicht weg.** Der Code ist zu
+ * Ein gescheitertes Bestätigen wirft das Angebot nicht weg: Der Code ist zu
  * diesem Zeitpunkt eingelöst und damit verbraucht; wer zurück ins Eingabefeld
- * fiele, bekäme ihn nur noch als „bereits eingelöst" zurück, obwohl
+ * fiele, bekäme ihn nur noch als "bereits eingelöst" zurück, obwohl
  * `schliesse_kopplung_ab` ihn weiterhin annähme. Die Meldung steht deshalb
- * **neben** dem Angebot, und der Knopf bleibt da, wo er war.
+ * neben dem Angebot, und der Knopf bleibt da, wo er war.
  */
 export function useEinloesung(): Einloesungsdaten {
   const anmeldung = useGeraeteanmeldung()
@@ -318,9 +318,9 @@ export function useEinloesung(): Einloesungsdaten {
   const geraetId = anmeldung.status === 'bereit' ? anmeldung.geraet.id : null
 
   /*
-   * „Kein Fall" ist ein fertiges Ergebnis und kein halbes: Die Liste ist
-   * geladen und leer. Nur `laedt` heißt, dass noch etwas kommen kann — und
-   * genau dann darf niemand bestätigen, sonst verbrennt ein Code an einer
+   * "Kein Fall" ist ein fertiges Ergebnis und kein halbes: Die Liste ist
+   * geladen und leer. Nur `laedt` heißt, dass noch etwas kommen kann.
+   * Genau dann darf niemand bestätigen, sonst verbrennt ein Code an einer
    * Liste, die es noch gar nicht gibt.
    */
   const faelleBereit = fallZustand.status === 'bereit' || fallZustand.status === 'kein-fall'

@@ -8,16 +8,16 @@
  * fristAb = leer         ->  keine Frist
  * ```
  *
- * **Kein Fristende wird je gespeichert.** Das ist keine Sparsamkeit, sondern
+ * Kein Fristende wird je gespeichert: Das ist keine Sparsamkeit, sondern
  * die Bedingung dafür, dass §8 überhaupt aufgeht: Dieselbe geteilte Aufgabe mit
  * `fristAb = kenntnis` zeigt jedem Mitglied sein eigenes Datum, ohne dass sich
- * eine Zeile ändert. Ein abgelegtes Datum müsste pro Person divergieren — und
+ * eine Zeile ändert. Ein abgelegtes Datum müsste pro Person divergieren, und
  * spätestens dann wäre es falsch.
  *
- * **Erfunden wird nichts.** Fehlt eine gesetzliche Frist, bleibt die Aufgabe
+ * Erfunden wird nichts: Fehlt eine gesetzliche Frist, bleibt die Aufgabe
  * fristenlos; eine Frist ohne Rechtsgrundlage kommt schon durch den Import
  * nicht durch (§8). Und eine Frist ab Kenntnis wird ohne Kenntnisdatum
- * ausdrücklich *nicht* geschätzt: Eine falsch berechnete Ausschlagungsfrist
+ * ausdrücklich nicht geschätzt: Eine falsch berechnete Ausschlagungsfrist
  * kostet den ganzen Nachlass.
  */
 
@@ -46,7 +46,7 @@ const ISO_FORM = /^(\d{4})-(\d{2})-(\d{2})$/
 
 /**
  * `timeZone: 'UTC'`, weil ein Sterbedatum ein reines Kalenderdatum ohne Uhrzeit
- * ist — dieselbe Überlegung wie in `fallbeschriftung.ts`.
+ * ist; dieselbe Überlegung wie in `fallbeschriftung.ts`.
  */
 const FORMAT = new Intl.DateTimeFormat('de-DE', {
   day: 'numeric',
@@ -97,7 +97,7 @@ export function heuteIso(jetzt: Date = new Date()): string {
   return `${jetzt.getFullYear()}-${monat}-${tag}`
 }
 
-/** Ein Fristende ausgeschrieben: „15. Mai 2026". */
+/** Ein Fristende ausgeschrieben: "15. Mai 2026". */
 export function datumText(iso: string): string {
   const tag = alsTag(iso)
 
@@ -107,11 +107,11 @@ export function datumText(iso: string): string {
 /**
  * Die Frist einer Aufgabe, gerechnet für heute.
  *
- * @param katalog die Herkunft der Aufgabe. `null` bei einer selbst angelegten —
+ * @param katalog die Herkunft der Aufgabe. `null` bei einer selbst angelegten:
  * Fristen stehen im Gesetz und nicht im Eingabefeld (§8).
  * @param sterbedatum aus `cases.payload` (§8), oder `null` bei einem
  * Vorsorgefall.
- * @param heute der Kalendertag, gegen den gezählt wird — als Parameter, damit
+ * @param heute der Kalendertag, gegen den gezählt wird: als Parameter, damit
  * diese Funktion rein bleibt und ein Test einen Tag vorgeben kann.
  */
 export function fristlage(
@@ -146,7 +146,7 @@ export function fristlage(
  * Wer eine Frist versäumt hat, muss das an der Aufgabe sehen und nicht daran,
  * dass ein Zähler bei null stehen bleibt.
  *
- * @returns `null`, wo es keine Frist gibt — dann steht auch kein Badge da.
+ * @returns `null`, wo es keine Frist gibt: Dann steht auch kein Badge da.
  */
 export function fristText(lage: Fristlage): string | null {
   if (lage.art === 'keine') {
@@ -180,7 +180,7 @@ function rang(lage: Fristlage): number {
  * Datum, zuletzt die Aufgaben ohne Frist (§7).
  *
  * Gibt bei Gleichstand `0` zurück und überlässt die Reihenfolge damit dem
- * stabilen `sort` — also der Reihenfolge der Juristinnen (§8).
+ * stabilen `sort`: also der Reihenfolge der Juristinnen (§8).
  */
 export function vergleicheNachFrist(links: Fristlage, rechts: Fristlage): number {
   if (rang(links) !== rang(rechts)) {

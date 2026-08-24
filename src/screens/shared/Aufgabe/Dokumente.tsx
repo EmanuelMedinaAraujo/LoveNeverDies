@@ -11,24 +11,24 @@ import stile from './Dokumente.module.css'
 /**
  * Die Dokumente einer Aufgabe (DESIGN.md §7).
  *
- * §7 benennt die Aktion wörtlich: „Dokument einfach abfotografieren". Genau so
+ * §7 benennt die Aktion wörtlich: "Dokument einfach abfotografieren". Genau so
  * heißt sie hier, und dahinter liegt ein `<input type="file"
- * capture="environment">` — auf dem Telefon öffnet das die Kamera, auf dem
+ * capture="environment">`: Auf dem Telefon öffnet das die Kamera, auf dem
  * Rechner den Dateiauswahldialog. Zwei Wege für dieselbe Handlung wären zwei
  * Schaltflächen, von denen eine auf jedem Gerät die falsche ist.
  *
- * **Verschlüsselt wird vor dem Hochladen, außerhalb des Main-Threads** (§7,
+ * Verschlüsselt wird vor dem Hochladen, außerhalb des Main-Threads (§7,
  * `core/crypto/workerDateikrypto.ts`). Sichtbar ist davon nur, dass die
- * Schaltfläche für einen Moment „Wird verschlüsselt…" sagt — die Liste bleibt
+ * Schaltfläche für einen Moment "Wird verschlüsselt…" sagt; die Liste bleibt
  * scrollbar, die Notizen bleiben tippbar.
  *
- * **Angesehen wird im Fenster, nicht als Link auf den Server.** Was im Storage
+ * Angesehen wird im Fenster, nicht als Link auf den Server: Was im Storage
  * liegt, ist Ciphertext; ein `<img src>` darauf zeigte nichts. Der Klartext
  * entsteht erst hier und lebt als `blob:`-URL genau so lange, wie jemand
  * hinsieht.
  */
 
-/** Wonach eine Bilddatei aussieht — alles andere gibt es nur zum Speichern. */
+/** Wonach eine Bilddatei aussieht; alles andere gibt es nur zum Speichern. */
 function istBild(mimetyp: string): boolean {
   return mimetyp.startsWith('image/')
 }
@@ -48,8 +48,8 @@ function Dokumentzeile({
   gesperrt: boolean
   /**
    * §7: Ansehen darf jedes Mitglied, löschen nur, wem die Aufgabe zugewiesen
-   * ist. Die Schaltfläche steht deshalb gar nicht erst da statt grau daneben —
-   * ausgegraut sähe aus wie „geht gerade nicht" und nicht wie „nicht Ihre".
+   * ist. Die Schaltfläche steht deshalb gar nicht erst da statt grau daneben:
+   * Ausgegraut sähe aus wie "geht gerade nicht" und nicht wie "nicht Ihre".
    */
   darfLoeschen: boolean
   aufAnsehen: () => void
@@ -61,7 +61,7 @@ function Dokumentzeile({
     return (
       <li className={stile.zeile}>
         <p>
-          „{dokument.name}" wirklich löschen? Die Datei wird dabei entfernt und kommt nicht
+          "{dokument.name}" wirklich löschen? Die Datei wird dabei entfernt und kommt nicht
           zurück.
         </p>
         <div className={stile.aktionen}>
@@ -92,7 +92,7 @@ function Dokumentzeile({
           variante="sekundaer"
           onClick={aufAnsehen}
           disabled={gesperrt}
-          vorleseText={`: „${dokument.name}"`}
+          vorleseText={`: "${dokument.name}"`}
         >
           Ansehen
         </Button>
@@ -101,7 +101,7 @@ function Dokumentzeile({
             variante="sekundaer"
             onClick={() => setzeFragt(true)}
             disabled={gesperrt}
-            vorleseText={`: „${dokument.name}"`}
+            vorleseText={`: "${dokument.name}"`}
           >
             Löschen
           </Button>
@@ -125,8 +125,8 @@ export function Dokumente({
   zeilen: InhaltZeile[]
   aktualisiere: () => void
   /**
-   * §7: „Bearbeiten darf nur, wem sie zugewiesen ist." Aufnehmen und Löschen
-   * sind Bearbeiten; Ansehen ist es nicht — wer die Rechtsgrundlage lesen darf,
+   * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Aufnehmen und Löschen
+   * sind Bearbeiten; Ansehen ist es nicht: Wer die Rechtsgrundlage lesen darf,
    * darf auch die Sterbeurkunde sehen, die daran hängt.
    */
   darfAendern: boolean
@@ -145,7 +145,7 @@ export function Dokumente({
   /*
    * Eine `blob:`-URL hält ihren Puffer fest, bis jemand sie widerruft. Ohne
    * diese Zeile bliebe jedes einmal angesehene Dokument bis zum Neuladen im
-   * Speicher — bei 15 MB pro Scan ist das auf einem Telefon schnell zu viel.
+   * Speicher; bei 15 MB pro Scan ist das auf einem Telefon schnell zu viel.
    */
   useEffect(() => {
     if (ansicht === null) {
@@ -221,7 +221,7 @@ export function Dokumente({
       {online ? null : (
         <p className={stile.hinweis} role="status">
           Ohne Verbindung lässt sich kein Dokument aufnehmen. Ein Foto wartet nicht in der
-          Warteschlange — es geht ganz hinaus oder gar nicht.
+          Warteschlange: Es geht ganz hinaus oder gar nicht.
         </p>
       )}
 
@@ -240,7 +240,7 @@ export function Dokumente({
 
       {meine.length === 0 ? (
         <p className={stile.hinweis}>
-          Noch keine. Halten Sie das Dokument vor die Kamera — es wird auf diesem Gerät
+          Noch keine. Halten Sie das Dokument vor die Kamera; es wird auf diesem Gerät
           verschlüsselt, bevor es hinausgeht.
         </p>
       ) : (
@@ -267,11 +267,11 @@ export function Dokumente({
           ) : (
             /*
               Kein Bild, also kein Bild zeigen. Der Link speichert den
-              entschlüsselten Klartext — das ist der einzige Weg, ein PDF in
+              entschlüsselten Klartext; das ist der einzige Weg, ein PDF in
               einer App zu öffnen, die keinen Betrachter mitbringt.
             */
             <a href={ansicht.url} download={ansicht.dokument.name}>
-              „{ansicht.dokument.name}" speichern
+              "{ansicht.dokument.name}" speichern
             </a>
           )}
 

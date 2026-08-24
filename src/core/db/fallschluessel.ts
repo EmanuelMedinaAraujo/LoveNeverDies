@@ -1,7 +1,7 @@
 /**
  * `key_wraps` als schmale Tabelle (DESIGN.md §3.6, §4).
  *
- * Gelesen wird ausschließlich, was für **dieses** Gerät bestimmt ist — mehr
+ * Gelesen wird ausschließlich, was für dieses Gerät bestimmt ist. Mehr
  * gibt die RLS ohnehin nicht heraus. Geschrieben wird in diesem Stand nur beim
  * Anlegen eines Falls, und das läuft über die RPC in `faelle.ts`, damit Fall
  * und Wraps nicht auseinanderfallen können. Der Weg für fremde Geräte gehört

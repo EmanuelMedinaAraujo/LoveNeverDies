@@ -4,11 +4,11 @@
  * Die Kennungen kommen aus `memberships` und stehen dort im Klartext (§3.3);
  * die Namen kommen aus den Zuweisungen, die schon im Fall liegen, und
  * irgendwann aus `profiles` (#10). Zusammengesetzt wird beides in
- * `services/zuweisung.ts` — dieser Hook holt nur die eine Liste, die der Server
+ * `services/zuweisung.ts`: Dieser Hook holt nur die eine Liste, die der Server
  * hat.
  *
- * **Ein Fehlschlag nimmt niemandem die Aufgaben weg.** Wer die Mitglieder nicht
- * abrufen kann, sieht eine Auswahl, die nur ihn selbst enthält — und kann eine
+ * Ein Fehlschlag nimmt niemandem die Aufgaben weg: Wer die Mitglieder nicht
+ * abrufen kann, sieht eine Auswahl, die nur ihn selbst enthält, und kann eine
  * Aufgabe immer noch übernehmen und wieder freigeben. Das ist die Handlung, auf
  * die es in dem Moment ankommt.
  */
@@ -72,8 +72,8 @@ export function useMitglieder(fallId: string): Mitgliederdaten {
 
   /*
    * Die angemeldete Person steht immer dabei, auch bevor der Abruf zurück ist.
-   * Ohne sie stünde in der Auswahl „niemand", während man selbst davorsitzt —
-   * und „Übernehmen" wäre für einen Moment eine Schaltfläche ohne Ziel.
+   * Ohne sie stünde in der Auswahl "niemand", während man selbst davorsitzt,
+   * und "Übernehmen" wäre für einen Moment eine Schaltfläche ohne Ziel.
    */
   const vollstaendig = useMemo(
     () =>

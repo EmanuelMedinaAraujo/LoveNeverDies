@@ -22,11 +22,11 @@
  * ausdrücklich zu sagen: Ein umgebogenes `aead`-Byte führt hier nicht zu einer
  * stillen Fehlentschlüsselung, sondern zu einem Abbruch in {@link leseChiffretext},
  * weil es nur ein einziges bekanntes Verfahren gibt. Kommt je ein zweites dazu,
- * gehört der Kopf unter den Tag — und das ist dann ein neues `v`, kein
+ * gehört der Kopf unter den Tag. Das ist dann ein neues `v`, kein
  * stillschweigender Wechsel.
  */
 
-/** `"LN"` — jeder Envelope beginnt damit. */
+/** `"LN"`: jeder Envelope beginnt damit. */
 export const ENVELOPE_MAGIC = Uint8Array.of(0x4c, 0x4e)
 
 /** `v = 1` → Suite: ml-kem-768 + x25519 als KEM, aes-256-gcm als AEAD. */
@@ -51,8 +51,8 @@ const SIGNATUR_LAENGE = MLDSA_ENDE + ED25519_SIGNATUR_LAENGE
 /**
  * Ein Blob liess sich nicht als Envelope lesen oder nicht als einer schreiben.
  *
- * Ein eigener Fehlertyp, damit der Aufrufer „stammt aus einer anderen Version“
- * von „ist kaputt“ und beides von einem fehlgeschlagenen AEAD-Tag unterscheiden
+ * Ein eigener Fehlertyp, damit der Aufrufer "stammt aus einer anderen Version"
+ * von "ist kaputt" und beides von einem fehlgeschlagenen AEAD-Tag unterscheiden
  * kann, ohne in Fehlertexten zu suchen.
  */
 export class EnvelopeFehler extends Error {

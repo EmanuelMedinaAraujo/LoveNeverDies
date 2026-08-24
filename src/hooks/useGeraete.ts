@@ -4,16 +4,16 @@
  *
  * Drei Hooks, weil es drei Fragen gibt, die verschiedene Antwortzeiten haben:
  *
- * - `useGeraeteidentitaet` — welche Schlüssel hat dieses Gerät? Beantwortet der
+ * - `useGeraeteidentitaet`: Welche Schlüssel hat dieses Gerät? Beantwortet der
  *   Keystore, ohne Netz. Wer signieren oder entpacken will, braucht nur das.
- * - `useGeraeteanmeldung` — steht dieses Gerät in `device_keys`? Das dauert
+ * - `useGeraeteanmeldung`: Steht dieses Gerät in `device_keys`? Das dauert
  *   einen Rundlauf länger und kann scheitern.
- * - `useGeraete` — welche Geräte hat diese Person? Wartet auf die Anmeldung,
+ * - `useGeraete`: Welche Geräte hat diese Person? Wartet auf die Anmeldung,
  *   und zwar nicht aus Ordnungsliebe: Wer die App zum ersten Mal direkt auf
  *   `/profil` lädt, sähe sonst eine leere Liste, in der ausgerechnet das Gerät
  *   fehlt, an dem er sitzt.
  *
- * Doppelt laufen darf alles davon — der Keystore gibt dieselbe Identität
+ * Doppelt laufen darf alles davon: Der Keystore gibt dieselbe Identität
  * zurück, und die Registrierung ist idempotent, oben im `geraeteService` und
  * unten am eindeutigen Index in `device_keys`.
  *
@@ -64,7 +64,7 @@ export type GeraeteidentitaetZustand =
  *
  * Ohne Netz und ohne Server: Was hier entsteht, entsteht auch offline, und der
  * Seed liegt danach in IndexedDB (§3.1). Ein Gerät, das sich nie anmelden
- * konnte, hat trotzdem eine Identität — sie ist nur noch niemandem bekannt.
+ * konnte, hat trotzdem eine Identität. Sie ist nur noch niemandem bekannt.
  */
 export function useGeraeteidentitaet(): GeraeteidentitaetZustand {
   const { zustand: authZustand } = useAuth()
@@ -99,7 +99,7 @@ export function useGeraeteidentitaet(): GeraeteidentitaetZustand {
     /*
      * Nach einem Benutzerwechsel steht hier für einen Moment noch das Ergebnis
      * der vorigen Anmeldung. Das ist keine Verwechslung: Die Identität hängt am
-     * Gerät, nicht an der Person (§3.6) — sie ist für beide dieselbe.
+     * Gerät, nicht an der Person (§3.6); sie ist für beide dieselbe.
      */
     return ausErgebnis(ergebnis, (identitaet) => ({ status: 'bereit' as const, identitaet }))
   }, [angemeldet, ergebnis, laedtAuth])
@@ -114,11 +114,11 @@ export type AnmeldungZustand =
 /**
  * Meldet dieses Gerät bei `device_keys` an.
  *
- * Läuft nach der Anmeldung von selbst und zeigt dabei nichts — §7 sieht
+ * Läuft nach der Anmeldung von selbst und zeigt dabei nichts: §7 sieht
  * zwischen Anmeldung und Ansichtswahl keinen sichtbaren Zwischenschritt vor.
  *
  * `bereit` heißt: Das Gerät steht in der Tabelle. Solange der Rundlauf läuft,
- * steht hier `laedt`, auch wenn die Identität längst da ist — daran hängt, dass
+ * steht hier `laedt`, auch wenn die Identität längst da ist. Daran hängt, dass
  * die Geräteliste nicht in eine halb fertige Registrierung hineinliest.
  */
 export function useGeraeteanmeldung(): AnmeldungZustand {
@@ -134,7 +134,7 @@ export function useGeraeteanmeldung(): AnmeldungZustand {
   /*
    * Der Effekt hängt an diesen beiden Zeichenketten, nicht am `benutzer`-Objekt.
    * Das Objekt entsteht bei jeder Token-Erneuerung neu, ohne dass sich darin
-   * etwas geändert hätte — der Effekt liefe dann für den Rest der Sitzung immer
+   * etwas geändert hätte. Der Effekt liefe dann für den Rest der Sitzung immer
    * wieder, und jedes Mal ginge ein `finde` an den Server. Die Registrierung
    * verträgt das (sie ist idempotent), aber sie hat nichts davon.
    */

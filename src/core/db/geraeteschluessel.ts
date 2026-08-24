@@ -43,7 +43,7 @@ export type GeraeteschluesselTabelle = {
    * Die Zeile zu einer `device_keys.id`.
    *
    * Gebraucht für `key_wraps.wrapped_by` (§3.6): Bevor ein Wrap entpackt wird,
-   * muss der öffentliche Signaturschlüssel des wrappenden Geräts her — und das
+   * muss der öffentliche Signaturschlüssel des wrappenden Geräts her. Das
    * kann ein Gerät einer anderen Person sein.
    *
    * @returns `null`, wenn es die Zeile nicht gibt oder die RLS sie verbirgt.

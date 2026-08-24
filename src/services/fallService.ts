@@ -3,7 +3,7 @@
  *
  * Das Anlegen erzeugt `K_c` und `K_cat` (und bei Vorsorge zusätzlich `K_v`),
  * verschlüsselt den Namen unter `K_c` und wrappt die Schlüssel an das eigene
- * Gerät — der Server sieht nie mehr als Ciphertext. Das Lesen macht denselben
+ * Gerät: Der Server sieht nie mehr als Ciphertext. Das Lesen macht denselben
  * Weg rückwärts: Wraps holen, Signatur prüfen, entpacken, entschlüsseln.
  *
  * Beim Trauerfall entsteht zugleich die Aufgabenliste der Juristinnen: Der
@@ -11,7 +11,7 @@
  * Vorsorgefall hat dagegen keine Aufgaben und friert den Katalog noch nicht
  * ein (`catalog_version = null`).
  *
- * **Jeder Fehlschlag beim Lesen ergibt einen gesperrten Fall, kein Wurf** — ein
+ * Jeder Fehlschlag beim Lesen ergibt einen gesperrten Fall, kein Wurf: ein
  * fehlender Wrap, ein unauffindbares `wrapped_by`, eine ungültige Signatur, ein
  * GCM-Tag, der nicht passt. Der Fall bleibt in der Liste, die App zeigt ihn,
  * aber sie liest nichts daraus (§3.6). Das gilt nicht fürs Anlegen: Dort ist
@@ -122,7 +122,7 @@ function pruefeAngaben(angaben: Trauerfallangaben): void {
 
 /**
  * Legt einen Trauerfall an: `K_c` und `K_cat` frisch, Name und Sterbedatum
- * unter `K_c`, beide Schlüssel an das eigene Gerät gewrappt — und die Aufgaben
+ * unter `K_c`, beide Schlüssel an das eigene Gerät gewrappt, und die Aufgaben
  * aus dem Rechtskatalog gleich dazu.
  */
 export async function legeTrauerfallAn(

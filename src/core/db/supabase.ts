@@ -11,7 +11,7 @@
  * ist keine Ordnungsliebe: §1 verlangt, dass der Anbietername in genau zwei
  * Dateien vorkommt. Hier steht er nicht.
  *
- * **Das Token sagt, wer jemand ist, nie, was jemand lesen darf.** Das
+ * Das Token sagt, wer jemand ist, nie, was jemand lesen darf. Das
  * entscheiden RLS und die Schlüsselhierarchie. Ein gestohlenes Clerk-Passwort
  * reicht deshalb nicht zum Entschlüsseln (§3.6).
  */

@@ -3,7 +3,7 @@
  *
  * `pairing_codes` ist die einzige Tabelle dieses Projekts, die überhaupt kein
  * Leserecht kennt: keine Policy, kein `grant`. Deshalb hat dieser Port keine
- * Abfragen, sondern nur drei RPCs — sie sind der ganze Weg an diese Zeilen.
+ * Abfragen, sondern nur drei RPCs. Sie sind der ganze Weg an diese Zeilen.
  *
  * ```
  * erzeugeCode      §6 Schritt 2   beitretende Seite bekommt acht Zeichen
@@ -33,7 +33,7 @@ export type Kopplungscode = {
  *
  * Kein Wurf, sondern ein Wert: Jeder Versuch zählt gegen das Rate-Limit, und
  * eine Ausnahme rollte die Zählung mit zurück (§4). Für die Oberfläche ist das
- * ein Gewinn — sie kann sagen, *was* nicht stimmt.
+ * ein Gewinn, denn sie kann sagen, was nicht stimmt.
  */
 export type Einloesungsstatus =
   | 'ok'
@@ -66,7 +66,7 @@ export type Einloesung =
   | { status: 'ok'; angebot: Kopplungsangebot }
   | { status: Exclude<Einloesungsstatus, 'ok'> }
 
-/** Was `schliesse_kopplung_ab` für **einen** Fall braucht (§6, Schritt 6). */
+/** Was `schliesse_kopplung_ab` für einen einzelnen Fall braucht (§6, Schritt 6). */
 export type Kopplungsabschluss = {
   code: string
   fallId: string

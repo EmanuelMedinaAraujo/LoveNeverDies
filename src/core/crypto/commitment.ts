@@ -6,7 +6,7 @@
  * Function `vault-release` (§9); deshalb steht hier nichts, was einen Browser
  * bräuchte.
  *
- * **Eine Grenze, die im Format liegt.** `freigabeNachricht` und `wrapNachricht`
+ * Eine Grenze, die im Format liegt: `freigabeNachricht` und `wrapNachricht`
  * hängen ihre Bezeichner aneinander, wie §3.2 es vorschreibt, und ohne Trenner
  * ist eine solche Verkettung mehrdeutig: `user_id="ab" ‖ kid="c"` ergibt
  * dieselben Bytes wie `user_id="a" ‖ kid="bc"`. Ausgenutzt werden könnte das
@@ -50,7 +50,7 @@ export type Freigabe = {
  * `case_id ‖ user_id ‖ kid ‖ SHA-256(released_share)`.
  *
  * Signiert wird das unter {@link DOMAIN_SEPARATION.vaultRelease}. Der Share
- * selbst geht nicht in die Signatur ein, nur sein Hash — die Edge Function
+ * selbst geht nicht in die Signatur ein, nur sein Hash. Die Edge Function
  * prüft die Herkunft, den Inhalt kann sie prinzipiell nicht prüfen, weil der
  * Share unter `K_c` liegt.
  */
@@ -76,7 +76,7 @@ export type Wrap = {
  *
  * Signiert wird das unter {@link DOMAIN_SEPARATION.keyWrap}. Die Signatur wehrt
  * genau einen Angriff ab (§3.6): ein Mitglied, das einen formal gültigen Wrap
- * eines *falschen* `K_c` einstellt und das Empfängergerät damit dauerhaft
+ * eines falschen `K_c` einstellt und das Empfängergerät damit dauerhaft
  * aussperrt. Der AES-GCM-Tag erkennt nur Beschädigung, nicht die falsche
  * Absicht. `kem_ct` und `wrapped_key` gehen zusammen in einen Hash, weil nur
  * das Paar etwas bedeutet.
@@ -94,7 +94,7 @@ export async function wrapNachricht(wrap: Wrap): Promise<Uint8Array> {
  * `HMAC-SHA256(K_cat, "LN-cat-v1" ‖ catalog_item_path)` (§3.2, §8).
  *
  * Zwei Geräte, die denselben Katalogeintrag instanziieren, kommen auf dieselbe
- * ID und erzeugen kein Duplikat — auch dann, wenn sie auf verschiedenen
+ * ID und erzeugen kein Duplikat. Das gilt auch dann, wenn sie auf verschiedenen
  * `K_c`-Generationen stehen, denn `K_cat` rotiert nie. Der Server sieht eine
  * Zufallszahl: Derselbe Pfad ergibt in einem anderen Fall eine andere ID.
  */

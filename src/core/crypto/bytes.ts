@@ -1,7 +1,7 @@
 /**
  * Bytes: die kleinen Handgriffe, die jeder Baustein des Kryptokerns braucht.
  *
- * Bewusst ohne eigene Kryptographie — nur Verkettung, Vergleich, Zufall und die
+ * Bewusst ohne eigene Kryptographie, nur Verkettung, Vergleich, Zufall und die
  * beiden Hashes aus WebCrypto. §9 verlangt, dass dieser Ordner ohne
  * Browser-only-Abhängigkeiten jenseits von WebCrypto auskommt, damit die Edge
  * Function `vault-release` denselben Code benutzen kann.
@@ -33,7 +33,7 @@ export function verkette(...teile: Uint8Array[]): Uint8Array {
 }
 
 /**
- * WebCrypto nimmt `BufferSource`, und ein `Uint8Array` ist eines — TypeScript
+ * WebCrypto nimmt `BufferSource`, und ein `Uint8Array` ist eines. TypeScript
  * seit 5.7 aber nur dann, wenn feststeht, dass sein Puffer kein
  * `SharedArrayBuffer` ist. Feststellen lässt sich das hier nicht, weil die
  * Bytes von außen kommen. Also steht die Umdeutung an genau einer Stelle statt
@@ -52,7 +52,7 @@ export function textBytes(text: string): Uint8Array {
 /**
  * Vergleicht zwei Byte-Folgen ohne frühen Ausstieg.
  *
- * Gebraucht wird das dort, wo ein Vergleich über einen Geheimwert entscheidet —
+ * Gebraucht wird das dort, wo ein Vergleich über einen Geheimwert entscheidet:
  * `vault_commitment` (§3.5) und `share_hash` (§3.5). Die Laufzeit hängt hier nur
  * an den Längen, die ohnehin öffentlich sind.
  */
@@ -79,7 +79,7 @@ const HEX_ZIFFERN = '0123456789abcdef'
  *
  * Gebraucht wird das dort, wo Bytes zu einer Kennung werden: die Item-IDs aus
  * dem Katalog (§8) und die UUIDv7 der uebrigen Items (§5). Nicht zu verwechseln
- * mit `alsBytea` in `core/db` — das ist die Kodierung einer Spalte auf der
+ * mit `alsBytea` in `core/db`. Das ist die Kodierung einer Spalte auf der
  * Leitung und gehört nicht in den Kryptokern.
  */
 export function hexText(bytes: Uint8Array): string {
@@ -119,7 +119,7 @@ export async function hmacSha256(
 /**
  * `fatal: true`, weil die Voreinstellung das Gegenteil tut: Sie ersetzt
  * ungültige Folgen still durch U+FFFD. Was hier ankommt, ist frisch
- * entschlüsselt — ist es kein gültiges UTF-8, dann ist es kaputt, und der
+ * entschlüsselt. Ist es kein gültiges UTF-8, dann ist es kaputt, und der
  * Fehler gehört an diese Stelle und nicht in die Oberfläche.
  */
 const DECODER = new TextDecoder('utf-8', { fatal: true })
