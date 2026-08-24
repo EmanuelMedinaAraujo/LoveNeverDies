@@ -31,6 +31,23 @@ vi.mock('../../src/hooks/useMitglieder.ts', () => ({
   }),
 }))
 
+/*
+ * Die Dokumente hängen an Storage und an `items` (§7) und haben ihren eigenen
+ * Screentest daneben. Hier steht die Attrappe, damit das Aufgabendetail ohne
+ * Supabase-Provider rendert — dieselbe Linie wie bei `useAufgaben` und
+ * `useMitglieder`.
+ */
+vi.mock('../../src/hooks/useDokumente.ts', () => ({
+  useDokumente: () => ({
+    dokumente: [],
+    uebersprungen: 0,
+    online: true,
+    nimmAuf: vi.fn(),
+    oeffne: vi.fn(),
+    loesche: vi.fn(),
+  }),
+}))
+
 const { Aufgabe } = await import('../../src/screens/shared/Aufgabe/Aufgabe.tsx')
 
 /**
@@ -121,6 +138,8 @@ function aufgabendaten(
   return {
     zustand:
       zustand.status === 'laedt' ? zustand : { ...zustand, baum: baueBaum(zustand.aufgaben) },
+    zeilen: [],
+    aktualisiere: vi.fn(),
     erinnerungen: ERINNERUNGEN,
     abgelehnt: [],
     bestaetige: vi.fn(),

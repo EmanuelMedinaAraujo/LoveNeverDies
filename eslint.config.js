@@ -49,6 +49,11 @@ export default tseslint.config(
       'supabase/.branches/**',
       'playwright-report/**',
       'test-results/**',
+      // Edge Functions laufen unter Deno, nicht im Browser und nicht in Node:
+      // eigene Globals (`Deno`), eigene Importspezifizierer (`jsr:`). Sie
+      // gegen die Regeln dieser App zu pruefen, meldete ausschliesslich
+      // Falsches.
+      'supabase/functions/**',
     ],
   },
 

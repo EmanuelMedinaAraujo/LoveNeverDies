@@ -7,12 +7,14 @@
  * liegen im `payload`, verschlüsselt unter einem DEK, der seinerseits unter
  * `K_c` gewrappt in derselben Zeile steht.
  *
- * Zwei Spalten fehlen absichtlich in den Schreibwegen:
+ * Eine Spalte fehlt absichtlich in den Schreibwegen: **`seq`** vergibt
+ * ausschließlich der Trigger `items_assign_seq` (§4). Ein Port, der sie
+ * annähme, führte in Versuchung, sie zu setzen.
  *
- * - **`seq`** vergibt ausschließlich der Trigger `items_assign_seq` (§4). Ein
- *   Port, der sie annähme, führte in Versuchung, sie zu setzen.
- * - **`storage_path`** gehört zu `kind = 'file'` und damit zu den Dokumenten
- *   (§7), die in diesem Stand noch nicht hochgeladen werden.
+ * `storage_path` gehört dagegen dazu, seit es Dokumente gibt (§7) — allerdings
+ * nur beim Anlegen. Er ist `{case_id}/{item_id}` und ändert sich nie; die
+ * Datenbank hält die Gleichung als CHECK fest, damit ein Item nie auf eine
+ * fremde Datei zeigt.
  *
  * Und eine Operation fehlt: Es gibt kein Löschen. Auf `items` ist DELETE per
  * RLS für alle ausgeschlossen — was danach aussieht, ist ein Tombstone (§5).
@@ -54,6 +56,15 @@ export type NeuerInhalt = {
   kid: string
   wrappedDek: Uint8Array
   payload: Uint8Array
+  /**
+   * `{case_id}/{item_id}` — Pflicht bei `art: 'file'`, verboten sonst (§7).
+   *
+   * Auf dem Leseweg steht er nicht: Er ist aus `fallId` und `id` herzuleiten,
+   * und die Datenbank erzwingt genau diese Gleichung. Eine Spalte, die in jedem
+   * Delta und in jedem Cache-Eintrag mitreiste, ohne je etwas Neues zu sagen,
+   * wäre nur Gewicht.
+   */
+  storagePfad?: string
 }
 
 /**

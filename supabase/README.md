@@ -1,6 +1,6 @@
 # Supabase
 
-Schema, RLS und später die eine Edge Function (DESIGN.md §4, §9).
+Schema, RLS und die Edge Functions (DESIGN.md §4, §9).
 
 ## Das Projekt anlegen
 
@@ -67,6 +67,50 @@ Policy vorbei, die dafür gar nichts kann. `tests/db/postgres.ts` richtet
 seither dieselbe Voreinstellung ein, damit ein vergessenes `grant` im Test
 auffällt und nicht erst im Browser.
 
+## Dokumente: Bucket und Aufräumjob
+
+`20260824140000_dokumente.sql` legt den privaten Bucket `documents` an (15 MB,
+§7), bindet den Pfad eines Dokuments per CHECK an `{case_id}/{item_id}` und
+öffnet ihn über drei Policies auf `storage.objects` — lesen, schreiben,
+löschen, jeweils für `is_member((storage.foldername(name))[1]::uuid)`. Ein
+UPDATE gibt es nicht: Ein Dokument entsteht und wird gelöscht, nie ersetzt.
+
+**Der Aufräumjob ist eine Edge Function und kein SQL-Statement.** Eine Zeile in
+`storage.objects` ist der Katalogeintrag, die Bytes liegen im Objektspeicher;
+ein `delete` per SQL nähme den Eintrag und liesse die Datei liegen. Die
+Plattform weist es deshalb ab („Direct deletion from storage tables is not
+allowed"). Die Arbeit ist entsprechend geteilt:
+
+- `public.dokumente_zum_aufraeumen(interval)` sagt, was fällig ist — die Dateien
+  zu Items, deren Tombstone älter als die Karenz ist, und die, zu denen nie ein
+  Item entstand. Die Funktion steht ausschliesslich `service_role` offen.
+- `functions/dokumente-aufraeumen/` holt diese Liste und entfernt sie über die
+  Storage-API.
+
+Von Hand ausprobieren, gegen den lokalen Stack:
+
+```bash
+supabase functions serve --no-verify-jwt
+curl http://127.0.0.1:54321/functions/v1/dokumente-aufraeumen
+```
+
+Ausgeliefert und täglich eingeplant wird sie so — die Frist ist sieben Tage,
+auf die Stunde kommt es nicht an:
+
+```bash
+supabase functions deploy dokumente-aufraeumen
+```
+
+Den Zeitplan legt das Dashboard unter **Integrations → Cron** an (täglich,
+`30 3 * * *`, Ziel: diese Edge Function). Wer pg_cron und pg_net ohnehin
+eingeschaltet hat, kann ihn auch in SQL setzen; der Aufruf braucht dann den
+Secret Key im Vault und nicht in der Migration — deshalb steht er nicht in der
+Migrationskette, sondern hier.
+
+**Die Karenz ist kein Papierkorb.** Löschen gewinnt endgültig (§5); die sieben
+Tage existieren allein, damit der Job kein Objekt unter einem Client wegzieht,
+der gerade mitten im Download ist.
+
 ## Clerk als Auth-Anbieter eintragen
 
 Supabase prüft die Token nicht selbst, sondern akzeptiert die von Clerk. Im
@@ -107,8 +151,10 @@ Der Publishable Key ist öffentlich und liegt ohnehin im ausgelieferten
 JavaScript. Was jemand damit sieht, entscheidet die RLS. Der **Secret Key**
 (`sb_secret_...`, früher `service_role`) umgeht sie vollständig; er gehört
 niemals in eine `VITE_`-Variable und niemals ins Repo.
-Gebraucht wird er erst von der Edge Function `vault-release` (§3.5), und dort
-serverseitig.
+Gebraucht wird er serverseitig: von `dokumente-aufraeumen` (§7, siehe oben) und
+später von `vault-release` (§3.5). In beiden Fällen setzt Supabase ihn selbst
+als `SUPABASE_SERVICE_ROLE_KEY` in die Laufzeit der Funktion — einzutragen ist
+er nirgends.
 
 `supabase/config.toml` liegt bewusst nicht im Repo: `supabase init` erzeugt sie
 passend zur installierten CLI-Version, und eine mitgelieferte Datei aus einer

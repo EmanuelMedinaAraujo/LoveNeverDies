@@ -88,6 +88,24 @@ export type Uebernahme = {
 
 export type Aufgabendaten = {
   zustand: AufgabenZustand
+  /**
+   * Der Bestand dieses Falls als Ciphertext — alle Zeilen, nicht nur die
+   * Aufgaben (§5).
+   *
+   * Er steht hier, damit die Dokumente (§7) auf demselben Delta reiten können:
+   * Ein zweiter `useSync` daneben hielte einen zweiten Cache, ein zweites
+   * Wasserzeichen und eine zweite Queue für denselben Fall — zwei Runden, die
+   * um dieselben Zeilen konkurrieren. Was ein Aufrufer davon liest, entscheidet
+   * er über `art`.
+   */
+  zeilen: InhaltZeile[]
+  /**
+   * Stösst eine Sync-Runde an.
+   *
+   * Für alles, was am Delta vorbei geschrieben hat und trotzdem sofort
+   * sichtbar sein soll — die Dokumente aus §7 gehen nicht durch die Queue.
+   */
+  aktualisiere: () => void
   /** Die lokalen Erinnerungen an die Fristen dieses Falls (§7). */
   erinnerungen: Erinnerungsdaten
   /**
@@ -160,7 +178,7 @@ function nachReihenfolge(links: Aufgabe, rechts: Aufgabe): number {
 }
 
 export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
-  const { zustand: sync, mutiere, bestaetige } = useSync(fall.id)
+  const { zustand: sync, mutiere, bestaetige, aktualisiere } = useSync(fall.id)
   const zugang = useSupabase()
   const { zustand: authZustand } = useAuth()
 
@@ -468,6 +486,8 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   return useMemo(
     () => ({
       zustand,
+      zeilen: sync.zeilen,
+      aktualisiere,
       erinnerungen,
       abgelehnt,
       bestaetige,
@@ -484,6 +504,8 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     }),
     [
       zustand,
+      sync.zeilen,
+      aktualisiere,
       erinnerungen,
       abgelehnt,
       bestaetige,

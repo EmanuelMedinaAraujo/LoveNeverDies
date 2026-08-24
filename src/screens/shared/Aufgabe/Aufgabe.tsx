@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
+import type { InhaltZeile } from '../../../core/db/inhalte.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -19,6 +20,7 @@ import {
   type Zuweisung,
 } from '../../../services/zuweisung.ts'
 import { Uebernahmen } from '../Meldungen/Meldungen.tsx'
+import { Dokumente } from './Dokumente.tsx'
 import { Zuweisungsfeld } from '../Zuweisung/Zuweisungsfeld.tsx'
 import stile from './Aufgabe.module.css'
 
@@ -245,6 +247,8 @@ function Detail({
   ich,
   mitglieder,
   mitgliederfehler,
+  zeilen,
+  aktualisiere,
   aktionen,
 }: {
   knoten: Aufgabenknoten
@@ -255,6 +259,10 @@ function Detail({
   mitglieder: Zugewiesene[]
   /** Was beim Abruf der Mitglieder schiefging, oder `null`. */
   mitgliederfehler: string | null
+  /** Der Bestand als Ciphertext — die Dokumente lesen daraus ihre Zeilen (§7). */
+  zeilen: InhaltZeile[]
+  /** Stösst eine Sync-Runde an: Dokumente gehen nicht durch die Queue (§5). */
+  aktualisiere: () => void
   aktionen: {
     gesperrt: boolean
     hakeAb: (aufgabe: Aufgabendatensatz, erledigt: boolean) => Promise<boolean>
@@ -470,6 +478,19 @@ function Detail({
         )}
       </Card>
 
+      {/*
+        §7: „Dokument einfach abfotografieren" — die Sterbeurkunde gehört an die
+        Aufgabe, für die sie gebraucht wird, und nicht in eine Ablage irgendwo
+        sonst in der App.
+      */}
+      <Dokumente
+        fall={fall}
+        aufgabeId={aufgabe.id}
+        zeilen={zeilen}
+        aktualisiere={aktualisiere}
+        darfAendern={darfAendern}
+      />
+
       <Card className={stile.abschnitt}>
         <h2>Notizen</h2>
 
@@ -509,6 +530,8 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     weiseZu,
     uebernahmen,
     bestaetigeUebernahmen,
+    zeilen,
+    aktualisiere,
   } = useAufgaben(fall)
 
   const { userIds, fehler: mitgliederfehler } = useMitglieder(fall.id)
@@ -602,6 +625,8 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
         ich={ich}
         mitglieder={mitglieder}
         mitgliederfehler={mitgliederfehler}
+        zeilen={zeilen}
+        aktualisiere={aktualisiere}
         aktionen={{
           gesperrt: laeuft,
           weiseZu: (zuweisung) => void fuehreAus(() => weiseZu(knoten.aufgabe, zuweisung)),

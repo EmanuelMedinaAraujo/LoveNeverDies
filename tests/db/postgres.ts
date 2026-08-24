@@ -50,6 +50,68 @@ const PLATTFORM = `
   -- grant faenden wir erst im Browser.
   alter default privileges in schema public
     grant truncate, references, trigger on tables to anon, authenticated, service_role;
+
+  -- Storage, so weit die Dokumente aus §7 es anfassen: der Bucket, die Objekte
+  -- und storage.foldername, ueber das die Policies den ersten Pfadabschnitt
+  -- lesen. Die Spalten sind die, gegen die dieses Projekt schreibt; alles
+  -- weitere -- Multipart-Uploads, path_tokens, owner -- gehoert der Plattform
+  -- und kommt in keiner Migration vor.
+  --
+  -- RLS steht hier schon an, ohne eine einzige Policy: genau wie in der Cloud,
+  -- wo storage.objects ohne Policy fuer authenticated eine leere Tabelle ist.
+  -- Was die Migration erlaubt, erlaubt damit wirklich sie.
+  create schema if not exists storage;
+
+  create table storage.buckets (
+    id              text primary key,
+    name            text not null,
+    public          boolean not null default false,
+    file_size_limit bigint,
+    created_at      timestamptz not null default now()
+  );
+
+  create table storage.objects (
+    id         uuid primary key default gen_random_uuid(),
+    bucket_id  text references storage.buckets(id),
+    name       text,
+    owner_id   text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    metadata   jsonb
+  );
+
+  create function storage.foldername(name text) returns text[]
+    language plpgsql immutable as $fn$
+  declare _parts text[];
+  begin
+    select string_to_array(name, '/') into _parts;
+    return _parts[1:array_length(_parts, 1) - 1];
+  end $fn$;
+
+  alter table storage.objects enable row level security;
+
+  -- Dieselbe Sperre wie in der Cloud: Ein DELETE per SQL nimmt die Zeile weg
+  -- und laesst die Bytes im Objektspeicher liegen. Die Storage-API hebt sie
+  -- fuer ihre eigene Transaktion auf; wer im Test loeschen will, muss also
+  -- sagen, dass er die API ist. Ohne diese Zeile pruefte der Test eine
+  -- Freiheit, die es nicht gibt.
+  create function storage.protect_delete() returns trigger
+    language plpgsql as $fn$
+  begin
+    if coalesce(current_setting('storage.allow_delete_query', true), 'false') <> 'true' then
+      raise exception 'Direct deletion from storage tables is not allowed. Use the Storage API instead.'
+        using errcode = '42501';
+    end if;
+
+    return null;
+  end $fn$;
+
+  create trigger protect_objects_delete before delete on storage.objects
+    for each statement execute function storage.protect_delete();
+
+  grant usage on schema storage to anon, authenticated, service_role;
+  grant select on storage.buckets to anon, authenticated, service_role;
+  grant select, insert, update, delete on storage.objects to anon, authenticated, service_role;
 `
 
 export function migrationsdateien(): string[] {
