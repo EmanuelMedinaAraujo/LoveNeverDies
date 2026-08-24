@@ -94,6 +94,8 @@ function aufgabendaten(
   return {
     zustand:
       zustand.status === 'laedt' ? zustand : { ...zustand, baum: baueBaum(zustand.aufgaben) },
+    zeilen: [],
+    aktualisiere: vi.fn(),
     erinnerungen: ERINNERUNGEN,
     abgelehnt: [],
     bestaetige: vi.fn(),

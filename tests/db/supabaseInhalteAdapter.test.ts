@@ -183,6 +183,24 @@ describe('lege', () => {
       kid: 'case_fall-1:1',
       wrapped_dek: alsBytea(new Uint8Array([0x05])),
       payload: alsBytea(new Uint8Array([0x06])),
+      // Ausdrücklich `null` und nicht weggelassen: Bei einer Aufgabe *muss*
+      // die Spalte leer bleiben (§7, CHECK auf `items`).
+      storage_path: null,
+    })
+  })
+
+  it('schreibt den Pfad, sobald es ein Dokument ist (§7)', async () => {
+    const { client, gesehen } = stubClient({ data: null, error: null })
+
+    await supabaseInhalte(client).lege({
+      ...NEU,
+      art: 'file',
+      storagePfad: 'fall-1/item-2',
+    })
+
+    expect(gesehen.eingefuegt).toMatchObject({
+      kind: 'file',
+      storage_path: 'fall-1/item-2',
     })
   })
 
