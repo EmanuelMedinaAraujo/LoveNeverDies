@@ -1,8 +1,8 @@
 /**
  * Der Delta-Sync eines Falls (DESIGN.md §5).
  *
- * Hier laufen die vier Teile aus `core/sync` zusammen — Wasserzeichen,
- * Reconciler, Türklingel, Queue — und werden zu dem Ablauf, den §5 beschreibt:
+ * Hier laufen die vier Teile aus `core/sync` zusammen: Wasserzeichen,
+ * Reconciler, Türklingel, Queue. Sie werden zu dem Ablauf, den §5 beschreibt:
  *
  * ```
  * Kaltstart   Cache lesen  → sofort rendern, ohne auf das Netz zu warten
@@ -10,14 +10,14 @@
  * Türklingel  Realtime auf die cases-Zeile, Polling nur als Fallback
  * ```
  *
- * **Was dieser Hook herausgibt, ist Ciphertext.** Entschlüsselt wird eine Ebene
+ * Was dieser Hook herausgibt, ist Ciphertext. Entschlüsselt wird eine Ebene
  * höher, in `useAufgaben`. Der Schnitt liegt hier, weil §5 zwei verschiedene
  * Dinge verlangt: Der Cache und die Queue tragen Bytes, die byteidentisch zum
- * Server sind, und die Ladeanzeige bezieht sich auf den Netzwerk-Fetch — nicht
+ * Server sind, und die Ladeanzeige bezieht sich auf den Netzwerk-Fetch, nicht
  * auf das Entschlüsseln, das einige Millisekunden kostet und ohne Netz
  * auskommt.
  *
- * **Jede Mutation geht durch die Queue**, auch bei bester Verbindung. Ein
+ * Jede Mutation geht durch die Queue, auch bei bester Verbindung. Ein
  * zweiter, direkter Schreibweg wäre ein zweites Verhalten für dieselbe
  * Handlung; siehe `core/sync/queue.ts`.
  */
@@ -41,12 +41,12 @@ export type SyncZustand = {
    */
   zeilen: InhaltZeile[]
   /**
-   * Ob der Cache gelesen ist. Ab hier wird gerendert — auch ohne Netz, auch
+   * Ob der Cache gelesen ist. Ab hier wird gerendert: auch ohne Netz, auch
    * bevor der erste Abruf zurück ist (§5).
    */
   gecacht: boolean
   /**
-   * Ob gerade ein Netzwerk-Fetch läuft. §5: „Die Ladeanzeige bezieht sich auf
+   * Ob gerade ein Netzwerk-Fetch läuft. §5: "Die Ladeanzeige bezieht sich auf
    * den Netzwerk-Fetch, nicht auf das Entschlüsseln."
    */
   laedtNetz: boolean
@@ -56,15 +56,15 @@ export type SyncZustand = {
    * Ob mindestens eine Runde vollständig durchgelaufen ist: Der Bestand hat
    * dann den Server gesehen und nicht nur den Cache.
    *
-   * Der Unterschied zu `!laedtNetz` ist der Zeitpunkt vor dem ersten Abruf —
-   * dort läuft nichts, und trotzdem weiss niemand, was auf dem Server steht.
+   * Der Unterschied zu `!laedtNetz` ist der Zeitpunkt vor dem ersten Abruf:
+   * Dort läuft nichts, und trotzdem weiss niemand, was auf dem Server steht.
    * Wer aus dem Fehlen einer Zeile etwas schliessen will, braucht genau diese
    * Unterscheidung; der Rechtskatalog tut das (§8).
    */
   abgeglichen: boolean
   /**
    * Was der Server verworfen hat. §5: nie stillschweigend, sondern als
-   * Mitteilung — den Klartext dazu holt `useAufgaben`.
+   * Mitteilung; den Klartext dazu holt `useAufgaben`.
    */
   abgelehnt: AbgelehnteMutation[]
 }
@@ -90,7 +90,7 @@ export function useSync(fallId: string): Syncdaten {
    *
    * Eine Runde kann von der Türklingel, vom `online`-Ereignis und von einer
    * Mutation zugleich angestossen werden. Läse sie ihren Ausgangsstand aus dem
-   * State, arbeitete sie mit dem, was beim Aufbau der Funktion galt — und zwei
+   * State, arbeitete sie mit dem, was beim Aufbau der Funktion galt, und zwei
    * Runden hintereinander setzten dasselbe Wasserzeichen zweimal.
    */
   const bestand = useRef<InhaltZeile[]>([])
@@ -118,7 +118,7 @@ export function useSync(fallId: string): Syncdaten {
    *
    * `laeuft` und `nochmal` sind kein Feinschliff: Die Türklingel feuert, während
    * eine Runde läuft, und zwei gleichzeitige Runden holten dasselbe Delta
-   * zweimal — die zweite mit dem Wasserzeichen von vor der ersten, also mit
+   * zweimal, die zweite mit dem Wasserzeichen von vor der ersten, also mit
    * doppelter Arbeit und einem Rennen um den Cache.
    */
   const laeuft = useRef(false)
@@ -148,7 +148,7 @@ export function useSync(fallId: string): Syncdaten {
          * `nochmal` war gesetzt, die Schleife kam aber nicht mehr bis zu ihrer
          * Bedingung. Eine Aufgabe, die genau in diesem Moment angetippt wurde,
          * bliebe in der Queue liegen und wartete auf ein Ereignis, das nicht
-         * kommt — die Tuerklingel laeutet nur, wenn jemand *anders* schreibt,
+         * kommt: Die Tuerklingel laeutet nur, wenn jemand anders schreibt,
          * `online` feuert nicht, wer nie offline war, und das Polling schweigt,
          * solange Realtime steht. Sichtbar waere sie trotzdem: optimistisch
          * angezeigt, aber auf keinem Server. Genau das schliesst §5 aus.
@@ -195,14 +195,14 @@ export function useSync(fallId: string): Syncdaten {
            * Genau ein Bild je Runde, und zwar am Ende.
            *
            * Die Überlagerung aus der Queue fällt weg, sobald der Server die
-           * Mutation angenommen hat — die bestätigte Zeile kommt aber erst mit
+           * Mutation angenommen hat; die bestätigte Zeile kommt aber erst mit
            * dem Delta ein paar Zeilen weiter oben. Dazwischen zu rendern hiesse,
-           * für die Dauer von `version` plus `seit` den Stand *vor* der Änderung
+           * für die Dauer von `version` plus `seit` den Stand vor der Änderung
            * zu zeigen: Das Häkchen spränge zurück, die gelöschte Aufgabe käme
            * wieder, und beides ausgerechnet dann, wenn alles geklappt hat.
            *
            * Deshalb `finally`: Auch die Runde, die unterwegs abbricht,
-           * hinterlässt ein stimmiges Bild — abgelehnte Mutationen haben die
+           * hinterlässt ein stimmiges Bild: Abgelehnte Mutationen haben die
            * Queue schon verlassen, und ihre Wirkung muss mit ihnen verschwinden.
            */
           zeige()
@@ -221,8 +221,8 @@ export function useSync(fallId: string): Syncdaten {
   useEffect(() => {
     aktuell.current = true
 
-    // Der Kaltstart: erst der Cache, dann das Netz. §5 — „Gecachte Inhalte
-    // werden sofort gerendert", und die Ladeanzeige gehört dem Fetch.
+    // Der Kaltstart: erst der Cache, dann das Netz. §5: Gecachte Inhalte
+    // werden sofort gerendert, und die Ladeanzeige gehört dem Fetch.
     void (async () => {
       try {
         const [gelesen, offen] = await Promise.all([cache.lies(fallId), warteschlange.offen()])
@@ -239,7 +239,7 @@ export function useSync(fallId: string): Syncdaten {
         /*
          * Ohne Cache läuft die App weiter, nur eben ohne Sofortanzeige. Ein
          * Wurf hier nähme den Fall mit, obwohl der Server ihn gleich liefern
-         * wird — und der Grund wäre ein Zwischenspeicher, den es zu verlieren
+         * wird. Der Grund wäre ein Zwischenspeicher, den es zu verlieren
          * nichts kostet.
          */
       } finally {
@@ -256,7 +256,7 @@ export function useSync(fallId: string): Syncdaten {
   }, [cache, fallId, runde, warteschlange, zeige])
 
   useEffect(() => {
-    // Die Türklingel aus §5, Schritt 3. Sie trägt keine Nutzlast — was sich
+    // Die Türklingel aus §5, Schritt 3. Sie trägt keine Nutzlast. Was sich
     // geändert hat, holt die Runde.
     return tuerklingel(zugang(), fallId, () => void runde())
   }, [fallId, runde, zugang])
@@ -272,7 +272,7 @@ export function useSync(fallId: string): Syncdaten {
   const mutiere = useCallback(
     async (mutation: Mutation) => {
       /*
-       * Erst anhängen, dann anzeigen — und ausdrücklich in dieser Reihenfolge.
+       * Erst anhängen, dann anzeigen, und ausdrücklich in dieser Reihenfolge.
        *
        * Andersherum wäre die Änderung eine Lidschlagsdauer lang zu sehen, ohne
        * irgendwo zu liegen: Wer in dem Moment den Tab schliesst oder

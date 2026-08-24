@@ -1,11 +1,11 @@
 /**
  * Lokale Erinnerungen an Fristen (DESIGN.md §7).
  *
- * „Rein lokal, aus entschlüsselten Fristen, nach jeder Synchronisation neu
+ * "Rein lokal, aus entschlüsselten Fristen, nach jeder Synchronisation neu
  * geplant." Ein Server-Push ist hier nicht weggelassen, sondern unmöglich: Die
  * Fristangaben liegen verschlüsselt im Payload, der Server sieht `{fristTage,
  * fristAb}` nie (§3.3). Wer erinnert werden soll, muss die Frist selbst
- * ausrechnen — und das kann nur ein Gerät mit `K_c`.
+ * ausrechnen, und das kann nur ein Gerät mit `K_c`.
  *
  * Dieses Modul plant und weiss nichts von Timern oder Benachrichtigungen:
  * Aufgaben und eine Uhrzeit hinein, Termine heraus. Die Umsetzung steht in
@@ -31,7 +31,7 @@ export const ERINNERUNGSTAGE = [7, 3, 1, 0] as const
  *
  * `setTimeout` trägt knapp 25 Tage (`2^31 - 1` Millisekunden); ein längerer
  * Vorlauf feuerte sofort statt später. Was über diesen Horizont hinausreicht,
- * plant der nächste Abgleich — und der kommt lange vorher.
+ * plant der nächste Abgleich, und der kommt lange vorher.
  */
 const HORIZONT_TAGE = 21
 
@@ -50,7 +50,7 @@ export type Erinnerung = {
 }
 
 /**
- * Der Vormittag des Tages, der `vorlauf` Tage vor `ende` liegt — in der
+ * Der Vormittag des Tages, der `vorlauf` Tage vor `ende` liegt, in der
  * Zeitzone des Geräts.
  *
  * Gerechnet wird das Fristende in UTC (`fristen.ts`), erinnert wird in der Zeit
@@ -65,12 +65,12 @@ function terminZeit(ende: string, vorlauf: number): number {
 
 function text(titel: string, vorlauf: number): string {
   if (vorlauf === 0) {
-    return `„${titel}" ist heute fällig.`
+    return `"${titel}" ist heute fällig.`
   }
 
   return vorlauf === 1
-    ? `„${titel}" ist morgen fällig.`
-    : `„${titel}" ist in ${vorlauf} Tagen fällig.`
+    ? `"${titel}" ist morgen fällig.`
+    : `"${titel}" ist in ${vorlauf} Tagen fällig.`
 }
 
 /**
@@ -82,10 +82,10 @@ function text(titel: string, vorlauf: number): string {
  * liegt.
  *
  * Blockierte Aufgaben bleiben ausdrücklich drin. Eine Frist läuft weiter,
- * gleich ob eine andere Aufgabe noch aussteht — das ist eher ein Grund für die
+ * gleich ob eine andere Aufgabe noch aussteht: Das ist eher ein Grund für die
  * Erinnerung als einer dagegen.
  *
- * @param jetzt die aktuelle Zeit — als Parameter, damit diese Funktion rein
+ * @param jetzt die aktuelle Zeit: als Parameter, damit diese Funktion rein
  * bleibt.
  */
 export function planeErinnerungen(

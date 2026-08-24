@@ -1,21 +1,21 @@
 /**
  * Keystore: die Geräteidentität und wie sie liegt (DESIGN.md §3.1, §3.6).
  *
- * Ein Gerät hat zwei Keypairs — ML-KEM-768 + X25519 für den Schlüsseltransport,
+ * Ein Gerät hat zwei Keypairs: ML-KEM-768 + X25519 für den Schlüsseltransport,
  * ML-DSA-65 + Ed25519 für Signaturen. Aufbewahrt wird von beiden nur der Seed:
  * 96 Byte gegen 32 Byte KEM-Geheimnis plus 4064 Byte Signaturgeheimnis, und vor
  * allem nur eine Sache, die verschlüsselt liegen muss.
  *
- * **Der Seed verlässt das Gerät nie.** Er liegt in IndexedDB, at-rest
+ * Der Seed verlässt das Gerät nie. Er liegt in IndexedDB, at-rest
  * verschlüsselt unter einem AES-GCM-`CryptoKey` mit `extractable: false`, der
- * daneben liegt. Das schützt gegen einen Angreifer, der den Speicher ausliest —
- * eine Erweiterung, ein Backup, ein fremder Prozess: Er bekommt den Envelope
+ * daneben liegt. Das schützt gegen einen Angreifer, der den Speicher ausliest
+ * (eine Erweiterung, ein Backup, ein fremder Prozess): Er bekommt den Envelope
  * und einen Schlüssel, dessen Bytes WebCrypto nicht herausrückt. Es schützt
  * nicht gegen fremden Code im eigenen Origin, der den Schlüssel schlicht
  * benutzt; dagegen steht die CSP aus §11.2, keine Kryptographie.
  *
- * **Es gibt keinen Weg zurück.** Kein portabler Seed, keine
- * Wiederherstellungsphrase, keine Ableitung aus dem Login-Passwort — die
+ * Es gibt keinen Weg zurück: Kein portabler Seed, keine
+ * Wiederherstellungsphrase, keine Ableitung aus dem Login-Passwort. Die
  * Begründungen stehen in §3.6, die Konsequenz als Grenze 1 in §11. Wer das
  * Gerät verliert, verliert die Entschlüsselbarkeit; die einzige Absicherung ist
  * ein zweites Gerät oder eine zweite Person im Fall.
@@ -102,9 +102,9 @@ async function oeffneDb(): Promise<IDBDatabase> {
 
   /*
    * `blocked` feuert, wenn ein anderer Tab die alte Version noch offen hält.
-   * Danach kommt weder `success` noch `error` — ohne diesen Zweig bliebe das
+   * Danach kommt weder `success` noch `error`. Ohne diesen Zweig bliebe das
    * Versprechen für immer offen, und mit ihm der Aufruf, der darauf wartet:
-   * Profil stünde auf „lädt", ohne Fehler und ohne zweiten Versuch. Heute
+   * Profil stünde auf "lädt", ohne Fehler und ohne zweiten Versuch. Heute
    * unerreichbar, weil die Version bei 1 steht; erreichbar beim ersten
    * Versionssprung, und dann genau bei dem, der die App offen hatte.
    */
@@ -134,8 +134,8 @@ type Abgelegt = {
 }
 
 /**
- * Liest beide Sätze und schreibt die übergebenen, falls noch keine da sind —
- * alles in **einer** `readwrite`-Transaktion.
+ * Liest beide Sätze und schreibt die übergebenen, falls noch keine da sind,
+ * alles in einer `readwrite`-Transaktion.
  *
  * Hier liegt der Schutz gegen das zweite Keypair: IndexedDB serialisiert
  * `readwrite`-Transaktionen auf demselben Store, also gewinnt der erste
@@ -175,7 +175,7 @@ async function legeAnOderLies(kandidat: Abgelegt): Promise<Abgelegt> {
 
         // Halb beschriebener Keystore: Ein abgebrochener erster Start hat
         // genau einen der beiden Sätze hinterlassen. Der Seed ohne seinen
-        // Schlüssel ist Datenmüll, der Schlüssel ohne Seed auch — beide werden
+        // Schlüssel ist Datenmüll, der Schlüssel ohne Seed auch. Beide werden
         // überschrieben, statt einen Zustand zu retten, aus dem nichts folgt.
         store.put(kandidat.wrappingSchluessel, WRAPPING_SCHLUESSEL)
         store.put(kandidat.seedEnvelope, SEED_SCHLUESSEL)
@@ -274,7 +274,7 @@ async function entpacke(abgelegt: Abgelegt): Promise<Geraeteidentitaet> {
 /**
  * Ein Modulzustand für den Normalfall: Innerhalb eines Tabs fragt jeder Aufruf
  * dieselbe laufende Zusage ab, statt eine zweite Runde Schlüsselerzeugung
- * anzustoßen. Über Tabs hinweg trägt das nicht — dort entscheidet die
+ * anzustoßen. Über Tabs hinweg trägt das nicht: Dort entscheidet die
  * Transaktion in {@link legeAnOderLies}.
  */
 let laufend: Promise<Geraeteidentitaet> | null = null

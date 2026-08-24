@@ -1,7 +1,7 @@
 /**
  * `profiles` über Supabase (DESIGN.md §3.3, §4).
  *
- * Die Umsetzung des Ports aus `profil.ts`. Ein `upsert` und sonst nichts — die
+ * Die Umsetzung des Ports aus `profil.ts`. Ein `upsert` und sonst nichts. Die
  * Frage, wer welches Profil sehen darf, entscheidet die RLS, und die Frage,
  * wann geschrieben wird, der Hook.
  */
@@ -25,8 +25,8 @@ export function supabaseProfil(client: SupabaseClient): ProfilTabelle {
       /*
        * `upsert` statt `insert` mit Fehlerbehandlung: Die Zeile existiert nach
        * der ersten Anmeldung immer, und ein Name, der sich bei Clerk geändert
-       * hat, soll ankommen. `updated_at` wird ausdrücklich mitgeschrieben —
-       * die Spalte hat einen Default, aber der greift nur beim Anlegen.
+       * hat, soll ankommen. `updated_at` wird ausdrücklich mitgeschrieben,
+       * da der Default nur beim Anlegen greift.
        */
       const { error } = await client.from(TABELLE).upsert(
         {
@@ -39,7 +39,7 @@ export function supabaseProfil(client: SupabaseClient): ProfilTabelle {
       )
 
       if (error !== null) {
-        throw new ProfilFehler('Ihr Name war nicht zu hinterlegen', error)
+        throw new ProfilFehler('Ihr Name konnte nicht hinterlegt werden', error)
       }
     },
   }

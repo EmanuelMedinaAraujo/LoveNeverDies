@@ -6,8 +6,8 @@
  * Person verloren (§11.1). `navigator.storage.persist()` bittet den Browser,
  * das zu unterlassen.
  *
- * Die Bitte laeuft still. Schlaegt sie fehl — Safari vergibt das Recht nur unter
- * eigenen Bedingungen, manche Browser kennen die API gar nicht — sagt die App
+ * Die Bitte laeuft still. Schlaegt sie fehl (Safari vergibt das Recht nur unter
+ * eigenen Bedingungen, manche Browser kennen die API gar nicht), sagt die App
  * nichts. Ein Hinweis waere eine Warnung ohne Handlungsmoeglichkeit; worauf das
  * Onboarding stattdessen sichtbar draengt, ist die zweite Person im Fall.
  */

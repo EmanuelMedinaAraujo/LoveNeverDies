@@ -8,17 +8,17 @@
  *
  * Zwei Stufen statt einer, und der Grund steht in §3.1: Eine Rotation von `K_c`
  * (§3.4) muss dann nur die 32 Byte des DEKs neu wrappen. Der Payload wird nie
- * neu verschlüsselt und eine 15-MB-Datei nie neu hochgeladen — ein Fall mit 40
+ * neu verschlüsselt und eine 15-MB-Datei nie neu hochgeladen. Ein Fall mit 40
  * Aufgaben und 10 Scans kostet wenige Kilobyte statt hunderte Megabyte.
  *
- * **Der DEK ändert sich nie.** Was rotiert, ist ausschließlich der Schlüssel,
+ * Der DEK ändert sich nie. Was rotiert, ist ausschließlich der Schlüssel,
  * unter dem er liegt: `K_c`, `K_v` bei Tresor-Items oder `K_p` bei privaten
- * (§3.7). Welcher es ist, sagt das `kid` der Zeile — dieses Modul sieht davon
+ * (§3.7). Welcher es ist, sagt das `kid` der Zeile. Dieses Modul sieht davon
  * nichts und braucht es auch nicht, denn gewrappt wird symmetrisch und immer
  * gleich.
  *
  * Ein eigenes Modul und kein direkter Aufruf von {@link verschluessele}: Der
- * Unterschied zwischen „irgendein Ciphertext" und „ein Schlüssel" ist die
+ * Unterschied zwischen "irgendein Ciphertext" und "ein Schlüssel" ist die
  * Längenprüfung beim Entpacken, und die gehört an genau eine Stelle.
  */
 
@@ -46,7 +46,7 @@ export function erzeugeDek(): Uint8Array {
 /**
  * Wrappt `dek` unter dem Schlüssel, der für dieses Item gilt.
  *
- * @param schluessel `K_c`, `K_v` oder `K_p` — was das `kid` der Zeile benennt.
+ * @param schluessel `K_c`, `K_v` oder `K_p`, was das `kid` der Zeile benennt.
  * @throws {DekFehler} wenn `dek` keine 32 Byte hat. Ein kürzerer Schlüssel wäre
  * schwächer, als das Format verspricht, und fiele erst weit später auf.
  */

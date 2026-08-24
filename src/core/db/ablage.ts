@@ -6,12 +6,12 @@
  * Entschlüsseln steht in `core/crypto/dateikrypto.ts`; was durch diese Tür
  * geht, sind Bytes ohne Bedeutung.
  *
- * **Der Pfad ist keine freie Angabe.** `{case_id}/{item_id}` (§7) — der erste
+ * Der Pfad ist keine freie Angabe: `{case_id}/{item_id}` (§7). Der erste
  * Abschnitt trägt die Zugriffsregel (`is_member((storage.foldername(name))[1])`),
  * der zweite bindet die Datei an genau ein Item. Deshalb gibt es
- * {@link dokumentPfad} und keine Zeichenkette am Aufrufort.
+ * {@link dokumentPfad} und keine freie Zeichenkette am Aufrufort.
  *
- * **Kein Überschreiben.** Ein Dokument entsteht und wird gelöscht, nie ersetzt:
+ * Kein Überschreiben: Ein Dokument entsteht und wird gelöscht, nie ersetzt:
  * Der DEK gilt für genau diesen Ciphertext, und ein zweiter Upload unter
  * demselben Pfad machte die Datei für jedes Gerät unlesbar, das den alten
  * Payload schon hat. Die Migration lässt UPDATE auf dem Bucket deshalb gar
@@ -24,7 +24,7 @@ export const DOKUMENTE_BUCKET = 'documents'
 /**
  * Der Ablageort eines Dokuments: `{case_id}/{item_id}` (§7).
  *
- * Dieselbe Gleichung steht als CHECK auf `items` — der Aufräumjob findet die
+ * Dieselbe Gleichung steht als CHECK auf `items`. Der Aufräumjob findet die
  * Datei zu einem getombsteten Item ausschließlich über sie.
  */
 export function dokumentPfad(fallId: string, itemId: string): string {
@@ -54,9 +54,9 @@ export type Dokumentablage = {
   /**
    * Entfernt die Datei.
    *
-   * Der Weg, den §7 „Löschen entfernt auch die Datei" nennt. Scheitert er,
+   * Der Weg, den §7 "Löschen entfernt auch die Datei" nennt. Scheitert er,
    * bleibt der Tombstone trotzdem stehen und der serverseitige Aufräumjob
-   * holt die Datei nach sieben Tagen — Löschen gewinnt endgültig, auch wenn
+   * holt die Datei nach sieben Tagen. Löschen gewinnt endgültig, auch wenn
    * die Verbindung mitten darin abbricht.
    */
   entferne(pfad: string): Promise<void>

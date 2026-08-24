@@ -3,7 +3,7 @@
  *
  * Eine Zahl je Fall: die höchste `seq`, die dieses Gerät gesehen hat. Sie ist
  * zugleich der Vergleichswert für den billigen Check (`cases.version`) und die
- * Untergrenze des nächsten Deltas (`seq > watermark`) — dass beides dieselbe
+ * Untergrenze des nächsten Deltas (`seq > watermark`). Dass beides dieselbe
  * Zahl ist, ist die Entscheidung aus §4, den Fallzähler und den Sequenzzähler
  * zu einem zu machen.
  *
@@ -22,15 +22,15 @@ import type { InhaltZeile } from '../db/inhalte'
 export function brauchtDelta(version: number | null, wasserzeichen: number): boolean {
   // Ein Fall ohne `version` ist entweder weg oder nicht sichtbar. Der Abruf
   // scheitert dann sichtbar, statt dass der Fall still auf dem Cache-Stand
-  // einfriert — und §5 verlangt, dass nichts stillschweigend verschwindet.
+  // einfriert. §5 verlangt, dass nichts stillschweigend verschwindet.
   return version === null || version !== wasserzeichen
 }
 
 /**
  * Schritt 2 aus §5, danach: Wohin rückt das Wasserzeichen?
  *
- * **Auf die höchste `seq` des Deltas, nie auf die `version` aus dem billigen
- * Check.** Zwischen den beiden Abfragen kann ein anderes Gerät weiterschreiben:
+ * Auf die höchste `seq` des Deltas, nie auf die `version` aus dem billigen
+ * Check: Zwischen den beiden Abfragen kann ein anderes Gerät weiterschreiben.
  * Der Check sagt 9, das Delta bringt 3 und 4, die Nummern 5 bis 9 committen
  * dazwischen. Wer jetzt auf 9 rückt, sieht sie nie wieder. Diese Funktion
  * bekommt die `version` deshalb gar nicht erst zu sehen.

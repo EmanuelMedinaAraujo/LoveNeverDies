@@ -5,12 +5,12 @@
  * `n` Angehörige halten je einen Teil, `k = max(1, ⌈2n/3⌉)` davon rekonstruieren
  * den Schlüssel.
  *
- * **Zwei Dinge tut dieses Modul bewusst nicht.**
+ * Zwei Dinge tut dieses Modul bewusst nicht:
  *
  * Es kennt `n = 1` nicht. Die Bibliothek verlangt `shares ≥ 2` und
- * `threshold ≥ 2`, und bei einem einzigen Angehörigen ist `share_1 = K_v` ohnehin
- * ein Direktwrap statt eines Splits — die einzige Verzweigung im ganzen
- * Tresorpfad, und sie gehört dorthin, nicht hierher.
+ * `threshold ≥ 2`, und bei einem einzelnen Angehörigen ist `share_1 = K_v` ohnehin
+ * ein Direktwrap statt eines Splits. Das ist die einzige Verzweigung im ganzen
+ * Tresorpfad.
  *
  * Und es sagt nicht, ob eine Kombination gelungen ist. Aus zu wenigen Teilen
  * fallen bereitwillig Bytes, nur eben die falschen; Shamir kann das nicht
@@ -39,7 +39,7 @@ export class ShamirFehler extends Error {
  * Zerlegt `geheimnis` in `anzahl` Teile, von denen `schwelle` genügen.
  *
  * Jeder Aufruf zieht ein frisches Polynom. Teile aus zwei Aufrufen liegen auf
- * verschiedenen Kurven und lassen sich nicht mischen — das ist der Grund,
+ * verschiedenen Kurven und lassen sich nicht mischen. Das ist der Grund,
  * warum eine Neuverteilung die Teile der vorigen Runde wertlos macht, ohne
  * `K_v` selbst anzufassen.
  */
@@ -70,7 +70,7 @@ export async function teileGeheimnis(
 /**
  * Setzt Teile zusammen.
  *
- * @returns die rekonstruierten Bytes — auch dann, wenn es zu wenige oder
+ * @returns die rekonstruierten Bytes, auch dann, wenn es zu wenige oder
  * fremde Teile waren. Wer wissen muss, ob das Ergebnis stimmt, prüft es gegen
  * das `vault_commitment` (§3.5).
  * @throws {ShamirFehler} wenn die Teile schon der Form nach nicht zusammenpassen.

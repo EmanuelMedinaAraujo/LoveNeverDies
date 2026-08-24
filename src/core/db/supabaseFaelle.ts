@@ -2,7 +2,7 @@
  * `cases` über Supabase (DESIGN.md §4).
  *
  * Die Umsetzung des Ports aus `faelle.ts`. Angelegt wird ausschließlich über
- * die RPC `lege_trauerfall_an` — sie legt Fall, Mitgliedschaft und beide Wraps
+ * die RPC `lege_trauerfall_an`: Sie legt Fall, Mitgliedschaft und beide Wraps
  * in einer Transaktion an, damit keine der drei Zeilen ohne die anderen
  * entsteht.
  */
@@ -80,7 +80,7 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
       })
 
       if (error !== null) {
-        throw new FaelleFehler('Der Trauerfall war nicht anzulegen', error)
+        throw new FaelleFehler('Der Trauerfall konnte nicht angelegt werden', error)
       }
     },
 
@@ -103,7 +103,7 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
       })
 
       if (error !== null) {
-        throw new FaelleFehler('Der Vorsorgefall war nicht anzulegen', error)
+        throw new FaelleFehler('Der Vorsorgefall konnte nicht angelegt werden', error)
       }
     },
 
@@ -111,7 +111,7 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
       const { error } = await client.from(TABELLE).delete().eq('id', fallId)
 
       if (error !== null) {
-        throw new FaelleFehler('Der Vorsorgefall war nicht zu löschen', error)
+        throw new FaelleFehler('Der Vorsorgefall konnte nicht gelöscht werden', error)
       }
     },
 
@@ -123,7 +123,7 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
         .returns<RohZeile[]>()
 
       if (error !== null) {
-        throw new FaelleFehler('Die eigenen Fälle waren nicht abzurufen', error)
+        throw new FaelleFehler('Die eigenen Fälle konnten nicht abgerufen werden', error)
       }
 
       return data.map(alsZeile)
@@ -139,7 +139,7 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
         .maybeSingle<{ version: number | string }>()
 
       if (error !== null) {
-        throw new FaelleFehler('Der Stand dieses Falls war nicht abzurufen', error)
+        throw new FaelleFehler('Der Stand dieses Falls konnte nicht abgerufen werden', error)
       }
 
       return data === null ? null : Number(data.version)

@@ -2,22 +2,22 @@
  * Den Rechtskatalog in einem Fall instanziieren (DESIGN.md §8).
  *
  * Ein neu angelegter Trauerfall ist nicht leer. Er enthält die Aufgabenliste
- * der Juristinnen — verschlüsselt wie jedes andere Item, mit Rechtsgrundlage,
+ * der Juristinnen: verschlüsselt wie jedes andere Item, mit Rechtsgrundlage,
  * Frist und Quelle in den Payload kopiert.
  *
- * **Instanziierung ist strukturell idempotent.** Zwei Mitglieder können
+ * Instanziierung ist strukturell idempotent: Zwei Mitglieder können
  * gleichzeitig beginnen; koordinieren kann der Server das nicht, denn er sieht
  * nur Ciphertext. Statt eines Mandats mit Ablauf und Aufräumlogik rechnet jedes
  * Gerät dieselbe Item-ID aus (`katalogItemId`), und ein `insert … on conflict
  * do nothing` macht aus dem zweiten Anlauf einen Nulleffekt.
  *
- * **Der Katalog initialisiert, mehr nicht.** Danach sind es gewöhnliche Items:
+ * Der Katalog initialisiert, mehr nicht: Danach sind es gewöhnliche Items:
  * frei änderbar, ergänzbar, löschbar. Eine gelöschte Katalogaufgabe kommt
- * deshalb auch nicht wieder — der Tombstone steht im Bestand, und was im
+ * deshalb auch nicht wieder; der Tombstone steht im Bestand, und was im
  * Bestand steht, wird hier nicht noch einmal angelegt.
  *
- * **Warum das nicht durch die Offline-Queue geht** (§5). Die Queue trägt, was
- * jemand getippt hat, und meldet einen Fehlschlag als „konnte nicht gespeichert
+ * Warum das nicht durch die Offline-Queue geht (§5): Die Queue trägt, was
+ * jemand getippt hat, und meldet einen Fehlschlag als "konnte nicht gespeichert
  * werden". Hier tippt niemand: Das Anlegen gehört zum Übergang nach
  * `trauerfall`, der ohnehin online stattfindet, und ein Duplikat ist kein
  * Fehlschlag, sondern der Normalfall des Rennens. Vierzig Aufgaben als vierzig
@@ -36,7 +36,7 @@ import {
 } from './aufgabenService'
 import { NIEMAND } from './zuweisung'
 
-/** Die Instanziierung war nicht durchzuführen. */
+/** Die Instanziierung konnte nicht durchgeführt werden. */
 export class KatalogFehler extends Error {
   constructor(nachricht: string) {
     super(nachricht)
@@ -49,7 +49,7 @@ export class KatalogFehler extends Error {
  *
  * `kcat` steht neben `kc`, weil beide gebraucht werden und beide etwas anderes
  * tun: `K_c` wrappt die DEKs, `K_cat` erzeugt die IDs. Getrennt sind sie, weil
- * `K_c` rotiert und `K_cat` nie (§3.4, §8) — zwei Mitglieder auf verschiedenen
+ * `K_c` rotiert und `K_cat` nie (§3.4, §8): Zwei Mitglieder auf verschiedenen
  * `K_c`-Generationen rechnen trotzdem dieselben IDs aus.
  */
 export type Katalogfall = Fallschluessel & {
@@ -63,15 +63,15 @@ export type Katalogfall = Fallschluessel & {
  * ihre Item-ID bekommt (§8).
  *
  * Unteraufgaben sind eigene Zeilen (§7), also brauchen sie eigene
- * deterministische IDs — sonst legten zwei gleichzeitig instanziierende
+ * deterministische IDs, sonst legten zwei gleichzeitig instanziierende
  * Mitglieder jede Unteraufgabe doppelt an. Abgeleitet wird sie aus der ID der
  * Elternaufgabe und der Stelle in ihrer Liste; das `#` kann mit keiner echten
  * Katalog-ID kollidieren, denn die Quelltabelle lässt nur `[a-z0-9-]` zu.
  *
- * Die **Stelle** und nicht der Titel: Ein Tippfehler, den die Juristinnen in
+ * Die Stelle und nicht der Titel: Ein Tippfehler, den die Juristinnen in
  * einer Unteraufgabe beheben, soll den Text ändern und nicht eine zweite
  * Unteraufgabe anlegen. Innerhalb eines Falls ist der Katalog ohnehin
- * eingefroren (§8) — die Stelle kann sich unter einem laufenden Fall nicht
+ * eingefroren (§8): Die Stelle kann sich unter einem laufenden Fall nicht
  * verschieben.
  */
 function unteraufgabenPfad(aufgabeId: string, stelle: number): string {
@@ -81,13 +81,13 @@ function unteraufgabenPfad(aufgabeId: string, stelle: number): string {
 /**
  * Eine Katalogaufgabe als Payload eines Items (§8).
  *
- * Titel und Kurzbeschreibung werden die Aufgabe selbst — änderbar wie bei jeder
+ * Titel und Kurzbeschreibung werden die Aufgabe selbst: änderbar wie bei jeder
  * anderen. Alles Übrige wird ihre Herkunft und altert mit ihr: Rechtsgrundlage,
  * Frist, zuständige Stelle und Quelle stehen ab jetzt im Item und nicht mehr im
  * Katalog.
  *
  * @param dependsOn die Item-IDs, in die `haengtAbVon` bereits übersetzt ist.
- * Der Katalog nennt Katalog-IDs, das Item nennt UUIDs (§7) — übersetzt wird
+ * Der Katalog nennt Katalog-IDs, das Item nennt UUIDs (§7); übersetzt wird
  * genau hier, denn nur hier stehen `K_cat` und die `case_id` beisammen.
  */
 function payloadAus(
@@ -137,7 +137,7 @@ function unterpayloadAus(titel: string, parentId: string): Aufgabenpayload {
  * Prüft, dass dieser Build den Stand kennt, der für den Fall eingefroren ist.
  *
  * Ein Fall trägt seinen Katalogstand (§8). Ein Client mit einem anderen Build
- * dürfte nicht einfach seinen eigenen Katalog hineinschreiben — die Items
+ * dürfte nicht einfach seinen eigenen Katalog hineinschreiben: Die Items
  * trügen dann eine Herkunft, die der Fall nie hatte, und zwei Mitglieder
  * legten verschiedene Aufgaben mit verschiedenen IDs an.
  */
@@ -156,15 +156,15 @@ function pruefeStand(katalog: Katalog, fall: Katalogfall): void {
 }
 
 /**
- * Die Zeilen, die diesem Fall aus dem Katalog noch fehlen — fertig
+ * Die Zeilen, die diesem Fall aus dem Katalog noch fehlen: fertig
  * verschlüsselt.
  *
  * @param katalog der Stand, den dieser Build mitbringt. Als Parameter und
  * nicht als Import, weil `hooks` die Schicht `content` nicht sehen darf (§9)
- * und weil die Tests einen eigenen Stand vorgeben können — die Voreinstellung
+ * und weil die Tests einen eigenen Stand vorgeben können: Die Voreinstellung
  * ist der ausgelieferte.
- * @param vorhandeneIds die IDs aller Items des Falls, **Tombstones
- * eingeschlossen**. Eine gelöschte Katalogaufgabe ist erledigt und nicht
+ * @param vorhandeneIds die IDs aller Items des Falls, Tombstones
+ * eingeschlossen. Eine gelöschte Katalogaufgabe ist erledigt und nicht
  * abwesend; stünde sie nicht in dieser Menge, legte der nächste Start sie
  * wieder an.
  * @throws {KatalogFehler} wenn der Fall auf einem anderen Katalogstand steht.
@@ -182,7 +182,7 @@ export async function fehlendeKatalogitems(
    * Zuerst alle Item-IDs, dann erst die Payloads. `dependsOn` einer Aufgabe
    * nennt andere Katalogaufgaben (§8), und deren Item-IDs müssen schon
    * feststehen, wenn ihr Payload geschrieben wird. Der Import stellt sicher,
-   * dass jeder Verweis eine Aufgabe derselben Tabelle trifft — der `filter`
+   * dass jeder Verweis eine Aufgabe derselben Tabelle trifft; der `filter`
    * unten wirft einen unauflösbaren Verweis trotzdem weg, denn ein Verweis
    * ins Leere darf höchstens eine fehlende Abhängigkeit sein und nie ein
    * Absturz beim Anlegen des ganzen Katalogs.
@@ -217,7 +217,7 @@ export async function fehlendeKatalogitems(
 
     /*
      * Die Unteraufgaben unabhängig von ihrer Elternaufgabe: Steht die schon,
-     * kann eine Unteraufgabe trotzdem fehlen — etwa weil ein früherer Anlauf
+     * kann eine Unteraufgabe trotzdem fehlen, etwa weil ein früherer Anlauf
      * mittendrin abbrach. Und ist eine gelöscht, steht ihr Tombstone in
      * `vorhandeneIds` und sie kommt nicht wieder (§5).
      */
@@ -243,7 +243,7 @@ export async function fehlendeKatalogitems(
  * Instanziiert den Katalog: rechnen, was fehlt, und es in einem Zug anlegen.
  *
  * @returns wie viele Zeilen hinausgingen. Das ist nicht, wie viele entstanden
- * sind — was ein anderes Mitglied im selben Moment angelegt hat, übergeht das
+ * sind; was ein anderes Mitglied im selben Moment angelegt hat, übergeht das
  * `on conflict` still, und genau dafür ist es da.
  */
 export async function instanziiereKatalog(

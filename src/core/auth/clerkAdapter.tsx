@@ -8,7 +8,7 @@ import { AuthKontextProvider, type AuthKontextWert, type AuthZustand } from './a
  *
  * Dieses Modul kennt kein Aussehen und keinen Screen. Es uebersetzt nur Clerks
  * Sitzungszustand in `AuthZustand`. Das Anmeldeformular liegt in
- * `screens/shared/Anmelden` — ein Screen ist ein Screen, und `core` zeigt
+ * `screens/shared/Anmelden`. Ein Screen ist ein Screen, und `core` zeigt
  * niemals nach oben (§9).
  */
 

@@ -3,17 +3,17 @@
  *
  * Zwei Regeln, beide ohne Client-Uhr:
  *
- *   1. **Last-Write-Wins über die serverseitig vergebene `seq`.** Die Nummer
+ *   1. Last-Write-Wins über die serverseitig vergebene `seq`. Die Nummer
  *      kommt vom Trigger `items_assign_seq` unter Zeilensperre (§4), sie ist je
  *      Fall streng steigend, und sie ist damit die einzige Reihenfolge, auf die
  *      sich zwei Geräte einigen können. Uhren tun das nicht.
- *   2. **Löschen gewinnt endgültig.** Die Datenbank weist ein `deleted → false`
+ *   2. Löschen gewinnt endgültig. Die Datenbank weist ein `deleted → false`
  *      ab (§4). Hier steht dieselbe Regel ein zweites Mal, denn der Server gilt
  *      als potenziell bösartig (§11), und eine Regel, die nur an einer Stelle
  *      steht, ist keine.
  *
  * Diese Datei kennt weder Netz noch Speicher noch Schlüssel. Sie bekommt zwei
- * Listen und gibt eine zurück — deshalb lässt sich die Frage „was passiert bei
+ * Listen und gibt eine zurück: Deshalb lässt sich die Frage "was passiert bei
  * zwei nebenläufigen Änderungen?" hier beantworten und nirgends sonst.
  */
 
@@ -38,7 +38,7 @@ export type Vereinigung = {
  * Legt fest, was aus zwei Fassungen derselben Zeile wird.
  *
  * Der Tombstone überlebt die Verrechnung immer. Die höhere `seq` überlebt
- * ebenfalls immer — auch die eines abgewiesenen Edits: Bliebe die Nummer
+ * ebenfalls immer, auch die eines abgewiesenen Edits: Bliebe die Nummer
  * stehen, während das Wasserzeichen darüber hinausgewandert ist, holte kein
  * Delta diese Zeile je wieder, und der Bestand bliebe für immer auf dem alten
  * Stand.
@@ -103,15 +103,15 @@ export function vereine(bestand: InhaltZeile[], delta: InhaltZeile[]): Vereinigu
 
 /**
  * Legt die noch nicht übertragenen Mutationen über den bestätigten Bestand
- * (§5: „optimistisch lokal angewandt").
+ * (§5: "optimistisch lokal angewandt").
  *
- * **Warum als Überlagerung und nicht im Cache.** Der Cache trägt ausschliesslich
- * das, was der Server bestätigt hat — genau das verlangt §5 mit „byteidentisch
+ * Warum als Überlagerung und nicht im Cache: Der Cache trägt ausschliesslich
+ * das, was der Server bestätigt hat: Genau das verlangt §5 mit "byteidentisch
  * zum Server". Was noch wartet, liegt in der Queue und wird bei jedem Rendern
  * darübergelegt. Das ist zugleich die Rücknahme abgelehnter Änderungen: Eine
  * Mutation, die der Server verwirft, verlässt die Queue, und ihre Wirkung
  * verschwindet mit ihr. Läge sie im Cache, bliebe ein abgelehntes Edit dort für
- * immer stehen — der Delta-Sync brächte es nie zurück, weil sich auf dem Server
+ * immer stehen. Der Delta-Sync brächte es nie zurück, weil sich auf dem Server
  * nichts geändert hat.
  *
  * @param mutationen in der Reihenfolge des Anhängens.
@@ -143,7 +143,7 @@ export function wendeAn(zeilen: InhaltZeile[], mutationen: Mutation[]): InhaltZe
 
     if (bisher === undefined) {
       // Kein Anlegen dazu und keine bestätigte Zeile: Es gibt nichts, worüber
-      // sich etwas legen liesse. Eine erfundene Zeile wäre schlimmer — sie
+      // sich etwas legen liesse. Eine erfundene Zeile wäre schlimmer: Sie
       // erschiene als Aufgabe ohne Inhalt.
       continue
     }

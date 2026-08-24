@@ -6,28 +6,27 @@
  * ```
  *
  * Zwei Mitglieder können gleichzeitig instanziieren. Koordinieren kann der
- * Server das nicht — die Aufgaben sind Ende-zu-Ende-verschlüsselt, er sieht nur
+ * Server das nicht. Die Aufgaben sind Ende-zu-Ende-verschlüsselt, er sieht nur
  * Ciphertext. Statt eines Mandats mit Ablauf und Aufräumlogik rechnen alle
  * dieselbe ID aus, und ein `insert … on conflict do nothing` macht aus dem
  * zweiten Anlauf einen Nulleffekt.
  *
- * **Warum der HMAC und nicht `UUIDv5(fall_id, catalog_task_id)`.** Das schlichte
- * v5 könnte der Server nachrechnen: Der Katalog ist öffentlich, die `case_id`
+ * Warum der HMAC und nicht `UUIDv5(fall_id, catalog_task_id)`: Das schlichte
+ * v5 könnte der Server nachrechnen. Der Katalog ist öffentlich, die `case_id`
  * steht in seiner Tabelle. Er ordnete jede Zeile ihrer Katalogaufgabe zu und
- * wüsste, wer eine Erbausschlagung offen hat — aus einer Tabelle, die außer
+ * wüsste, wer eine Erbausschlagung offen hat, aus einer Tabelle, die außer
  * Ciphertext nichts enthält. Der HMAC nimmt ihm das: Ohne `K_cat` ist keine ID
  * vorberechenbar, und `K_cat` hat er nie gesehen.
  *
- * **Warum `K_cat` und nicht `K_c`.** `K_c` rotiert (§3.4). Zwei Mitglieder auf
+ * Warum `K_cat` und nicht `K_c`: `K_c` rotiert (§3.4). Zwei Mitglieder auf
  * verschiedenen Seiten einer Rotationsgrenze rechneten verschiedene IDs für
  * dieselbe Aufgabe aus, `on conflict` liefe ins Leere und der Katalog stünde
- * doppelt da — genau der Fehler, den die Konstruktion verhindern soll. `K_cat`
+ * doppelt da. Das ist genau der Fehler, den die Konstruktion verhindern soll. `K_cat`
  * entsteht bei der Fallanlage, wird über dieselben `key_wraps` verteilt und nie
  * rotiert.
  *
- * Die `case_id` ist der Namensraum und nicht bloß Beiwerk: Sie trennt zwei
- * Fälle auch dann, wenn zwei Schlüssel je dasselbe wären — eine Zusage, die
- * nicht am Zufallsgenerator hängen muss, wenn sie umsonst zu haben ist.
+ * Die `case_id` ist der Namensraum und nicht bloß Beiwerk. Sie trennt zwei
+ * Fälle auch dann, wenn zwei Schlüssel je dasselbe wären.
  */
 
 import { alsBufferSource, hexText, hmacSha256, textBytes, verkette, webcrypto } from './bytes'
@@ -93,7 +92,7 @@ async function uuidv5(namensraum: Uint8Array, name: Uint8Array): Promise<string>
 /**
  * Die Item-ID, die eine Katalogaufgabe in einem bestimmten Fall bekommt.
  *
- * Bitgleich auf jedem Gerät, das `K_cat` hat — und auf keinem anderen.
+ * Bitgleich auf jedem Gerät, das `K_cat` hat, und auf keinem anderen.
  *
  * @param kcat der Katalogschlüssel des Falls, 32 Byte.
  * @param fallId die `case_id` als Namensraum.

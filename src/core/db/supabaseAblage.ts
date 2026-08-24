@@ -16,7 +16,7 @@ import { AblageFehler, DOKUMENTE_BUCKET, type Dokumentablage } from './ablage'
  * Er steht im verschlüsselten Payload (§3.3) und hat im Header nichts zu
  * suchen: `image/jpeg` neben einem Ordner, der eine `case_id` heißt, sagt
  * bereits, dass hier jemand ein Dokument fotografiert hat. Beim Öffnen kommt
- * der Typ ohnehin aus dem Payload — ausgeliefert wird eine undurchsichtige
+ * der Typ ohnehin aus dem Payload. Ausgeliefert wird eine undurchsichtige
  * Bytefolge, und genau das ist sie.
  */
 const OHNE_TYP = 'application/octet-stream'
@@ -29,8 +29,8 @@ export function supabaseAblage(client: SupabaseClient): Dokumentablage {
       const { error } = await bucket().upload(pfad, new Blob([ciphertext as BlobPart]), {
         contentType: OHNE_TYP,
         // Kein Überschreiben: siehe `ablage.ts`. Der Bucket lässt UPDATE
-        // ohnehin nicht zu — hier scheitert es mit einer Meldung statt mit
-        // „row-level security".
+        // ohnehin nicht zu. Hier scheitert es mit einer Meldung statt mit
+        // "row-level security".
         upsert: false,
       })
 

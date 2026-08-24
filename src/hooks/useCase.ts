@@ -1,7 +1,7 @@
 /**
  * Der Fall, in dem sich die angemeldete Person gerade befindet (DESIGN.md §2, §3.6).
  *
- * Lädt, sobald das Gerät angemeldet ist — vorher gibt es weder `identitaet`
+ * Lädt, sobald das Gerät angemeldet ist. Vorher gibt es weder `identitaet`
  * noch die `device_id`, die `key_wraps` braucht. `aktiver` ist der erste
  * eigene Fall; eine Wahl zwischen mehreren Fällen kommt mit der Kopplung (§6)
  * und ist hier noch nicht gebaut.

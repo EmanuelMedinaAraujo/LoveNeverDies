@@ -1,7 +1,7 @@
 /**
  * Wie ein Trauerfall in der Oberfläche heißt (DESIGN.md §2).
  *
- * "Hans Weber · Trauerfall seit 12. Mai 2026" statt eines Sammelbegriffs — §2
+ * "Hans Weber · Trauerfall seit 12. Mai 2026" statt eines Sammelbegriffs: §2
  * verlangt ausdrücklich den Namen der Person, nicht "Ihr Fall" oder Ähnliches.
  */
 

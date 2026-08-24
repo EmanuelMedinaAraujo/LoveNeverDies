@@ -1,7 +1,7 @@
 /**
  * Dokumente aufnehmen, ansehen und löschen (DESIGN.md §7, §3.1, §5).
  *
- * §7: „Dokument einfach abfotografieren" — man hält die Sterbeurkunde vor die
+ * §7: "Dokument einfach abfotografieren" – man hält die Sterbeurkunde vor die
  * Kamera, sie landet verschlüsselt am Aufgabendetail und lässt sich später
  * wieder ansehen.
  *
@@ -15,18 +15,18 @@
  * Löschen    Tombstone setzen, dann das Storage-Objekt entfernen
  * ```
  *
- * **Ein DEK für beides.** Metadaten und Datei liegen unter demselben
- * Schlüssel — zwei wären zwei Wraps in einer Zeile, die nur eine Spalte dafür
+ * Ein DEK für beides: Metadaten und Datei liegen unter demselben
+ * Schlüssel. Zwei wären zwei Wraps in einer Zeile, die nur eine Spalte dafür
  * hat. Die Nonce ist je Aufruf frisch (§3.2), es gibt also nichts
  * wiederzuverwenden.
  *
- * **Im Klartext steht genau eine Angabe mehr als bei einer Aufgabe:**
+ * Im Klartext steht genau eine Angabe mehr als bei einer Aufgabe:
  * `storage_path`. Dateiname, MIME-Typ, Größe und die Aufgabe, an der das
  * Dokument hängt, liegen im Payload (§3.3).
  *
- * **Dokumente gehen nicht in die Offline-Queue** (§5). Eine 15-MB-Datei in
+ * Dokumente gehen nicht in die Offline-Queue (§5). Eine 15-MB-Datei in
  * IndexedDB zwischenzulagern, um sie beim Reconnect hochzuladen, wäre ein
- * zweiter Speicher mit eigener Verdrängung und eigenem Aufräumen — und die
+ * zweiter Speicher mit eigener Verdrängung und eigenem Aufräumen. Die
  * Aufnahme selbst braucht ohnehin eine Verbindung, damit das Storage-Objekt
  * und die Item-Zeile zusammen entstehen. Ohne Netz ist die Schaltfläche
  * gesperrt, und das steht auch da.
@@ -41,7 +41,7 @@ import type { InhalteTabelle, InhaltZeile } from '../core/db/inhalte'
 import { uuidv7 } from '../core/uuidv7'
 import type { Fallschluessel } from './aufgabenService'
 
-/** Ein Dokument war nicht aufzunehmen, nicht zu öffnen oder nicht zu löschen. */
+/** Ein Dokument konnte nicht aufgenommen, geöffnet oder gelöscht werden. */
 export class DokumentFehler extends Error {
   constructor(nachricht: string, options?: ErrorOptions) {
     super(nachricht, options)
@@ -52,15 +52,15 @@ export class DokumentFehler extends Error {
 /**
  * 15 MB (§7). Keine Chunks: Eine Datei ist genau ein Storage-Objekt.
  *
- * Die Grenze steht doppelt — hier und als `file_size_limit` am Bucket. Diese
+ * Die Grenze steht doppelt: hier und als `file_size_limit` am Bucket. Diese
  * Stelle sagt einer Person, was los ist, bevor 20 MB durch die Leitung gehen;
  * die andere trägt den Fall, in dem jemand an dieser vorbeikommt.
  */
 export const MAX_DOKUMENT_BYTES = 15 * 1024 * 1024
 
 /**
- * Was der Dienst von einer Datei braucht. `File` aus einem `<input>` erfüllt es
- * — der schmalere Typ steht hier, damit ein Test kein DOM aufbauen muss.
+ * Was der Dienst von einer Datei braucht. `File` aus einem `<input>` erfüllt es;
+ * der schmalere Typ steht hier, damit ein Test kein DOM aufbauen muss.
  */
 export type Dateiauswahl = {
   name: string
@@ -74,7 +74,7 @@ export type Dateiauswahl = {
  * Der verschlüsselte Inhalt eines Dokuments (§3.3).
  *
  * `aufgabeId` liegt hier und nicht in einer Spalte: Dass ein Dokument zu einer
- * Aufgabe gehört, ist Inhalt und geht den Server nichts an — genau wie
+ * Aufgabe gehört, ist Inhalt und geht den Server nichts an, genau wie
  * `parentId` bei einer Unteraufgabe.
  */
 export type Dokumentpayload = {
@@ -83,7 +83,7 @@ export type Dokumentpayload = {
   mimetyp: string
   /** Die Größe im Klartext, in Byte. Für die Anzeige, nicht für die Logik. */
   groesse: number
-  /** Die Aufgabe, an der es hängt — oder `null`, wenn es allein im Fall steht. */
+  /** Die Aufgabe, an der es hängt, oder `null`, wenn es allein im Fall steht. */
   aufgabeId: string | null
   aufgenommenAm: string
 }
@@ -95,7 +95,7 @@ export type Dokument = {
   groesse: number
   aufgabeId: string | null
   aufgenommenAm: string
-  /** `{case_id}/{item_id}` (§7) — hergeleitet, nie aus dem Delta gelesen. */
+  /** `{case_id}/{item_id}` (§7), hergeleitet, nie aus dem Delta gelesen. */
   pfad: string
   /** Der DEK dieser Zeile, entpackt: Er öffnet Metadaten und Datei. */
   dek: Uint8Array
@@ -117,7 +117,7 @@ export type Dokumentwerkzeug = {
 }
 
 /**
- * Die Größe als Text — für eine Meldung und für die Liste im Aufgabendetail.
+ * Die Größe als Text: für eine Meldung und für die Liste im Aufgabendetail.
  *
  * Grob und mit Absicht: Ob eine Sterbeurkunde 2,3 oder 2,4 MB hat, ändert für
  * niemanden etwas. Dass sie 20 MB hat, schon.
@@ -129,22 +129,22 @@ export function groessentext(bytes: number): string {
 }
 
 /**
- * Weist eine zu große Datei ab, **bevor** sie gelesen wird.
+ * Weist eine zu große Datei ab, bevor sie gelesen wird.
  *
  * §7 verlangt eine klare Meldung statt eines stillschweigenden Abschneidens.
  * Die Prüfung steht deshalb vor `arrayBuffer()`: Eine 200-MB-Datei erst in den
  * Speicher zu ziehen, um sie dann abzulehnen, brächte auf einem Telefon die
- * ganze App zu Fall — und die Meldung käme nie an.
+ * ganze App zu Fall, und die Meldung käme nie an.
  */
 function pruefeGroesse(datei: Dateiauswahl): void {
   if (datei.size > MAX_DOKUMENT_BYTES) {
     throw new DokumentFehler(
-      `„${datei.name}" ist ${groessentext(datei.size)} groß. Mehr als 15 MB nimmt die App nicht an — fotografieren Sie das Dokument noch einmal mit kleinerer Auflösung.`,
+      `"${datei.name}" ist ${groessentext(datei.size)} groß. Mehr als 15 MB nimmt die App nicht an: Fotografieren Sie das Dokument noch einmal mit kleinerer Auflösung.`,
     )
   }
 
   if (datei.size === 0) {
-    throw new DokumentFehler(`„${datei.name}" ist leer. Da ist nichts zu speichern.`)
+    throw new DokumentFehler(`"${datei.name}" ist leer. Da ist nichts zu speichern.`)
   }
 }
 
@@ -156,7 +156,7 @@ function alsText(wert: unknown, ersatz = ''): string {
  * Liest, was in einem entschlüsselten Payload steht.
  *
  * @throws {DokumentFehler} wenn es kein Dokumentpayload ist. Der Aufrufer macht
- * daraus eine übersprungene Zeile — von aussen ist ein Defekt nicht von dem
+ * daraus eine übersprungene Zeile: Von aussen ist ein Defekt nicht von dem
  * privaten Item einer anderen Person zu unterscheiden (§11.8).
  */
 function lesePayload(klartext: Uint8Array): Dokumentpayload {
@@ -197,7 +197,7 @@ async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Doku
     /*
      * Hergeleitet und nicht aus der Zeile gelesen: Der CHECK
      * `items_storage_path_gehoert_zum_item` hält `{case_id}/{item_id}` fest,
-     * also sagt die Spalte nichts, was hier nicht schon steht — und der
+     * also sagt die Spalte nichts, was hier nicht schon steht, und der
      * Delta-Sync trägt sie deshalb gar nicht erst mit (§5).
      */
     pfad: dokumentPfad(zeile.fallId, zeile.id),
@@ -207,7 +207,7 @@ async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Doku
 }
 
 /**
- * Macht aus Ciphertext-Zeilen Dokumente — derselbe Schritt wie
+ * Macht aus Ciphertext-Zeilen Dokumente: derselbe Schritt wie
  * `aufgabenAusZeilen`, nur für `kind = 'file'`.
  *
  * Tombstones und Aufgaben fallen vorher heraus: Ein Tombstone ist leer und
@@ -238,12 +238,12 @@ export async function dokumenteAusZeilen(
 /**
  * Nimmt ein Dokument auf: verschlüsseln, hochladen, Zeile schreiben.
  *
- * **Erst die Datei, dann die Zeile.** Andersherum stünde ein Dokument in der
- * Liste, dessen Datei nie ankam — sichtbar, anklickbar und beim Öffnen ein
+ * Erst die Datei, dann die Zeile: Andersherum stünde ein Dokument in der
+ * Liste, dessen Datei nie ankam, sichtbar, anklickbar und beim Öffnen ein
  * Fehler. So gibt es für einen Moment eine Datei ohne Zeile: Sie ist für
  * niemanden sichtbar, und wenn das INSERT scheitert, räumt dieser Dienst sie
- * gleich wieder weg. Bleibt sie trotzdem liegen — der Verbindung ist alles
- * zuzutrauen —, holt sie der Aufräumjob nach sieben Tagen (§7).
+ * gleich wieder weg. Bleibt sie trotzdem liegen (der Verbindung ist alles
+ * zuzutrauen), holt sie der Aufräumjob nach sieben Tagen (§7).
  *
  * @param aufgabeId die Aufgabe, an der das Dokument hängt (§7), oder `null`.
  */
@@ -262,7 +262,7 @@ export async function nimmDokumentAuf(
     typ: 'dokument',
     name: datei.name === '' ? 'Dokument' : datei.name,
     // Ein Browser, der den Typ nicht erkennt, liefert eine leere Zeichenkette.
-    // „Unbekannt" ist ehrlicher als ein geratenes `image/jpeg`.
+    // "Unbekannt" ist ehrlicher als ein geratenes `image/jpeg`.
     mimetyp: datei.type === '' ? 'application/octet-stream' : datei.type,
     groesse: datei.size,
     aufgabeId,
@@ -295,7 +295,7 @@ export async function nimmDokumentAuf(
     await entferneStill(ablage, pfad)
 
     throw new DokumentFehler(
-      `„${payload.name}" war nicht zu speichern. ${ursache instanceof Error ? ursache.message : ''}`.trim(),
+      `"${payload.name}" konnte nicht gespeichert werden. ${ursache instanceof Error ? ursache.message : ''}`.trim(),
       { cause: ursache },
     )
   }
@@ -311,7 +311,7 @@ export async function nimmDokumentAuf(
   return { id, name, mimetyp, groesse, aufgabeId, aufgenommenAm, pfad, dek, kid: fall.kid }
 }
 
-/** Holt die Datei und entschlüsselt sie — der Weg zurück aus §7. */
+/** Holt die Datei und entschlüsselt sie: der Weg zurück aus §7. */
 export async function oeffneDokument(
   dokument: Dokument,
   ablage: Dokumentablage,
@@ -325,7 +325,7 @@ export async function oeffneDokument(
     // Hier ist ein Fehlschlag kein fremdes Item (§3.7), sondern eine
     // beschädigte Datei: Der DEK stammt aus derselben Zeile wie der Pfad.
     throw new DokumentFehler(
-      `„${dokument.name}" lässt sich nicht öffnen. Die Datei ist beschädigt.`,
+      `"${dokument.name}" lässt sich nicht öffnen. Die Datei ist beschädigt.`,
       { cause: ursache },
     )
   }
@@ -334,12 +334,12 @@ export async function oeffneDokument(
 /**
  * Löscht ein Dokument: Tombstone, dann Datei (§7).
  *
- * **In dieser Reihenfolge, und nicht umgekehrt.** Der Tombstone ist die
+ * In dieser Reihenfolge, und nicht umgekehrt: Der Tombstone ist die
  * endgültige Aussage (§5); scheitert er, bleibt das Dokument vollständig
  * stehen, statt als Zeile ohne Datei zurückzubleiben.
  *
  * Scheitert danach das Entfernen der Datei, ist das Löschen trotzdem
- * geschehen. Eine Fehlermeldung darüber wäre irreführend — sie sagte „hat
+ * geschehen. Eine Fehlermeldung darüber wäre irreführend: Sie sagte "hat
  * nicht geklappt" über etwas, das endgültig geklappt hat. Was liegen bleibt,
  * holt der Aufräumjob nach sieben Tagen; genau dafür gibt es ihn.
  */

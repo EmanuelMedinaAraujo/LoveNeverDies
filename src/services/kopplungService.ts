@@ -16,11 +16,11 @@
  *  Fall wird lesbar  ◄───── K_c und K_cat, gewrappt ──────────┘
  * ```
  *
- * **Der Prüfcode ist der einzige Schutz gegen einen bösartigen Server.** Ein
+ * Der Prüfcode ist der einzige Schutz gegen einen bösartigen Server. Ein
  * öffentlicher Schlüssel ist keine Identität; dass der Server einen echten
  * Namen dazu liefert, bindet ihn an eine authentifizierte Person, nicht an
  * diesen Schlüssel. Erst der mündliche Abgleich der sechs Ziffern schließt die
- * Lücke — und er deckt beide Schlüssel ab, weil ein Fingerprint nur über den
+ * Lücke; und er deckt beide Schlüssel ab, weil ein Fingerprint nur über den
  * KEM-Schlüssel den Signaturschlüssel austauschbar ließe (§3.6).
  *
  * Deshalb rechnet diese Datei den Prüfcode aus den Bytes, die der Server
@@ -55,7 +55,7 @@ export class KopplungFehler extends Error {
  * Acht Zeichen in zwei Vierergruppen.
  *
  * Am Telefon liest niemand acht Zeichen am Stück vor, ohne sich einmal zu
- * verzählen — und die Gruppierung ist Darstellung, nicht Inhalt: Eingelesen
+ * verzählen, und die Gruppierung ist Darstellung, nicht Inhalt: Eingelesen
  * wird der Code mit und ohne Bindestrich (§6).
  */
 export function gruppierterKopplungscode(code: string): string {
@@ -79,7 +79,7 @@ export function gruppierterPruefcode(pruefcode: string): string {
  *
  * Bindestriche und Kleinschreibung fallen weg; alles andere wird abgewiesen,
  * bevor es an den Server geht. Ein Fehlgriff, den der Client erkennt, zählt
- * nicht gegen das Rate-Limit (§4) — und wer sich vertippt hat, soll nicht
+ * nicht gegen das Rate-Limit (§4), und wer sich vertippt hat, soll nicht
  * dadurch bestraft werden, dass er es kein drittes Mal versuchen darf.
  *
  * @throws {KopplungFehler} mit einem Satz, der sagt, was zu tun ist.
@@ -96,7 +96,7 @@ export function normalisiereKopplungscode(eingabe: string): string {
   if ([...code].some((zeichen) => !KOPPLUNGSCODE_ALPHABET.includes(zeichen))) {
     // Die vier fehlen im Alphabet, weil sie sich am Telefon nicht unterscheiden
     // lassen (§6). Wer eines davon eingetippt hat, hat sich verhört, nicht
-    // vertippt — und die Meldung soll ihn genau darauf stoßen.
+    // vertippt, und die Meldung soll ihn genau darauf stoßen.
     throw new KopplungFehler(
       'In einem Kopplungscode kommen kein O, keine 0, kein I und keine 1 vor. Bitte hören Sie noch einmal nach.',
     )
@@ -118,11 +118,11 @@ export async function erzeugeKopplungscode(
 export type Kopplungsanfrage = {
   code: string
   angebot: Kopplungsangebot
-  /** Die sechs Ziffern aus §3.6, über **beide** Schlüssel des Angebots. */
+  /** Die sechs Ziffern aus §3.6, über beide Schlüssel des Angebots. */
   pruefcode: string
 }
 
-/** Warum eine Einlösung nicht durchging — in einem Satz für die Oberfläche. */
+/** Warum eine Einlösung nicht durchging: in einem Satz für die Oberfläche. */
 const ABWEISUNG: Record<string, string> = {
   gesperrt:
     'Zu viele Versuche in kurzer Zeit. Bitte warten Sie eine Viertelstunde und versuchen Sie es dann noch einmal.',
@@ -152,7 +152,7 @@ export async function loeseKopplungscodeEin(
 
   if (ergebnis.status !== 'ok') {
     throw new KopplungFehler(
-      ABWEISUNG[ergebnis.status] ?? 'Dieser Kopplungscode war nicht einzulösen.',
+      ABWEISUNG[ergebnis.status] ?? 'Dieser Kopplungscode konnte nicht eingelöst werden.',
     )
   }
 
@@ -167,7 +167,7 @@ export async function loeseKopplungscodeEin(
  * Wrappt `K_c` und `K_cat` eines Falls an das Gerät der anderen Seite.
  *
  * Beide Schlüssel zusammen und in einem Aufruf: Ein Fall, für den nur `K_c`
- * ankommt, ist für die andere Seite so unlesbar wie einer ohne beides — der
+ * ankommt, ist für die andere Seite so unlesbar wie einer ohne beides; der
  * `fallService` braucht beide Wraps, bevor er einen Fall überhaupt als lesbar
  * ausgibt.
  */
@@ -226,10 +226,10 @@ export type Freischaltung = {
 /**
  * Schaltet ein zweites Gerät derselben Person frei (§6, `purpose = device`).
  *
- * Freigeschaltet werden alle Fälle, die **dieses** Gerät lesen kann (§4).
+ * Freigeschaltet werden alle Fälle, die dieses Gerät lesen kann (§4).
  * Gesperrte Fälle bleiben gesperrt: Wer sie selbst nicht öffnen kann, kann sie
  * auch nicht weitergeben. Deshalb kommen zwei Zahlen zurück und nicht ein
- * "fertig" — die Oberfläche benennt die Lücke ausdrücklich, statt sie
+ * "fertig": Die Oberfläche benennt die Lücke ausdrücklich, statt sie
  * schweigend geschehen zu lassen.
  */
 export async function schalteGeraetFrei(
@@ -247,7 +247,7 @@ export async function schalteGeraetFrei(
 
   /*
    * Kein lesbarer Fall heißt: Es gibt nichts weiterzugeben. Ohne diesen Wurf
-   * meldete die Oberfläche „0 von 0 Fällen freigeschaltet" — die Kopplung sähe
+   * meldete die Oberfläche "0 von 0 Fällen freigeschaltet": Die Kopplung sähe
    * erledigt aus, der Code ist verbraucht, und das zweite Gerät liest weiterhin
    * nichts. Ein Fehlschlag, der wie ein Erfolg aussieht, ist hier der schlimmste
    * Ausgang: Niemand versucht es noch einmal.

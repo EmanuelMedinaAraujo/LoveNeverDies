@@ -2,21 +2,21 @@
  * Die Aufgaben eines Falls (DESIGN.md §3.3, §5, §7).
  *
  * Der Sync liegt darunter, in `useSync`: Cache, Delta, Türklingel und
- * Offline-Queue. Was hier passiert, ist der letzte Schritt aus §3.1 — DEK
- * entpacken, Payload entschlüsseln — und der erste in die andere Richtung:
+ * Offline-Queue. Was hier passiert, ist der letzte Schritt aus §3.1: DEK
+ * entpacken, Payload entschlüsseln. In die andere Richtung:
  * verschlüsseln und an die Queue hängen.
  *
- * **Zwei Zusagen aus §5 stehen genau hier.**
+ * Zwei Zusagen aus §5 stehen genau hier:
  *
- * *„Gecachte Inhalte werden sofort gerendert."* Sobald der Cache gelesen ist,
+ * "Gecachte Inhalte werden sofort gerendert." Sobald der Cache gelesen ist,
  * steht die Liste. Die Ladeanzeige gehört dem Netzwerk-Fetch, nicht dem
- * Entschlüsseln — deshalb hat dieser Hook einen `laedt`-Zustand nur so lange,
+ * Entschlüsseln. Deshalb hat dieser Hook einen `laedt`-Zustand nur so lange,
  * bis der Cache da ist, und danach ein `laedtNetz` daneben.
  *
- * *„Sichtbare Screens aktualisieren sich nur für tatsächlich geänderte Zeilen."*
+ * "Sichtbare Screens aktualisieren sich nur für tatsächlich geänderte Zeilen."
  * Der Reconciler ersetzt ausschliesslich die Zeilen, die sich geändert haben;
  * alle anderen behalten ihre Objektidentität. Daran erkennt dieser Hook, was er
- * nicht noch einmal entschlüsseln muss — bei einem Fall mit hundert Aufgaben ist
+ * nicht noch einmal entschlüsseln muss: Bei einem Fall mit hundert Aufgaben ist
  * das der Unterschied zwischen einer Türklingel und einer Denkpause.
  */
 
@@ -50,7 +50,7 @@ import { useErinnerungen, type Erinnerungsdaten } from './useErinnerungen.ts'
 import { useSync } from './useSync.ts'
 
 /**
- * Was dieser Hook vom Fall braucht: die Schlüssel — und das Sterbedatum, weil
+ * Was dieser Hook vom Fall braucht: die Schlüssel und das Sterbedatum, weil
  * ohne es keine Frist zu rechnen ist (§8).
  *
  * `LesbarerFall` aus `fallService` erfüllt das.
@@ -77,7 +77,7 @@ export type AufgabenZustand =
 /**
  * Eine Reservierung, die verloren ging (§7).
  *
- * „Greifen zwei gleichzeitig zu, gewinnt LWW, und die unterlegene Person
+ * "Greifen zwei gleichzeitig zu, gewinnt LWW, und die unterlegene Person
  * bekommt 'Bert hat diese Aufgabe übernommen' statt eines stillen Verlusts."
  */
 export type Uebernahme = {
@@ -90,12 +90,12 @@ export type Uebernahme = {
 export type Aufgabendaten = {
   zustand: AufgabenZustand
   /**
-   * Der Bestand dieses Falls als Ciphertext — alle Zeilen, nicht nur die
+   * Der Bestand dieses Falls als Ciphertext: alle Zeilen, nicht nur die
    * Aufgaben (§5).
    *
    * Er steht hier, damit die Dokumente (§7) auf demselben Delta reiten können:
    * Ein zweiter `useSync` daneben hielte einen zweiten Cache, ein zweites
-   * Wasserzeichen und eine zweite Queue für denselben Fall — zwei Runden, die
+   * Wasserzeichen und eine zweite Queue für denselben Fall; zwei Runden, die
    * um dieselben Zeilen konkurrieren. Was ein Aufrufer davon liest, entscheidet
    * er über `art`.
    */
@@ -106,7 +106,7 @@ export type Aufgabendaten = {
    * Stösst eine Sync-Runde an.
    *
    * Für alles, was am Delta vorbei geschrieben hat und trotzdem sofort
-   * sichtbar sein soll — die Dokumente aus §7 gehen nicht durch die Queue.
+   * sichtbar sein soll: Die Dokumente aus §7 gehen nicht durch die Queue.
    */
   aktualisiere: () => void
   /** Die lokalen Erinnerungen an die Fristen dieses Falls (§7). */
@@ -126,15 +126,15 @@ export type Aufgabendaten = {
    * Die angemeldete Person, so wie sie in eine Zuweisung geschrieben wird (§7).
    *
    * Ohne Anmeldung ist die Kennung leer. Dann ist niemand zugewiesen, und alles
-   * bleibt schreibgeschützt — die Screens hängen ohnehin hinter der Anmeldung,
+   * bleibt schreibgeschützt. Die Screens hängen ohnehin hinter der Anmeldung,
    * aber die Sperre soll nicht davon abhängen, dass das so bleibt.
    */
   ich: Zugewiesene
   /** Trägt die angemeldete Person ein und reserviert die Aufgabe damit (§7). */
   uebernimm: (aufgabe: Aufgabe) => Promise<void>
-  /** Löst eine Reservierung — auch eine fremde (§7). */
+  /** Löst eine Reservierung, auch eine fremde (§7). */
   gibFrei: (aufgabe: Aufgabe) => Promise<void>
-  /** Setzt die Zuweisung ganz: Personen, „Alle" oder niemand (§7). */
+  /** Setzt die Zuweisung ganz: Personen, "Alle" oder niemand (§7). */
   weiseZu: (aufgabe: Aufgabe, zuweisung: Zuweisung) => Promise<void>
   /** Reservierungen, die an eine andere Person gingen. */
   uebernahmen: Uebernahme[]
@@ -147,25 +147,25 @@ const LEER = { aufgaben: [] as Aufgabe[], uebersprungen: 0 }
 /** Eine Zeile, die sich nicht entschlüsseln liess (§3.7). */
 const VERWORFEN = Symbol('verworfen')
 
-/** Nichts abgelehnt — als eine Liste, damit sie ihre Identität behält. */
+/** Nichts abgelehnt, als eine Liste, damit sie ihre Identität behält. */
 const KEINE: AbgelehnteAenderung[] = []
 
 /** Solange niemand angemeldet ist, gibt es auch niemanden einzutragen. */
 const ABGEMELDET: Zugewiesene = { userId: '', name: '' }
 
-/** Nichts weggeschnappt — als eine Liste, damit sie ihre Identität behält. */
+/** Nichts weggeschnappt, als eine Liste, damit sie ihre Identität behält. */
 const KEINE_UEBERNAHMEN: Uebernahme[] = []
 
 /**
- * Die Aufgaben der Juristinnen zuerst, in ihrer Reihenfolge (§8) — danach, was
+ * Die Aufgaben der Juristinnen zuerst, in ihrer Reihenfolge (§8); danach, was
  * jemand selbst angelegt hat, in der Anlagereihenfolge.
  *
  * Ohne diesen Schritt stünde die Rechtsliste in der Reihenfolge ihrer IDs, und
  * die sind ein UUIDv5 über einen HMAC (§8): zufällig. Die Ausschlagungsfrist
  * käme dann irgendwo zwischen Krankenkasse und Bestattung zu stehen.
  *
- * `sort` ist stabil, also bleibt innerhalb derselben `reihenfolge` — und unter
- * allen selbst angelegten Aufgaben — die Reihenfolge aus `sync.zeilen` stehen.
+ * `sort` ist stabil, also bleibt innerhalb derselben `reihenfolge` und unter
+ * allen selbst angelegten Aufgaben die Reihenfolge aus `sync.zeilen` stehen.
  */
 function nachReihenfolge(links: Aufgabe, rechts: Aufgabe): number {
   const hier = links.katalog?.reihenfolge
@@ -197,12 +197,12 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   const [abgelehnt, setzeAbgelehnt] = useState<AbgelehnteAenderung[]>([])
 
   /**
-   * Die zuletzt entschlüsselte Fassung je Zeile — oder die Feststellung, dass
+   * Die zuletzt entschlüsselte Fassung je Zeile, oder die Feststellung, dass
    * sie sich nicht entschlüsseln liess (§3.7).
    *
    * Der Schlüssel ist die Zeile selbst, nicht ihre ID: Der Reconciler gibt
    * unveränderte Zeilen unverändert zurück, also ist die Objektidentität genau
-   * die Frage „hat sich hier etwas getan?" — und eine `WeakMap` lässt die
+   * die Frage "hat sich hier etwas getan?", und eine `WeakMap` lässt die
    * abgelösten Fassungen von selbst los.
    *
    * Auch das Verworfene steht drin, und nicht bloss als Zahl. Nur so gilt der
@@ -264,8 +264,8 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
 
     void (async () => {
       // `KEINE` und nicht `[]`: Die Liste wird bei jeder Runde neu berechnet,
-      // und ein frisches leeres Array wäre jedes Mal ein neuer Zustand — also
-      // ein zusätzliches Rendern für die Nachricht „es gibt nichts zu melden".
+      // und ein frisches leeres Array wäre jedes Mal ein neuer Zustand, also
+      // ein zusätzliches Rendern für die Nachricht "es gibt nichts zu melden".
       const beschrieben =
         sync.abgelehnt.length === 0
           ? KEINE
@@ -286,16 +286,16 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    *
    * Angelegt wird er bei der Fallanlage. Diese Stelle ist der zweite Anlauf für
    * die Fälle, bei denen das nicht durchkam: eine Verbindung, die mitten in der
-   * Anlage abbrach, oder — sobald es die Vorsorge gibt (#15) — ein Übergang
+   * Anlage abbrach, oder (sobald es die Vorsorge gibt) ein Übergang
    * nach `trauerfall`, den ein anderes Gerät vollzogen hat.
    *
-   * **Erst nach dem Abgleich.** Vor dem ersten Abruf ist `zeilen` der Cache,
+   * Erst nach dem Abgleich: Vor dem ersten Abruf ist `zeilen` der Cache,
    * und ein leerer Cache heisst nicht, dass der Fall leer ist. Wer daraus
-   * schlösse, es fehle der Katalog, legte ihn bei jedem Start erneut an — ohne
-   * Duplikate, dank der deterministischen IDs, aber mit vierzig
+   * schlösse, es fehle der Katalog, legte ihn bei jedem Start erneut an, zwar ohne
+   * Duplikate dank der deterministischen IDs, aber mit vierzig
    * Schreibversuchen, die alle nichts tun.
    *
-   * **Und höchstens einmal je Fall.** Der Bestand ändert sich mit jedem Delta;
+   * Und höchstens einmal je Fall: Der Bestand ändert sich mit jedem Delta;
    * ein zweiter Lauf brächte nur dieselbe Feststellung. Was danach fehlt, hat
    * jemand gelöscht, und gelöscht bleibt gelöscht (§5).
    */
@@ -318,7 +318,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       } catch {
         /*
          * Kein Wurf und keine Mitteilung. Was hier scheitert, ist entweder das
-         * Netz — dann kommt die nächste Runde ohnehin — oder ein Katalogstand,
+         * Netz (dann kommt die nächste Runde ohnehin) oder ein Katalogstand,
          * den dieser Build nicht kennt. Im zweiten Fall wäre die Meldung eine
          * Zumutung: Angehörige können daran nichts ändern, und die Aufgaben
          * eines anderen Mitglieds kommen mit dem nächsten Delta von selbst.
@@ -330,9 +330,9 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
 
   /*
    * Wer eine Aufgabe aufschreibt, ist damit eingetragen (§7). Das Tippen *ist*
-   * die Ansage „ich mache das"; eine Aufgabe, die man nach dem Anlegen erst
+   * die Ansage "ich mache das"; eine Aufgabe, die man nach dem Anlegen erst
    * noch übernehmen müsste, um ihren Titel zu korrigieren, wäre eine Hürde ohne
-   * Zweck. Unzugewiesen kommen die Aufgaben der Juristinnen in den Fall (§8) —
+   * Zweck. Unzugewiesen kommen die Aufgaben der Juristinnen in den Fall (§8),
    * bei ihnen hat noch niemand etwas gesagt.
    */
   const legeAn = useCallback(
@@ -358,27 +358,27 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   )
 
   /**
-   * Die Aufgaben, auf die diese Sitzung „Übernehmen" getippt hat.
+   * Die Aufgaben, auf die diese Sitzung "Übernehmen" getippt hat.
    *
    * Steht bei einer davon später jemand anderes, ging die Reservierung
    * verloren, und §7 verlangt genau dafür eine Mitteilung statt eines stillen
    * Verlusts.
    *
-   * **Beobachtet wird bis zum Ende der Sitzung**, nicht nur die nächsten
+   * Beobachtet wird bis zum Ende der Sitzung, nicht nur die nächsten
    * Sekunden. Ein Gerät kann die Mutation stundenlang in der Queue halten (§5),
-   * und auch ein später hereinkommendes „Bert hat sie jetzt" ist die Nachricht,
+   * und auch ein später hereinkommendes "Bert hat sie jetzt" ist die Nachricht,
    * um die es geht: dass die Aufgabe, die man sich vorgenommen hat, nicht mehr
-   * die eigene ist. Ein Neuladen vergisst die Liste — sie ist eine Erinnerung
+   * die eigene ist. Ein Neuladen vergisst die Liste: Sie ist eine Erinnerung
    * an das eigene Zutun, nichts, was zu speichern wäre.
    */
   const [versuchteUebernahmen, setzeVersuchte] = useState<string[]>([])
 
   /**
-   * Was davon verloren ging — abgeleitet, nicht mitgeschrieben.
+   * Was davon verloren ging: abgeleitet, nicht mitgeschrieben.
    *
-   * Kein zweiter Zustand neben dem Bestand: Die Frage „gehört sie mir noch?"
+   * Kein zweiter Zustand neben dem Bestand: Die Frage "gehört sie mir noch?"
    * hat zu jedem Zeitpunkt genau eine Antwort, und die steht in der Aufgabe.
-   * Zugewiesen zu sein — auch neben jemand anderem, auch über „Alle" — heisst,
+   * Zugewiesen zu sein (auch neben jemand anderem, auch über "Alle") heisst,
    * dass nichts verloren ging; wieder frei heisst dasselbe, denn dann ist da
    * keine andere Person, von der zu erzählen wäre.
    */
@@ -407,14 +407,14 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   const bestaetigeUebernahmen = useCallback(() => setzeVersuchte([]), [])
 
   /**
-   * Die Zuweisung setzen — und dabei merken, ob man sich gerade selbst
+   * Die Zuweisung setzen und dabei merken, ob man sich gerade selbst
    * eingetragen hat.
    *
    * Beobachtet wird jede Zuweisung, die einen selbst einschliesst, und nicht
-   * nur die Schaltfläche „Übernehmen": Wer sich im Aufgabendetail ankreuzt,
+   * nur die Schaltfläche "Übernehmen": Wer sich im Aufgabendetail ankreuzt,
    * hat dasselbe getan und soll dieselbe Mitteilung bekommen, wenn ein anderes
    * Gerät ihn gleich wieder verdrängt. Wer sich dagegen selbst austrägt oder
-   * die Aufgabe weitergibt, hat nichts verloren — sonst meldete die eigene
+   * die Aufgabe weitergibt, hat nichts verloren, sonst meldete die eigene
    * Handlung sich gleich als fremde zurück.
    */
   const weiseZu = useCallback(
@@ -435,9 +435,9 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   /**
    * Sich selbst eintragen (§7).
    *
-   * Aus `mitPerson` und nicht aus „setze auf mich": Eine Aufgabe, die schon
+   * Aus `mitPerson` und nicht aus "setze auf mich": Eine Aufgabe, die schon
    * jemandem gehört, bekommt eine Person dazu, statt die andere hinauszuwerfen.
-   * Frei war sie, wenn niemand darunter stand — dann ist es die Reservierung,
+   * Frei war sie, wenn niemand darunter stand: Dann ist es die Reservierung,
    * von der §7 spricht.
    */
   const uebernimm = useCallback(
@@ -446,9 +446,9 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   )
 
   /**
-   * Die Reservierung lösen (§7) — die eigene wie die fremde.
+   * Die Reservierung lösen (§7), die eigene wie die fremde.
    *
-   * „In einer Familie fällt jemand aus, und eine Aufgabe, die niemand mehr
+   * "In einer Familie fällt jemand aus, und eine Aufgabe, die niemand mehr
    * freigeben kann, blockiert eine gesetzliche Frist." Deshalb prüft hier
    * nichts, wer eingetragen ist.
    */
@@ -465,8 +465,8 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   const baum = useMemo(() => baueBaum(liste.aufgaben), [liste.aufgaben])
 
   /*
-   * §7: „nach jeder Synchronisation neu geplant". Der Baum ist nach jedem
-   * Delta ein neuer, also plant der Hook darunter von selbst neu — es gibt
+   * §7: "nach jeder Synchronisation neu geplant". Der Baum ist nach jedem
+   * Delta ein neuer, also plant der Hook darunter von selbst neu. Es gibt
    * keinen zweiten Auslöser, den jemand vergessen könnte.
    */
   const erinnerungen = useErinnerungen(baum, fall.sterbedatum)

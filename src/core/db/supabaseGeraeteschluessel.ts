@@ -2,8 +2,8 @@
  * `device_keys` über Supabase (DESIGN.md §4).
  *
  * Die Umsetzung des Ports aus `geraeteschluessel.ts`. Sie übersetzt zwischen
- * Byte-Feldern und der Hex-Kodierung, die PostgREST für `bytea` benutzt, und
- * sonst nichts — die Regeln der Registrierung stehen im Service, die Regeln
+ * Byte-Feldern und der Hex-Kodierung, die PostgREST für `bytea` benutzt.
+ * Die Regeln der Registrierung stehen im Service, die Regeln
  * darüber, wer was sehen darf, in der RLS.
  */
 
@@ -61,7 +61,7 @@ export function supabaseGeraeteschluessel(client: SupabaseClient): Geraeteschlue
         .maybeSingle<RohZeile>()
 
       if (error !== null) {
-        throw new GeraeteschluesselFehler('Der Geräteschlüssel war nicht abzurufen', error)
+        throw new GeraeteschluesselFehler('Der Geräteschlüssel konnte nicht abgerufen werden', error)
       }
 
       return data === null ? null : alsZeile(data)
@@ -87,7 +87,7 @@ export function supabaseGeraeteschluessel(client: SupabaseClient): Geraeteschlue
       }
 
       if (error !== null) {
-        throw new GeraeteschluesselFehler('Der Geräteschlüssel war nicht anzulegen', error)
+        throw new GeraeteschluesselFehler('Der Geräteschlüssel konnte nicht angelegt werden', error)
       }
 
       return alsZeile(data)
@@ -101,7 +101,7 @@ export function supabaseGeraeteschluessel(client: SupabaseClient): Geraeteschlue
         .maybeSingle<RohZeile>()
 
       if (error !== null) {
-        throw new GeraeteschluesselFehler('Der Geräteschlüssel war nicht abzurufen', error)
+        throw new GeraeteschluesselFehler('Der Geräteschlüssel konnte nicht abgerufen werden', error)
       }
 
       return data === null ? null : alsZeile(data)
@@ -116,7 +116,7 @@ export function supabaseGeraeteschluessel(client: SupabaseClient): Geraeteschlue
         .returns<RohZeile[]>()
 
       if (error !== null) {
-        throw new GeraeteschluesselFehler('Die Geräteliste war nicht abzurufen', error)
+        throw new GeraeteschluesselFehler('Die Geräteliste konnte nicht abgerufen werden', error)
       }
 
       return data.map(alsZeile)
@@ -136,12 +136,12 @@ export function supabaseGeraeteschluessel(client: SupabaseClient): Geraeteschlue
         .returns<{ id: string }[]>()
 
       if (error !== null) {
-        throw new GeraeteschluesselFehler('Das Gerät war nicht umzubenennen', error)
+        throw new GeraeteschluesselFehler('Das Gerät konnte nicht umbenannt werden', error)
       }
 
       if (data.length === 0) {
         throw new GeraeteschluesselFehler(
-          'Dieses Gerät war nicht umzubenennen. Es gehört zu keinem Ihrer Geräte oder ist nicht mehr da.',
+          'Dieses Gerät konnte nicht umbenannt werden. Es gehört zu keinem Ihrer Geräte oder ist nicht mehr da.',
         )
       }
     },

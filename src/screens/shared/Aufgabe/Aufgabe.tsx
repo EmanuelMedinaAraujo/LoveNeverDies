@@ -29,21 +29,21 @@ import stile from './Aufgabe.module.css'
  *
  * Der Screen, an dem die juristische Arbeit sichtbar wird: Rechtsgrundlage und
  * Quelle, die Frist, die zuständige Stelle, die benötigten Dokumente, Notizen,
- * Unteraufgaben und wovon die Aufgabe abhängt. Alles davon steht im Item selbst
- * — beim Instanziieren aus dem Katalog kopiert (§8) und seither mit der Aufgabe
+ * Unteraufgaben und wovon die Aufgabe abhängt. Alles davon steht im Item selbst,
+ * beim Instanziieren aus dem Katalog kopiert (§8) und seither mit der Aufgabe
  * gealtert. Was hier zu lesen ist, ist der Rechtsstand, nach dem jemand
  * gehandelt hat, und nicht der von heute.
  *
- * **Das Fristende steht nirgends gespeichert.** Es wird bei jedem Rendern aus
+ * Das Fristende steht nirgends gespeichert: Es wird bei jedem Rendern aus
  * `{fristTage, fristAb}` und dem Sterbedatum gerechnet (§8, `fristen.ts`).
  *
- * **Unteraufgaben sind eigene Zeilen.** Abgehakt wird jede für sich; die
+ * Unteraufgaben sind eigene Zeilen. Abgehakt wird jede für sich; die
  * Elternaufgabe hat dann kein eigenes Häkchen mehr und gilt genau dann als
  * erledigt, wenn alle Kinder es sind (§7).
  *
- * **Ein Screen statt zweier Bäume.** §7 sieht für `Aufgabe` getrennte Bäume
+ * Ein Screen statt zweier Bäume: §7 sieht für `Aufgabe` getrennte Bäume
  * unter `screens/senior` und `screens/advanced` vor. Getrennt wird, sobald die
- * einfache Ansicht wirklich weniger zeigt — das ist der Slice #17, und bis
+ * einfache Ansicht wirklich weniger zeigt; das ist der Slice #17, und bis
  * dahin wären zwei Kopien nur zwei Stellen, an denen eine Rechtsgrundlage
  * fehlen kann. Die Dichtetokens tragen den Größenunterschied bereits, und was
  * §7 für die einfache Ansicht ausdrücklich verlangt, steht schon hier: Vor dem
@@ -67,7 +67,7 @@ function badgelage(lage: Fristlage): Badgelage {
   return lage.restTage < 0 ? 'abgelaufen' : lage.restTage <= 3 ? 'knapp' : 'ruhig'
 }
 
-/** Eine Angabe aus dem Katalog — oder nichts, wenn sie leer ist. */
+/** Eine Angabe aus dem Katalog, oder nichts, wenn sie leer ist. */
 function Angabe({ was: bezeichnung, children }: { was: string; children: ReactNode }) {
   return (
     <div className={stile.angabe}>
@@ -80,8 +80,8 @@ function Angabe({ was: bezeichnung, children }: { was: string; children: ReactNo
 /**
  * Frist, Rechtsgrundlage, Quelle, zuständige Stelle, Dokumente, Hinweis.
  *
- * Fehlt eine Angabe, steht sie nicht da. Eine leere Zeile „Rechtsgrundlage: —"
- * sähe aus wie eine Lücke im Gesetz, und ein „keine Frist" wäre eine Aussage,
+ * Fehlt eine Angabe, steht sie nicht da. Eine leere Zeile "Rechtsgrundlage: -"
+ * sähe aus wie eine Lücke im Gesetz, und ein "keine Frist" wäre eine Aussage,
  * die der Katalog nicht trifft: Fehlt eine gesetzliche Frist, bleibt das Feld
  * leer, erfunden wird nichts (§8).
  */
@@ -187,7 +187,7 @@ function Unteraufgabenzeile({
   if (fragt) {
     return (
       <li className={stile.zeile}>
-        <p>„{unteraufgabe.titel}" wirklich löschen? Gelöschte Aufgaben kommen nicht zurück.</p>
+        <p>"{unteraufgabe.titel}" wirklich löschen? Gelöschte Aufgaben kommen nicht zurück.</p>
         <div className={stile.aktionen}>
           <Button
             onClick={() => {
@@ -209,7 +209,7 @@ function Unteraufgabenzeile({
   /*
    * Eine Unteraufgabe ist eine Zeile wie jede andere (§7) und trägt deshalb
    * ihre eigene Zuweisung. Eine Familie teilt sich eine Aufgabe auf: Die Bank
-   * ruft der eine an, zum Standesamt geht die andere — und wer nicht
+   * ruft der eine an, zum Standesamt geht die andere, und wer nicht
    * eingetragen ist, hakt hier nichts ab.
    */
   const darfAendern = darfBearbeiten(unteraufgabe.assignee, ichUserId)
@@ -225,13 +225,13 @@ function Unteraufgabenzeile({
       <div className={stile.aktionen}>
         <Link className={stile.hinweis} to={`/aufgabe/${unteraufgabe.id}`}>
           Zuständigkeit ändern
-          <span className="nur-vorlesen">: „{unteraufgabe.titel}"</span>
+          <span className="nur-vorlesen">: "{unteraufgabe.titel}"</span>
         </Link>
         {darfAendern ? (
           <Button
             variante="sekundaer"
             onClick={() => setzeFragt(true)}
-            vorleseText={`: „${unteraufgabe.titel}"`}
+            vorleseText={`: "${unteraufgabe.titel}"`}
           >
             Löschen
           </Button>
@@ -259,7 +259,7 @@ function Detail({
   mitglieder: Zugewiesene[]
   /** Was beim Abruf der Mitglieder schiefging, oder `null`. */
   mitgliederfehler: string | null
-  /** Der Bestand als Ciphertext — die Dokumente lesen daraus ihre Zeilen (§7). */
+  /** Der Bestand als Ciphertext; die Dokumente lesen daraus ihre Zeilen (§7). */
   zeilen: InhaltZeile[]
   /** Stösst eine Sync-Runde an: Dokumente gehen nicht durch die Queue (§5). */
   aktualisiere: () => void
@@ -280,7 +280,7 @@ function Detail({
   const [gespeicherteNotizen, setzeGespeicherteNotizen] = useState(aufgabe.notizen)
   const [neueUnteraufgabe, setzeNeueUnteraufgabe] = useState('')
 
-  // Was der Bestand bringt, gewinnt — aber erst, wenn er sich wirklich
+  // Was der Bestand bringt, gewinnt, aber erst, wenn er sich wirklich
   // geändert hat. Sonst überschriebe jede Türklingel den halb getippten Satz.
   if (gespeicherteNotizen !== aufgabe.notizen) {
     setzeGespeicherteNotizen(aufgabe.notizen)
@@ -319,8 +319,8 @@ function Detail({
   const fertigeKinder = unteraufgaben.filter((unter) => unter.erledigt).length
 
   /*
-   * §7: „Bearbeiten darf nur, wem sie zugewiesen ist." Gesperrt sind das
-   * Häkchen, die Notizen, neue Unteraufgaben und das Löschen — nicht das Lesen
+   * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Gesperrt sind das
+   * Häkchen, die Notizen, neue Unteraufgaben und das Löschen, nicht das Lesen
    * und nicht die Zuweisung selbst. Wer nicht eingetragen ist, soll die
    * Rechtsgrundlage sehen und sich eintragen können; alles andere wäre eine
    * Mauer vor einer Aufgabe, die vielleicht gerade dringend ist.
@@ -337,7 +337,7 @@ function Detail({
 
         {/*
           §7: Blockierte Aufgaben benennen, worauf sie warten. Die Namen sind
-          Links — wer sie liest, will meistens gleich dorthin.
+          Links, und wer sie liest, will meistens gleich dorthin.
         */}
         {blockiertVon.length === 0 ? null : (
           <p className={stile.hinweis}>
@@ -377,7 +377,7 @@ function Detail({
         ) : (
           /*
            * §7: Eine Aufgabe mit Unteraufgaben hat kein eigenes Häkchen. Sie
-           * gilt genau dann als erledigt, wenn alle Kinder es sind — und dann
+           * gilt genau dann als erledigt, wenn alle Kinder es sind, und dann
            * zwingend. Fehlt inhaltlich noch etwas, kommt eine Unteraufgabe
            * dazu; das ist ehrlicher als eine Aufgabe, die trotz erledigter
            * Kinder offen aussieht.
@@ -391,7 +391,7 @@ function Detail({
       </Card>
 
       {/*
-        §7: Die Zuweisung ist eine Bearbeitungssperre, kein Zugriffsschutz — der
+        §7: Die Zuweisung ist eine Bearbeitungssperre, kein Zugriffsschutz: Der
         Server kann eine Regel nicht durchsetzen, die er nicht lesen kann (§3.3,
         §11). Sie steht deshalb offen für jede:n: übernehmen, freigeben,
         jemanden eintragen.
@@ -415,7 +415,7 @@ function Detail({
         )}
 
         {/*
-          Die Auswahl ist dann kürzer, als sie sein sollte — das gehört gesagt
+          Die Auswahl ist dann kürzer, als sie sein sollte; das gehört gesagt
           (§5). Übernehmen und Freigeben gehen trotzdem: Dafür braucht es nur
           die eigene Person, und die kommt aus der Anmeldung.
         */}
@@ -479,7 +479,7 @@ function Detail({
       </Card>
 
       {/*
-        §7: „Dokument einfach abfotografieren" — die Sterbeurkunde gehört an die
+        §7: "Dokument einfach abfotografieren": Die Sterbeurkunde gehört an die
         Aufgabe, für die sie gebraucht wird, und nicht in eine Ablage irgendwo
         sonst in der App.
       */}
@@ -562,7 +562,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
   /*
    * Die Kennungen kommen aus `memberships`, die Namen aus den Zuweisungen, die
    * schon im Fall liegen (§7). Sobald die Kopplung `profiles` mitbringt (#10),
-   * kommen sie von dort — die Stelle, an der beides zusammenfindet, bleibt
+   * kommen sie von dort; die Stelle, an der beides zusammenfindet, bleibt
    * dieselbe.
    */
   const mitglieder = benenne(
@@ -577,7 +577,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     /*
      * Ein leerer Cache und ein laufender erster Abruf sind nicht dasselbe wie
      * eine gelöschte Aufgabe (§5). Erst wenn der Abruf durch ist, darf hier
-     * „gibt es nicht mehr" stehen.
+     * "gibt es nicht mehr" stehen.
      */
     return zustand.laedtNetz ? (
       <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
@@ -612,11 +612,11 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
       )}
 
       {/*
-        `key`: Der Screen bleibt beim Wechsel von einer Aufgabe zur nächsten —
-        über einen „Zuerst: …"-Link — an derselben Stelle im Baum, und React
+        `key`: Der Screen bleibt beim Wechsel von einer Aufgabe zur nächsten,
+        etwa über einen "Zuerst: …"-Link, an derselben Stelle im Baum, und React
         behielte sonst den Zustand des Formulars. Ein angefangener, noch nicht
         gespeicherter Notizentwurf stünde dann im Feld der anderen Aufgabe und
-        landete beim nächsten „Notizen speichern" an der falschen Zeile.
+        landete beim nächsten "Notizen speichern" an der falschen Zeile.
       */}
       <Detail
         key={knoten.aufgabe.id}

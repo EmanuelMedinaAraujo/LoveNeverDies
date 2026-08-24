@@ -1,8 +1,8 @@
 /**
  * Einfach oder Erweitert (DESIGN.md §7).
  *
- * Die Wahl trifft das Onboarding, noch bevor die Fallweiche kommt — damit alle
- * folgenden Screens bereits im gewählten Modus erscheinen. Das Onboarding gibt
+ * Die Wahl trifft das Onboarding, noch bevor die Fallweiche kommt. Damit
+ * erscheinen alle folgenden Screens bereits im gewählten Modus. Das Onboarding gibt
  * es in diesem Stand noch nicht, also steht der Modus fest.
  *
  * Der Rückgabewert landet als `data-dichte` auf der Wurzel und schaltet damit

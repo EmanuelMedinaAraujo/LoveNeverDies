@@ -4,38 +4,38 @@
  * Drei Zustände, mehr gibt es nicht:
  *
  * ```
- * niemand   frei — jede:r kann sich eintragen und sie so reservieren
+ * niemand   frei: jede:r kann sich eintragen und sie so reservieren
  * personen  eine oder mehrere namentlich genannte Personen
  * alle      ein eigener Wert, keine Liste aller Namen
  * ```
  *
- * **Bearbeiten darf nur, wem die Aufgabe zugewiesen ist.** Eine freie Aufgabe
- * darf deshalb niemand ändern — wer sie anfassen will, trägt sich zuerst ein.
+ * Bearbeiten darf nur, wem die Aufgabe zugewiesen ist: Eine freie Aufgabe
+ * darf deshalb niemand ändern; wer sie anfassen will, trägt sich zuerst ein.
  * Das ist kein Umweg, sondern der Sinn der Sache: Die Reservierung ist genau
- * die Ansage „ich mache das", die zwei Menschen davor bewahrt, dieselbe
+ * die Ansage "ich mache das", die zwei Menschen davor bewahrt, dieselbe
  * Behörde anzurufen.
  *
- * **Eine Reservierung ist von jedem wieder lösbar**, nicht nur von der
+ * Eine Reservierung ist von jedem wieder lösbar, nicht nur von der
  * reservierenden Person. In einer Familie fällt jemand aus, und eine Aufgabe,
  * die niemand mehr freigeben kann, blockiert eine gesetzliche Frist.
  *
- * > **Das ist eine Bearbeitungssperre, kein Zugriffsschutz** (§7, §11). Die
- * > Zuweisung liegt verschlüsselt im Payload (§3.3); der Server kann eine Regel
- * > nicht durchsetzen, die er nicht lesen kann. Sie verhindert zuverlässig
- * > versehentliches Gleichzeitig-Bearbeiten, nicht einen manipulierten Client.
+ * Das ist eine Bearbeitungssperre, kein Zugriffsschutz (§7, §11). Die
+ * Zuweisung liegt verschlüsselt im Payload (§3.3); der Server kann eine Regel
+ * nicht durchsetzen, die er nicht lesen kann. Sie verhindert zuverlässig
+ * versehentliches Gleichzeitig-Bearbeiten, nicht einen manipulierten Client.
  *
- * **Der Name steht mit im Payload, nicht nur die Kennung.** Er kostet ein paar
+ * Der Name steht mit im Payload, nicht nur die Kennung: Er kostet ein paar
  * Bytes hinter derselben Verschlüsselung und erspart der Oberfläche die Frage,
- * die sie sonst nicht beantworten könnte: „Bert hat diese Aufgabe übernommen"
+ * die sie sonst nicht beantworten könnte: "Bert hat diese Aufgabe übernommen"
  * braucht Berts Namen in dem Moment, in dem die eigene Reservierung verloren
- * ging — und die Namenstabelle `profiles` (§3.3) gibt es erst mit der Kopplung
+ * ging; und die Namenstabelle `profiles` (§3.3) gibt es erst mit der Kopplung
  * (#10). Solange kein Name bekannt ist, bleibt das Feld leer und die Oberfläche
  * behilft sich; ein Eintrag ohne Kennung dagegen wäre wertlos und fliegt raus.
  */
 
 /** Eine Person, der eine Aufgabe zugewiesen ist. */
 export type Zugewiesene = {
-  /** Clerk `sub` — dieselbe Kennung wie in `memberships.user_id` (§3.3). */
+  /** Clerk `sub`, dieselbe Kennung wie in `memberships.user_id` (§3.3). */
   userId: string
   /** Der Anzeigename zum Zeitpunkt der Zuweisung. Leer, wenn unbekannt. */
   name: string
@@ -49,7 +49,7 @@ export type Zuweisung =
 /** Frei: niemand ist eingetragen, und deshalb darf niemand bearbeiten. */
 export const NIEMAND: Zuweisung = { art: 'niemand' }
 
-/** „Alle" ist ein eigener Zuweisungswert, keine Liste aller Namen (§7). */
+/** "Alle" ist ein eigener Zuweisungswert, keine Liste aller Namen (§7). */
 export const ALLE: Zuweisung = { art: 'alle' }
 
 /** Wie eine Person heißt, wenn ihr Name nicht bekannt ist. */
@@ -58,8 +58,8 @@ const OHNE_NAMEN = 'Weiteres Mitglied'
 /**
  * Eine Zuweisung an namentlich genannte Personen.
  *
- * Jede Person genau einmal, und eine leere Liste ist {@link NIEMAND} — sonst
- * gäbe es zwei Schreibweisen für „frei", und die Prüfung „darf bearbeiten"
+ * Jede Person genau einmal, und eine leere Liste ist {@link NIEMAND}, sonst
+ * gäbe es zwei Schreibweisen für "frei", und die Prüfung "darf bearbeiten"
  * hinge davon ab, welche gerade im Payload steht.
  */
 export function personen(liste: Zugewiesene[]): Zuweisung {
@@ -95,7 +95,7 @@ function alsPerson(wert: unknown): Zugewiesene | null {
  *
  * Dieselbe Vorsicht wie überall im `aufgabenService`: Der Payload ist zwar
  * entschlüsselt, aber irgendeine Fassung dieser App hat ihn geschrieben. Wo das
- * Feld fehlt — jede Aufgabe von vor diesem Slice, und jede aus dem Katalog —,
+ * Feld fehlt (jede Aufgabe von vor diesem Slice und jede aus dem Katalog),
  * ist die Aufgabe frei, und das ist die richtige Antwort: Niemand hat sich
  * eingetragen.
  */
@@ -121,12 +121,12 @@ export function zuweisungAus(wert: unknown): Zuweisung {
   )
 }
 
-/** Ob sich niemand eingetragen hat — dann kann jede:r sie übernehmen (§7). */
+/** Ob sich niemand eingetragen hat: Dann kann jede:r sie übernehmen (§7). */
 export function istFrei(zuweisung: Zuweisung): boolean {
   return zuweisung.art === 'niemand'
 }
 
-/** Ob diese Person zugewiesen ist. Bei „Alle" ist es jedes Mitglied. */
+/** Ob diese Person zugewiesen ist. Bei "Alle" ist es jedes Mitglied. */
 export function istZugewiesen(zuweisung: Zuweisung, userId: string): boolean {
   if (zuweisung.art === 'alle') {
     return true
@@ -143,7 +143,7 @@ export function istZugewiesen(zuweisung: Zuweisung, userId: string): boolean {
  *
  * Dieselbe Antwort wie {@link istZugewiesen} und trotzdem eine eigene Funktion:
  * An den Aufrufstellen steht damit die Regel und nicht ihre Herleitung, und
- * eine spätere Ausnahme — private Aufgaben (#11), der Tresor (#14) — bekommt
+ * eine spätere Ausnahme (private Aufgaben, der Tresor) bekommt
  * eine Stelle, an der sie sichtbar wird.
  */
 export function darfBearbeiten(zuweisung: Zuweisung, userId: string): boolean {
@@ -153,8 +153,8 @@ export function darfBearbeiten(zuweisung: Zuweisung, userId: string): boolean {
 /**
  * Dieselbe Zuweisung mit einer Person mehr.
  *
- * Bei „Alle" bleibt alles, wie es ist: Dort sind bereits alle gemeint, und eine
- * Person hinzuzufügen hieße, die Art zu wechseln — das entscheidet die
+ * Bei "Alle" bleibt alles, wie es ist: Dort sind bereits alle gemeint, und eine
+ * Person hinzuzufügen hieße, die Art zu wechseln; das entscheidet die
  * Oberfläche und nicht diese Funktion.
  */
 export function mitPerson(zuweisung: Zuweisung, person: Zugewiesene): Zuweisung {
@@ -174,7 +174,7 @@ export function ohnePerson(zuweisung: Zuweisung, userId: string): Zuweisung {
   return personen(zuweisung.personen.filter((person) => person.userId !== userId))
 }
 
-/** Die zugewiesenen Personen, oder eine leere Liste bei „Alle" und „niemand". */
+/** Die zugewiesenen Personen, oder eine leere Liste bei "Alle" und "niemand". */
 export function zugewiesene(zuweisung: Zuweisung): Zugewiesene[] {
   return zuweisung.art === 'personen' ? zuweisung.personen : []
 }
@@ -182,7 +182,7 @@ export function zugewiesene(zuweisung: Zuweisung): Zugewiesene[] {
 /**
  * Wie eine Person auf dem Bildschirm heißt.
  *
- * Die angemeldete Person heißt „Sie" und nicht beim Namen. Ein Bildschirm, der
+ * Die angemeldete Person heißt "Sie" und nicht beim Namen. Ein Bildschirm, der
  * einem den eigenen Namen vorhält, liest sich wie eine Akte.
  *
  * @param userId die angemeldete Person.
@@ -199,7 +199,7 @@ export function nameVon(person: Zugewiesene, userId: string): string {
  * Die Mitglieder eines Falls mit den Namen, die dieses Gerät kennt (§7).
  *
  * Drei Quellen, in dieser Reihenfolge: die angemeldete Person kennt sich selbst,
- * die übrigen Namen stehen in den Zuweisungen, die schon im Fall liegen — und
+ * die übrigen Namen stehen in den Zuweisungen, die schon im Fall liegen; und
  * wer noch nie zugewiesen war, bleibt namenlos, bis die Kopplung `profiles`
  * mitbringt (#10, §3.3). Eine Kennung ohne Namen ist trotzdem auswählbar: Sie
  * einfach wegzulassen hieße, ein Familienmitglied unsichtbar zu machen.
@@ -228,9 +228,9 @@ export function benenne(
 }
 
 /**
- * Die Zuweisung als Satzteil: „Sie", „Sie und Bert Müller", „Alle", „Niemand".
+ * Die Zuweisung als Satzteil: "Sie", "Sie und Bert Müller", "Alle", "Niemand".
  *
- * Die angemeldete Person heißt „Sie" und nicht beim Namen. Ein Bildschirm, der
+ * Die angemeldete Person heißt "Sie" und nicht beim Namen. Ein Bildschirm, der
  * einem den eigenen Namen vorhält, liest sich wie eine Akte.
  */
 export function zuweisungText(zuweisung: Zuweisung, userId: string): string {
@@ -249,12 +249,12 @@ export function zuweisungText(zuweisung: Zuweisung, userId: string): string {
 }
 
 /**
- * Wer die Aufgabe weggeschnappt hat — oder `null`, wenn niemand.
+ * Wer die Aufgabe weggeschnappt hat, oder `null`, wenn niemand.
  *
- * Der Fall aus §7: Zwei Menschen tippen im selben Moment auf „Übernehmen", die
+ * Der Fall aus §7: Zwei Menschen tippen im selben Moment auf "Übernehmen", die
  * höhere `seq` gewinnt, und die unterlegene Person soll nicht ins Leere greifen,
- * sondern lesen, wer schneller war. Zugewiesen zu sein — auch neben jemand
- * anderem, auch über „Alle" — heißt: nichts verloren.
+ * sondern lesen, wer schneller war. Zugewiesen zu sein (auch neben jemand
+ * anderem, auch über "Alle") heißt: nichts verloren.
  */
 export function uebernommenVon(zuweisung: Zuweisung, userId: string): string | null {
   if (zuweisung.art !== 'personen' || istZugewiesen(zuweisung, userId)) {

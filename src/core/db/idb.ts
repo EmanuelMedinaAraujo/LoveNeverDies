@@ -1,18 +1,18 @@
 /**
  * Der Ciphertext-Cache in IndexedDB (DESIGN.md §5).
  *
- * §5 ist hier wörtlich zu nehmen: „Der lokale Cache speichert Ciphertext,
+ * §5 ist hier wörtlich zu nehmen: "Der lokale Cache speichert Ciphertext,
  * byteidentisch zum Server, und entschlüsselt beim Start in den Speicher. Der
  * Cache auf dem Gerät ist damit genauso verschlüsselt wie der Server."
  *
  * Das ist keine Sparsamkeit, sondern die Bedingung dafür, dass der Cache
  * überhaupt sein darf. Ein Gerät, das entschlüsselte Aufgaben ablegte, machte
  * jede Browserdatensicherung und jede neugierige Erweiterung zum Leseweg in den
- * Fall — und die Kette aus §3.1 endete nicht im Speicher, sondern auf der
+ * Fall. Die Kette aus §3.1 endete nicht im Speicher, sondern auf der
  * Festplatte. Deshalb gehen hier ausschliesslich `InhaltZeile` hinein: dieselben
  * Felder, die `items` trägt, mit denselben Bytes.
  *
- * **Ein zweiter Speicher neben dem Keystore, kein gemeinsamer.** Der Keystore
+ * Ein zweiter Speicher neben dem Keystore, kein gemeinsamer: Der Keystore
  * (§3.1) hält die Identität dieses Geräts und darf nie gelöscht werden; dieser
  * Cache ist jederzeit wegwerfbar, weil sein Inhalt auf dem Server steht. Zwei
  * Datenbanken, damit ein Aufräumen des einen nie das andere mitnimmt.
@@ -45,21 +45,21 @@ export type Ciphertextcache = {
   /**
    * Der zuletzt abgelegte Stand eines Falls.
    *
-   * Ein unbekannter Fall ergibt `{ zeilen: [], wasserzeichen: 0 }` — und 0 ist
+   * Ein unbekannter Fall ergibt `{ zeilen: [], wasserzeichen: 0 }`. 0 ist
    * genau die vollständige Resynchronisation aus §5, also kein Sonderfall,
    * sondern der Anfang derselben Rechnung.
    */
   lies(fallId: string): Promise<{ zeilen: InhaltZeile[]; wasserzeichen: number }>
 
   /**
-   * Legt geänderte Zeilen ab und rückt das Wasserzeichen — in **einer**
+   * Legt geänderte Zeilen ab und rückt das Wasserzeichen, in einer
    * Transaktion.
    *
    * Rückte das Wasserzeichen vor den Zeilen, verlöre ein Gerät, dem beim
    * Schreiben der Strom ausgeht, genau die Zeilen dazwischen: Der nächste
    * Delta-Abruf setzt oberhalb des Wasserzeichens an und holte sie nie wieder.
    *
-   * @param zeilen nur die geänderten. Zeilen verschwinden nie — ein Tombstone
+   * @param zeilen nur die geänderten. Zeilen verschwinden nie: Ein Tombstone
    * ist eine geänderte Zeile, kein Löschen (§5).
    */
   schreibe(fallId: string, zeilen: InhaltZeile[], wasserzeichen: number): Promise<void>
@@ -110,7 +110,7 @@ export async function oeffneCacheDb(): Promise<IDBDatabase> {
     }
 
     if (!db.objectStoreNames.contains(QUEUE)) {
-      // `autoIncrement`, weil §5 „beim Reconnect abgearbeitet" verlangt und das
+      // `autoIncrement`, weil §5 "beim Reconnect abgearbeitet" verlangt und das
       // die Reihenfolge des Anhängens meint. Ein Zeitstempel trüge sie nicht:
       // Zwei Mutationen in derselben Millisekunde stünden in beliebiger Folge,
       // und ein Häkchen käme womöglich vor der Aufgabe an, an der es hängt.
@@ -193,7 +193,7 @@ export function idbCiphertextcache(): Ciphertextcache {
             transaktion
               .objectStore(INHALTE)
               // Der Schlüssel ist `[fallId, id]`, und ein `IDBKeyRange` über
-              // diesem Paar trifft genau die Zeilen eines Falls — sortiert nach
+              // diesem Paar trifft genau die Zeilen eines Falls: sortiert nach
               // `id` und damit in Anlagereihenfolge (§4). Ein eigener Index
               // wäre ein zweiter Weg zu derselben Ordnung.
               .getAll(IDBKeyRange.bound([fallId], [fallId, []])) as IDBRequest<Abgelegt[]>,

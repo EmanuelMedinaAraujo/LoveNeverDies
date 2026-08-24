@@ -31,7 +31,7 @@ export function App() {
 
   /*
    * §7: Nach der Anmeldung entstehen beide Keypairs und das Gerät meldet sich
-   * an — still, ohne sichtbaren Zwischenschritt. Der Rückgabewert wird hier
+   * an: still, ohne sichtbaren Zwischenschritt. Der Rückgabewert wird hier
    * nicht gebraucht; Profil holt sich denselben Zustand noch einmal.
    */
   useGeraeteanmeldung()
@@ -50,7 +50,7 @@ export function App() {
 
   useEffect(() => {
     /*
-     * §7: läuft still mit. Schlägt es fehl, sagt die App nichts — ein Hinweis
+     * §7: läuft still mit. Schlägt es fehl, sagt die App nichts: Ein Hinweis
      * wäre eine Warnung ohne Handlungsmöglichkeit. Die Bitte steht hinter der
      * Anmeldung, weil Browser sie eher gewähren, wenn jemand die Seite
      * tatsächlich benutzt.
@@ -71,9 +71,9 @@ export function App() {
   return (
     <Routes>
       {/*
-        Start ist der Screen aus §7: H1 „Meine Aufgaben", und darunter nur, was
-        der angemeldeten Person zugewiesen ist. Die Fallsperre trägt er selbst —
-        ohne Fall ist die App gesperrt, und dann steht dort der Screen mit den
+        Start ist der Screen aus §7: H1 "Meine Aufgaben", und darunter nur, was
+        der angemeldeten Person zugewiesen ist. Die Fallsperre trägt er selbst:
+        Ohne Fall ist die App gesperrt, und dann steht dort der Screen mit den
         drei Schaltflächen.
       */}
       <Route path="/" element={<Start />} />
@@ -85,8 +85,8 @@ export function App() {
       <Route path="/vorsorge" element={<Vorsorge />} />
       {/*
         Beide Zwecke aus §6 auf demselben Screen, mit verschiedenen Wegen
-        hinein: „Ich wurde eingeladen“ aus der Fallweiche, „Dieses Gerät
-        freischalten“ aus Start und Profil. Der Ablauf ist identisch (§6).
+        hinein: "Ich wurde eingeladen" aus der Fallweiche, "Dieses Gerät
+        freischalten" aus Start und Profil. Der Ablauf ist identisch (§6).
       */}
       <Route path="/beitreten" element={<Beitreten zweck="join" />} />
       <Route path="/geraet-freischalten" element={<Beitreten zweck="device" />} />

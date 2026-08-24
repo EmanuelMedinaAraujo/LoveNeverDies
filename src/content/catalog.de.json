@@ -1,7 +1,7 @@
 {
   "sprache": "de",
   "stand": "2026-08",
-  "version": "2026-08+a6bb317e",
+  "version": "2026-08+70dc006a",
   "aufgaben": [
     {
       "id": "todesbescheinigung",
@@ -99,7 +99,7 @@
       ],
       "unteraufgaben": [],
       "haengtAbVon": [],
-      "hinweis": "Sechs Wochen ab Ihrer Kenntnis von Anfall und Berufungsgrund — nicht ab dem Sterbetag. Wer erst spät erfährt, hat auch später Frist.",
+      "hinweis": "Sechs Wochen ab Ihrer Kenntnis von Anfall und Berufungsgrund, nicht ab dem Sterbetag. Wer erst spät erfährt, hat auch später Frist.",
       "quelleUrl": "https://www.gesetze-im-internet.de/bgb/__1944.html",
       "kategorie": "Erbe",
       "reihenfolge": 50

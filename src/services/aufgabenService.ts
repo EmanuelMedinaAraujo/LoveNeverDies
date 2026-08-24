@@ -15,18 +15,18 @@
  * Beschreibung, Typ und Erledigt-Status liegen im Payload; der Server kann eine
  * Aufgabe zählen, datieren und ausliefern, lesen kann er sie nie.
  *
- * **Dieser Dienst schreibt nirgends hin.** Er nimmt Klartext entgegen und gibt
- * eine {@link Mutation} zurück — fertig verschlüsselt, bereit zum Anhängen an
+ * Dieser Dienst schreibt nirgends hin. Er nimmt Klartext entgegen und gibt
+ * eine {@link Mutation} zurück: fertig verschlüsselt, bereit zum Anhängen an
  * die Offline-Queue (§5). Wann sie hinausgeht, entscheidet die Queue und nicht
  * der Moment des Tippens; das ist der Unterschied zwischen einer App, die im
  * Flugmodus funktioniert, und einer, die dort Fehlermeldungen zeigt.
  *
- * **Nicht entschlüsselbare Items verschwinden still** (§3.7). Sie gehören in
- * aller Regel einer anderen Person — private Items liegen in derselben Tabelle
+ * Nicht entschlüsselbare Items verschwinden still (§3.7). Sie gehören in
+ * aller Regel einer anderen Person: Private Items liegen in derselben Tabelle
  * und tragen keinen Marker, also lädt jedes Mitglied sie mit und verwirft sie.
  * Dass dabei auch ein echter Defekt verschluckt wird, ist die bewusst
  * hingenommene Grenze aus §11.8. Deshalb zählt {@link aufgabenAusZeilen} die
- * übersprungenen Zeilen mit — anzeigen darf das ausschließlich der Dev-Modus.
+ * übersprungenen Zeilen mit; anzeigen darf das ausschließlich der Dev-Modus.
  */
 
 import { entschluessele, verschluessele } from '../core/crypto/aead'
@@ -63,11 +63,11 @@ export type Fallschluessel = {
 /**
  * Was beim Instanziieren aus dem Katalog in das Item kopiert wird (§8).
  *
- * **Kopiert und nicht verknüpft.** `catalog_version` ist eine Herkunftsangabe
- * („aufgesetzt aus Katalogstand 2031-03"), keine lebende Verbindung: Ein
+ * Kopiert und nicht verknüpft: `catalog_version` ist eine Herkunftsangabe
+ * ("aufgesetzt aus Katalogstand 2031-03"), keine lebende Verbindung: Ein
  * späterer Import ändert an einer bereits instanziierten Aufgabe nichts. Wer
  * Rechtsgrundlage und Quelle im Aufgabendetail liest (§7), liest den Stand von
- * damals — und genau den soll er lesen, denn danach hat jemand gehandelt.
+ * damals, und genau den soll er lesen, denn danach hat jemand gehandelt.
  *
  * Alles ausser Titel und Kurzbeschreibung steht hier: Die beiden sind der
  * Aufgabe selbst geworden und dort änderbar.
@@ -85,16 +85,16 @@ export type Katalogherkunft = Omit<Katalogaufgabe, 'id' | 'titel' | 'kurzbeschre
  * `typ` ist heute einwertig und steht trotzdem da: Er ist die Unterscheidung,
  * an der ein späterer Leser ein Konfigurations-Item (`kenntnisAm`, §8) von
  * einer Aufgabe trennt, ohne raten zu müssen. Ein Feld nachträglich zum
- * Unterscheidungsmerkmal zu erklären ginge nicht — alte Payloads trügen es nicht.
+ * Unterscheidungsmerkmal zu erklären ginge nicht, da alte Payloads es nicht trügen.
  *
  * `erledigt` gilt nur für Blätter. Eine Aufgabe mit Unteraufgaben trägt das
- * Feld zwar weiter mit — schreiben lässt sich kein Payload ohne —, aber
+ * Feld zwar weiter mit (schreiben lässt sich kein Payload ohne), aber
  * gelesen wird es dort nie: Der Client leitet ihren Abschluss bei jedem
  * Rendern aus den Kindern ab (§7, `aufgabenbaum.ts`). Es gibt deshalb nichts
  * zu synchronisieren und nichts, was divergieren kann.
  *
  * `parentId` und `dependsOn` sind UUIDs anderer Items desselben Falls und
- * liegen mit im Payload — der Server erfährt über den Baum nichts (§3.3).
+ * liegen mit im Payload: Der Server erfährt über den Baum nichts (§3.3).
  */
 export type Aufgabenpayload = {
   typ: 'aufgabe'
@@ -106,20 +106,20 @@ export type Aufgabenpayload = {
   /**
    * Die Elternaufgabe, oder `null` bei einer Wurzelaufgabe.
    *
-   * **Eine Ebene, keine Verschachtelung** (§7). Erzwungen wird das nicht hier,
+   * Eine Ebene, keine Verschachtelung (§7). Erzwungen wird das nicht hier,
    * sondern beim Bauen des Baums: Ein `parentId`, das auf eine Unteraufgabe
    * zeigt, macht aus dem Kind eine Wurzel, statt es verschwinden zu lassen.
    */
   parentId: string | null
   /**
-   * Aufgaben, die vorher erledigt sein sollten — als schlichte UUID-Liste (§7).
+   * Aufgaben, die vorher erledigt sein sollten, als schlichte UUID-Liste (§7).
    *
    * Beim Instanziieren entsteht sie aus `katalog.haengtAbVon`; die
    * Katalog-IDs sind dabei bereits in die Item-IDs dieses Falls übersetzt (§8).
    */
   dependsOn: string[]
   /**
-   * Wem die Aufgabe gehört (§7) — verschlüsselt wie alles andere hier (§3.3).
+   * Wem die Aufgabe gehört (§7), verschlüsselt wie alles andere hier (§3.3).
    *
    * Der Server kann danach nicht filtern, und deshalb tut es der Start-Screen
    * nach dem Entschlüsseln. Was das für die Bearbeitungssperre bedeutet, steht
@@ -135,8 +135,8 @@ export type Aufgabe = {
   titel: string
   beschreibung: string
   /**
-   * Das gespeicherte Häkchen — gültig nur für Blätter (§7). Ob eine Aufgabe
-   * *gilt* als erledigt, beantwortet `aufgabenbaum.ts`, nicht dieses Feld.
+   * Das gespeicherte Häkchen, gültig nur für Blätter (§7). Ob eine Aufgabe
+   * als erledigt gilt, beantwortet `aufgabenbaum.ts`, nicht dieses Feld.
    */
   erledigt: boolean
   notizen: string
@@ -146,7 +146,7 @@ export type Aufgabe = {
   assignee: Zuweisung
   /**
    * Der DEK dieser Zeile, entpackt. Er bleibt im Speicher, weil jede Änderung
-   * ihn wieder braucht — neu erzeugt würde er nur bei einer neuen Aufgabe.
+   * ihn wieder braucht; neu erzeugt würde er nur bei einer neuen Aufgabe.
    */
   dek: Uint8Array
   /** Der Schlüssel, unter dem der DEK auf dem Server liegt. */
@@ -159,12 +159,12 @@ export type Aufgabenliste = {
   aufgaben: Aufgabe[]
   /**
    * Die Zeilen, die still verworfen wurden (§3.7), bei ihrer ID. Sichtbar
-   * ausschließlich im Dev-Modus — in Produktion gibt es diesen Zähler nirgends
+   * ausschließlich im Dev-Modus: In Produktion gibt es diesen Zähler nirgends
    * zu sehen.
    *
    * IDs statt einer Zahl, weil der Aufrufer stapelweise entschlüsselt: Er
    * bekommt nur die geänderten Zeilen zu sehen (§5) und müsste einen Zähler
-   * über die Stapel hinweg selbst fortschreiben — und dazu wissen, welche Zeile
+   * über die Stapel hinweg selbst fortschreiben, und dazu wissen, welche Zeile
    * gar nicht erst mitzählt. Genau diese Regel steht hier und soll hier bleiben.
    */
   uebersprungeneIds: string[]
@@ -176,14 +176,14 @@ export type Aufgabenaenderung = {
   beschreibung?: string
   notizen?: string
   erledigt?: boolean
-  /** Die UUID-Liste ganz, nicht einzelne Einträge — sie ist kurz genug (§7). */
+  /** Die UUID-Liste ganz, nicht einzelne Einträge: Sie ist kurz genug (§7). */
   dependsOn?: string[]
   /**
    * Die Zuweisung ganz: übernehmen, freigeben, jemanden eintragen (§7).
    *
    * Ganz und nicht als Einzelschritt, weil zwei Geräte denselben Payload
-   * schreiben und die höhere `seq` gewinnt. Ein „füge mich hinzu" hätte kein
-   * Gegenüber auf dem Server, der es ausführen könnte — die Zusammenführung
+   * schreiben und die höhere `seq` gewinnt. Ein "füge mich hinzu" hätte kein
+   * Gegenüber auf dem Server, der es ausführen könnte: Die Zusammenführung
    * findet hier statt, auf dem Stand, den dieses Gerät gerade sieht.
    */
   assignee?: Zuweisung
@@ -213,7 +213,7 @@ function alsListe(wert: unknown): string[] {
  * Nichts wird hier übernommen, wie es kommt: Der Payload ist zwar
  * entschlüsselt, aber er wurde irgendwann von irgendeiner Fassung dieser App
  * geschrieben. Ein Feld, das eine ältere Fassung noch nicht kannte, fehlt dann
- * einfach — und ein fehlender Wert soll eine leere Angabe ergeben und keinen
+ * einfach, und ein fehlender Wert soll eine leere Angabe ergeben und keinen
  * Absturz im Aufgabendetail.
  */
 function herkunftAus(wert: unknown): Katalogherkunft | null {
@@ -249,7 +249,7 @@ function herkunftAus(wert: unknown): Katalogherkunft | null {
  * Liest, was in einem entschlüsselten Payload steht.
  *
  * @throws wenn es kein Aufgabenpayload ist. Der Aufrufer macht daraus eine
- * übersprungene Zeile — von aussen ist ein Defekt nicht von dem privaten Item
+ * übersprungene Zeile: Von aussen ist ein Defekt nicht von dem privaten Item
  * einer anderen Person zu unterscheiden (§11.8).
  */
 function lesePayload(klartext: Uint8Array): Aufgabenpayload {
@@ -273,7 +273,7 @@ function lesePayload(klartext: Uint8Array): Aufgabenpayload {
     erledigt: felder.erledigt === true,
     // Dieselbe Vorsicht wie bei der Herkunft: Ein Payload, den eine ältere
     // Fassung geschrieben hat, kennt diese Felder nicht. Fehlt eines, ist die
-    // Aufgabe eine Wurzel ohne Abhängigkeiten und ohne Notizen — und kein
+    // Aufgabe eine Wurzel ohne Abhängigkeiten und ohne Notizen, und kein
     // Absturz im Aufgabendetail.
     notizen: typeof felder.notizen === 'string' ? felder.notizen : '',
     parentId: typeof felder.parentId === 'string' && felder.parentId !== '' ? felder.parentId : null,
@@ -304,7 +304,7 @@ async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufg
 }
 
 /**
- * Macht aus Ciphertext-Zeilen Aufgaben — der Schritt, den §5 „entschlüsselt beim
+ * Macht aus Ciphertext-Zeilen Aufgaben: der Schritt, den §5 "entschlüsselt beim
  * Start in den Speicher" nennt.
  *
  * Die Zeilen kommen aus dem Cache oder aus dem Delta; woher, ist dieser
@@ -313,7 +313,7 @@ async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufg
  * Schritt (§5).
  *
  * Ein Fehlschlag beim Entschlüsseln einer einzelnen Zeile bringt die Liste
- * nicht zum Scheitern — er zählt.
+ * nicht zum Scheitern: Er zählt.
  */
 export async function aufgabenAusZeilen(
   zeilen: InhaltZeile[],
@@ -324,7 +324,7 @@ export async function aufgabenAusZeilen(
 
   for (const zeile of zeilen) {
     // Tombstones werden vor jedem Entschlüsselungsversuch aussortiert: Sie sind
-    // leer und zählten sonst als Defekt, obwohl sie das Gegenteil sind — ein
+    // leer und zählten sonst als Defekt, obwohl sie das Gegenteil sind: ein
     // ordnungsgemäß gelöschtes Item (§5).
     if (zeile.geloescht || zeile.art !== 'item') {
       continue
@@ -343,14 +343,14 @@ export async function aufgabenAusZeilen(
 /**
  * Eine neue Aufgabe: eigener DEK, Payload darunter, DEK unter `K_c`.
  *
- * Die ID entsteht hier und nicht auf dem Server — eine clientseitige UUIDv7
+ * Die ID entsteht hier und nicht auf dem Server: eine clientseitige UUIDv7
  * (§5), damit Anlegen offline funktioniert und die Queue eine Aufgabe benennen
  * kann, die der Server noch nie gesehen hat.
  *
  * @param wer die anlegende Person, die damit gleich eingetragen ist (§7).
- * Etwas selbst aufzuschreiben *ist* die Ansage „ich mache das", und eine
+ * Etwas selbst aufzuschreiben *ist* die Ansage "ich mache das", und eine
  * Aufgabe, die man nach dem Tippen erst noch übernehmen müsste, um ihren Titel
- * zu korrigieren, wäre eine Hürde ohne Zweck. `null` lässt sie frei — so kommen
+ * zu korrigieren, wäre eine Hürde ohne Zweck. `null` lässt sie frei; so kommen
  * die Aufgaben der Juristinnen in den Fall (§8).
  */
 export async function mutationAnlegen(
@@ -385,7 +385,7 @@ export async function mutationAnlegen(
 
 /**
  * Ein Payload als anzulegende Zeile: eigener DEK, Payload darunter, DEK unter
- * `K_c` — die Kette aus §3.1, einmal.
+ * `K_c`: die Kette aus §3.1, einmal.
  *
  * Zwei Wege enden hier. Eine getippte Aufgabe wird daraus eine {@link Mutation}
  * für die Offline-Queue; der Rechtskatalog (§8) nimmt die Zeile unverändert und
@@ -432,12 +432,12 @@ export async function mutationAendern(
     parentId: aufgabe.parentId,
     dependsOn: aenderung.dependsOn ?? aufgabe.dependsOn,
     // Auch die Zuweisung schreibt jede Änderung mit. Fiele sie beim ersten
-    // Häkchen heraus, gäbe ein Abhaken die Aufgabe frei — und die Sperre, die
+    // Häkchen heraus, gäbe ein Abhaken die Aufgabe frei, und die Sperre, die
     // zwei Menschen davor bewahrt, dieselbe Behörde anzurufen, hielte genau
     // bis zum ersten Fortschritt (§7).
     assignee: aenderung.assignee ?? aufgabe.assignee,
     // Die Herkunft schreibt jede Änderung unverändert mit. Sie ist kein Feld,
-    // das jemand bearbeitet — sie fiele sonst beim ersten Häkchen aus dem
+    // das jemand bearbeitet. Sie fiele sonst beim ersten Häkchen aus dem
     // Payload, und mit ihr Rechtsgrundlage und Quelle (§8).
     katalog: aufgabe.katalog,
   }
@@ -451,7 +451,7 @@ export async function mutationAendern(
 }
 
 /**
- * Löschen — als Tombstone, nicht als DELETE (§5).
+ * Löschen: als Tombstone, nicht als DELETE (§5).
  *
  * Löschen gewinnt endgültig: Die Datenbank weist ein `deleted → false` ab (§4),
  * ein späteres Edit von einem anderen Gerät belebt die Aufgabe also nicht
@@ -464,9 +464,9 @@ export function mutationLoeschen(aufgabe: Aufgabe): Mutation {
 /**
  * Eine abgelehnte Änderung, so wie sie auf dem Bildschirm steht.
  *
- * §5: „Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern mit
- * ihrem **entschlüsselten** Inhalt als Mitteilung angezeigt." Ohne den Inhalt
- * wäre die Mitteilung eine Zumutung — „eine Änderung konnte nicht gespeichert
+ * §5: "Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern mit
+ * ihrem entschlüsselten Inhalt als Mitteilung angezeigt." Ohne den Inhalt
+ * wäre die Mitteilung eine Zumutung: "eine Änderung konnte nicht gespeichert
  * werden" sagt niemandem, was er noch einmal tippen muss.
  */
 export type AbgelehnteAenderung = {
@@ -474,8 +474,8 @@ export type AbgelehnteAenderung = {
   /** Was jemand tun wollte, in einem Wort für die Oberfläche. */
   was: 'anlegen' | 'aendern' | 'loeschen'
   /**
-   * Der Titel, entschlüsselt. Leer, wenn er sich nicht mehr herstellen lässt —
-   * dann fehlt der DEK, weil die Zeile inzwischen ein Tombstone ist.
+   * Der Titel, entschlüsselt. Leer, wenn er sich nicht mehr herstellen lässt:
+   * Dann fehlt der DEK, weil die Zeile inzwischen ein Tombstone ist.
    */
   titel: string
   /** Was der Server gesagt hat. */
@@ -514,7 +514,7 @@ async function titelAus(
  * Entschlüsselt, was der Server abgelehnt hat.
  *
  * @param zeilen der aktuelle Bestand. Für ein Edit und ein Löschen steht der
- * DEK dort — die Mutation trägt ihn nicht mit, weil ein Edit genau eine Spalte
+ * DEK dort: Die Mutation trägt ihn nicht mit, weil ein Edit genau eine Spalte
  * kostet (§3.1).
  */
 export function beschreibeAbgelehnte(
@@ -544,7 +544,7 @@ export function beschreibeAbgelehnte(
       return {
         ...gemeinsam,
         titel: await titelAus(
-          // Beim Löschen gibt es keinen neuen Payload — gemeint ist der, der
+          // Beim Löschen gibt es keinen neuen Payload: Gemeint ist der, der
           // noch dasteht.
           mutation.op === 'aendern' ? mutation.payload : (nachId.get(mutation.itemId)?.payload ?? null),
           dek,
