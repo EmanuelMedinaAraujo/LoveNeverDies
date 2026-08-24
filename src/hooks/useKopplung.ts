@@ -41,6 +41,7 @@ import {
 } from '../services/kopplungService.ts'
 import { useCase } from './useCase.ts'
 import { useGeraeteanmeldung } from './useGeraete.ts'
+import { useProfilAbgleich } from './useProfil.ts'
 
 type Ergebnis<T> = { wert: T } | { nachricht: string }
 
@@ -66,9 +67,16 @@ export type Kopplungscodedaten = {
  * besitzt, gegen das, was beim Gegenüber ankommt. Käme er vom Server, verglichen
  * beide Seiten dieselbe Serverangabe miteinander, und der Abgleich prüfte
  * nichts mehr (§3.6).
+ *
+ * **Erst das Profil, dann der Code.** `erzeuge_kopplungscode` weist einen Aufruf
+ * ohne Zeile in `profiles` ab, und zwar mit Absicht: §6 zeigt der einladenden
+ * Person einen echten Namen, bevor sie das Familiengeheimnis weitergibt. Dieser
+ * Hook wartet deshalb auf den Abgleich, statt in einen Fehler zu laufen, den
+ * niemand einordnen kann — und `neuAnfordern` stößt beides gemeinsam an.
  */
 export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
   const anmeldung = useGeraeteanmeldung()
+  const { zustand: profil, nochmal: profilNochmal } = useProfilAbgleich()
   const zugang = useSupabase()
 
   /*
@@ -85,8 +93,11 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
   const geraetId = anmeldung.status === 'bereit' ? anmeldung.geraet.id : null
   const anmeldungFehler = anmeldung.status === 'fehler' ? anmeldung.nachricht : null
 
+  const profilBereit = profil.status === 'bereit'
+  const profilFehler = profil.status === 'fehler' ? profil.nachricht : null
+
   useEffect(() => {
-    if (identitaet === null || geraetId === null) {
+    if (identitaet === null || geraetId === null || !profilBereit) {
       return
     }
 
@@ -109,19 +120,27 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
     return () => {
       aktuell = false
     }
-  }, [geraetId, identitaet, runde, zugang, zweck])
+  }, [geraetId, identitaet, profilBereit, runde, zugang, zweck])
 
   const neuAnfordern = useCallback(() => {
     // Erst das alte Ergebnis fort, dann die neue Runde: Sonst stünde der
     // abgelaufene Code noch da, während der frische unterwegs ist, und jemand
     // liest ihn in der Zwischenzeit vor.
     setzeErgebnis(null)
+    profilNochmal()
     setzeRunde((vorher) => vorher + 1)
-  }, [])
+  }, [profilNochmal])
 
   const zustand = useMemo<KopplungscodeZustand>(() => {
     if (anmeldungFehler !== null) {
       return { status: 'fehler', nachricht: anmeldungFehler }
+    }
+
+    if (profilFehler !== null) {
+      return {
+        status: 'fehler',
+        nachricht: `Ihr Name war nicht zu hinterlegen, und ohne ihn gibt es keinen Kopplungscode. ${profilFehler}`,
+      }
     }
 
     if (identitaet === null || ergebnis === null) {
@@ -138,7 +157,7 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
       laeuftAbAm: ergebnis.wert.laeuftAbAm,
       pruefcode: identitaet.pruefcode,
     }
-  }, [anmeldungFehler, ergebnis, identitaet])
+  }, [anmeldungFehler, ergebnis, identitaet, profilFehler])
 
   return useMemo(() => ({ zustand, neuAnfordern }), [neuAnfordern, zustand])
 }
@@ -178,6 +197,7 @@ export function useKopplungswache(aktiv: boolean): WacheZustand {
     }
 
     let abgeraeumt = false
+    let fertig = false
     let takt: ReturnType<typeof setInterval> | null = null
 
     async function sieheNach(eigene: Geraeteidentitaet, geraet: string) {
@@ -191,7 +211,14 @@ export function useKopplungswache(aktiv: boolean): WacheZustand {
           geraet,
         )
 
-        if (abgeraeumt) {
+        /*
+         * `fertig` neben `abgeraeumt`: Ein langsamer Abruf kann nach einem
+         * schnelleren zurückkommen, der längst freigegeben hat. Ohne diese
+         * Sperre schriebe er „wartet" darüber — und weil der Takt dann schon
+         * abgeräumt ist, sähe niemand je wieder nach. Der Screen bliebe auf
+         * „Warten auf die Bestätigung…" stehen, obwohl er offen ist.
+         */
+        if (abgeraeumt || fertig) {
           return
         }
 
@@ -202,6 +229,7 @@ export function useKopplungswache(aktiv: boolean): WacheZustand {
         }
 
         if (lesbar > ausgangszahl.current) {
+          fertig = true
           setzeZustand({ status: 'freigeschaltet', lesbar })
 
           // Fertig heißt fertig: Ein Takt, der weiterliefe, hielte die
@@ -216,7 +244,7 @@ export function useKopplungswache(aktiv: boolean): WacheZustand {
 
         setzeZustand({ status: 'wartet' })
       } catch (fehler) {
-        if (!abgeraeumt) {
+        if (!abgeraeumt && !fertig) {
           setzeZustand({ status: 'fehler', nachricht: alsNachricht(fehler) })
         }
       }
@@ -242,14 +270,16 @@ export function useKopplungswache(aktiv: boolean): WacheZustand {
 }
 
 export type EinloesungZustand =
-  | { status: 'leer' }
-  | { status: 'laeuft' }
-  | { status: 'angebot'; anfrage: Kopplungsanfrage }
+  | { status: 'leer'; fehler: string | null }
+  | { status: 'angebot'; anfrage: Kopplungsanfrage; fehler: string | null }
   | { status: 'fertig'; nachricht: string }
-  | { status: 'fehler'; nachricht: string }
 
 export type Einloesungsdaten = {
   zustand: EinloesungZustand
+  /** Ein Aufruf ist unterwegs. Getrennt vom Zustand, damit das Angebot stehen bleibt. */
+  laeuft: boolean
+  /** Die Fallliste ist geladen. Vorher lässt sich nicht bestätigen. */
+  faelleBereit: boolean
   /** Die Fälle, unter denen die einladende Person wählen kann (nur `join`). */
   lesbareFaelle: LesbarerFall[]
   einloesen: (eingabe: string) => Promise<void>
@@ -269,16 +299,31 @@ function lesbare(faelle: Fall[]): LesbarerFall[] {
  * zwei Aufrufe sind, ist deshalb keine Umständlichkeit der Oberfläche, sondern
  * die einzige Stelle, an der der Schlüsseltausch durch einen bösartigen Server
  * auffällt (§3.6).
+ *
+ * **Ein gescheitertes Bestätigen wirft das Angebot nicht weg.** Der Code ist zu
+ * diesem Zeitpunkt eingelöst und damit verbraucht; wer zurück ins Eingabefeld
+ * fiele, bekäme ihn nur noch als „bereits eingelöst" zurück, obwohl
+ * `schliesse_kopplung_ab` ihn weiterhin annähme. Die Meldung steht deshalb
+ * **neben** dem Angebot, und der Knopf bleibt da, wo er war.
  */
 export function useEinloesung(): Einloesungsdaten {
   const anmeldung = useGeraeteanmeldung()
   const { zustand: fallZustand } = useCase()
   const zugang = useSupabase()
 
-  const [zustand, setzeZustand] = useState<EinloesungZustand>({ status: 'leer' })
+  const [zustand, setzeZustand] = useState<EinloesungZustand>({ status: 'leer', fehler: null })
+  const [laeuft, setzeLaeuft] = useState(false)
 
   const identitaet = anmeldung.status === 'bereit' ? anmeldung.identitaet : null
   const geraetId = anmeldung.status === 'bereit' ? anmeldung.geraet.id : null
+
+  /*
+   * „Kein Fall" ist ein fertiges Ergebnis und kein halbes: Die Liste ist
+   * geladen und leer. Nur `laedt` heißt, dass noch etwas kommen kann — und
+   * genau dann darf niemand bestätigen, sonst verbrennt ein Code an einer
+   * Liste, die es noch gar nicht gibt.
+   */
+  const faelleBereit = fallZustand.status === 'bereit' || fallZustand.status === 'kein-fall'
 
   const faelle = useMemo(
     () => (fallZustand.status === 'bereit' ? fallZustand.faelle : []),
@@ -288,13 +333,15 @@ export function useEinloesung(): Einloesungsdaten {
 
   const einloesen = useCallback(
     async (eingabe: string) => {
-      setzeZustand({ status: 'laeuft' })
+      setzeLaeuft(true)
 
       try {
         const anfrage = await loeseKopplungscodeEin(supabaseKopplung(zugang()), eingabe)
-        setzeZustand({ status: 'angebot', anfrage })
+        setzeZustand({ status: 'angebot', anfrage, fehler: null })
       } catch (fehler) {
-        setzeZustand({ status: 'fehler', nachricht: alsNachricht(fehler) })
+        setzeZustand({ status: 'leer', fehler: alsNachricht(fehler) })
+      } finally {
+        setzeLaeuft(false)
       }
     },
     [zugang],
@@ -302,20 +349,22 @@ export function useEinloesung(): Einloesungsdaten {
 
   const bestaetigen = useCallback(
     async (fallId?: string) => {
-      if (zustand.status !== 'angebot') {
-        return
-      }
-
-      if (identitaet === null || geraetId === null) {
-        setzeZustand({
-          status: 'fehler',
-          nachricht: 'Ohne angemeldetes Gerät lässt sich keine Kopplung abschließen.',
-        })
+      if (zustand.status !== 'angebot' || laeuft) {
         return
       }
 
       const { anfrage } = zustand
-      setzeZustand({ status: 'laeuft' })
+
+      if (identitaet === null || geraetId === null || !faelleBereit) {
+        setzeZustand({
+          status: 'angebot',
+          anfrage,
+          fehler: 'Ihre Fälle sind noch nicht geladen. Bitte versuchen Sie es gleich noch einmal.',
+        })
+        return
+      }
+
+      setzeLaeuft(true)
 
       try {
         const kopplung = supabaseKopplung(zugang())
@@ -348,16 +397,18 @@ export function useEinloesung(): Einloesungsdaten {
           nachricht: `${anfrage.angebot.anzeigename} gehört jetzt zum Fall ${fall.personName}.`,
         })
       } catch (fehler) {
-        setzeZustand({ status: 'fehler', nachricht: alsNachricht(fehler) })
+        setzeZustand({ status: 'angebot', anfrage, fehler: alsNachricht(fehler) })
+      } finally {
+        setzeLaeuft(false)
       }
     },
-    [faelle, geraetId, identitaet, lesbareFaelle, zugang, zustand],
+    [faelle, faelleBereit, geraetId, identitaet, laeuft, lesbareFaelle, zugang, zustand],
   )
 
-  const abbrechen = useCallback(() => setzeZustand({ status: 'leer' }), [])
+  const abbrechen = useCallback(() => setzeZustand({ status: 'leer', fehler: null }), [])
 
   return useMemo(
-    () => ({ zustand, lesbareFaelle, einloesen, bestaetigen, abbrechen }),
-    [abbrechen, bestaetigen, einloesen, lesbareFaelle, zustand],
+    () => ({ zustand, laeuft, faelleBereit, lesbareFaelle, einloesen, bestaetigen, abbrechen }),
+    [abbrechen, bestaetigen, einloesen, faelleBereit, laeuft, lesbareFaelle, zustand],
   )
 }

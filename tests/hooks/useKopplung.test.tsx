@@ -21,6 +21,8 @@ const schalteGeraetFrei = vi.fn()
 const ladeFaelle = vi.fn()
 const useGeraeteanmeldung = vi.fn()
 const useCase = vi.fn()
+const useProfilAbgleich = vi.fn()
+const profilNochmal = vi.fn()
 
 vi.mock('../../src/services/kopplungService.ts', async () => {
   const echt = await vi.importActual<typeof import('../../src/services/kopplungService.ts')>(
@@ -42,6 +44,9 @@ vi.mock('../../src/hooks/useGeraete.ts', () => ({
   useGeraeteanmeldung: () => useGeraeteanmeldung(),
 }))
 vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
+vi.mock('../../src/hooks/useProfil.ts', () => ({
+  useProfilAbgleich: () => useProfilAbgleich(),
+}))
 vi.mock('../../src/core/db/supabaseKopplung.ts', () => ({ supabaseKopplung: () => ({}) }))
 vi.mock('../../src/core/db/supabaseFaelle.ts', () => ({ supabaseFaelle: () => ({}) }))
 vi.mock('../../src/core/db/supabaseFallschluessel.ts', () => ({
@@ -111,6 +116,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useGeraeteanmeldung.mockReturnValue(ANMELDUNG_BEREIT)
   useCase.mockReturnValue({ zustand: { status: 'kein-fall' }, legeTrauerfallAn: vi.fn() })
+  useProfilAbgleich.mockReturnValue({ zustand: { status: 'bereit' }, nochmal: profilNochmal })
   erzeugeKopplungscode.mockResolvedValue({ code: 'K4M7QP2X', laeuftAbAm: '2026-08-24T10:15:00Z' })
   loeseKopplungscodeEin.mockResolvedValue(ANFRAGE)
   fuegeZumFallHinzu.mockResolvedValue(undefined)
@@ -164,6 +170,42 @@ describe('useKopplungscode (§6)', () => {
     const { result } = renderHook(() => useKopplungscode('join'))
 
     expect(result.current.zustand).toEqual({ status: 'fehler', nachricht: 'Kein Netz.' })
+  })
+
+  it('wartet auf das Profil, bevor es einen Code holt', () => {
+    // `erzeuge_kopplungscode` weist einen Aufruf ohne Zeile in `profiles` ab
+    // (§6). Ohne diese Reihenfolge liefe der erste Versuch in einen Fehler,
+    // den niemand einordnen kann.
+    useProfilAbgleich.mockReturnValue({ zustand: { status: 'laedt' }, nochmal: profilNochmal })
+
+    const { result } = renderHook(() => useKopplungscode('join'))
+
+    expect(result.current.zustand.status).toBe('laedt')
+    expect(erzeugeKopplungscode).not.toHaveBeenCalled()
+  })
+
+  it('sagt es, wenn der Name nicht zu hinterlegen war', () => {
+    useProfilAbgleich.mockReturnValue({
+      zustand: { status: 'fehler', nachricht: 'permission denied' },
+      nochmal: profilNochmal,
+    })
+
+    const { result } = renderHook(() => useKopplungscode('join'))
+
+    expect(result.current.zustand).toMatchObject({
+      status: 'fehler',
+      nachricht: expect.stringContaining('ohne ihn gibt es keinen Kopplungscode'),
+    })
+    expect(erzeugeKopplungscode).not.toHaveBeenCalled()
+  })
+
+  it('versucht mit dem neuen Code auch das Profil noch einmal', async () => {
+    const { result } = renderHook(() => useKopplungscode('join'))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    act(() => result.current.neuAnfordern())
+
+    expect(profilNochmal).toHaveBeenCalled()
   })
 
   it('macht aus einem gescheiterten Aufruf einen Satz', async () => {
@@ -247,6 +289,44 @@ describe('useKopplungswache (§6, Schritt 7)', () => {
     expect(ladeFaelle).toHaveBeenCalledTimes(bisher)
   })
 
+  it('lässt einen langsamen Abruf die Freigabe nicht überschreiben', async () => {
+    /*
+     * Ein Abruf, der nach einem schnelleren zurückkommt, dürfte „wartet" nicht
+     * über ein bereits gemeldetes „freigeschaltet" schreiben: Der Takt ist dann
+     * abgeräumt, es sähe nie wieder jemand nach, und der Screen bliebe auf
+     * „Warten auf die Bestätigung…" stehen, obwohl längst alles da ist.
+     */
+    let langsamAufloesen: ((faelle: unknown[]) => void) | null = null
+
+    ladeFaelle.mockImplementationOnce(() => Promise.resolve([]))
+    ladeFaelle.mockImplementationOnce(
+      () => new Promise((erfuellen) => (langsamAufloesen = erfuellen)),
+    )
+    ladeFaelle.mockImplementation(() => Promise.resolve([fall('fall-1')]))
+
+    const { result } = renderHook(() => useKopplungswache(true))
+    await erstesNachsehen()
+
+    // Der langsame Abruf startet …
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(WACHE_ABSTAND_MS)
+    })
+    // … der nächste überholt ihn und gibt frei …
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(WACHE_ABSTAND_MS)
+    })
+
+    expect(result.current.status).toBe('freigeschaltet')
+
+    // … und erst danach kommt der langsame mit seinem alten Bild zurück.
+    await act(async () => {
+      langsamAufloesen?.([])
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(result.current.status).toBe('freigeschaltet')
+  })
+
   it('meldet nicht frei, wenn schon am Anfang etwas lesbar war', async () => {
     // Ein zweites Gerät kann zwei von drei Fällen längst lesen und auf den
     // dritten warten. „Mindestens einer lesbar" wäre hier sofort erfüllt.
@@ -279,11 +359,11 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
   it('beginnt leer und hält nach dem Einlösen das Angebot', async () => {
     const { result } = renderHook(() => useEinloesung())
 
-    expect(result.current.zustand).toEqual({ status: 'leer' })
+    expect(result.current.zustand).toEqual({ status: 'leer', fehler: null })
 
     await act(() => result.current.einloesen('k4m7-qp2x'))
 
-    expect(result.current.zustand).toEqual({ status: 'angebot', anfrage: ANFRAGE })
+    expect(result.current.zustand).toEqual({ status: 'angebot', anfrage: ANFRAGE, fehler: null })
     expect(loeseKopplungscodeEin).toHaveBeenCalledWith(expect.anything(), 'k4m7-qp2x')
   })
 
@@ -293,7 +373,52 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
     await act(() => result.current.bestaetigen())
 
     expect(fuegeZumFallHinzu).not.toHaveBeenCalled()
-    expect(result.current.zustand).toEqual({ status: 'leer' })
+    expect(result.current.zustand).toEqual({ status: 'leer', fehler: null })
+  })
+
+  it('bestätigt nichts, solange die Fallliste noch lädt', async () => {
+    /*
+     * Der Code ist zu diesem Zeitpunkt eingelöst und verbrannte an einer Liste,
+     * die es noch gar nicht gibt — bei `device` mit der Meldung „0 von 0 Fällen
+     * freigeschaltet", die wie ein Erfolg aussieht.
+     */
+    useCase.mockReturnValue({ zustand: { status: 'laedt' }, legeTrauerfallAn: vi.fn() })
+
+    const { result } = renderHook(() => useEinloesung())
+    await act(() => result.current.einloesen('K4M7QP2X'))
+
+    expect(result.current.faelleBereit).toBe(false)
+
+    await act(() => result.current.bestaetigen())
+
+    expect(fuegeZumFallHinzu).not.toHaveBeenCalled()
+    expect(result.current.zustand).toMatchObject({
+      status: 'angebot',
+      fehler: expect.stringContaining('noch nicht geladen'),
+    })
+  })
+
+  it('hält das Angebot fest, wenn das Bestätigen scheitert', async () => {
+    /*
+     * Zurück ins Eingabefeld wäre eine Sackgasse: Der Code ist eingelöst und
+     * käme nur noch als „bereits eingelöst" zurück, obwohl
+     * `schliesse_kopplung_ab` ihn weiterhin annähme.
+     */
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [fall('fall-1')], aktiver: fall('fall-1') },
+      legeTrauerfallAn: vi.fn(),
+    })
+    fuegeZumFallHinzu.mockRejectedValue(new Error('Kein Netz.'))
+
+    const { result } = renderHook(() => useEinloesung())
+    await act(() => result.current.einloesen('K4M7QP2X'))
+    await act(() => result.current.bestaetigen('fall-1'))
+
+    expect(result.current.zustand).toEqual({
+      status: 'angebot',
+      anfrage: ANFRAGE,
+      fehler: 'Kein Netz.',
+    })
   })
 
   it('fügt die Person dem gewählten Fall hinzu', async () => {
@@ -327,8 +452,8 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
     await act(() => result.current.bestaetigen('fall-1'))
 
     expect(result.current.zustand).toMatchObject({
-      status: 'fehler',
-      nachricht: expect.stringContaining('nur teilen, was Sie selbst lesen können'),
+      status: 'angebot',
+      fehler: expect.stringContaining('nur teilen, was Sie selbst lesen können'),
     })
     expect(fuegeZumFallHinzu).not.toHaveBeenCalled()
   })
@@ -361,8 +486,8 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
     await act(() => result.current.einloesen('ZZZZZZZZ'))
 
     expect(result.current.zustand).toEqual({
-      status: 'fehler',
-      nachricht: 'Diesen Kopplungscode gibt es nicht.',
+      status: 'leer',
+      fehler: 'Diesen Kopplungscode gibt es nicht.',
     })
   })
 
@@ -372,6 +497,6 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
 
     act(() => result.current.abbrechen())
 
-    expect(result.current.zustand).toEqual({ status: 'leer' })
+    expect(result.current.zustand).toEqual({ status: 'leer', fehler: null })
   })
 })

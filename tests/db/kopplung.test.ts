@@ -125,6 +125,32 @@ describe('erzeuge_kopplungscode (§6)', () => {
     }
   })
 
+  it('schöpft an jeder Stelle das ganze Alphabet aus', async () => {
+    /*
+     * Ein UUIDv4 trägt in Byte 6 die Version und in Byte 8 zwei Variantenbits.
+     * Wer sie in den Code nähme, bekäme an diesen Stellen nur die Hälfte des
+     * Alphabets — und das sieht man einem einzelnen Code nicht an. Hier fällt
+     * es auf: Bei 200 Codes müsste jede Stelle deutlich mehr als 16 der 32
+     * Zeichen zeigen.
+     */
+    const geraet = await geraeteschluessel(db, 'user_verteilung')
+    await profil(db, 'user_verteilung')
+
+    const gesehen = Array.from({ length: 8 }, () => new Set<string>())
+
+    for (let runde = 0; runde < 200; runde++) {
+      const code = await codeVon('user_verteilung', geraet, 'device')
+
+      for (let stelle = 0; stelle < 8; stelle++) {
+        gesehen[stelle]?.add(code[stelle] ?? '')
+      }
+    }
+
+    for (const stelle of gesehen) {
+      expect(stelle.size).toBeGreaterThan(20)
+    }
+  })
+
   it('lässt den Code nach 15 Minuten ablaufen', async () => {
     const geraet = await geraeteschluessel(db, ANNA)
     await profil(db, ANNA)

@@ -28,10 +28,15 @@ vi.mock('react-router-dom', async () => {
 
 const { Beitreten } = await import('../../src/screens/shared/Beitreten/Beitreten.tsx')
 
+/** 15 Minuten in der Zukunft, so wie `erzeuge_kopplungscode` es liefert. */
+function inKuerze(): string {
+  return new Date(Date.now() + 15 * 60_000).toISOString()
+}
+
 const BEREIT = {
   status: 'bereit',
   code: 'K4M7QP2X',
-  laeuftAbAm: '2026-08-24T10:15:00Z',
+  laeuftAbAm: inKuerze(),
   pruefcode: '481253',
 }
 
@@ -86,6 +91,48 @@ describe('Beitreten (§6)', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Neuen Code anfordern' }))
 
     expect(neuAnfordern).toHaveBeenCalled()
+  })
+
+  it('sagt, bis wann der Code gilt', () => {
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.getByText(/^Er gilt bis \d{2}:\d{2} Uhr\.$/)).toBeVisible()
+  })
+
+  it('sagt es, sobald der Code abgelaufen ist', async () => {
+    // Ohne diese Uhr stünde der tote Code weiter groß auf dem Screen, und
+    // jemand läse ihn vor, während die andere Seite „abgelaufen" zurückbekommt.
+    vi.useFakeTimers()
+
+    try {
+      useKopplungscode.mockReturnValue({
+        zustand: { ...BEREIT, laeuftAbAm: new Date(Date.now() + 60_000).toISOString() },
+        neuAnfordern,
+      })
+
+      rendereMitProvidern(<Beitreten zweck="join" />)
+      expect(screen.queryByText(/abgelaufen/)).toBeNull()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(61_000)
+      })
+
+      expect(screen.getByText(/Dieser Code ist abgelaufen/)).toBeVisible()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('kommt mit einem unlesbaren Zeitstempel aus, ohne ihn für abgelaufen zu halten', () => {
+    useKopplungscode.mockReturnValue({
+      zustand: { ...BEREIT, laeuftAbAm: 'irgendwann' },
+      neuAnfordern,
+    })
+
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.getByText('Er gilt 15 Minuten.')).toBeVisible()
+    expect(screen.queryByText(/abgelaufen/)).toBeNull()
   })
 
   it('nennt den Grund, wenn kein Code zu bekommen war', async () => {

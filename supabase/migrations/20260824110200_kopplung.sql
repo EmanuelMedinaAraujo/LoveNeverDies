@@ -90,17 +90,25 @@ alter table pairing_attempts enable row level security;
 -- selbst in einen fremden Fall, bevor die eingeladene Person ihn überhaupt
 -- vorgelesen hat.
 --
+-- **Nicht jedes Byte einer UUID ist zufällig.** Ein UUIDv4 trägt in Byte 6 die
+-- Versionsnummer im oberen Halbbyte und in Byte 8 zwei feste Variantenbits;
+-- diese beiden liefern nur 16 bzw. 64 Werte statt 256. Wer sie mitnähme,
+-- schränkte zwei der acht Stellen still auf die Hälfte des Alphabets ein — ein
+-- Bit weniger, und niemand sähe es dem Code an. Genommen werden deshalb die
+-- Bytes 0–5 und 9–10, die vollständig aus dem Zufallsgenerator stammen.
+--
 -- 256 mod 32 = 0, also verzerrt der Rest die Verteilung nicht. Bei einem
 -- Alphabet mit anderer Länge wäre genau das der Fehler, den niemand sieht.
 create function public.kopplungscode_zufall() returns text
   language plpgsql as $fn$
 declare
   alphabet constant text := '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  stellen constant int[] := array[0, 1, 2, 3, 4, 5, 9, 10];
   bytes bytea := uuid_send(gen_random_uuid());
   code text := '';
 begin
-  for stelle in 0..7 loop
-    code := code || substr(alphabet, (get_byte(bytes, stelle) % 32) + 1, 1);
+  for stelle in 1..8 loop
+    code := code || substr(alphabet, (get_byte(bytes, stellen[stelle]) % 32) + 1, 1);
   end loop;
 
   return code;

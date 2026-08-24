@@ -63,6 +63,18 @@ export function gruppierterKopplungscode(code: string): string {
 }
 
 /**
+ * Sechs Ziffern in zwei Dreiergruppen (§3.6).
+ *
+ * Steht hier und nicht bei der Geräteliste, weil beide Seiten der Kopplung
+ * denselben Prüfcode zeigen und ihn miteinander vergleichen. Zwei Funktionen,
+ * die ihn verschieden gruppieren, wären zwei Zahlen, die sich am Telefon nicht
+ * mehr zusammenlesen lassen.
+ */
+export function gruppierterPruefcode(pruefcode: string): string {
+  return `${pruefcode.slice(0, 3)} ${pruefcode.slice(3)}`
+}
+
+/**
  * Was jemand eingetippt hat, als Code gelesen.
  *
  * Bindestriche und Kleinschreibung fallen weg; alles andere wird abgewiesen,
@@ -232,6 +244,19 @@ export async function schalteGeraetFrei(
   }
 
   const lesbare = faelle.filter((fall): fall is LesbarerFall => fall.zustand === 'lesbar')
+
+  /*
+   * Kein lesbarer Fall heißt: Es gibt nichts weiterzugeben. Ohne diesen Wurf
+   * meldete die Oberfläche „0 von 0 Fällen freigeschaltet" — die Kopplung sähe
+   * erledigt aus, der Code ist verbraucht, und das zweite Gerät liest weiterhin
+   * nichts. Ein Fehlschlag, der wie ein Erfolg aussieht, ist hier der schlimmste
+   * Ausgang: Niemand versucht es noch einmal.
+   */
+  if (lesbare.length === 0) {
+    throw new KopplungFehler(
+      'Dieses Gerät kann keinen Fall lesen und deshalb auch keinen freigeben. Lassen Sie zuerst dieses Gerät freischalten.',
+    )
+  }
 
   /*
    * Nacheinander, nicht nebenläufig: Jeder Aufruf schreibt in `key_wraps` und

@@ -1,8 +1,11 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Kopplungszweck } from '../../../core/db/kopplung.ts'
 import { useKopplungscode, useKopplungswache } from '../../../hooks/useKopplung.ts'
-import { gruppierterKopplungscode } from '../../../services/kopplungService.ts'
+import {
+  gruppierterKopplungscode,
+  gruppierterPruefcode,
+} from '../../../services/kopplungService.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import stile from './Beitreten.module.css'
@@ -35,9 +38,13 @@ const TEXTE: Record<Kopplungszweck, { titel: string; einleitung: string; erfolg:
   },
 }
 
-/** Sechs Ziffern in zwei Gruppen, wie in Profil → Geräte. */
-function gruppierterPruefcode(pruefcode: string): string {
-  return `${pruefcode.slice(0, 3)} ${pruefcode.slice(3)}`
+/** „12:34 Uhr", oder nichts, wenn der Zeitstempel keiner ist. */
+function uhrzeit(zeitpunkt: string): string | null {
+  const datum = new Date(zeitpunkt)
+
+  return Number.isNaN(datum.getTime())
+    ? null
+    : datum.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
 }
 
 export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
@@ -47,6 +54,46 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
 
   const texte = TEXTE[zweck]
   const freigeschaltet = wache.status === 'freigeschaltet'
+
+  const laeuftAbAm = zustand.status === 'bereit' ? zustand.laeuftAbAm : null
+
+  /*
+   * Im State steht der Zeitpunkt, dessen Uhr abgelaufen ist — kein `boolean`.
+   * Ein frischer Code bringt einen anderen Zeitpunkt mit und gilt damit von
+   * selbst wieder; ein Flag müsste jemand zurücksetzen, und genau das vergisst
+   * man beim nächsten Zweig.
+   */
+  const [abgelaufenerZeitpunkt, setzeAbgelaufenenZeitpunkt] = useState<string | null>(null)
+  const abgelaufen = laeuftAbAm !== null && abgelaufenerZeitpunkt === laeuftAbAm
+
+  useEffect(() => {
+    if (laeuftAbAm === null) {
+      return
+    }
+
+    /*
+     * §6: Ein Code gilt 15 Minuten. Ohne diese Uhr stünde er danach weiter groß
+     * auf dem Screen, und jemand läse ihn am Telefon vor, während die andere
+     * Seite „abgelaufen" zurückbekommt.
+     *
+     * Die Wache läuft trotzdem weiter, und das ist kein Versehen: Wer den Code
+     * *vor* dem Ablauf eingelöst hat, darf ihn danach noch bestätigen — der
+     * Abgleich am Telefon soll nicht unter Zeitdruck stehen
+     * (`schliesse_kopplung_ab`). Diese Seite muss die Freigabe also weiter
+     * mitbekommen.
+     */
+    const rest = new Date(laeuftAbAm).getTime() - Date.now()
+
+    // Ein Zeitstempel, den niemand lesen kann, ist kein abgelaufener Code: Dann
+    // steht daneben „Er gilt 15 Minuten." und sonst nichts.
+    if (Number.isNaN(rest)) {
+      return
+    }
+
+    const takt = setTimeout(() => setzeAbgelaufenenZeitpunkt(laeuftAbAm), Math.max(rest, 0))
+
+    return () => clearTimeout(takt)
+  }, [laeuftAbAm])
 
   useEffect(() => {
     if (!freigeschaltet) {
@@ -106,6 +153,17 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
             <p className={stile.hinweis}>
               In diesem Code kommen kein O, keine 0, kein I und keine 1 vor.
             </p>
+            {abgelaufen ? (
+              <p className={stile.hinweis} role="alert">
+                Dieser Code ist abgelaufen. Bitte fordern Sie einen neuen an.
+              </p>
+            ) : (
+              <p className={stile.hinweis}>
+                {uhrzeit(zustand.laeuftAbAm) === null
+                  ? 'Er gilt 15 Minuten.'
+                  : `Er gilt bis ${uhrzeit(zustand.laeuftAbAm)} Uhr.`}
+              </p>
+            )}
           </Card>
 
           <Card>

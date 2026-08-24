@@ -16,9 +16,15 @@
  * später `erzeuge_kopplungscode` mit einem Satz, der sagt, was fehlt (§6). Bis
  * dahin funktioniert alles andere, und eine Fehlermeldung beim Start, die
  * niemand einordnen kann, hilft niemandem.
+ *
+ * Er darf deshalb aber nicht folgenlos steckenbleiben: Ohne `nochmal` bliebe
+ * die Sitzung nach einem einzigen misslungenen Rundlauf bis zum Neuladen ohne
+ * Profil, und jede Kopplung scheiterte mit „Ohne hinterlegten Namen". Der
+ * Kopplungscode-Hook wartet deshalb auf `bereit` und stößt bei Bedarf einen
+ * neuen Versuch an.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../core/auth/authProvider.ts'
 import { supabaseProfil } from '../core/db/supabaseProfil.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
@@ -30,11 +36,18 @@ export type ProfilZustand =
   | { status: 'bereit' }
   | { status: 'fehler'; nachricht: string }
 
-export function useProfilAbgleich(): ProfilZustand {
+export type Profildaten = {
+  zustand: ProfilZustand
+  /** Nach einem Fehlschlag: noch einmal schreiben. */
+  nochmal: () => void
+}
+
+export function useProfilAbgleich(): Profildaten {
   const { zustand: authZustand } = useAuth()
   const zugang = useSupabase()
 
   const [zustand, setzeZustand] = useState<ProfilZustand>({ status: 'laedt' })
+  const [runde, setzeRunde] = useState(0)
 
   const benutzer = authZustand.status === 'angemeldet' ? authZustand.benutzer : null
 
@@ -65,11 +78,15 @@ export function useProfilAbgleich(): ProfilZustand {
     return () => {
       aktuell = false
     }
-  }, [anzeigename, benutzerId, email, zugang])
+  }, [anzeigename, benutzerId, email, runde, zugang])
 
-  if (authZustand.status === 'abgemeldet') {
-    return { status: 'abgemeldet' }
-  }
+  const nochmal = useCallback(() => setzeRunde((vorher) => vorher + 1), [])
 
-  return zustand
+  return useMemo(
+    () => ({
+      zustand: authZustand.status === 'abgemeldet' ? { status: 'abgemeldet' as const } : zustand,
+      nochmal,
+    }),
+    [authZustand.status, nochmal, zustand],
+  )
 }
