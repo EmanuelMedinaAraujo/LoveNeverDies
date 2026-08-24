@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FallZustand } from '../../src/hooks/useCase.ts'
-import type { TresorZustand } from '../../src/hooks/useTresor.ts'
+import type { Tresordaten } from '../../src/hooks/useTresor.ts'
 import { Erbe } from '../../src/screens/shared/Erbe/Erbe.tsx'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 import type { TresorItem } from '../../src/services/tresorService.ts'
@@ -15,7 +15,8 @@ const mockLoescheItem = vi.fn()
 const mockVerteileShares = vi.fn()
 
 let mockFallZustand: FallZustand
-let mockTresorZustand: Extract<TresorZustand, { status: 'bereit' }>
+let mockTresor: Tresordaten
+let mockAufgabenZustand: { status: 'laedt' } | { status: 'bereit' }
 
 vi.mock('react-router-dom', async () => {
   const echt = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -37,7 +38,10 @@ vi.mock('../../src/hooks/useCase.ts', () => ({
 
 vi.mock('../../src/hooks/useAufgaben.ts', () => ({
   useAufgaben: () => ({
-    zustand: { status: 'bereit', laedtNetz: false, netzfehler: null, aufgaben: [], baum: [], uebersprungen: 0 },
+    zustand:
+      mockAufgabenZustand.status === 'laedt'
+        ? { status: 'laedt' }
+        : { status: 'bereit', laedtNetz: false, netzfehler: null, aufgaben: [], baum: [], uebersprungen: 0 },
     zeilen: [],
     mutiere: vi.fn(),
     bestaetige: vi.fn(),
@@ -52,14 +56,7 @@ vi.mock('../../src/hooks/useAufgaben.ts', () => ({
 }))
 
 vi.mock('../../src/hooks/useTresor.ts', () => ({
-  useTresor: () => ({
-    zustand: mockTresorZustand,
-    legeItemAn: mockLegeItemAn,
-    loescheItem: mockLoescheItem,
-    verteileShares: mockVerteileShares,
-    resplitLaeuft: false,
-    resplitFehler: null,
-  }),
+  useTresor: () => mockTresor,
 }))
 
 function standardFall(ueberschreibung: Partial<LesbarerFall> = {}): LesbarerFall {
@@ -90,16 +87,21 @@ describe('Erbe Screen (§3.5, §7)', () => {
     mockLegeItemAn.mockClear()
     mockLoescheItem.mockClear()
 
+    mockVerteileShares.mockReset()
+
     const fall = standardFall()
     mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
-    mockTresorZustand = {
-      status: 'bereit',
+    mockAufgabenZustand = { status: 'bereit' }
+    mockTresor = {
       items: [],
       schwelle: { n: 0, k: null },
       istPreparer: true,
       resplitPending: false,
-      laedtNetz: false,
-      netzfehler: null,
+      legeItemAn: mockLegeItemAn,
+      loescheItem: mockLoescheItem,
+      verteileShares: mockVerteileShares,
+      resplitLaeuft: false,
+      resplitFehler: null,
     }
   })
 
@@ -115,7 +117,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
   })
 
   it('zeigt bei n = 1 den Hinweis auf Alleinöffnung', () => {
-    mockTresorZustand.schwelle = { n: 1, k: 1 }
+    mockTresor.schwelle = { n: 1, k: 1 }
     rendereMitProvidern(<Erbe />)
 
     expect(
@@ -124,7 +126,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
   })
 
   it('zeigt bei n >= 2 die nötigen Freigaben k von n', () => {
-    mockTresorZustand.schwelle = { n: 3, k: 2 }
+    mockTresor.schwelle = { n: 3, k: 2 }
     rendereMitProvidern(<Erbe />)
 
     expect(screen.getByText(/Zur Öffnung sind 2 von 3 Freigaben erforderlich/)).toBeVisible()
@@ -155,7 +157,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
       dek: new Uint8Array(32),
       geaendertAm: '2026-08-24T12:00:00Z',
     }
-    mockTresorZustand.items = [item]
+    mockTresor.items = [item]
 
     rendereMitProvidern(<Erbe />)
 
@@ -182,8 +184,39 @@ describe('Erbe Screen (§3.5, §7)', () => {
     expect(navigiere).toHaveBeenCalledWith('/', { replace: true })
   })
 
+  it('wartet auf den Sync-Stream, bevor der Tresor angezeigt wird', () => {
+    mockAufgabenZustand = { status: 'laedt' }
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Tresor wird geladen...')
+    expect(screen.queryByText('Versiegelt')).toBeNull()
+  })
+
+  it('benennt einen fehlgeschlagenen Re-Split und bietet den zweiten Versuch an', async () => {
+    mockVerteileShares.mockResolvedValue({ n: 2, k: 2 })
+    mockTresor.resplitFehler = 'Netz weg'
+    mockTresor.resplitPending = true
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/Die Schlüssel konnten nicht neu verteilt werden: Netz weg/)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Erneut versuchen' }))
+    expect(mockVerteileShares).toHaveBeenCalledTimes(1)
+  })
+
+  it('bietet den zweiten Versuch nicht an, während er schon läuft', () => {
+    mockTresor.resplitFehler = 'Netz weg'
+    mockTresor.resplitLaeuft = true
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByText('Schlüssel werden neu verteilt...')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Erneut versuchen' })).toBeNull()
+  })
+
   it('zeigt Nicht-Preparern den geschützten Modus ohne Schreibzugriff', () => {
-    mockTresorZustand.istPreparer = false
+    mockTresor.istPreparer = false
     rendereMitProvidern(<Erbe />)
 
     expect(screen.getByRole('heading', { name: 'Geschützter Tresor' })).toBeVisible()

@@ -151,7 +151,7 @@ describe('seit', () => {
     const { client } = stubClient({ data: null, error: fehler('permission denied') })
 
     await expect(supabaseInhalte(client).seit('fall-1', 0)).rejects.toThrow(
-      /Die Aufgaben waren nicht abzurufen: permission denied/,
+      /Die Aufgaben konnten nicht abgerufen werden: permission denied/,
     )
   })
 })
@@ -209,7 +209,7 @@ describe('lege', () => {
     const { client } = stubClient({ data: null, error: fehler('new row violates row-level security') })
 
     await expect(supabaseInhalte(client).lege(NEU)).rejects.toThrow(
-      /Die Aufgabe war nicht anzulegen/,
+      /Die Aufgabe konnte nicht angelegt werden/,
     )
   })
 })
@@ -242,7 +242,7 @@ describe('schreibePayload', () => {
 
     await expect(
       supabaseInhalte(client).schreibePayload('item-1', new Uint8Array([0x07])),
-    ).rejects.toThrow(/Die Aufgabe war nicht zu ändern: deadlock detected/)
+    ).rejects.toThrow(/Die Aufgabe konnte nicht geändert werden: deadlock detected/)
   })
 })
 
@@ -265,7 +265,7 @@ describe('loesche', () => {
     const { client } = stubClient({ data: [], error: null })
 
     await expect(supabaseInhalte(client).loesche('item-1')).rejects.toThrow(
-      /nicht zu löschen/,
+      /konnte nicht gelöscht werden/,
     )
   })
 })

@@ -225,13 +225,13 @@ function Unteraufgabenzeile({
       <div className={stile.aktionen}>
         <Link className={stile.hinweis} to={`/aufgabe/${unteraufgabe.id}`}>
           Zuständigkeit ändern
-          <span className="nur-vorlesen">: "{unteraufgabe.titel}"</span>
+          <span className="nur-vorlesen">: „{unteraufgabe.titel}"</span>
         </Link>
         {darfAendern ? (
           <Button
             variante="sekundaer"
             onClick={() => setzeFragt(true)}
-            vorleseText={`: "${unteraufgabe.titel}"`}
+            vorleseText={`: „${unteraufgabe.titel}"`}
           >
             Löschen
           </Button>

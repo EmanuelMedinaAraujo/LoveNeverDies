@@ -56,7 +56,7 @@ describe('finde', () => {
 
     await expect(
       supabaseGeraeteschluessel(client).finde('user_1', new Uint8Array([0x09])),
-    ).rejects.toThrow(/Der Geräteschlüssel war nicht abzurufen: permission denied/)
+    ).rejects.toThrow(/Der Geräteschlüssel konnte nicht abgerufen werden: permission denied/)
   })
 })
 
@@ -109,7 +109,7 @@ describe('legeAn', () => {
         pkSig: new Uint8Array([0x02]),
         label: 'iPhone',
       }),
-    ).rejects.toThrow(/Der Geräteschlüssel war nicht anzulegen/)
+    ).rejects.toThrow(/Der Geräteschlüssel konnte nicht angelegt werden/)
   })
 })
 
@@ -162,7 +162,7 @@ describe('fuerBenutzer', () => {
     const { client } = stubClient({ data: null, error: fehler('permission denied') })
 
     await expect(supabaseGeraeteschluessel(client).fuerBenutzer('user_1')).rejects.toThrow(
-      /Die Geräteliste war nicht abzurufen/,
+      /Die Geräteliste konnte nicht abgerufen werden/,
     )
   })
 })

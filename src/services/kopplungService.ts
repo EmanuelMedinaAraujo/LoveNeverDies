@@ -27,7 +27,9 @@
  * geliefert hat, und nicht aus irgendeinem Feld, das er mitschicken könnte.
  */
 
+import { verschluessele } from '../core/crypto/aead'
 import { geraetePruefcode } from '../core/crypto/fingerprint'
+import { kapsele } from '../core/crypto/kem'
 import type { Geraeteidentitaet } from '../core/crypto/keystore'
 import { wrappeSchluessel } from '../core/crypto/wrap'
 import type {
@@ -36,6 +38,7 @@ import type {
   KopplungTabelle,
   Kopplungszweck,
 } from '../core/db/kopplung'
+import type { TresorTabelle } from '../core/db/tresor'
 import type { Fall, LesbarerFall } from './fallService'
 
 /** Die 32 Zeichen aus §6: kein O, keine 0, kein I, keine 1. */
@@ -217,6 +220,39 @@ export async function fuegeZumFallHinzu(
   await uebergebeFallschluessel(kopplung, anfrage, fall, identitaet, geraeteId)
 }
 
+/**
+ * Reicht `K_v` an ein weiteres Gerät derselben Person weiter (§3.5).
+ *
+ * Nur beim `device`-Zweck, und nur der Preparer kommt hier durch: `fall.kv`
+ * steht ausschließlich auf seinen Geräten, und die RLS auf `vault_key_wraps`
+ * lässt niemanden sonst schreiben. Ohne diesen Schritt bliebe der Tresor auf
+ * dem zweiten Gerät stumm — der Fall wäre lesbar, der Tresor aber leer, kein
+ * Re-Split liefe von dort, und die Oberfläche hielte den Preparer für einen
+ * Angehörigen.
+ *
+ * Anders als bei `key_wraps` steht hier keine Signatur daneben (§3.6): Absender
+ * und Empfänger sind dieselbe Person, und die Policy lässt keinen anderen an
+ * die Tabelle. Es gibt niemanden, gegen den zu signieren wäre.
+ */
+async function uebergebeTresorschluessel(
+  tresor: TresorTabelle,
+  anfrage: Kopplungsanfrage,
+  fall: LesbarerFall,
+): Promise<void> {
+  if (fall.kv === null) {
+    return
+  }
+
+  const kapselung = kapsele(anfrage.angebot.pkKem)
+
+  await tresor.legeWrapAn({
+    fallId: fall.id,
+    geraeteId: anfrage.angebot.geraeteId,
+    kemCt: kapselung.kemCt,
+    wrappedKey: await verschluessele(kapselung.geteiltesGeheimnis, fall.kv),
+  })
+}
+
 /** Was ein freigeschaltetes Gerät danach lesen kann. */
 export type Freischaltung = {
   freigeschaltet: number
@@ -234,6 +270,7 @@ export type Freischaltung = {
  */
 export async function schalteGeraetFrei(
   kopplung: KopplungTabelle,
+  tresor: TresorTabelle,
   anfrage: Kopplungsanfrage,
   faelle: Fall[],
   identitaet: Geraeteidentitaet,
@@ -267,6 +304,7 @@ export async function schalteGeraetFrei(
    */
   for (const fall of lesbare) {
     await uebergebeFallschluessel(kopplung, anfrage, fall, identitaet, geraeteId)
+    await uebergebeTresorschluessel(tresor, anfrage, fall)
   }
 
   return { freigeschaltet: lesbare.length, gesamt: faelle.length }

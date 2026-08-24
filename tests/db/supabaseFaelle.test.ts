@@ -78,7 +78,7 @@ describe('legeTrauerfallAn', () => {
       FaelleFehler,
     )
     await expect(supabaseFaelle(client).legeTrauerfallAn(neuerTrauerfall())).rejects.toThrow(
-      /Der Trauerfall war nicht anzulegen: permission denied/,
+      /Der Trauerfall konnte nicht angelegt werden: permission denied/,
     )
   })
 })
@@ -150,7 +150,7 @@ describe('eigene', () => {
     const { client } = stubClient({ data: null, error: fehler('permission denied') })
 
     await expect(supabaseFaelle(client).eigene()).rejects.toThrow(
-      /Die eigenen Fälle waren nicht abzurufen: permission denied/,
+      /Die eigenen Fälle konnten nicht abgerufen werden: permission denied/,
     )
   })
 })
