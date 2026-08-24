@@ -1,5 +1,26 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import { gotoVerlaesslich } from './helpers.ts'
+
+/**
+ * Wartet darauf, dass eine Änderung den Server erreicht hat (DESIGN.md §5).
+ *
+ * Seit dem Delta-Sync ist „sichtbar" nicht mehr dasselbe wie „gespeichert":
+ * Jede Mutation wird sofort angezeigt und geht über die Offline-Queue hinaus —
+ * das ist der Sinn der Queue. Wer unmittelbar danach neu lädt, muss also
+ * abwarten, sonst prüft er den Server auf etwas, das noch unterwegs ist.
+ *
+ * Gewartet wird auf den Schreibvorgang selbst und nicht auf eine feste Zeit:
+ * Eine Sekundenzahl wäre auf einer langsamen Maschine zu kurz und auf jeder
+ * anderen verschenkte Zeit.
+ */
+function gespeichert(page: Page, methode: 'POST' | 'PATCH'): Promise<unknown> {
+  return page.waitForResponse(
+    (antwort) =>
+      antwort.url().includes('/rest/v1/items') &&
+      antwort.request().method() === methode &&
+      antwort.ok(),
+  )
+}
 
 /**
  * Den ganzen Weg aus DESIGN.md §7 einmal durch: ohne Fall → Trauerfall anlegen
@@ -16,6 +37,16 @@ import { gotoVerlaesslich } from './helpers.ts'
  * Kontext, also demselben Geraet, so wie eine reale Sitzung es auch waere.
  */
 test('Trauerfall anlegen', async ({ page }) => {
+  /*
+   * Mehr als die üblichen 30 Sekunden, weil dieser eine Test absichtlich der
+   * ganze Lebenszyklus ist (siehe oben) und mit jedem Slice länger wird: Er
+   * erzeugt einmal die Geräteschlüssel, legt einen Fall an und navigiert danach
+   * ein gutes Dutzend Mal wirklich neu — auf einem langsameren Browser reicht
+   * die Voreinstellung dafür nicht. Die Zusagen je Schritt hängen weiterhin an
+   * `expect.timeout` aus der Konfiguration; hier steht nur die Summe.
+   */
+  test.setTimeout(90_000)
+
   await test.step('ohne Fall steht die Fallweiche aus §7', async () => {
     await gotoVerlaesslich(page, '/')
 
@@ -102,7 +133,9 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Anzeigereihenfolge — danach sortiert wanderte die gerade abgehakte
      * Aufgabe ans Ende. Sortiert wird über die UUIDv7 der Zeile.
      */
+    const abgehakt = gespeichert(page, 'PATCH')
     await page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' }).check()
+    await abgehakt
 
     await gotoVerlaesslich(page, '/alle')
 
@@ -117,16 +150,34 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(page.getByRole('checkbox')).toHaveCount(1)
   })
 
-  await test.step('hakt sie ab, und nach dem Neuladen ist sie noch abgehakt', async () => {
+  await test.step('nimmt das Haekchen zurueck und setzt es wieder; beides ueberlebt das Neuladen', async () => {
     /*
      * Der eigentliche Punkt des Slices: Der Stand liegt nicht im Speicher des
      * Tabs, sondern verschlüsselt auf dem Server. Neu geladen wird über eine
      * echte Navigation und nicht über `page.reload()` — dieselbe Absicherung
      * gegen den JWT-Jitter aus helpers.ts greift dann mit.
+     *
+     * Beide Richtungen, weil das Häkchen aus dem vorigen Schritt noch steht:
+     * Ein zweites `check()` wäre ein Klick, der nichts tut, und der Schritt
+     * prüfte am Ende nur, dass sich nichts geändert hat.
      */
+    const kaestchen = page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })
+
+    const zurueckgenommen = gespeichert(page, 'PATCH')
+    await kaestchen.uncheck()
+    await expect(kaestchen).not.toBeChecked()
+    await zurueckgenommen
+
+    await gotoVerlaesslich(page, '/alle')
+    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).not.toBeChecked()
+
+    const abgehakt = gespeichert(page, 'PATCH')
     await page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' }).check()
+
+    // Sofort sichtbar, noch bevor irgendetwas das Gerät verlassen hat (§5).
     await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeChecked()
 
+    await abgehakt
     await gotoVerlaesslich(page, '/alle')
 
     await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeChecked()
@@ -145,6 +196,45 @@ test('Trauerfall anlegen', async ({ page }) => {
     // Das Häkchen überlebt das Umbenennen: Geändert wird der Payload, und der
     // trägt beides.
     await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeChecked()
+  })
+
+  await test.step('ein zweiter Tab sieht die Änderung, ohne neu zu laden', async () => {
+    /*
+     * Die Türklingel aus §5: Eine Realtime-Subscription auf die `cases`-Zeile,
+     * deren `version` der Trigger bei jeder Inhaltsänderung mithebt. Was sich
+     * geändert hat, holt danach das Delta — die Klingel trägt keine Nutzlast.
+     *
+     * **Zweiter Tab und nicht zweiter Browser.** Beide Seiten teilen sich den
+     * Kontext und damit IndexedDB, also auch die Geräteidentität aus §3.1. Ein
+     * eigener Kontext wäre ein zweites Gerät, für das kein Wrap dieses Falls
+     * vorliegt; es sähe den Fall gesperrt. Was zwei wirklich getrennte Geräte
+     * angeht, hängt an der Kopplung und gehört dorthin. Der Weg, um den es hier
+     * geht — Änderung → Trigger → Klingel → Delta → Bildschirm — ist derselbe.
+     */
+    const zweiterTab = await page.context().newPage()
+
+    try {
+      await gotoVerlaesslich(zweiterTab, '/alle')
+      await expect(zweiterTab.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeVisible()
+
+      const angelegt = gespeichert(page, 'POST')
+      await page.getByLabel('Neue Aufgabe').fill('Konto der Sparkasse kündigen')
+      await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+      await angelegt
+
+      // Kein `goto`, kein `reload`: Der zweite Tab bekommt es von selbst mit.
+      await expect(
+        zweiterTab.getByRole('checkbox', { name: 'Konto der Sparkasse kündigen' }),
+      ).toBeVisible()
+
+      // Und wieder aufgeräumt, damit der nächste Schritt eine Aufgabe vorfindet.
+      const geloescht = gespeichert(page, 'PATCH')
+      await page.getByRole('button', { name: /^Löschen.*Konto der Sparkasse kündigen/ }).click()
+      await page.getByRole('button', { name: 'Endgültig löschen' }).click()
+      await geloescht
+    } finally {
+      await zweiterTab.close()
+    }
   })
 
   await test.step('löscht sie nach einer Rückfrage, und sie bleibt fort', async () => {

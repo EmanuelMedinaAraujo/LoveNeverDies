@@ -337,7 +337,7 @@ describe('mutationLoeschen', () => {
     const aufgabe = await legeAn(inhalte, k, 'Zeitung abbestellen')
     await uebertrage(inhalte, mutationLoeschen(aufgabe))
 
-    expect((await lies(inhalte, k)).uebersprungen).toBe(0)
+    expect((await lies(inhalte, k)).uebersprungeneIds).toEqual([])
   })
 })
 
@@ -370,10 +370,10 @@ describe('aufgabenAusZeilen', () => {
       payload: await verschluessele(fremd, textBytes('{}')),
     })
 
-    const { aufgaben, uebersprungen } = await lies(inhalte, k)
+    const { aufgaben, uebersprungeneIds } = await lies(inhalte, k)
 
     expect(aufgaben.map((aufgabe) => aufgabe.titel)).toEqual(['Meins'])
-    expect(uebersprungen).toBe(1)
+    expect(uebersprungeneIds).toEqual(['fremdes-item'])
   })
 
   it('verwirft ein Item, dessen Payload kein Aufgabenpayload ist', async () => {
@@ -394,10 +394,10 @@ describe('aufgabenAusZeilen', () => {
       payload: await verschluessele(dek, textBytes('kein JSON')),
     })
 
-    const { aufgaben, uebersprungen } = await lies(inhalte, k)
+    const { aufgaben, uebersprungeneIds } = await lies(inhalte, k)
 
     expect(aufgaben.map((aufgabe) => aufgabe.titel)).toEqual(['Meins'])
-    expect(uebersprungen).toBe(1)
+    expect(uebersprungeneIds).toEqual(['kaputtes-item'])
   })
 
   it('verwirft ein Item, dessen Payload kein Titel-Feld hat', async () => {
@@ -414,10 +414,10 @@ describe('aufgabenAusZeilen', () => {
       payload: await verschluessele(dek, textBytes(JSON.stringify({ typ: 'aufgabe' }))),
     })
 
-    const { aufgaben, uebersprungen } = await lies(inhalte, k)
+    const { aufgaben, uebersprungeneIds } = await lies(inhalte, k)
 
     expect(aufgaben).toEqual([])
-    expect(uebersprungen).toBe(1)
+    expect(uebersprungeneIds).toEqual(['ohne-titel'])
   })
 
   it('entschlüsselt ohne Netz, weil ihm keine Tabelle übergeben wird', async () => {

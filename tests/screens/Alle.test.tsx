@@ -5,7 +5,7 @@ import type { Aufgabendaten } from '../../src/hooks/useAufgaben.ts'
 import type { Falldaten } from '../../src/hooks/useCase.ts'
 import type { Aufgabe } from '../../src/services/aufgabenService.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
-import { rendereMitProvidern } from './harness.tsx'
+import { Huelle, rendereMitProvidern } from './harness.tsx'
 
 const useCase = vi.fn<() => Falldaten>()
 const useAufgaben = vi.fn<() => Aufgabendaten>()
@@ -55,9 +55,19 @@ function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
   }
 }
 
+/**
+ * Der Ruhezustand des Netzes: kein Abruf unterwegs, nichts schiefgegangen.
+ *
+ * Steht als eigene Konstante da, weil §5 beides zur „bereit"-Form gehören
+ * lässt — die Liste steht, und daneben steht, was das Netz gerade tut.
+ */
+const NETZ = { laedtNetz: false, netzfehler: null }
+
 function aufgabendaten(ueberschreibung: Partial<Aufgabendaten> = {}): Aufgabendaten {
   return {
-    zustand: { status: 'bereit', aufgaben: [aufgabe()], uebersprungen: 0 },
+    zustand: { status: 'bereit', aufgaben: [aufgabe()], uebersprungen: 0, ...NETZ },
+    abgelehnt: [],
+    bestaetige: vi.fn(),
     legeAn: vi.fn().mockResolvedValue(undefined),
     schreibe: vi.fn().mockResolvedValue(undefined),
     hakeAb: vi.fn().mockResolvedValue(undefined),
@@ -82,7 +92,7 @@ describe('Alle', () => {
 
   it('sagt es, solange noch nichts da ist', () => {
     useAufgaben.mockReturnValue(
-      aufgabendaten({ zustand: { status: 'bereit', aufgaben: [], uebersprungen: 0 } }),
+      aufgabendaten({ zustand: { status: 'bereit', aufgaben: [], uebersprungen: 0, ...NETZ } }),
     )
 
     rendereMitProvidern(<Alle />)
@@ -115,6 +125,98 @@ describe('Alle', () => {
     await waitFor(() => expect(hakeAb).toHaveBeenCalledWith(aufgabe(), true))
   })
 
+  it('laesst das Haekchen stehen, bis der Bestand nachgezogen hat', async () => {
+    /*
+     * §5: Jede Mutation wird optimistisch lokal angewandt — nur passiert das
+     * eine Ebene tiefer, in der Queue, und der Weg dorthin kostet ein paar
+     * Millisekunden. Eine Checkbox, die in dieser Zeit auf `erledigt: false`
+     * zurückfällt, ist genau das sichtbare Zurückspringen, das §5 ausschliesst.
+     */
+    let gibFrei = () => {}
+    const hakeAb = vi.fn(
+      () =>
+        new Promise<void>((aufloesen) => {
+          gibFrei = aufloesen
+        }),
+    )
+    useAufgaben.mockReturnValue(aufgabendaten({ hakeAb }))
+
+    rendereMitProvidern(<Alle />)
+
+    const kaestchen = screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })
+    await userEvent.click(kaestchen)
+
+    // Der Zustand sagt weiterhin `erledigt: false` — die Zeile hält den Wunsch.
+    expect(kaestchen).toBeChecked()
+
+    gibFrei()
+  })
+
+  it('nimmt das Haekchen zurueck, wenn die Mutation gar nicht erst angehaengt wurde', async () => {
+    /*
+     * Der Bestand zieht nur nach, wenn etwas in der Queue gelandet ist. Kommt
+     * es nicht so weit — kein Platz in IndexedDB, kein IndexedDB —, bleibt
+     * `erledigt: false` stehen, und ein Abgleich gegen den Bestand fände nie
+     * einen Unterschied. Ohne die Ruecknahme hier stuende das Haekchen fuer den
+     * Rest der Sitzung auf einem Wert, den niemand gespeichert hat: die Meldung
+     * darueber sagte „ging nicht", das Kaestchen daneben sagte „erledigt".
+     */
+    const hakeAb = vi
+      .fn()
+      .mockRejectedValue(new Error('Die Änderung war nicht zwischenzuspeichern.'))
+    useAufgaben.mockReturnValue(aufgabendaten({ hakeAb }))
+
+    rendereMitProvidern(<Alle />)
+
+    const kaestchen = screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })
+    await userEvent.click(kaestchen)
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'Die Änderung war nicht zwischenzuspeichern.',
+      ),
+    )
+
+    expect(kaestchen).not.toBeChecked()
+  })
+
+  it('nimmt das Haekchen zurueck, sobald der Bestand es zurueckweist', async () => {
+    // Und die Führung gibt die Zeile wieder ab: Bleibt das Häkchen stehen,
+    // obwohl der Server die Änderung verworfen hat, sieht jemand ein Häkchen,
+    // das nirgends gespeichert ist.
+    const { rerender } = rendereMitProvidern(<Alle />)
+
+    const kaestchen = screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })
+    await userEvent.click(kaestchen)
+    expect(kaestchen).toBeChecked()
+
+    // Der Bestand zieht nach: erst mit der Änderung, dann ohne sie.
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [aufgabe({ erledigt: true })],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+    rerender(
+      <Huelle>
+        <Alle />
+      </Huelle>,
+    )
+    expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeChecked()
+
+    useAufgaben.mockReturnValue(aufgabendaten())
+    rerender(
+      <Huelle>
+        <Alle />
+      </Huelle>,
+    )
+    expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).not.toBeChecked()
+  })
+
   it('nimmt das Haekchen wieder zurueck', async () => {
     const hakeAb = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(
@@ -124,6 +226,7 @@ describe('Alle', () => {
           status: 'bereit',
           aufgaben: [aufgabe({ erledigt: true })],
           uebersprungen: 0,
+          ...NETZ,
         },
       }),
     )
@@ -210,6 +313,7 @@ describe('Alle', () => {
           status: 'bereit',
           aufgaben: [aufgabe(), aufgabe({ id: 'item-2', titel: 'Konten kündigen' })],
           uebersprungen: 0,
+          ...NETZ,
         },
       }),
     )
@@ -231,6 +335,7 @@ describe('Alle', () => {
           status: 'bereit',
           aufgaben: [aufgabe({ beschreibung: 'Beim Standesamt Freiburg' })],
           uebersprungen: 0,
+          ...NETZ,
         },
       }),
     )
@@ -296,7 +401,7 @@ describe('Alle', () => {
   it('zeigt den Zaehler der uebersprungenen Eintraege nur im Dev-Modus', () => {
     // §3.7: In Produktion gibt es diesen Zähler nirgends zu sehen.
     useAufgaben.mockReturnValue(
-      aufgabendaten({ zustand: { status: 'bereit', aufgaben: [], uebersprungen: 3 } }),
+      aufgabendaten({ zustand: { status: 'bereit', aufgaben: [], uebersprungen: 3, ...NETZ } }),
     )
 
     const { unmount } = rendereMitProvidern(<Alle />)
@@ -358,14 +463,136 @@ describe('Alle', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Ihre Aufgaben werden geladen')
   })
 
-  it('zeigt den Grund, wenn die Aufgaben nicht abrufbar sind', () => {
+  it('nennt den Netzfehler, laesst die Liste aber stehen', () => {
+    // §5: Gecachte Inhalte werden sofort gerendert. Ein Abruf, der scheitert,
+    // nimmt den zuletzt gecachten Stand nicht mit — sonst sieht jemand im Zug
+    // einen leeren Fall und legt alles neu an.
     useAufgaben.mockReturnValue(
-      aufgabendaten({ zustand: { status: 'fehler', nachricht: 'Kein Netz.' } }),
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [aufgabe()],
+          uebersprungen: 0,
+          laedtNetz: false,
+          netzfehler: 'Kein Netz.',
+        },
+      }),
     )
 
     rendereMitProvidern(<Alle />)
 
     expect(screen.getByRole('alert')).toHaveTextContent('Kein Netz.')
+    expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
+  })
+
+  it('laesst die Liste beim Nachladen in Ruhe stehen', () => {
+    /*
+     * §5: Die Türklingel läutet im geteilten Fall im Sekundentakt. Eine Zeile,
+     * die dabei erscheint und wieder verschwindet, verschöbe die Liste unter
+     * dem Finger, der gerade ein Häkchen setzen will — und eine Vorlesestimme
+     * sagte alle paar Sekunden „wird aktualisiert".
+     */
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [aufgabe()],
+          uebersprungen: 0,
+          laedtNetz: true,
+          netzfehler: null,
+        },
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
+    expect(screen.queryByRole('status')).toBeNull()
+  })
+
+  it('behauptet waehrend des ersten Abrufs nicht, es gebe nichts', () => {
+    // Ein leerer Cache und ein laufender erster Abruf sind nicht dasselbe wie
+    // ein leerer Fall. §5: Die Ladeanzeige gehört dem Netzwerk-Fetch.
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [],
+          uebersprungen: 0,
+          laedtNetz: true,
+          netzfehler: null,
+        },
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByRole('status')).toHaveTextContent('Ihre Aufgaben werden geladen')
+    expect(screen.queryByText(/Hier ist noch nichts/)).toBeNull()
+  })
+
+  it('meldet verworfene Aenderungen mit Zahl, Titel und Grund', async () => {
+    // §5: „Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern
+    // mit ihrem entschlüsselten Inhalt als Mitteilung angezeigt."
+    const bestaetige = vi.fn()
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        bestaetige,
+        abgelehnt: [
+          {
+            itemId: 'item-1',
+            was: 'aendern',
+            titel: 'Sterbeurkunde beantragen',
+            grund: 'Der Fall ist versiegelt.',
+          },
+          { itemId: 'item-2', was: 'anlegen', titel: 'Konten kündigen', grund: 'Kein Zugriff.' },
+        ],
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      '2 Änderungen konnten nicht gespeichert werden.',
+    )
+    expect(
+      screen.getByText('Ändern von „Sterbeurkunde beantragen“: Der Fall ist versiegelt.'),
+    ).toBeVisible()
+    expect(
+      screen.getByText('Anlegen von „Konten kündigen“: Kein Zugriff.'),
+    ).toBeVisible()
+
+    // Weg geht die Mitteilung nur, wenn jemand sie zur Kenntnis nimmt.
+    await userEvent.click(screen.getByRole('button', { name: 'Verstanden' }))
+    expect(bestaetige).toHaveBeenCalled()
+  })
+
+  it('zaehlt eine einzelne verworfene Aenderung nicht als „1 Änderungen"', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        abgelehnt: [{ itemId: 'item-1', was: 'loeschen', titel: 'Konten kündigen', grund: 'Nein.' }],
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Eine Änderung konnte nicht gespeichert werden.',
+    )
+  })
+
+  it('nennt den Vorgang, wenn sich der Titel nicht mehr herstellen laesst', () => {
+    // Ohne DEK gibt es keinen Titel — die Zeile ist inzwischen ein Tombstone.
+    // Das ist immer noch mehr als Schweigen.
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        abgelehnt: [{ itemId: 'item-1', was: 'aendern', titel: '', grund: 'Zu spät.' }],
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByText('Ändern einer Aufgabe: Zu spät.')).toBeVisible()
   })
 
   it('fuehrt zurueck zur Startseite', () => {
@@ -380,7 +607,7 @@ describe('Alle', () => {
     useAufgaben.mockReturnValue(
       aufgabendaten({
         schreibe,
-        zustand: { status: 'bereit', aufgaben: [aufgabe(), zweite], uebersprungen: 0 },
+        zustand: { status: 'bereit', aufgaben: [aufgabe(), zweite], uebersprungen: 0, ...NETZ },
       }),
     )
 

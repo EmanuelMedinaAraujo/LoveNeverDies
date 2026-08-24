@@ -72,8 +72,8 @@ export type Syncdaten = {
 export function useSync(fallId: string): Syncdaten {
   const zugang = useSupabase()
 
-  const cache = useMemo(idbCiphertextcache, [])
-  const warteschlange = useMemo(idbWarteschlange, [])
+  const cache = useMemo(() => idbCiphertextcache(), [])
+  const warteschlange = useMemo(() => idbWarteschlange(), [])
 
   /*
    * Der Bestand liegt in Refs und wird ins State gespiegelt.
@@ -129,43 +129,73 @@ export function useSync(fallId: string): Syncdaten {
         const client = zugang()
         const inhalte = supabaseInhalte(client)
 
-        // Erst hinaus, dann herein: Was dieses Gerät geschrieben hat, soll im
-        // selben Delta zurückkommen, statt eine Runde später.
-        const abarbeitung = await arbeiteAb(warteschlange, inhalte)
-        wartend.current = (await warteschlange.offen()).map((eintrag) => eintrag.mutation)
+        /*
+         * Der Fehlschlag bleibt in der Schleife.
+         *
+         * Fienge ihn erst ein `catch` um das `do` herum, riss die gescheiterte
+         * Runde jeden Wunsch mit sich, der waehrend ihrer Laufzeit eintraf:
+         * `nochmal` war gesetzt, die Schleife kam aber nicht mehr bis zu ihrer
+         * Bedingung. Eine Aufgabe, die genau in diesem Moment angetippt wurde,
+         * bliebe in der Queue liegen und wartete auf ein Ereignis, das nicht
+         * kommt — die Tuerklingel laeutet nur, wenn jemand *anders* schreibt,
+         * `online` feuert nicht, wer nie offline war, und das Polling schweigt,
+         * solange Realtime steht. Sichtbar waere sie trotzdem: optimistisch
+         * angezeigt, aber auf keinem Server. Genau das schliesst §5 aus.
+         *
+         * Ein Rennen gibt es dabei nicht: Jeder Durchgang wartet auf das Netz,
+         * und `nochmal` traegt nur ein Ja oder Nein, keinen Zaehler.
+         */
+        try {
+          // Erst hinaus, dann herein: Was dieses Gerät geschrieben hat, soll im
+          // selben Delta zurückkommen, statt eine Runde später.
+          const abarbeitung = await arbeiteAb(warteschlange, inhalte)
+          wartend.current = (await warteschlange.offen()).map((eintrag) => eintrag.mutation)
 
-        if (abarbeitung.abgelehnt.length > 0 && aktuell.current) {
-          setzeAbgelehnt((vorher) => [...vorher, ...abarbeitung.abgelehnt])
-        }
+          if (abarbeitung.abgelehnt.length > 0 && aktuell.current) {
+            setzeAbgelehnt((vorher) => [...vorher, ...abarbeitung.abgelehnt])
+          }
 
-        zeige()
+          // Schritt 1 aus §5: ein Integer. Gleich dem Wasserzeichen → kein Fetch.
+          const version = await supabaseFaelle(client).version(fallId)
 
-        // Schritt 1 aus §5: ein Integer. Gleich dem Wasserzeichen → kein Fetch.
-        const version = await supabaseFaelle(client).version(fallId)
+          if (brauchtDelta(version, wasserzeichen.current)) {
+            const delta = await inhalte.seit(fallId, wasserzeichen.current)
+            const { zeilen: vereint, geaendert } = vereine(bestand.current, delta)
 
-        if (brauchtDelta(version, wasserzeichen.current)) {
-          const delta = await inhalte.seit(fallId, wasserzeichen.current)
-          const { zeilen: vereint, geaendert } = vereine(bestand.current, delta)
+            bestand.current = vereint
+            // Ausdrücklich aus dem Delta und nicht aus der `version`: Zwischen
+            // beiden Abfragen kann weitergeschrieben worden sein (§5).
+            wasserzeichen.current = geruecktesWasserzeichen(wasserzeichen.current, delta)
 
-          bestand.current = vereint
-          // Ausdrücklich aus dem Delta und nicht aus der `version`: Zwischen
-          // beiden Abfragen kann weitergeschrieben worden sein (§5).
-          wasserzeichen.current = geruecktesWasserzeichen(wasserzeichen.current, delta)
+            const zuSchreiben = vereint.filter((zeile) => geaendert.includes(zeile.id))
+            await cache.schreibe(fallId, zuSchreiben, wasserzeichen.current)
+          }
 
-          const zuSchreiben = vereint.filter((zeile) => geaendert.includes(zeile.id))
-          await cache.schreibe(fallId, zuSchreiben, wasserzeichen.current)
-
+          if (aktuell.current) {
+            setzeNetzfehler(null)
+          }
+        } catch (fehler) {
+          if (aktuell.current) {
+            setzeNetzfehler(alsNachricht(fehler))
+          }
+        } finally {
+          /*
+           * Genau ein Bild je Runde, und zwar am Ende.
+           *
+           * Die Überlagerung aus der Queue fällt weg, sobald der Server die
+           * Mutation angenommen hat — die bestätigte Zeile kommt aber erst mit
+           * dem Delta ein paar Zeilen weiter oben. Dazwischen zu rendern hiesse,
+           * für die Dauer von `version` plus `seit` den Stand *vor* der Änderung
+           * zu zeigen: Das Häkchen spränge zurück, die gelöschte Aufgabe käme
+           * wieder, und beides ausgerechnet dann, wenn alles geklappt hat.
+           *
+           * Deshalb `finally`: Auch die Runde, die unterwegs abbricht,
+           * hinterlässt ein stimmiges Bild — abgelehnte Mutationen haben die
+           * Queue schon verlassen, und ihre Wirkung muss mit ihnen verschwinden.
+           */
           zeige()
         }
-
-        if (aktuell.current) {
-          setzeNetzfehler(null)
-        }
       } while (nochmal.current)
-    } catch (fehler) {
-      if (aktuell.current) {
-        setzeNetzfehler(alsNachricht(fehler))
-      }
     } finally {
       laeuft.current = false
       nochmal.current = false
@@ -229,11 +259,21 @@ export function useSync(fallId: string): Syncdaten {
 
   const mutiere = useCallback(
     async (mutation: Mutation) => {
+      /*
+       * Erst anhängen, dann anzeigen — und ausdrücklich in dieser Reihenfolge.
+       *
+       * Andersherum wäre die Änderung eine Lidschlagsdauer lang zu sehen, ohne
+       * irgendwo zu liegen: Wer in dem Moment den Tab schliesst oder
+       * weiternavigiert, bricht die IndexedDB-Transaktion ab und verliert sie,
+       * nachdem die Oberfläche sie bereits bestätigt hat. §5 stellt die Queue
+       * genau dafür zwischen die Handlung und den Server.
+       *
+       * Dass ein Häkchen deshalb nicht springt, ist die Sache der Zeile, die es
+       * trägt: Sie hält, was angetippt wurde, bis der Bestand nachgezogen hat
+       * (siehe `Aufgabenzeile` in `screens/shared/Alle`).
+       */
       await warteschlange.haengeAn(mutation)
 
-      // Sofort sichtbar, bevor irgendetwas das Gerät verlässt (§5). Ohne das
-      // spränge ein gerade gesetztes Häkchen für die Dauer eines Rundlaufs
-      // zurück, und wer im Zug tippt, tippt ein zweites Mal.
       wartend.current = [...wartend.current, mutation]
       zeige()
 

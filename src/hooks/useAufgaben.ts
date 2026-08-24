@@ -63,6 +63,12 @@ export type Aufgabendaten = {
 
 const LEER = { aufgaben: [] as Aufgabe[], uebersprungen: 0 }
 
+/** Eine Zeile, die sich nicht entschlüsseln liess (§3.7). */
+const VERWORFEN = Symbol('verworfen')
+
+/** Nichts abgelehnt — als eine Liste, damit sie ihre Identität behält. */
+const KEINE: AbgelehnteAenderung[] = []
+
 export function useAufgaben(fall: Fallschluessel): Aufgabendaten {
   const { zustand: sync, mutiere, bestaetige } = useSync(fall.id)
 
@@ -70,14 +76,20 @@ export function useAufgaben(fall: Fallschluessel): Aufgabendaten {
   const [abgelehnt, setzeAbgelehnt] = useState<AbgelehnteAenderung[]>([])
 
   /**
-   * Die zuletzt entschlüsselte Fassung je Zeile.
+   * Die zuletzt entschlüsselte Fassung je Zeile — oder die Feststellung, dass
+   * sie sich nicht entschlüsseln liess (§3.7).
    *
    * Der Schlüssel ist die Zeile selbst, nicht ihre ID: Der Reconciler gibt
    * unveränderte Zeilen unverändert zurück, also ist die Objektidentität genau
    * die Frage „hat sich hier etwas getan?" — und eine `WeakMap` lässt die
    * abgelösten Fassungen von selbst los.
+   *
+   * Auch das Verworfene steht drin, und nicht bloss als Zahl. Nur so gilt der
+   * Zähler aus §3.7 für den ganzen Bestand: Entschlüsselt wird stapelweise, und
+   * ein Stapel ohne neue Zeilen brächte sonst eine 0 mit und löschte damit,
+   * was die Stapel davor gefunden haben.
    */
-  const entschluesselt = useRef(new WeakMap<InhaltZeile, Aufgabe>())
+  const entschluesselt = useRef(new WeakMap<InhaltZeile, Aufgabe | typeof VERWORFEN>())
 
   useEffect(() => {
     let aktuell = true
@@ -85,13 +97,23 @@ export function useAufgaben(fall: Fallschluessel): Aufgabendaten {
     void (async () => {
       const bekannt = entschluesselt.current
       const neue = sync.zeilen.filter((zeile) => !bekannt.has(zeile))
-      const { aufgaben, uebersprungen } = await aufgabenAusZeilen(neue, fall)
+      const { aufgaben, uebersprungeneIds } = await aufgabenAusZeilen(neue, fall)
+
+      const nachId = new Map(neue.map((zeile) => [zeile.id, zeile]))
 
       for (const aufgabe of aufgaben) {
-        const zeile = neue.find((kandidat) => kandidat.id === aufgabe.id)
+        const zeile = nachId.get(aufgabe.id)
 
         if (zeile !== undefined) {
           bekannt.set(zeile, aufgabe)
+        }
+      }
+
+      for (const id of uebersprungeneIds) {
+        const zeile = nachId.get(id)
+
+        if (zeile !== undefined) {
+          bekannt.set(zeile, VERWORFEN)
         }
       }
 
@@ -101,11 +123,13 @@ export function useAufgaben(fall: Fallschluessel): Aufgabendaten {
 
       // Die Reihenfolge kommt aus `sync.zeilen` und damit aus der `id`: die
       // Anlagereihenfolge (§4). Ein Häkchen verschiebt nichts.
+      const eintraege = sync.zeilen.map((zeile) => bekannt.get(zeile))
+
       setzeListe({
-        aufgaben: sync.zeilen
-          .map((zeile) => bekannt.get(zeile))
-          .filter((aufgabe): aufgabe is Aufgabe => aufgabe !== undefined),
-        uebersprungen,
+        aufgaben: eintraege.filter(
+          (eintrag): eintrag is Aufgabe => eintrag !== undefined && eintrag !== VERWORFEN,
+        ),
+        uebersprungen: eintraege.filter((eintrag) => eintrag === VERWORFEN).length,
       })
     })()
 
@@ -115,15 +139,16 @@ export function useAufgaben(fall: Fallschluessel): Aufgabendaten {
   }, [fall, sync.zeilen])
 
   useEffect(() => {
-    if (sync.abgelehnt.length === 0) {
-      setzeAbgelehnt([])
-      return
-    }
-
     let aktuell = true
 
     void (async () => {
-      const beschrieben = await beschreibeAbgelehnte(sync.abgelehnt, sync.zeilen, fall)
+      // `KEINE` und nicht `[]`: Die Liste wird bei jeder Runde neu berechnet,
+      // und ein frisches leeres Array wäre jedes Mal ein neuer Zustand — also
+      // ein zusätzliches Rendern für die Nachricht „es gibt nichts zu melden".
+      const beschrieben =
+        sync.abgelehnt.length === 0
+          ? KEINE
+          : await beschreibeAbgelehnte(sync.abgelehnt, sync.zeilen, fall)
 
       if (aktuell) {
         setzeAbgelehnt(beschrieben)

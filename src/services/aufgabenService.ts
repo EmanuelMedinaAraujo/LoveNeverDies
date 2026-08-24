@@ -94,10 +94,16 @@ export type Aufgabe = {
 export type Aufgabenliste = {
   aufgaben: Aufgabe[]
   /**
-   * Wie viele Zeilen still verworfen wurden (§3.7). Sichtbar ausschließlich im
-   * Dev-Modus — in Produktion gibt es diesen Zähler nirgends zu sehen.
+   * Die Zeilen, die still verworfen wurden (§3.7), bei ihrer ID. Sichtbar
+   * ausschließlich im Dev-Modus — in Produktion gibt es diesen Zähler nirgends
+   * zu sehen.
+   *
+   * IDs statt einer Zahl, weil der Aufrufer stapelweise entschlüsselt: Er
+   * bekommt nur die geänderten Zeilen zu sehen (§5) und müsste einen Zähler
+   * über die Stapel hinweg selbst fortschreiben — und dazu wissen, welche Zeile
+   * gar nicht erst mitzählt. Genau diese Regel steht hier und soll hier bleiben.
    */
-  uebersprungen: number
+  uebersprungeneIds: string[]
 }
 
 /** Was sich an einer Aufgabe ändern lässt. Was fehlt, bleibt, wie es war. */
@@ -170,7 +176,7 @@ export async function aufgabenAusZeilen(
   fall: Fallschluessel,
 ): Promise<Aufgabenliste> {
   const aufgaben: Aufgabe[] = []
-  let uebersprungen = 0
+  const uebersprungeneIds: string[] = []
 
   for (const zeile of zeilen) {
     // Tombstones werden vor jedem Entschlüsselungsversuch aussortiert: Sie sind
@@ -183,11 +189,11 @@ export async function aufgabenAusZeilen(
     try {
       aufgaben.push(await leseZeile(zeile, fall))
     } catch {
-      uebersprungen += 1
+      uebersprungeneIds.push(zeile.id)
     }
   }
 
-  return { aufgaben, uebersprungen }
+  return { aufgaben, uebersprungeneIds }
 }
 
 /**
