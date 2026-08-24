@@ -7,6 +7,7 @@ import type {
   FaelleTabelle,
   FallZeile,
   NeuerTrauerfall,
+  NeuerVorsorgefall,
 } from '../../src/core/db/faelle'
 import type {
   SchluesselwrapTabelle,
@@ -17,19 +18,16 @@ import type {
   GeraeteschluesselZeile,
 } from '../../src/core/db/geraeteschluessel'
 import type { InhalteTabelle, InhaltZeile, NeuerInhalt } from '../../src/core/db/inhalte'
+import type { TresorTabelle, VaultKeyWrapZeile } from '../../src/core/db/tresor'
 import { katalog as ausgelieferterKatalog } from '../../src/content/katalog'
 import { aufgabenAusZeilen } from '../../src/services/aufgabenService'
-import { FallFehler, ladeFaelle, legeTrauerfallAn } from '../../src/services/fallService'
-
-/**
- * Die vollständige Kette aus DESIGN.md §3.1 und §3.6, ohne Server:
- * Fallschlüssel erzeugen, an das eigene Gerät wrappen, signieren, ablegen,
- * wieder lesen, Signatur verifizieren, entpacken, entschlüsseln.
- *
- * Der Server steht hier als Speicher ohne Verstand — er nimmt an, was kommt,
- * und gibt zurück, was drinsteht. Genau so, wie das Bedrohungsmodell aus §11 es
- * annimmt: neugierig und potenziell aktiv. Was er ausliefert, prüft der Client.
- */
+import {
+  FallFehler,
+  ladeFaelle,
+  legeTrauerfallAn,
+  legeVorsorgefallAn,
+  loescheVorsorgefall,
+} from '../../src/services/fallService'
 
 const ANGABEN = { personName: 'Hans Weber', sterbedatum: '2026-05-12' }
 
@@ -51,13 +49,12 @@ function identitaet(): Geraeteidentitaet {
 function server() {
   const faelleZeilen: FallZeile[] = []
   const wrapZeilen: SchluesselwrapZeile[] = []
+  const vaultWrapZeilen: VaultKeyWrapZeile[] = []
   const geraeteZeilen: GeraeteschluesselZeile[] = []
   const itemZeilen: InhaltZeile[] = []
 
   const faelle: FaelleTabelle = {
     version(fallId) {
-      // Der billige Check aus §5. Der `fallService` benutzt ihn nicht — er
-      // liest Fälle, nicht Inhalte —, aber der Port verlangt ihn.
       return Promise.resolve(
         faelleZeilen.find((zeile) => zeile.id === fallId)?.version ?? null,
       )
@@ -72,6 +69,11 @@ function server() {
         version: 0,
         katalogVersion: neu.katalogVersion,
         payload: neu.payload,
+        preparerId: null,
+        vaultCommitment: null,
+        vaultResplitPending: false,
+        vaultK: null,
+        vaultN: null,
         angelegtAm: '2026-08-23T12:00:00Z',
       })
 
@@ -90,27 +92,72 @@ function server() {
 
       return Promise.resolve()
     },
+
+    legeVorsorgefallAn(neu: NeuerVorsorgefall) {
+      faelleZeilen.push({
+        id: neu.id,
+        status: 'vorsorge',
+        currentKid: neu.kidFall,
+        keyGeneration: 1,
+        version: 0,
+        katalogVersion: null,
+        payload: neu.payload,
+        preparerId: 'user_anna',
+        vaultCommitment: neu.vaultCommitment,
+        vaultResplitPending: false,
+        vaultK: null,
+        vaultN: 0,
+        angelegtAm: '2026-08-23T12:00:00Z',
+      })
+
+      for (const [kid, wrap] of [
+        [neu.kidFall, neu.wrapFall],
+        [neu.kidKatalog, neu.wrapKatalog],
+      ] as const) {
+        wrapZeilen.push({
+          ...wrap,
+          fallId: neu.id,
+          kid,
+          geraeteId: neu.geraeteId,
+          wrappedBy: neu.geraeteId,
+        })
+      }
+
+      vaultWrapZeilen.push({
+        fallId: neu.id,
+        geraeteId: neu.geraeteId,
+        kemCt: neu.vaultKemCt,
+        wrappedKey: neu.vaultWrappedKey,
+      })
+
+      return Promise.resolve()
+    },
+
+    loescheVorsorgefall(fallId: string) {
+      const idx = faelleZeilen.findIndex((f) => f.id === fallId)
+      if (idx !== -1) {
+        faelleZeilen.splice(idx, 1)
+      }
+      return Promise.resolve()
+    },
+
     eigene: () => Promise.resolve(faelleZeilen),
   }
 
-  /** `items`, so schmal wie der Port — und mit dem `on conflict` aus §8. */
   const inhalte: InhalteTabelle = {
     seit: (fallId) => Promise.resolve(itemZeilen.filter((zeile) => zeile.fallId === fallId)),
 
     lege: (neu) => {
       itemZeilen.push(alsItem(neu))
-
       return Promise.resolve()
     },
 
     legeAlleNeuen: (neue) => {
       for (const neu of neue) {
-        // `insert … on conflict do nothing`: Was es gibt, bleibt, wie es ist.
         if (!itemZeilen.some((zeile) => zeile.id === neu.id)) {
           itemZeilen.push(alsItem(neu))
         }
       }
-
       return Promise.resolve()
     },
 
@@ -123,6 +170,16 @@ function server() {
       Promise.resolve(
         wrapZeilen.filter((zeile) => zeile.fallId === fallId && zeile.geraeteId === geraeteId),
       ),
+  }
+
+  const tresor: TresorTabelle = {
+    wrapFuerGeraet: (fallId, geraeteId) =>
+      Promise.resolve(
+        vaultWrapZeilen.find((zeile) => zeile.fallId === fallId && zeile.geraeteId === geraeteId) ??
+          null,
+      ),
+    sharesFuerFall: () => Promise.resolve([]),
+    resplitVault: () => Promise.resolve(),
   }
 
   const geraete: GeraeteschluesselTabelle = {
@@ -144,7 +201,18 @@ function server() {
     })
   }
 
-  return { faelle, inhalte, wraps, geraete, faelleZeilen, wrapZeilen, itemZeilen, meldeGeraetAn }
+  return {
+    faelle,
+    inhalte,
+    wraps,
+    tresor,
+    geraete,
+    faelleZeilen,
+    wrapZeilen,
+    vaultWrapZeilen,
+    itemZeilen,
+    meldeGeraetAn,
+  }
 }
 
 let naechsteSeq = 0
@@ -154,7 +222,7 @@ function alsItem(neu: NeuerInhalt): InhaltZeile {
     ...neu,
     seq: (naechsteSeq += 1),
     geloescht: false,
-    imTresor: false,
+    imTresor: neu.imTresor ?? false,
     geaendertAm: '2026-08-23T12:00:00Z',
   }
 }
@@ -172,7 +240,7 @@ async function angelegterFall() {
 }
 
 function neuGeladen(s: Awaited<ReturnType<typeof angelegterFall>>) {
-  return ladeFaelle(s.faelle, s.wraps, s.geraete, s.eigene, GERAET)
+  return ladeFaelle(s.faelle, s.wraps, s.geraete, s.eigene, GERAET, s.tresor)
 }
 
 describe('Einen Trauerfall anlegen (§2, §3.1)', () => {
@@ -206,7 +274,6 @@ describe('Einen Trauerfall anlegen (§2, §3.1)', () => {
       throw new Error('Der frisch angelegte Fall muss lesbar sein.')
     }
 
-    // Nirgendwo in dem, was zum Server geht, stehen die Schlüsselbytes.
     const alles = wrapZeilen.flatMap((zeile) => [...zeile.kemCt, ...zeile.wrappedKey]).join(',')
     expect(alles).not.toContain([...fall.kc].join(','))
     expect(alles).not.toContain([...fall.kcat].join(','))
@@ -230,8 +297,6 @@ describe('Einen Trauerfall anlegen (§2, §3.1)', () => {
 
     expect(fall.katalogVersion).toBe(katalog.version)
     expect(faelleZeilen[0]?.katalogVersion).toBe(katalog.version)
-    // Eine Zeile je Katalogaufgabe und eine je Unteraufgabe: Unteraufgaben
-    // sind eigene Zeilen mit eigener UUID (§7).
     expect(itemZeilen).toHaveLength(
       katalog.aufgaben.reduce((summe, aufgabe) => summe + 1 + aufgabe.unteraufgaben.length, 0),
     )
@@ -253,12 +318,6 @@ describe('Einen Trauerfall anlegen (§2, §3.1)', () => {
   })
 
   it('legt den Fall an, auch wenn die Instanziierung scheitert', async () => {
-    /*
-     * Der Fall steht danach vollständig da — nur ohne Aufgaben. Ein Wurf
-     * machte daraus „Der Fall war nicht anzulegen" (Todesfall.tsx), und der
-     * zweite Versuch legte einen zweiten Fall zu derselben verstorbenen Person
-     * an. Nachgeholt wird die Instanziierung beim nächsten Laden (§8).
-     */
     const eigene = identitaet()
     const s = server()
     s.meldeGeraetAn(GERAET, eigene)
@@ -304,10 +363,73 @@ describe('Einen Trauerfall anlegen (§2, §3.1)', () => {
   })
 })
 
+describe('Einen Vorsorgefall anlegen (§2, §3.5)', () => {
+  it('legt Fall in vorsorge an: ohne Aufgaben, mit K_v und vault_commitment', async () => {
+    const eigene = identitaet()
+    const s = server()
+    s.meldeGeraetAn(GERAET, eigene)
+
+    const fall = await legeVorsorgefallAn(s.faelle, eigene, GERAET, {
+      personName: 'Anna Müller',
+    })
+
+    expect(fall).toMatchObject({
+      zustand: 'lesbar',
+      status: 'vorsorge',
+      personName: 'Anna Müller',
+      sterbedatum: null,
+      katalogVersion: null,
+    })
+    expect(fall.kv).not.toBeNull()
+    expect(fall.vaultCommitment).not.toBeNull()
+
+    expect(s.faelleZeilen).toHaveLength(1)
+    expect(s.faelleZeilen[0]?.status).toBe('vorsorge')
+    expect(s.faelleZeilen[0]?.katalogVersion).toBeNull()
+    // Keine Aufgaben angelegt
+    expect(s.itemZeilen).toHaveLength(0)
+
+    // K_v liegt in vaultWrapZeilen
+    expect(s.vaultWrapZeilen).toHaveLength(1)
+    expect(s.vaultWrapZeilen[0]?.geraeteId).toBe(GERAET)
+  })
+
+  it('lädt K_v beim erneuten Lesen des Vorsorgefalls', async () => {
+    const eigene = identitaet()
+    const s = server()
+    s.meldeGeraetAn(GERAET, eigene)
+
+    const frisch = await legeVorsorgefallAn(s.faelle, eigene, GERAET, {
+      personName: 'Anna Müller',
+    })
+
+    const [wieder] = await ladeFaelle(s.faelle, s.wraps, s.geraete, eigene, GERAET, s.tresor)
+    if (wieder?.zustand !== 'lesbar') {
+      throw new Error('Muss lesbar sein.')
+    }
+
+    expect(wieder.status).toBe('vorsorge')
+    expect(wieder.personName).toBe('Anna Müller')
+    expect(wieder.sterbedatum).toBeNull()
+    expect(wieder.kv).toEqual(frisch.kv)
+  })
+
+  it('löscht einen Vorsorgefall samt Tresor', async () => {
+    const eigene = identitaet()
+    const s = server()
+    s.meldeGeraetAn(GERAET, eigene)
+
+    const fall = await legeVorsorgefallAn(s.faelle, eigene, GERAET, {
+      personName: 'Anna Müller',
+    })
+
+    await loescheVorsorgefall(s.faelle, fall.id)
+    expect(s.faelleZeilen).toHaveLength(0)
+  })
+})
+
 describe('Einen Fall wieder lesen (§3.6)', () => {
   it('entschlüsselt Name und Sterbedatum aus dem Payload', async () => {
-    // Das Neuladen: dieselben Zeilen, dieselbe Geräteidentität, nichts im
-    // Arbeitsspeicher.
     const s = await angelegterFall()
 
     expect(await neuGeladen(s)).toEqual([
@@ -332,9 +454,6 @@ describe('Einen Fall wieder lesen (§3.6)', () => {
   })
 
   it('weist einen manipulierten Wrap ab, statt ihn zu entpacken', async () => {
-    // Der Angriff aus §3.6: Ein Mitglied stellt einen formal gültigen Wrap
-    // eines falschen `K_c` ein. Der Fall bleibt gesperrt — die App zeigt ihn,
-    // aber sie liest nichts daraus.
     const s = await angelegterFall()
     const wrap = s.wrapZeilen[0]
 
@@ -350,21 +469,16 @@ describe('Einen Fall wieder lesen (§3.6)', () => {
   })
 
   it('sperrt einen Fall, für den dieses Gerät keinen Wrap hat', async () => {
-    // §3.6: Ein neues Gerät sieht den Fall, kann synchronisieren und liest
-    // nichts, bis ein anderes Mitglied `K_c` daran wrappt.
     const s = await angelegterFall()
     const fremdesGeraet = 'a0000000-0000-4000-8000-000000000002'
     s.meldeGeraetAn(fremdesGeraet, identitaet())
 
-    const geladen = await ladeFaelle(s.faelle, s.wraps, s.geraete, s.eigene, fremdesGeraet)
+    const geladen = await ladeFaelle(s.faelle, s.wraps, s.geraete, s.eigene, fremdesGeraet, s.tresor)
 
     expect(geladen).toEqual([expect.objectContaining({ zustand: 'gesperrt' })])
   })
 
   it('sperrt einen Fall, dessen wrappendes Gerät nicht auffindbar ist', async () => {
-    // Ohne `sig_public_key` gibt es nichts zu verifizieren, und ohne
-    // Verifikation wird nichts entpackt — auch dann nicht, wenn der Wrap
-    // vollkommen in Ordnung wäre.
     const s = await angelegterFall()
     for (const zeile of s.wrapZeilen) {
       zeile.wrappedBy = 'a0000000-0000-4000-8000-00000000ffff'

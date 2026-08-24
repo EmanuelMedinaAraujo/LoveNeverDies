@@ -303,7 +303,7 @@ function Kopf({ fall, freigabeNoetig }: { fall: Fall | null; freigabeNoetig: boo
         stehen so lange hier.
       */}
       <p className={stile.hinweis}>
-        <Link to="/alle">Alle Aufgaben</Link>
+        <Link to="/erbe">Erbe & Tresor</Link> · <Link to="/alle">Alle Aufgaben</Link>
       </p>
       {/*
         §3.6 verlangt den Badge „in der unteren Leiste“, sobald ein Gerät auf

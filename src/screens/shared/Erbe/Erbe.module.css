@@ -1,0 +1,128 @@
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-gross);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.einleitung {
+  color: var(--farbe-text-sekundaer);
+}
+
+.statusKopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--dichte-abstand);
+}
+
+.abschnitt {
+  font-size: var(--dichte-schrift-gross);
+  margin: 0;
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}
+
+.warnung {
+  color: #8a1c13;
+  font-size: var(--dichte-schrift-klein);
+  font-weight: 500;
+}
+
+.liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+.item {
+  padding: var(--dichte-abstand-klein);
+  border: 1px solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.itemKopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.itemTitel {
+  font-weight: 600;
+  margin: 0;
+}
+
+.itemInhalt {
+  white-space: pre-wrap;
+  margin: 0;
+  color: var(--farbe-text);
+  font-size: var(--dichte-schrift-klein);
+}
+
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+  margin-top: var(--dichte-abstand-klein);
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eingabe {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  border: 1px solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+}
+
+.textbereich {
+  width: 100%;
+  min-height: 5rem;
+  padding: var(--dichte-abstand-klein);
+  border: 1px solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+  resize: vertical;
+}
+
+.loeschenGruppe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.gefahrGruppe {
+  display: flex;
+  gap: var(--dichte-abstand-klein);
+}

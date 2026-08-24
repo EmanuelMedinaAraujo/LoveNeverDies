@@ -45,6 +45,12 @@ const LESBAR: LesbarerFall = {
   kid: 'case_fall-1:1',
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
+  kv: null,
+  preparerId: null,
+  vaultCommitment: null,
+  vaultResplitPending: false,
+  vaultK: null,
+  vaultN: null,
   katalogVersion: '2026-08+testtest',
 }
 
@@ -69,6 +75,8 @@ function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
   return {
     zustand: { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
     legeTrauerfallAn: vi.fn().mockResolvedValue(undefined),
+    legeVorsorgefallAn: vi.fn().mockResolvedValue(undefined),
+    loescheVorsorgefall: vi.fn().mockResolvedValue(undefined),
     ...ueberschreibung,
   }
 }

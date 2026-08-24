@@ -53,6 +53,13 @@ export function Profil() {
         <Card>
           <h2 className={stile.abschnitt}>Für wen?</h2>
           <p className={stile.name}>{fuerWen}</p>
+          {fall.status === 'bereit' &&
+          fall.aktiver.zustand === 'lesbar' &&
+          fall.aktiver.status === 'vorsorge' ? (
+            <p className={stile.hinweis}>
+              Dies ist ein Vorsorgefall. <Link to="/erbe">Zum Nachlass-Tresor</Link>
+            </p>
+          ) : null}
         </Card>
       )}
 

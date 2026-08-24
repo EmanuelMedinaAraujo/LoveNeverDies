@@ -6,10 +6,10 @@ import stile from './KeinFall.module.css'
 /**
  * Ohne Fall ist die App gesperrt: ein Screen, drei Schaltflächen (DESIGN.md §7).
  *
- * Die drei Wege sind die Fallweiche aus dem Onboarding. "Ein Todesfall ist
- * eingetreten" führt zur Fallanlage (§2, §3.1), "Ich wurde eingeladen" zum
- * Kopplungscode (§6). Vorsorge trägt noch keine Funktion und kommt in einem
- * eigenen Slice.
+ * Die drei Wege sind die Fallweiche aus dem Onboarding:
+ * - "Ein Todesfall ist eingetreten" führt zur Trauerfallanlage (§2, §3.1)
+ * - "Ich möchte für später vorsorgen" führt zur Vorsorgeanlage (§2, §3.5)
+ * - "Ich wurde eingeladen" zum Kopplungscode (§6)
  */
 export function KeinFall() {
   const navigate = useNavigate()
@@ -28,23 +28,15 @@ export function KeinFall() {
           <Button volleBreite onClick={() => navigate('/todesfall')}>
             Ein Todesfall ist eingetreten
           </Button>
-          <Button volleBreite variante="sekundaer" disabled>
+          <Button volleBreite variante="sekundaer" onClick={() => navigate('/vorsorge')}>
             Ich möchte für später vorsorgen
           </Button>
           <Button volleBreite variante="sekundaer" onClick={() => navigate('/beitreten')}>
             Ich wurde eingeladen
           </Button>
-          <p className={stile.hinweis}>
-            Die Vorsorge wird gerade gebaut und ist noch nicht auswählbar.
-          </p>
         </div>
       </Card>
 
-      {/*
-        Die untere Leiste aus §7 — Start · Erbe · Alle · Profil — kommt mit den
-        Screens, die sie verbindet. Bis dahin steht hier der eine Weg, den es
-        schon gibt: Profil zeigt die Geräte und ihre Prüfcodes (§3.6).
-      */}
       <p className={stile.hinweis}>
         <Link to="/profil">Profil und Geräte</Link>
       </p>

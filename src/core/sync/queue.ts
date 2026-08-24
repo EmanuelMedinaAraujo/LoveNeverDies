@@ -42,6 +42,8 @@ export type Mutation =
       kid: string
       wrappedDek: Uint8Array
       payload: Uint8Array
+      imTresor?: boolean
+      storagePfad?: string
       ts: number
     }
   | { op: 'aendern'; itemId: string; payload: Uint8Array; ts: number }
@@ -139,6 +141,8 @@ function fuehreAus(inhalte: InhalteTabelle, mutation: Mutation): Promise<void> {
         kid: mutation.kid,
         wrappedDek: mutation.wrappedDek,
         payload: mutation.payload,
+        imTresor: mutation.imTresor,
+        storagePfad: mutation.storagePfad,
       })
 
     case 'aendern':

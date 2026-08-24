@@ -1,0 +1,84 @@
+import { useState, type FormEvent } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../../core/auth/authProvider.ts'
+import { alsNachricht } from '../../../core/fehler.ts'
+import { useCase } from '../../../hooks/useCase.ts'
+import { Button } from '../../../ui/Button/Button.tsx'
+import { Card } from '../../../ui/Card/Card.tsx'
+import stile from './Vorsorge.module.css'
+
+/**
+ * Einen Vorsorgefall anlegen (DESIGN.md §2, §3.5).
+ *
+ * Der Fall gilt für die eigene Person, hat keine Aufgaben und versiegelt den
+ * Tresor. Der Schlüssel K_v liegt nur auf den Geräten der anlegenden Person.
+ */
+export function Vorsorge() {
+  const { zustand, legeVorsorgefallAn } = useCase()
+  const { zustand: authZustand } = useAuth()
+  const navigate = useNavigate()
+
+  const standardName =
+    authZustand.status === 'angemeldet' ? authZustand.benutzer.anzeigename : ''
+
+  const [personName, setzePersonName] = useState(standardName)
+  const [laeuft, setzeLaeuft] = useState(false)
+  const [fehler, setzeFehler] = useState<string | null>(null)
+
+  async function absenden(ereignis: FormEvent) {
+    ereignis.preventDefault()
+    setzeLaeuft(true)
+    setzeFehler(null)
+
+    try {
+      await legeVorsorgefallAn({ personName: personName || standardName })
+      navigate('/erbe', { replace: true })
+    } catch (ursache) {
+      setzeFehler(alsNachricht(ursache))
+      setzeLaeuft(false)
+    }
+  }
+
+  if (zustand.status === 'bereit') {
+    return <Navigate to="/" replace />
+  }
+
+  return (
+    <main className={stile.seite}>
+      <div className={stile.kopf}>
+        <h1>Für später vorsorgen</h1>
+        <p className={stile.einleitung}>
+          Legen Sie einen Vorsorgefall für sich selbst an. Dokumente und Zugangsdaten
+          im Nachlass-Tresor bleiben verschlüsselt, bis Angehörige den Trauerfall bestätigen.
+        </p>
+      </div>
+
+      <Card>
+        <form className={stile.formular} onSubmit={(ereignis) => void absenden(ereignis)}>
+          <div className={stile.feld}>
+            <label htmlFor="vorsorge-name">Ihr Name</label>
+            <input
+              id="vorsorge-name"
+              className={stile.eingabe}
+              value={personName}
+              onChange={(ereignis) => setzePersonName(ereignis.target.value)}
+              placeholder={standardName || 'Vor- und Nachname'}
+              required
+              autoFocus
+            />
+          </div>
+
+          <Button type="submit" volleBreite disabled={laeuft}>
+            Vorsorge anlegen
+          </Button>
+
+          {fehler === null ? null : (
+            <p className={stile.hinweis} role="alert">
+              Der Vorsorgefall konnte nicht angelegt werden. {fehler}
+            </p>
+          )}
+        </form>
+      </Card>
+    </main>
+  )
+}

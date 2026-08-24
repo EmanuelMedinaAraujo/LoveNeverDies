@@ -52,6 +52,9 @@ describe('Die Migrationskette', () => {
       'pairing_attempts',
       'pairing_codes',
       'profiles',
+      'vault_key_wraps',
+      'vault_releases',
+      'vault_shares',
     ])
   })
 

@@ -64,7 +64,9 @@ export type NeuerInhalt = {
    * Delta und in jedem Cache-Eintrag mitreiste, ohne je etwas Neues zu sagen,
    * wäre nur Gewicht.
    */
-  storagePfad?: string
+  storagePfad?: string | undefined
+  /** `in_vault = true` für Inhalte im Nachlass-Tresor (§3.5). */
+  imTresor?: boolean | undefined
 }
 
 /**

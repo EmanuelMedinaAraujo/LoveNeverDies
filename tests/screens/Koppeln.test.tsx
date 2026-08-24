@@ -36,6 +36,12 @@ function fall(id: string, personName: string): LesbarerFall {
     katalogVersion: '2026-08+testtest',
     kc: new Uint8Array([1]),
     kcat: new Uint8Array([2]),
+    kv: null,
+    preparerId: null,
+    vaultCommitment: null,
+    vaultResplitPending: false,
+    vaultK: null,
+    vaultN: null,
   }
 }
 
