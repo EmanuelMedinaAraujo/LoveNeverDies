@@ -50,6 +50,7 @@ const LESBAR: Fall = {
   kid: 'case_fall-1:1',
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
+  katalogVersion: '2026-08+testtest',
 }
 
 const ANMELDUNG_BEREIT = {
@@ -141,6 +142,9 @@ describe('useCase', () => {
     await waitFor(() => expect(result.current.zustand).toMatchObject({ aktiver: LESBAR }))
 
     expect(legeTrauerfallAnDienst).toHaveBeenCalledWith(
+      // Die Fall- und die Item-Tabelle: Der Katalog wird beim Anlegen
+      // instanziiert (§8), und beides geht über denselben Client.
+      expect.anything(),
       expect.anything(),
       IDENTITAET,
       'geraet-1',

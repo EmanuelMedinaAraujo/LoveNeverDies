@@ -51,6 +51,8 @@ function server() {
   }
 
   const inhalte: InhalteTabelle = {
+    legeAlleNeuen: () => Promise.reject(new Error('nicht gebraucht')),
+
     seit(fallId, wasserzeichen) {
       // Sortiert über die `id` statt über `seq`: Der Reconciler stellt die
       // Anzeigereihenfolge her, und hier steht sie gleich so da, damit die

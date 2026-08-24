@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { InhaltZeile } from '../../src/core/db/inhalte.ts'
 import type { AbgelehnteMutation, Mutation } from '../../src/core/sync/queue.ts'
 import type { Syncdaten, SyncZustand } from '../../src/hooks/useSync.ts'
-import type { Aufgabe, Fallschluessel } from '../../src/services/aufgabenService.ts'
+import type { Aufgabe } from '../../src/services/aufgabenService.ts'
+import type { Katalogfall } from '../../src/services/katalogService.ts'
 
 /**
  * Die Aufgaben eines Falls (DESIGN.md §3.1, §5, §7).
@@ -36,9 +37,24 @@ const useSync = vi.fn<(fallId: string) => Syncdaten>()
 
 vi.mock('../../src/hooks/useSync.ts', () => ({ useSync: (fallId: string) => useSync(fallId) }))
 
+/** Der Zugang zum Server. Angefasst wird er nicht — der Katalog ist ersetzt. */
+vi.mock('../../src/core/db/supabaseProvider.tsx', () => ({ useSupabase: () => () => ({}) }))
+
+const instanziiereKatalog = vi.fn()
+
+vi.mock('../../src/services/katalogService.ts', () => ({
+  instanziiereKatalog: (...a: unknown[]) => instanziiereKatalog(...a),
+}))
+
 const { useAufgaben } = await import('../../src/hooks/useAufgaben.ts')
 
-const FALL: Fallschluessel = { id: 'fall-1', kid: 'case_fall-1:1', kc: new Uint8Array([1]) }
+const FALL: Katalogfall = {
+  id: 'fall-1',
+  kid: 'case_fall-1:1',
+  kc: new Uint8Array([1]),
+  kcat: new Uint8Array([2]),
+  katalogVersion: '2026-08+testtest',
+}
 
 function zeile(id: string, ueberschreibung: Partial<InhaltZeile> = {}): InhaltZeile {
   return {
@@ -62,6 +78,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     titel: 'Sterbeurkunde beantragen',
     beschreibung: '',
     erledigt: false,
+    katalog: null,
     dek: new Uint8Array([9]),
     kid: FALL.kid,
     ...ueberschreibung,
@@ -79,6 +96,7 @@ function syncdaten(zustand: Partial<SyncZustand> = {}): Syncdaten {
       gecacht: true,
       laedtNetz: false,
       netzfehler: null,
+      abgeglichen: true,
       abgelehnt: [],
       ...zustand,
     },
@@ -93,6 +111,7 @@ beforeEach(() => {
   mutiere.mockResolvedValue(undefined)
   aufgabenAusZeilen.mockResolvedValue({ aufgaben: [], uebersprungeneIds: [] })
   beschreibeAbgelehnte.mockResolvedValue([])
+  instanziiereKatalog.mockResolvedValue(0)
   useSync.mockReturnValue(syncdaten())
 })
 
@@ -322,5 +341,129 @@ describe('useAufgaben', () => {
           : [],
       ).toEqual(['item-1', 'item-2']),
     )
+  })
+
+  describe('Rechtskatalog (§8)', () => {
+    it('holt die Instanziierung nach, sobald der Bestand abgeglichen ist', async () => {
+      /*
+       * Angelegt wird der Katalog bei der Fallanlage. Diese Stelle fängt die
+       * Fälle auf, bei denen das nicht durchkam — eine abgerissene Verbindung,
+       * oder ein Übergang nach `trauerfall`, den ein anderes Gerät vollzogen hat.
+       */
+      useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
+
+      renderHook(() => useAufgaben(FALL))
+
+      await waitFor(() => expect(instanziiereKatalog).toHaveBeenCalledTimes(1))
+      expect(instanziiereKatalog).toHaveBeenCalledWith(expect.anything(), FALL, ['item-1'])
+    })
+
+    it('wartet damit auf den ersten Abgleich mit dem Server', async () => {
+      // Vor dem ersten Abruf ist der Bestand der Cache, und ein leerer Cache
+      // sagt nichts darüber, was auf dem Server steht.
+      useSync.mockReturnValue(syncdaten({ abgeglichen: false }))
+
+      renderHook(() => useAufgaben(FALL))
+
+      await waitFor(() => expect(aufgabenAusZeilen).toHaveBeenCalled())
+      expect(instanziiereKatalog).not.toHaveBeenCalled()
+    })
+
+    it('tut es höchstens einmal je Fall, auch wenn Deltas nachkommen', async () => {
+      useSync.mockReturnValue(syncdaten())
+
+      const { rerender } = renderHook(() => useAufgaben(FALL))
+      await waitFor(() => expect(instanziiereKatalog).toHaveBeenCalledTimes(1))
+
+      useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
+      rerender()
+
+      await waitFor(() => expect(aufgabenAusZeilen).toHaveBeenCalled())
+      expect(instanziiereKatalog).toHaveBeenCalledTimes(1)
+    })
+
+    it('stellt die Aufgaben der Juristinnen in ihrer Reihenfolge nach vorn', async () => {
+      /*
+       * Die IDs der Katalogaufgaben sind ein UUIDv5 über einen HMAC (§8) und
+       * damit zufällig sortiert. Stünde die Liste nach ihnen, käme die
+       * Ausschlagungsfrist irgendwo zwischen Krankenkasse und Bestattung zu
+       * liegen.
+       */
+      const katalog = (reihenfolge: number) => ({
+        aufgabeId: `aufgabe-${reihenfolge}`,
+        version: '2026-08+testtest',
+        fristTage: null,
+        fristAb: null,
+        rechtsgrundlage: '',
+        zustaendigeStelle: '',
+        benoetigteDokumente: [],
+        unteraufgaben: [],
+        haengtAbVon: [],
+        hinweis: '',
+        quelleUrl: '',
+        kategorie: 'Sofort',
+        reihenfolge,
+      })
+
+      aufgabenAusZeilen.mockResolvedValue({
+        aufgaben: [
+          aufgabe({ id: 'selbst-1', titel: 'Selbst angelegt' }),
+          aufgabe({ id: 'katalog-20', titel: 'Zweite', katalog: katalog(20) }),
+          aufgabe({ id: 'selbst-2', titel: 'Auch selbst' }),
+          aufgabe({ id: 'katalog-10', titel: 'Erste', katalog: katalog(10) }),
+        ],
+        uebersprungeneIds: [],
+      })
+
+      useSync.mockReturnValue(
+        syncdaten({
+          zeilen: [zeile('selbst-1'), zeile('katalog-20'), zeile('selbst-2'), zeile('katalog-10')],
+        }),
+      )
+
+      const { result } = renderHook(() => useAufgaben(FALL))
+
+      await waitFor(() => expect(result.current.zustand).toMatchObject({ status: 'bereit' }))
+
+      const zustand = result.current.zustand
+      if (zustand.status !== 'bereit') {
+        throw new Error('Die Liste sollte stehen.')
+      }
+
+      expect(zustand.aufgaben.map((eintrag) => eintrag.titel)).toEqual([
+        'Erste',
+        'Zweite',
+        'Selbst angelegt',
+        'Auch selbst',
+      ])
+    })
+
+    it('lässt einen Fall ohne eingefrorenen Katalogstand in Ruhe', async () => {
+      // §8: Ein Vorsorgefall hat keine Aufgaben. Instanziiert wird beim
+      // Übergang nach `trauerfall`, nicht vorher.
+      useSync.mockReturnValue(syncdaten())
+
+      renderHook(() => useAufgaben({ ...FALL, katalogVersion: null }))
+
+      await waitFor(() => expect(aufgabenAusZeilen).toHaveBeenCalled())
+      expect(instanziiereKatalog).not.toHaveBeenCalled()
+    })
+
+    it('lässt die Liste stehen, wenn die Instanziierung scheitert', async () => {
+      // Kein Wurf und keine Mitteilung: Was hier scheitert, ist das Netz oder
+      // ein fremder Katalogstand — beides kann niemand hier beheben.
+      instanziiereKatalog.mockRejectedValue(new Error('kein Netz'))
+      aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], uebersprungeneIds: [] })
+      useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
+
+      const { result } = renderHook(() => useAufgaben(FALL))
+
+      await waitFor(() =>
+        expect(result.current.zustand).toMatchObject({
+          status: 'bereit',
+          aufgaben: [aufgabe()],
+        }),
+      )
+    })
   })
 })

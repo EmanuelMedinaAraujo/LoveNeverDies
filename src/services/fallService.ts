@@ -6,6 +6,10 @@
  * sieht nie mehr als Ciphertext. Das Lesen macht denselben Weg rückwärts: Wraps
  * holen, Signatur prüfen, entpacken, entschlüsseln.
  *
+ * Beim Anlegen entsteht zugleich die Aufgabenliste der Juristinnen: Der
+ * Katalogstand wird eingefroren und der Katalog instanziiert (§8). Ein neu
+ * angelegter Trauerfall ist deshalb nicht leer.
+ *
  * **Jeder Fehlschlag beim Lesen ergibt einen gesperrten Fall, kein Wurf** — ein
  * fehlender Wrap, ein unauffindbares `wrapped_by`, eine ungültige Signatur, ein
  * GCM-Tag, der nicht passt. Der Fall bleibt in der Liste, die App zeigt ihn,
@@ -21,7 +25,11 @@ import { entpackeSchluessel, wrappeSchluessel, type WrapKontext } from '../core/
 import type { FaelleTabelle, Fallstatus, FallZeile } from '../core/db/faelle'
 import type { SchluesselwrapTabelle, SchluesselwrapZeile } from '../core/db/fallschluessel'
 import type { GeraeteschluesselTabelle, GeraeteschluesselZeile } from '../core/db/geraeteschluessel'
+import type { InhalteTabelle } from '../core/db/inhalte'
 import { alsNachricht } from '../core/fehler'
+import { katalog as ausgelieferterKatalog } from '../content/katalog'
+import type { Katalog } from '../types/katalog'
+import { instanziiereKatalog } from './katalogService'
 
 /** Anlegen oder Lesen eines Falls ist gescheitert. */
 export class FallFehler extends Error {
@@ -47,6 +55,11 @@ export type LesbarerFall = {
   kid: string
   kc: Uint8Array
   kcat: Uint8Array
+  /**
+   * Der eingefrorene Katalogstand (§8). `null`, solange der Fall in der
+   * Vorsorge steht und noch keine Aufgaben hat.
+   */
+  katalogVersion: string | null
 }
 
 export type GesperrterFall = {
@@ -92,15 +105,30 @@ function pruefeAngaben(angaben: Trauerfallangaben): void {
 
 /**
  * Legt einen Trauerfall an: `K_c` und `K_cat` frisch, Name und Sterbedatum
- * unter `K_c`, beide Schlüssel an das eigene Gerät gewrappt.
+ * unter `K_c`, beide Schlüssel an das eigene Gerät gewrappt — und die Aufgaben
+ * aus dem Rechtskatalog gleich dazu.
  *
+ * Der Katalogstand friert dabei ein (§8). Ein direkt in `trauerfall` angelegter
+ * Fall tut das sofort, nach derselben Regel wie der Übergang aus der Vorsorge
+ * und ohne Sonderfall.
+ *
+ * **Scheitert das Instanziieren, gilt der Fall trotzdem als angelegt.** Er ist
+ * vollständig da, lesbar und trägt seinen Katalogstand; was fehlt, sind Items,
+ * deren IDs jedes Gerät nachrechnen kann. Ein Wurf machte daraus die Meldung
+ * „Der Fall war nicht anzulegen" — und der zweite Versuch legte einen zweiten
+ * Fall zu derselben verstorbenen Person an, den niemand wieder loswird.
+ *
+ * @param katalog der Stand, den dieser Build mitbringt (§8). Voreingestellt der
+ * ausgelieferte; die Tests geben einen eigenen vor.
  * @throws {FallFehler} bei ungültigen Angaben oder wenn das Anlegen scheitert.
  */
 export async function legeTrauerfallAn(
   faelle: FaelleTabelle,
+  inhalte: InhalteTabelle,
   identitaet: Geraeteidentitaet,
   geraeteId: string,
   angaben: Trauerfallangaben,
+  katalog: Katalog = ausgelieferterKatalog(),
 ): Promise<LesbarerFall> {
   pruefeAngaben(angaben)
 
@@ -124,12 +152,13 @@ export async function legeTrauerfallAn(
     kidFall,
     kidKatalog,
     payload: payloadVerschluesselt,
+    katalogVersion: katalog.version,
     geraeteId,
     wrapFall,
     wrapKatalog,
   })
 
-  return {
+  const fall: LesbarerFall = {
     zustand: 'lesbar',
     id,
     status: 'trauerfall',
@@ -138,7 +167,26 @@ export async function legeTrauerfallAn(
     kid: kidFall,
     kc,
     kcat,
+    katalogVersion: katalog.version,
   }
+
+  try {
+    // Ohne Bestand: Den Fall gibt es seit einem Augenblick, Items kann er keine
+    // haben. Das `on conflict` in `legeAlleNeuen` trägt trotzdem — ein zweites
+    // Gerät kann in derselben Sekunde nicht instanziieren, ein zweiter Anlauf
+    // dieses Geräts nach einem Abbruch aber schon.
+    await instanziiereKatalog(inhalte, fall, [], katalog)
+  } catch {
+    /*
+     * Nachgeholt wird es beim nächsten Laden: `useAufgaben` instanziiert, sobald
+     * der Bestand einmal mit dem Server abgeglichen ist, und rechnet dabei
+     * dieselben IDs aus (§8). Der Fall ist bis dahin ein Trauerfall ohne
+     * Aufgaben — unvollständig, aber nicht falsch, und in ein paar Sekunden von
+     * selbst behoben.
+     */
+  }
+
+  return fall
 }
 
 /**
@@ -232,6 +280,7 @@ async function leseFall(
     kid: zeile.currentKid,
     kc,
     kcat,
+    katalogVersion: zeile.katalogVersion,
   }
 }
 

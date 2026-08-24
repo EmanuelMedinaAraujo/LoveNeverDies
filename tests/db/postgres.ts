@@ -109,13 +109,20 @@ export function alsBenutzer(db: PGlite, sub: string): AlsBenutzer {
     }) as Promise<never>
 }
 
-/** Legt einen Fall samt Mitgliedschaften an, an der RLS vorbei. */
+/**
+ * Legt einen Fall samt Mitgliedschaften an, an der RLS vorbei.
+ *
+ * Mit Katalogstand: Ein Trauerfall ohne einen wird von der Datenbank
+ * abgewiesen (§8), und das soll er auch — eingefroren wird beim Übergang nach
+ * `trauerfall`.
+ */
 export async function fallMitMitgliedern(
   db: PGlite,
   ...userIds: string[]
 ): Promise<string> {
   const { rows } = await db.query<{ id: string }>(
-    `insert into cases (status, current_kid, payload) values ('trauerfall', 'case_test:1', '\\x00')
+    `insert into cases (status, current_kid, catalog_version, payload)
+     values ('trauerfall', 'case_test:1', '2026-08+testtest', '\\x00')
      returning id`,
   )
 

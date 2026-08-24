@@ -109,13 +109,36 @@ test('Trauerfall anlegen', async ({ page }) => {
     ).toBeVisible()
   })
 
-  await test.step('legt im Tab "Alle" eine Aufgabe an', async () => {
+  /**
+   * Wie viele Aufgaben der Rechtskatalog mitgebracht hat (§8).
+   *
+   * Gezählt statt aus dem Katalog importiert: Die Zahl ändert sich mit jedem
+   * `npm run import:content`, und dieser Test soll davon nichts wissen.
+   */
+  let ausDemKatalog = 0
+
+  await test.step('der neue Fall bringt die Aufgaben der Juristinnen mit', async () => {
+    // §8: „Ein neu angelegter Trauerfall ist nicht mehr leer." Instanziiert hat
+    // ihn die Fallanlage, verschlüsselt wie jedes andere Item.
     await page.getByRole('link', { name: 'Alle Aufgaben' }).click()
 
     await expect(page).toHaveURL(/\/alle$/)
     await expect(page.getByRole('heading', { name: 'Alle Aufgaben' })).toBeVisible()
-    await expect(page.getByText('Hier ist noch nichts')).toBeVisible()
 
+    await expect(
+      page.getByRole('checkbox', { name: 'Ausschlagung der Erbschaft prüfen' }),
+    ).toBeVisible()
+
+    ausDemKatalog = await page.getByRole('checkbox').count()
+    expect(ausDemKatalog).toBeGreaterThan(1)
+
+    // Und beim Neuladen steht dieselbe Liste: kein zweiter Satz, keine
+    // Duplikate. Die IDs sind deterministisch, das Anlegen ist idempotent (§8).
+    await gotoVerlaesslich(page, '/alle')
+    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog)
+  })
+
+  await test.step('legt im Tab "Alle" eine Aufgabe an', async () => {
     await page.getByLabel('Neue Aufgabe').fill('Sterbeurkunde beantragen')
     await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
 
@@ -124,7 +147,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     await page.getByLabel('Neue Aufgabe').fill('Konten kündigen')
     await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
 
-    await expect(page.getByRole('checkbox')).toHaveCount(2)
+    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog + 2)
   })
 
   await test.step('die Reihenfolge bleibt, wenn eine Aufgabe geändert wird', async () => {
@@ -139,15 +162,20 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     await gotoVerlaesslich(page, '/alle')
 
-    await expect(page.getByRole('checkbox')).toHaveCount(2)
-    await expect(page.getByRole('listitem').first()).toContainText('Sterbeurkunde beantragen')
+    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog + 2)
+
+    // Hinter dem Katalog: Der steht in der Reihenfolge der Juristinnen vorn
+    // (§8), selbst angelegte Aufgaben folgen in ihrer Anlagereihenfolge.
+    await expect(page.getByRole('listitem').nth(ausDemKatalog)).toContainText(
+      'Sterbeurkunde beantragen',
+    )
     await expect(page.getByRole('listitem').last()).toContainText('Konten kündigen')
 
-    // Aufgeräumt, damit die folgenden Schritte wieder mit genau einer Aufgabe
-    // arbeiten.
+    // Aufgeräumt, damit die folgenden Schritte wieder mit genau einer selbst
+    // angelegten Aufgabe arbeiten.
     await page.getByRole('button', { name: /^Löschen.*Konten kündigen/ }).click()
     await page.getByRole('button', { name: 'Endgültig löschen' }).click()
-    await expect(page.getByRole('checkbox')).toHaveCount(1)
+    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog + 1)
   })
 
   await test.step('nimmt das Haekchen zurueck und setzt es wieder; beides ueberlebt das Neuladen', async () => {
@@ -244,10 +272,31 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(page.getByText('kommen nicht zurück')).toBeVisible()
     await page.getByRole('button', { name: 'Endgültig löschen' }).click()
 
-    await expect(page.getByText('Hier ist noch nichts')).toBeVisible()
+    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toHaveCount(0)
 
     await gotoVerlaesslich(page, '/alle')
-    await expect(page.getByText('Hier ist noch nichts')).toBeVisible()
+    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toHaveCount(0)
+    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog)
+  })
+
+  await test.step('eine gelöschte Katalogaufgabe kommt nicht wieder', async () => {
+    /*
+     * §8: Der Katalog initialisiert, mehr nicht — danach ist es ein
+     * gewöhnliches Item. Der Tombstone steht im Bestand (§5), und die
+     * Instanziierung beim nächsten Laden übergeht ihn. Käme die Aufgabe wieder,
+     * wäre „löschen" bei genau diesen Aufgaben eine Lüge.
+     */
+    const geloescht = gespeichert(page, 'PATCH')
+    await page.getByRole('button', { name: /^Löschen.*Ausschlagung der Erbschaft prüfen/ }).click()
+    await page.getByRole('button', { name: 'Endgültig löschen' }).click()
+    await geloescht
+
+    await gotoVerlaesslich(page, '/alle')
+
+    await expect(
+      page.getByRole('checkbox', { name: 'Ausschlagung der Erbschaft prüfen' }),
+    ).toHaveCount(0)
+    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog - 1)
   })
 
   await test.step('der Fall steht in Profil unter "Für wen?"', async () => {

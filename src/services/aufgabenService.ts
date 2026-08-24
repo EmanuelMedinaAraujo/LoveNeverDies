@@ -32,9 +32,10 @@
 import { entschluessele, verschluessele } from '../core/crypto/aead'
 import { bytesText, textBytes } from '../core/crypto/bytes'
 import { entpackeDek, erzeugeDek, wrappeDek } from '../core/crypto/dek'
-import type { InhaltZeile } from '../core/db/inhalte'
+import type { InhaltZeile, NeuerInhalt } from '../core/db/inhalte'
 import type { AbgelehnteMutation, Mutation } from '../core/sync/queue'
 import { uuidv7 } from '../core/uuidv7'
+import type { Katalogaufgabe } from '../types/katalog'
 
 /** Eine Aufgabe war nicht anzulegen oder nicht zu ändern. */
 export class AufgabenFehler extends Error {
@@ -59,6 +60,25 @@ export type Fallschluessel = {
 }
 
 /**
+ * Was beim Instanziieren aus dem Katalog in das Item kopiert wird (§8).
+ *
+ * **Kopiert und nicht verknüpft.** `catalog_version` ist eine Herkunftsangabe
+ * („aufgesetzt aus Katalogstand 2031-03"), keine lebende Verbindung: Ein
+ * späterer Import ändert an einer bereits instanziierten Aufgabe nichts. Wer
+ * Rechtsgrundlage und Quelle im Aufgabendetail liest (§7), liest den Stand von
+ * damals — und genau den soll er lesen, denn danach hat jemand gehandelt.
+ *
+ * Alles ausser Titel und Kurzbeschreibung steht hier: Die beiden sind der
+ * Aufgabe selbst geworden und dort änderbar.
+ */
+export type Katalogherkunft = Omit<Katalogaufgabe, 'id' | 'titel' | 'kurzbeschreibung'> & {
+  /** Die Kennung der Katalogaufgabe, aus der dieses Item entstanden ist. */
+  aufgabeId: string
+  /** Der Katalogstand zum Zeitpunkt des Instanziierens. */
+  version: string
+}
+
+/**
  * Der verschlüsselte Inhalt einer Aufgabe (§3.3).
  *
  * `typ` ist heute einwertig und steht trotzdem da: Er ist die Unterscheidung,
@@ -70,11 +90,13 @@ export type Fallschluessel = {
  * Blätter gibt. Sobald eine Aufgabe Unteraufgaben hat, leitet der Client es
  * bei jedem Rendern aus den Kindern ab und speichert es nicht (§7).
  */
-type Aufgabenpayload = {
+export type Aufgabenpayload = {
   typ: 'aufgabe'
   titel: string
   beschreibung: string
   erledigt: boolean
+  /** Aus dem Katalog kopiert (§8), oder `null` bei einer selbst angelegten Aufgabe. */
+  katalog: Katalogherkunft | null
 }
 
 export type Aufgabe = {
@@ -89,6 +111,8 @@ export type Aufgabe = {
   dek: Uint8Array
   /** Der Schlüssel, unter dem der DEK auf dem Server liegt. */
   kid: string
+  /** Woher diese Aufgabe stammt (§8), oder `null`, wenn jemand sie selbst angelegt hat. */
+  katalog: Katalogherkunft | null
 }
 
 export type Aufgabenliste = {
@@ -123,6 +147,52 @@ function pruefeTitel(titel: string): string {
   return gekuerzt
 }
 
+function alsText(wert: unknown): string {
+  return typeof wert === 'string' ? wert : ''
+}
+
+function alsListe(wert: unknown): string[] {
+  return Array.isArray(wert) ? wert.filter((eintrag) => typeof eintrag === 'string') : []
+}
+
+/**
+ * Die Herkunft aus einem Payload, Feld für Feld.
+ *
+ * Nichts wird hier übernommen, wie es kommt: Der Payload ist zwar
+ * entschlüsselt, aber er wurde irgendwann von irgendeiner Fassung dieser App
+ * geschrieben. Ein Feld, das eine ältere Fassung noch nicht kannte, fehlt dann
+ * einfach — und ein fehlender Wert soll eine leere Angabe ergeben und keinen
+ * Absturz im Aufgabendetail.
+ */
+function herkunftAus(wert: unknown): Katalogherkunft | null {
+  if (typeof wert !== 'object' || wert === null) {
+    return null
+  }
+
+  const felder = wert as Partial<Katalogherkunft>
+
+  if (typeof felder.aufgabeId !== 'string' || felder.aufgabeId === '') {
+    return null
+  }
+
+  return {
+    aufgabeId: felder.aufgabeId,
+    version: alsText(felder.version),
+    fristTage: typeof felder.fristTage === 'number' ? felder.fristTage : null,
+    fristAb:
+      felder.fristAb === 'sterbedatum' || felder.fristAb === 'kenntnis' ? felder.fristAb : null,
+    rechtsgrundlage: alsText(felder.rechtsgrundlage),
+    zustaendigeStelle: alsText(felder.zustaendigeStelle),
+    benoetigteDokumente: alsListe(felder.benoetigteDokumente),
+    unteraufgaben: alsListe(felder.unteraufgaben),
+    haengtAbVon: alsListe(felder.haengtAbVon),
+    hinweis: alsText(felder.hinweis),
+    quelleUrl: alsText(felder.quelleUrl),
+    kategorie: alsText(felder.kategorie),
+    reihenfolge: typeof felder.reihenfolge === 'number' ? felder.reihenfolge : 0,
+  }
+}
+
 /**
  * Liest, was in einem entschlüsselten Payload steht.
  *
@@ -149,14 +219,17 @@ function lesePayload(klartext: Uint8Array): Aufgabenpayload {
     titel: felder.titel ?? '',
     beschreibung: felder.beschreibung ?? '',
     erledigt: felder.erledigt === true,
+    katalog: herkunftAus(felder.katalog),
   }
 }
 
 async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufgabe> {
   const dek = await entpackeDek(fall.kc, zeile.wrappedDek)
-  const { titel, beschreibung, erledigt } = lesePayload(await entschluessele(dek, zeile.payload))
+  const { titel, beschreibung, erledigt, katalog } = lesePayload(
+    await entschluessele(dek, zeile.payload),
+  )
 
-  return { id: zeile.id, titel, beschreibung, erledigt, dek, kid: zeile.kid }
+  return { id: zeile.id, titel, beschreibung, erledigt, katalog, dek, kid: zeile.kid }
 }
 
 /**
@@ -207,13 +280,44 @@ export async function mutationAnlegen(
   fall: Fallschluessel,
   titel: string,
 ): Promise<Mutation> {
-  const payload: Aufgabenpayload = {
+  const { id, wrappedDek, payload } = await verschluesselterInhalt(fall, uuidv7(), {
     typ: 'aufgabe',
     titel: pruefeTitel(titel),
     beschreibung: '',
     erledigt: false,
-  }
+    katalog: null,
+  })
 
+  return {
+    op: 'anlegen',
+    itemId: id,
+    fallId: fall.id,
+    art: 'item',
+    kid: fall.kid,
+    wrappedDek,
+    payload,
+    ts: Date.now(),
+  }
+}
+
+/**
+ * Ein Payload als anzulegende Zeile: eigener DEK, Payload darunter, DEK unter
+ * `K_c` — die Kette aus §3.1, einmal.
+ *
+ * Zwei Wege enden hier. Eine getippte Aufgabe wird daraus eine {@link Mutation}
+ * für die Offline-Queue; der Rechtskatalog (§8) nimmt die Zeile unverändert und
+ * schreibt sie mit `on conflict do nothing`, weil seine IDs deterministisch
+ * sind und mehrere Mitglieder gleichzeitig instanziieren können. Verschlüsselt
+ * wird auf beiden Wegen dasselbe, und das steht deshalb an einer Stelle.
+ *
+ * @param id die Item-ID: eine UUIDv7 für getippte Aufgaben (§5), die
+ * abgeleitete UUIDv5 für Katalogaufgaben (§8).
+ */
+export async function verschluesselterInhalt(
+  fall: Fallschluessel,
+  id: string,
+  payload: Aufgabenpayload,
+): Promise<NeuerInhalt> {
   const dek = erzeugeDek()
 
   const [verschluesselt, wrappedDek] = await Promise.all([
@@ -221,16 +325,7 @@ export async function mutationAnlegen(
     wrappeDek(fall.kc, dek),
   ])
 
-  return {
-    op: 'anlegen',
-    itemId: uuidv7(),
-    fallId: fall.id,
-    art: 'item',
-    kid: fall.kid,
-    wrappedDek,
-    payload: verschluesselt,
-    ts: Date.now(),
-  }
+  return { id, fallId: fall.id, art: 'item', kid: fall.kid, wrappedDek, payload: verschluesselt }
 }
 
 /**
@@ -246,6 +341,10 @@ export async function mutationAendern(
     titel: aenderung.titel === undefined ? aufgabe.titel : pruefeTitel(aenderung.titel),
     beschreibung: aenderung.beschreibung ?? aufgabe.beschreibung,
     erledigt: aenderung.erledigt ?? aufgabe.erledigt,
+    // Die Herkunft schreibt jede Änderung unverändert mit. Sie ist kein Feld,
+    // das jemand bearbeitet — sie fiele sonst beim ersten Häkchen aus dem
+    // Payload, und mit ihr Rechtsgrundlage und Quelle (§8).
+    katalog: aufgabe.katalog,
   }
 
   return {

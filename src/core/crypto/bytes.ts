@@ -72,6 +72,27 @@ export function gleichZeitkonstant(a: Uint8Array, b: Uint8Array): boolean {
   return unterschied === 0
 }
 
+const HEX_ZIFFERN = '0123456789abcdef'
+
+/**
+ * Bytes als Hex-Text.
+ *
+ * Gebraucht wird das dort, wo Bytes zu einer Kennung werden: die Item-IDs aus
+ * dem Katalog (§8) und die UUIDv7 der uebrigen Items (§5). Nicht zu verwechseln
+ * mit `alsBytea` in `core/db` — das ist die Kodierung einer Spalte auf der
+ * Leitung und gehört nicht in den Kryptokern.
+ */
+export function hexText(bytes: Uint8Array): string {
+  let text = ''
+
+  for (const byte of bytes) {
+    text += HEX_ZIFFERN[byte >> 4]
+    text += HEX_ZIFFERN[byte & 0x0f]
+  }
+
+  return text
+}
+
 export async function sha256(...teile: Uint8Array[]): Promise<Uint8Array> {
   const digest = await webcrypto().subtle.digest('SHA-256', alsBufferSource(verkette(...teile)))
 

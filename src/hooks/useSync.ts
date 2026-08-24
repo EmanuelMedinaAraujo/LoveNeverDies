@@ -53,6 +53,16 @@ export type SyncZustand = {
   /** Was beim letzten Abruf schiefging, oder `null`. */
   netzfehler: string | null
   /**
+   * Ob mindestens eine Runde vollständig durchgelaufen ist: Der Bestand hat
+   * dann den Server gesehen und nicht nur den Cache.
+   *
+   * Der Unterschied zu `!laedtNetz` ist der Zeitpunkt vor dem ersten Abruf —
+   * dort läuft nichts, und trotzdem weiss niemand, was auf dem Server steht.
+   * Wer aus dem Fehlen einer Zeile etwas schliessen will, braucht genau diese
+   * Unterscheidung; der Rechtskatalog tut das (§8).
+   */
+  abgeglichen: boolean
+  /**
    * Was der Server verworfen hat. §5: nie stillschweigend, sondern als
    * Mitteilung — den Klartext dazu holt `useAufgaben`.
    */
@@ -91,6 +101,7 @@ export function useSync(fallId: string): Syncdaten {
   const [gecacht, setzeGecacht] = useState(false)
   const [laedtNetz, setzeLaedtNetz] = useState(false)
   const [netzfehler, setzeNetzfehler] = useState<string | null>(null)
+  const [abgeglichen, setzeAbgeglichen] = useState(false)
   const [abgelehnt, setzeAbgelehnt] = useState<AbgelehnteMutation[]>([])
 
   /** Lebt so lange wie der Fall auf dem Bildschirm. */
@@ -173,6 +184,7 @@ export function useSync(fallId: string): Syncdaten {
 
           if (aktuell.current) {
             setzeNetzfehler(null)
+            setzeAbgeglichen(true)
           }
         } catch (fehler) {
           if (aktuell.current) {
@@ -287,8 +299,8 @@ export function useSync(fallId: string): Syncdaten {
   const aktualisiere = useCallback(() => void runde(), [runde])
 
   const zustand = useMemo<SyncZustand>(
-    () => ({ zeilen, gecacht, laedtNetz, netzfehler, abgelehnt }),
-    [zeilen, gecacht, laedtNetz, netzfehler, abgelehnt],
+    () => ({ zeilen, gecacht, laedtNetz, netzfehler, abgeglichen, abgelehnt }),
+    [zeilen, gecacht, laedtNetz, netzfehler, abgeglichen, abgelehnt],
   )
 
   return useMemo(

@@ -13,7 +13,8 @@ import type { FaelleTabelle, Fallstatus, FallZeile, NeuerTrauerfall } from './fa
 
 const TABELLE = 'cases'
 
-const SPALTEN = 'id, status, current_kid, key_generation, version, payload, created_at'
+const SPALTEN =
+  'id, status, current_kid, key_generation, version, catalog_version, payload, created_at'
 
 type RohZeile = {
   id: string
@@ -21,6 +22,7 @@ type RohZeile = {
   current_kid: string
   key_generation: number
   version: number
+  catalog_version: string | null
   payload: unknown
   created_at: string
 }
@@ -40,6 +42,7 @@ function alsZeile(roh: RohZeile): FallZeile {
     currentKid: roh.current_kid,
     keyGeneration: roh.key_generation,
     version: roh.version,
+    katalogVersion: roh.catalog_version,
     payload: ausBytea(roh.payload),
     angelegtAm: roh.created_at,
   }
@@ -53,6 +56,7 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
         p_kid_fall: neu.kidFall,
         p_kid_katalog: neu.kidKatalog,
         p_payload: alsBytea(neu.payload),
+        p_katalog_version: neu.katalogVersion,
         p_geraet: neu.geraeteId,
         p_fall_kem_ct: alsBytea(neu.wrapFall.kemCt),
         p_fall_wrapped_key: alsBytea(neu.wrapFall.wrappedKey),

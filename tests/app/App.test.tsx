@@ -49,6 +49,7 @@ const LESBAR = {
   kid: 'case_fall-1:1',
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
+  katalogVersion: '2026-08+testtest',
 }
 
 function rendere(zustand: AuthZustand, pfad = '/') {

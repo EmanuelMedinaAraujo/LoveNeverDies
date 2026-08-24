@@ -24,6 +24,7 @@ function neuerTrauerfall() {
     kidFall: 'case_fall-1:1',
     kidKatalog: 'cat_fall-1',
     payload: new Uint8Array([0xaa, 0xbb]),
+    katalogVersion: '2026-08+testtest',
     geraeteId: 'geraet-1',
     wrapFall: wrap,
     wrapKatalog: {

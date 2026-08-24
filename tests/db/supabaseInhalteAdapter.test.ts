@@ -38,6 +38,79 @@ const ERWARTET = {
   geaendertAm: '2026-08-23T10:00:00Z',
 }
 
+describe('legeAlleNeuen', () => {
+  const NEU = {
+    id: 'item-1',
+    fallId: 'fall-1',
+    art: 'item' as const,
+    kid: 'case_fall-1:1',
+    wrappedDek: new Uint8Array([0x01]),
+    payload: new Uint8Array([0x02]),
+  }
+
+  it('schickt ein einziges Statement mit on conflict do nothing (§8)', async () => {
+    /*
+     * `ignoreDuplicates` ist PostgRESTs `Prefer: resolution=ignore-duplicates`.
+     * Ohne das wäre die zweite von zwei gleichzeitigen Instanziierungen ein
+     * Fehler statt eines Nulleffekts — und mit `ignoreDuplicates: false` ein
+     * Upsert, der die womöglich längst geänderte Zeile überschriebe.
+     */
+    const { client, gesehen } = stubClient({ data: null, error: null })
+
+    await supabaseInhalte(client).legeAlleNeuen([NEU, { ...NEU, id: 'item-2' }])
+
+    expect(gesehen.tabelle).toBe('items')
+    expect(gesehen.hochgeladen?.optionen).toEqual({ ignoreDuplicates: true })
+    expect(gesehen.hochgeladen?.werte).toEqual([
+      {
+        id: 'item-1',
+        case_id: 'fall-1',
+        kind: 'item',
+        kid: 'case_fall-1:1',
+        wrapped_dek: alsBytea(new Uint8Array([0x01])),
+        payload: alsBytea(new Uint8Array([0x02])),
+      },
+      {
+        id: 'item-2',
+        case_id: 'fall-1',
+        kind: 'item',
+        kid: 'case_fall-1:1',
+        wrapped_dek: alsBytea(new Uint8Array([0x01])),
+        payload: alsBytea(new Uint8Array([0x02])),
+      },
+    ])
+  })
+
+  it('setzt weder seq noch updated_at — beides gehört dem Trigger (§4)', async () => {
+    const { client, gesehen } = stubClient({ data: null, error: null })
+
+    await supabaseInhalte(client).legeAlleNeuen([NEU])
+
+    const [zeile] = gesehen.hochgeladen?.werte as Record<string, unknown>[]
+
+    expect(Object.keys(zeile ?? {})).not.toContain('seq')
+    expect(Object.keys(zeile ?? {})).not.toContain('updated_at')
+  })
+
+  it('fasst den Server gar nicht erst an, wenn nichts fehlt', async () => {
+    // Der Normalfall nach dem ersten Mal: Der Katalog steht längst.
+    const { client, gesehen } = stubClient({ data: null, error: null })
+
+    await supabaseInhalte(client).legeAlleNeuen([])
+
+    expect(gesehen.tabelle).toBeUndefined()
+  })
+
+  it('macht aus einem Urteil des Servers einen abgelehnten Fehlschlag', async () => {
+    const { client } = stubClient({ data: null, error: fehler('nope', '42501') })
+
+    await expect(supabaseInhalte(client).legeAlleNeuen([NEU])).rejects.toMatchObject({
+      name: 'InhalteFehler',
+      abgelehnt: true,
+    })
+  })
+})
+
 describe('seit', () => {
   it('holt das Delta eines Falls in seq-Reihenfolge', async () => {
     // §5: `select * from items where case_id = ? and seq > watermark`. Sortiert
