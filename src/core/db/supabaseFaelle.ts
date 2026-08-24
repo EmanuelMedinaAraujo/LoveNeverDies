@@ -80,5 +80,21 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
 
       return data.map(alsZeile)
     },
+
+    async version(fallId) {
+      // Eine Spalte, eine Zeile, `maybeSingle`: Ein Fall, den die RLS
+      // wegfiltert, ist keine Ausnahme, sondern eine leere Antwort.
+      const { data, error } = await client
+        .from(TABELLE)
+        .select('version')
+        .eq('id', fallId)
+        .maybeSingle<{ version: number | string }>()
+
+      if (error !== null) {
+        throw new FaelleFehler('Der Stand dieses Falls war nicht abzurufen', error)
+      }
+
+      return data === null ? null : Number(data.version)
+    },
   }
 }

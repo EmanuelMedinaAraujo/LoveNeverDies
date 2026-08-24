@@ -24,6 +24,7 @@ export type Aufzeichnung = {
   eingefuegt?: unknown
   aktualisiert?: unknown
   filter: Record<string, unknown>
+  groesserAls?: Record<string, unknown>
   spalten?: string
   sortierung?: { spalte: string; optionen: unknown }
 }
@@ -48,6 +49,10 @@ export function stubClient(antwort: Antwort) {
     },
     eq(spalte: string, wert: unknown) {
       gesehen.filter[spalte] = wert
+      return kette
+    },
+    gt(spalte: string, wert: unknown) {
+      gesehen.groesserAls = { ...gesehen.groesserAls, [spalte]: wert }
       return kette
     },
     order(spalte: string, optionen: unknown) {

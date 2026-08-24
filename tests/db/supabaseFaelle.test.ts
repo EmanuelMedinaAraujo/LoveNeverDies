@@ -141,3 +141,47 @@ describe('eigene', () => {
     )
   })
 })
+
+describe('version', () => {
+  /*
+   * Der billige Check aus §5, Schritt 1: „`select version from cases where
+   * id = ?`, ein Integer. Gleich dem Wasserzeichen → kein Fetch."
+   *
+   * Er ist der Grund, aus dem die Türklingel bei jedem Fokuswechsel läuten darf,
+   * ohne dass ein Telefon im Zug seine Verbindung leerräumt. Deshalb steht hier
+   * ausdrücklich, dass genau eine Spalte abgefragt wird und keine zweite.
+   */
+
+  it('fragt genau eine Spalte einer Zeile ab', async () => {
+    const { client, gesehen } = stubClient({ data: { version: 7 }, error: null })
+
+    expect(await supabaseFaelle(client).version('fall-1')).toBe(7)
+
+    expect(gesehen.tabelle).toBe('cases')
+    expect(gesehen.spalten).toBe('version')
+    expect(gesehen.filter).toEqual({ id: 'fall-1' })
+  })
+
+  it('liest version auch als Zeichenkette', async () => {
+    // `bigint`: PostgREST liefert es als Zeichenkette, sobald es die sichere
+    // Ganzzahlgrenze überschreiten könnte.
+    const { client } = stubClient({ data: { version: '12' }, error: null })
+
+    expect(await supabaseFaelle(client).version('fall-1')).toBe(12)
+  })
+
+  it('gibt null zurück, wenn es den Fall für dieses Gerät nicht gibt', async () => {
+    // Die RLS filtert einen fremden Fall weg, statt einen Fehler zu liefern.
+    // Als `0` durchgehen darf das nicht: Das hiesse „alles neu holen" und
+    // liefe gegen eine Zeile, die dieses Gerät nie sehen wird.
+    const { client } = stubClient({ data: null, error: null })
+
+    expect(await supabaseFaelle(client).version('fall-1')).toBeNull()
+  })
+
+  it('macht aus einem PostgREST-Fehler einen FaelleFehler', async () => {
+    const { client } = stubClient({ data: null, error: fehler('permission denied') })
+
+    await expect(supabaseFaelle(client).version('fall-1')).rejects.toThrow(FaelleFehler)
+  })
+})
