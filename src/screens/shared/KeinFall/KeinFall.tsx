@@ -7,8 +7,9 @@ import stile from './KeinFall.module.css'
  * Ohne Fall ist die App gesperrt: ein Screen, drei Schaltflächen (DESIGN.md §7).
  *
  * Die drei Wege sind die Fallweiche aus dem Onboarding. "Ein Todesfall ist
- * eingetreten" führt zur Fallanlage (§2, §3.1); die beiden anderen tragen noch
- * keine Funktion — Vorsorge und Kopplungscode kommen in eigenen Slices.
+ * eingetreten" führt zur Fallanlage (§2, §3.1), "Ich wurde eingeladen" zum
+ * Kopplungscode (§6). Vorsorge trägt noch keine Funktion und kommt in einem
+ * eigenen Slice.
  */
 export function KeinFall() {
   const navigate = useNavigate()
@@ -30,11 +31,11 @@ export function KeinFall() {
           <Button volleBreite variante="sekundaer" disabled>
             Ich möchte für später vorsorgen
           </Button>
-          <Button volleBreite variante="sekundaer" disabled>
+          <Button volleBreite variante="sekundaer" onClick={() => navigate('/beitreten')}>
             Ich wurde eingeladen
           </Button>
           <p className={stile.hinweis}>
-            Die beiden anderen Schritte werden gerade gebaut und sind noch nicht auswählbar.
+            Die Vorsorge wird gerade gebaut und ist noch nicht auswählbar.
           </p>
         </div>
       </Card>

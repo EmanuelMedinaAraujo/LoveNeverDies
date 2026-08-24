@@ -17,11 +17,15 @@ import { authWert } from '../screens/harness.tsx'
 
 const useCase = vi.fn<() => Falldaten>()
 const useGeraeteanmeldung = vi.fn()
+const useProfilAbgleich = vi.fn()
 const speicherDauerhaftAnfordern = vi.fn().mockResolvedValue('gewaehrt')
 
 vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
 vi.mock('../../src/hooks/useGeraete.ts', () => ({
   useGeraeteanmeldung: () => useGeraeteanmeldung(),
+}))
+vi.mock('../../src/hooks/useProfil.ts', () => ({
+  useProfilAbgleich: () => useProfilAbgleich(),
 }))
 vi.mock('../../src/core/storage/persist.ts', () => ({
   speicherDauerhaftAnfordern: () => speicherDauerhaftAnfordern(),
@@ -36,6 +40,12 @@ vi.mock('../../src/screens/shared/Alle/Alle.tsx', () => ({ Alle: () => <p>Aufgab
 vi.mock('../../src/screens/shared/Profil/Profil.tsx', () => ({ Profil: () => <p>Profilseite</p> }))
 vi.mock('../../src/screens/shared/Todesfall/Todesfall.tsx', () => ({
   Todesfall: () => <p>Fallanlage</p>,
+}))
+vi.mock('../../src/screens/shared/Beitreten/Beitreten.tsx', () => ({
+  Beitreten: ({ zweck }: { zweck: string }) => <p>Kopplungscode fuer {zweck}</p>,
+}))
+vi.mock('../../src/screens/shared/Koppeln/Koppeln.tsx', () => ({
+  Koppeln: () => <p>Codeeingabe</p>,
 }))
 
 const { App } = await import('../../src/app/App.tsx')
@@ -73,6 +83,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useCase.mockReturnValue({ zustand: { status: 'kein-fall' }, legeTrauerfallAn: vi.fn() })
   useGeraeteanmeldung.mockReturnValue({ status: 'laedt' })
+  useProfilAbgleich.mockReturnValue({ status: 'bereit' })
 })
 
 describe('Anmeldezustand', () => {
@@ -194,6 +205,40 @@ describe('Fallsperre', () => {
 
     expect(screen.getByRole('heading', { name: 'Fall gesperrt' })).toBeVisible()
     expect(screen.getByRole('alert')).toHaveTextContent('kein Schlüssel')
+    // §3.6: Der Weg zur Freigabe gehoert an diese Stelle und nicht drei Klicks
+    // entfernt.
+    expect(
+      screen.getByRole('link', { name: 'Dieses Gerät freischalten lassen' }),
+    ).toHaveAttribute('href', '/geraet-freischalten')
+  })
+
+  it('zeigt den Freigabe-Badge, sobald ein Fall gesperrt ist', () => {
+    /*
+     * §3.6 verlangt den Badge in der unteren Leiste. Die gibt es noch nicht;
+     * er steht deshalb am Profil-Weg, der ihren Platz haelt. Ablesbar ist er
+     * nur auf dem wartenden Geraet — die Wraps fremder Geraete verbirgt die
+     * RLS (§4).
+     */
+    const gesperrt = { zustand: 'gesperrt' as const, id: 'fall-2', grund: 'Kein Schlüssel.' }
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [LESBAR, gesperrt], aktiver: LESBAR },
+      legeTrauerfallAn: vi.fn(),
+    })
+
+    rendere(ANGEMELDET)
+
+    expect(screen.getByText('Freigabe nötig')).toBeVisible()
+  })
+
+  it('zeigt keinen Badge, solange jeder Fall lesbar ist', () => {
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
+      legeTrauerfallAn: vi.fn(),
+    })
+
+    rendere(ANGEMELDET)
+
+    expect(screen.queryByText('Freigabe nötig')).toBeNull()
   })
 })
 
@@ -208,6 +253,25 @@ describe('Routen', () => {
     rendere(ANGEMELDET, '/alle')
 
     expect(screen.getByText('Aufgabenliste')).toBeVisible()
+  })
+
+  it('fuehrt /beitreten zum Kopplungscode fuer eine Einladung', () => {
+    rendere(ANGEMELDET, '/beitreten')
+
+    expect(screen.getByText('Kopplungscode fuer join')).toBeVisible()
+  })
+
+  it('fuehrt /geraet-freischalten zum Kopplungscode fuer ein zweites Geraet', () => {
+    // §6: derselbe Ablauf, nur mit `purpose = device` und Einstieg ueber Profil.
+    rendere(ANGEMELDET, '/geraet-freischalten')
+
+    expect(screen.getByText('Kopplungscode fuer device')).toBeVisible()
+  })
+
+  it('fuehrt /koppeln zur Codeeingabe', () => {
+    rendere(ANGEMELDET, '/koppeln')
+
+    expect(screen.getByText('Codeeingabe')).toBeVisible()
   })
 
   it('fuehrt /profil zum Profil', () => {

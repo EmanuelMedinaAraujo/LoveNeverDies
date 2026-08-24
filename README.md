@@ -98,6 +98,40 @@ ein zweites Gerät oder eine zweite Person im Fall.
 stehen in `device_keys`. Der Prüfcode aus §3.6 fällt aus beiden zusammen und
 steht in Profil → Geräte.
 
+## Kopplung
+
+Öffentliche Schlüssel sind zusammen über 3 KB groß und am Telefon nicht nennbar.
+Deshalb der kurze Code mit Server-Rendezvous aus §6: Die beitretende Seite holt
+sich acht Zeichen ohne O, 0, I und 1, nennt sie, und die einladende Seite sieht
+danach Name, E-Mail und einen sechsstelligen Prüfcode.
+
+```
+beitretende Seite            Server                 einladende Seite
+─────────────────            ──────                 ────────────────
+Code holen ──────────────►   pairing_codes
+       │  Code am Telefon ───────────────────────►  Code eingeben
+       │                                            Name, E-Mail, Prüfcode
+       │  ◄─── Prüfcode mündlich abgleichen ──────────────►  │
+       ▼                                            bestätigen
+ Fall wird lesbar  ◄────── K_c und K_cat, gewrappt ─────────┘
+```
+
+**Der mündliche Abgleich ist der Kern und nicht die Zierde.** Ein öffentlicher
+Schlüssel ist keine Identität; dass der Server einen echten Namen dazu liefert,
+bindet ihn an eine authentifizierte Clerk-Person, nicht an diesen Schlüssel.
+Erst der Vergleich der sechs Ziffern schließt die Lücke — und er deckt beide
+Schlüssel ab, weil ein Fingerprint nur über den KEM-Schlüssel den
+Signaturschlüssel austauschbar ließe (§3.6).
+
+Derselbe Ablauf gibt ein zweites Gerät derselben Person frei, nur mit
+`purpose = device` und Einstieg über Profil. Freigeschaltet werden dabei alle
+Fälle, die das freigebende Gerät selbst lesen kann; die übrigen bleiben gesperrt,
+und die App benennt die Zahl ("2 von 3 Fällen freigeschaltet"), statt es
+schweigend geschehen zu lassen.
+
+`pairing_codes` ist nicht selektierbar. Ein Code lebt 15 Minuten und genau eine
+Einlösung, und wer rät, läuft in ein Rate-Limit.
+
 ## Datenbank
 
 Schema, RLS und Migrationen liegen unter [`supabase/`](supabase/README.md). Die

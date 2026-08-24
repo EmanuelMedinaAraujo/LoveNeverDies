@@ -1,0 +1,136 @@
+import { act, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { rendereMitProvidern } from './harness.tsx'
+
+/**
+ * Die beitretende Seite (DESIGN.md §6, Schritt 1 bis 3 und 7).
+ *
+ * Zwei Dinge stehen hier groß, und beide werden am Telefon vorgelesen: der
+ * Kopplungscode und der eigene Prüfcode. Der Test prüft, dass sie da sind, dass
+ * ein Screenreader sie Zeichen für Zeichen bekommt und dass die App
+ * weiterspringt, sobald die Wache freigibt.
+ */
+
+const useKopplungscode = vi.fn()
+const useKopplungswache = vi.fn()
+const navigiere = vi.fn()
+const neuAnfordern = vi.fn()
+
+vi.mock('../../src/hooks/useKopplung.ts', () => ({
+  useKopplungscode: (...a: unknown[]) => useKopplungscode(...a),
+  useKopplungswache: (...a: unknown[]) => useKopplungswache(...a),
+}))
+vi.mock('react-router-dom', async () => {
+  const echt = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return { ...echt, useNavigate: () => navigiere }
+})
+
+const { Beitreten } = await import('../../src/screens/shared/Beitreten/Beitreten.tsx')
+
+const BEREIT = {
+  status: 'bereit',
+  code: 'K4M7QP2X',
+  laeuftAbAm: '2026-08-24T10:15:00Z',
+  pruefcode: '481253',
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  useKopplungscode.mockReturnValue({ zustand: BEREIT, neuAnfordern })
+  useKopplungswache.mockReturnValue({ status: 'wartet' })
+})
+
+describe('Beitreten (§6)', () => {
+  it('zeigt den Code in zwei Vierergruppen und Zeichen für Zeichen zum Vorlesen', () => {
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.getByText('K4M7-QP2X')).toBeVisible()
+    expect(screen.getByText('Ihr Kopplungscode lautet K 4 M 7 Q P 2 X')).toBeInTheDocument()
+  })
+
+  it('sagt, welche Zeichen im Code nicht vorkommen', () => {
+    // Wer sich verhört hat, soll es hier sehen und nicht am Rate-Limit (§6).
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.getByText(/kein O, keine 0, kein I und keine 1/)).toBeVisible()
+  })
+
+  it('zeigt den Prüfcode und sagt, wozu er da ist', () => {
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.getByText('481 253')).toBeVisible()
+    expect(screen.getByText('4 8 1 2 5 3')).toBeInTheDocument()
+    expect(screen.getByText(/Stimmen sie nicht überein, brechen Sie ab/)).toBeVisible()
+  })
+
+  it('nennt beide Zwecke bei ihrem Namen', () => {
+    rendereMitProvidern(<Beitreten zweck="join" />)
+    expect(screen.getByRole('heading', { name: 'Ich wurde eingeladen' })).toBeVisible()
+
+    rendereMitProvidern(<Beitreten zweck="device" />)
+    expect(screen.getByRole('heading', { name: 'Dieses Gerät freischalten' })).toBeVisible()
+  })
+
+  it('holt die Wache erst, wenn ein Code dasteht', () => {
+    useKopplungscode.mockReturnValue({ zustand: { status: 'laedt' }, neuAnfordern })
+
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(useKopplungswache).toHaveBeenCalledWith(false)
+  })
+
+  it('lässt einen neuen Code anfordern', async () => {
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Neuen Code anfordern' }))
+
+    expect(neuAnfordern).toHaveBeenCalled()
+  })
+
+  it('nennt den Grund, wenn kein Code zu bekommen war', async () => {
+    useKopplungscode.mockReturnValue({
+      zustand: { status: 'fehler', nachricht: 'Ohne hinterlegten Namen.' },
+      neuAnfordern,
+    })
+
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Ohne hinterlegten Namen.')
+    await userEvent.click(screen.getByRole('button', { name: 'Noch einmal versuchen' }))
+    expect(neuAnfordern).toHaveBeenCalled()
+  })
+
+  describe('sobald die Wache freigibt', () => {
+    beforeEach(() => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('meldet den Erfolg und geht danach zum Startscreen', async () => {
+      useKopplungswache.mockReturnValue({ status: 'freigeschaltet', lesbar: 1 })
+
+      rendereMitProvidern(<Beitreten zweck="join" />)
+
+      expect(screen.getByText('Sie gehören jetzt zum Fall.')).toBeVisible()
+      expect(navigiere).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_000)
+      })
+
+      expect(navigiere).toHaveBeenCalledWith('/', { replace: true })
+    })
+  })
+
+  it('nennt den Grund, wenn der Stand nicht abrufbar ist', () => {
+    useKopplungswache.mockReturnValue({ status: 'fehler', nachricht: 'Kein Netz.' })
+
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.getByText(/Kein Netz\./)).toBeVisible()
+  })
+})
