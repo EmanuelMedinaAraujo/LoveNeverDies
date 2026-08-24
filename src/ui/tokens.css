@@ -19,6 +19,22 @@
   --farbe-text: #141e16;
   --farbe-text-sekundaer: #5e6a61;
   --farbe-icon-inaktiv: #647267;
+
+  /*
+   * Fristfarben (§7, §12).
+   *
+   * §12 nennt eine Palette ohne Warnfarbe — bis es Fristen gab, brauchte
+   * keiner eine. Ein Badge „seit 4 Tagen überfällig" in Akzentgrün wäre
+   * jedoch eine Beruhigung an genau der Stelle, an der die App am wenigsten
+   * beruhigen darf. Die drei Paare unten sind deshalb dazugekommen; jedes
+   * erfüllt auf `--farbe-karte` den AA-Kontrast aus §7.
+   */
+  --farbe-frist-flaeche: #efede5;
+  --farbe-frist-text: #5e6a61;
+  --farbe-frist-knapp-flaeche: #fbebcf;
+  --farbe-frist-knapp-text: #6e4200;
+  --farbe-frist-abgelaufen-flaeche: #fbe3e0;
+  --farbe-frist-abgelaufen-text: #8a1c13;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,6 +48,13 @@
     --farbe-text: #faf8f5;
     --farbe-text-sekundaer: #9aa89d;
     --farbe-icon-inaktiv: #5e7064;
+
+    --farbe-frist-flaeche: #212d25;
+    --farbe-frist-text: #9aa89d;
+    --farbe-frist-knapp-flaeche: #3a2e12;
+    --farbe-frist-knapp-text: #f0c674;
+    --farbe-frist-abgelaufen-flaeche: #3b1d1b;
+    --farbe-frist-abgelaufen-text: #f3a79e;
   }
 }
 

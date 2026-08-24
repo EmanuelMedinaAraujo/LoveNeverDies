@@ -143,6 +143,113 @@ async function legeAn(inhalte: InhalteTabelle, k: Fallschluessel, titel: string)
   return aufgaben[aufgaben.length - 1]!
 }
 
+describe('Unteraufgaben als eigene Zeilen (§7)', () => {
+  it('legt eine Unteraufgabe unter ihrer Elternaufgabe an', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const eltern = await legeAn(inhalte, k, 'Sterbefall anzeigen')
+    await uebertrage(inhalte, await mutationAnlegen(k, 'Urkunden bestellen', eltern.id))
+
+    const { aufgaben } = await lies(inhalte, k)
+    const kind = aufgaben.find((aufgabe) => aufgabe.titel === 'Urkunden bestellen')
+
+    expect(kind?.parentId).toBe(eltern.id)
+    expect(kind?.id).not.toBe(eltern.id)
+  })
+
+  it('lässt zwei offline gesetzte Häkchen beide überleben', async () => {
+    /*
+     * Die Begründung aus §7, geprüft am ganzen Weg: „Läge alles im Payload der
+     * Elternaufgabe, überlebte von zwei offline gesetzten Häkchen genau eines,
+     * ohne dass jemand davon erführe."
+     *
+     * Hier haken zwei Geräte je eine andere Unteraufgabe ab, beide offline,
+     * beide ohne den Stand des anderen zu kennen. Weil jede Unteraufgabe eine
+     * eigene Zeile ist, schreiben sie in verschiedene Zeilen — es gibt nichts
+     * zu überschreiben und nichts, was verloren gehen könnte.
+     */
+    const { inhalte } = server()
+    const k = fall()
+
+    const eltern = await legeAn(inhalte, k, 'Sterbefall anzeigen')
+    await uebertrage(
+      inhalte,
+      await mutationAnlegen(k, 'Urkunden bestellen', eltern.id),
+      await mutationAnlegen(k, 'Termin machen', eltern.id),
+    )
+
+    // Beide Geräte lesen denselben Stand und gehen dann offline.
+    const standHandy = await lies(inhalte, k)
+    const standLaptop = await lies(inhalte, k)
+
+    const vomHandy = standHandy.aufgaben.find((a) => a.titel === 'Urkunden bestellen')
+    const vomLaptop = standLaptop.aufgaben.find((a) => a.titel === 'Termin machen')
+
+    if (vomHandy === undefined || vomLaptop === undefined) {
+      throw new Error('Beide Unteraufgaben sollten dastehen.')
+    }
+
+    // Zurück im Netz, in beliebiger Reihenfolge.
+    await uebertrage(inhalte, await mutationAendern(vomLaptop, { erledigt: true }))
+    await uebertrage(inhalte, await mutationAendern(vomHandy, { erledigt: true }))
+
+    const { aufgaben } = await lies(inhalte, k)
+    const kinder = aufgaben.filter((aufgabe) => aufgabe.parentId === eltern.id)
+
+    expect(kinder).toHaveLength(2)
+    expect(kinder.every((kind) => kind.erledigt)).toBe(true)
+  })
+
+  it('lässt die Elternbeziehung eine Änderung überleben', async () => {
+    // Fiele `parentId` beim ersten Häkchen aus dem Payload, sprängen die
+    // Unteraufgaben reihenweise auf die Wurzelebene (§7).
+    const { inhalte } = server()
+    const k = fall()
+
+    const eltern = await legeAn(inhalte, k, 'Sterbefall anzeigen')
+    await uebertrage(inhalte, await mutationAnlegen(k, 'Urkunden bestellen', eltern.id))
+
+    const vorher = (await lies(inhalte, k)).aufgaben.find((a) => a.parentId === eltern.id)
+
+    if (vorher === undefined) {
+      throw new Error('Die Unteraufgabe sollte dastehen.')
+    }
+
+    await uebertrage(inhalte, await mutationAendern(vorher, { erledigt: true }))
+
+    const nachher = (await lies(inhalte, k)).aufgaben.find((a) => a.id === vorher.id)
+
+    expect(nachher?.parentId).toBe(eltern.id)
+    expect(nachher?.erledigt).toBe(true)
+  })
+
+  it('trägt Notizen und Abhängigkeiten verschlüsselt mit', async () => {
+    const { inhalte, zeilen } = server()
+    const k = fall()
+
+    const zuerst = await legeAn(inhalte, k, 'Todesbescheinigung holen')
+    const danach = await legeAn(inhalte, k, 'Sterbefall anzeigen')
+
+    await uebertrage(
+      inhalte,
+      await mutationAendern(danach, {
+        notizen: 'Standesamt Mitte, Zimmer 2',
+        dependsOn: [zuerst.id],
+      }),
+    )
+
+    const wieder = (await lies(inhalte, k)).aufgaben.find((a) => a.id === danach.id)
+
+    expect(wieder?.notizen).toBe('Standesamt Mitte, Zimmer 2')
+    expect(wieder?.dependsOn).toEqual([zuerst.id])
+
+    // §3.3: Notizen und Abhängigkeiten gehen den Server nichts an.
+    const alles = zeilen.flatMap((zeile) => [...zeile.payload]).join(',')
+    expect(alles).not.toContain([...new TextEncoder().encode('Zimmer 2')].join(','))
+  })
+})
+
 describe('mutationAnlegen', () => {
   it('legt eine Aufgabe an, die sich danach wieder lesen lässt', async () => {
     const { inhalte } = server()

@@ -135,13 +135,16 @@ describe('instanziiereKatalog (§8)', () => {
     const anna = mitglied(1)
     const { inhalte, zeilen } = itemtabelle()
 
-    expect(await instanziiereKatalog(inhalte, anna, [], KATALOG)).toBe(2)
-    expect(zeilen).toHaveLength(2)
+    // Drei Zeilen aus zwei Katalogaufgaben: Die Unteraufgabe ist eine eigene
+    // Zeile mit eigener UUID (§7) und keine Liste im Payload der Elternaufgabe.
+    expect(await instanziiereKatalog(inhalte, anna, [], KATALOG)).toBe(3)
+    expect(zeilen).toHaveLength(3)
 
     const aufgaben = await aufgabenVon(zeilen, anna)
 
     expect(aufgaben.map((aufgabe) => aufgabe.titel)).toEqual([
       'Sterbefall beim Standesamt anzeigen',
+      'Sterbeurkunden bestellen',
       'Ausschlagung der Erbschaft prüfen',
     ])
     expect(aufgaben.every((aufgabe) => !aufgabe.erledigt)).toBe(true)
@@ -166,7 +169,9 @@ describe('instanziiereKatalog (§8)', () => {
 
     await instanziiereKatalog(inhalte, anna, [], KATALOG)
 
-    const [, ausschlagung] = await aufgabenVon(zeilen, anna)
+    const ausschlagung = (await aufgabenVon(zeilen, anna)).find(
+      (aufgabe) => aufgabe.katalog?.aufgabeId === 'erbausschlagung-pruefen',
+    )
 
     expect(ausschlagung?.katalog).toEqual({
       aufgabeId: 'erbausschlagung-pruefen',
@@ -206,9 +211,9 @@ describe('instanziiereKatalog (§8)', () => {
     await inhalte.legeAlleNeuen(vonAnna)
     await inhalte.legeAlleNeuen(vonBernd)
 
-    expect(versuche()).toBe(4)
-    expect(zeilen).toHaveLength(2)
-    expect(new Set(zeilen.map((zeile) => zeile.id)).size).toBe(2)
+    expect(versuche()).toBe(6)
+    expect(zeilen).toHaveLength(3)
+    expect(new Set(zeilen.map((zeile) => zeile.id)).size).toBe(3)
   })
 
   it('trennt zwei Fälle: derselbe Katalog, andere IDs', async () => {
@@ -234,8 +239,8 @@ describe('instanziiereKatalog (§8)', () => {
     )
 
     expect(zweiteRunde).toBe(0)
-    expect(versuche()).toBe(2)
-    expect(zeilen).toHaveLength(2)
+    expect(versuche()).toBe(3)
+    expect(zeilen).toHaveLength(3)
   })
 
   it('belebt eine gelöschte Katalogaufgabe nicht wieder', async () => {
@@ -263,7 +268,7 @@ describe('instanziiereKatalog (§8)', () => {
     )
 
     expect(nachgelegt).toBe(0)
-    expect(zeilen).toHaveLength(2)
+    expect(zeilen).toHaveLength(3)
   })
 
   it('lässt eine instanziierte Aufgabe ändern und löschen wie jede andere', async () => {
@@ -338,6 +343,82 @@ describe('instanziiereKatalog (§8)', () => {
 
     await instanziiereKatalog(inhalte, anna)
 
-    expect(zeilen).toHaveLength(ausgelieferterKatalog().aufgaben.length)
+    const erwartet = ausgelieferterKatalog().aufgaben.reduce(
+      (summe, aufgabe) => summe + 1 + aufgabe.unteraufgaben.length,
+      0,
+    )
+
+    expect(zeilen).toHaveLength(erwartet)
+  })
+
+  it('macht aus jeder Unteraufgabe eine eigene Zeile unter ihrer Elternaufgabe', async () => {
+    // §7: „Unteraufgaben sind eigene Zeilen, keine Liste im Payload der
+    // Elternaufgabe." Läge alles in einer Zeile, überlebte von zwei offline
+    // gesetzten Häkchen genau eines.
+    const anna = mitglied(1)
+    const { inhalte, zeilen } = itemtabelle()
+
+    await instanziiereKatalog(inhalte, anna, [], KATALOG)
+
+    const aufgaben = await aufgabenVon(zeilen, anna)
+    const eltern = aufgaben.find((aufgabe) => aufgabe.katalog?.aufgabeId === 'sterbefall-anzeigen')
+    const unteraufgabe = aufgaben.find((aufgabe) => aufgabe.titel === 'Sterbeurkunden bestellen')
+
+    expect(unteraufgabe?.parentId).toBe(eltern?.id)
+    expect(unteraufgabe?.id).not.toBe(eltern?.id)
+    // Ohne eigene Herkunft: Rechtsgrundlage, Quelle und Frist gehören der
+    // Elternaufgabe und stünden hier ein zweites Mal.
+    expect(unteraufgabe?.katalog).toBeNull()
+  })
+
+  it('rechnet Unteraufgaben-IDs auf zwei Geräten gleich aus', async () => {
+    const anna = mitglied(1)
+    const bernd = mitglied(7)
+
+    const [vonAnna, vonBernd] = await Promise.all([
+      fehlendeKatalogitems(anna, [], KATALOG),
+      fehlendeKatalogitems(bernd, [], KATALOG),
+    ])
+
+    expect(vonAnna).toHaveLength(3)
+    expect(vonAnna.map((zeile) => zeile.id)).toEqual(vonBernd.map((zeile) => zeile.id))
+  })
+
+  it('legt eine fehlende Unteraufgabe nach, ohne die Elternaufgabe anzufassen', async () => {
+    // Ein Anlauf, der mittendrin abbrach: Die Elternaufgabe steht, die
+    // Unteraufgabe fehlt. Beide Zeilen werden einzeln geprüft.
+    const anna = mitglied(1)
+    const { inhalte, zeilen } = itemtabelle()
+
+    const alle = await fehlendeKatalogitems(anna, [], KATALOG)
+    const ohneUnteraufgabe = alle.filter((zeile) => zeile.id !== alle[1]?.id)
+
+    await inhalte.legeAlleNeuen(ohneUnteraufgabe)
+
+    expect(
+      await instanziiereKatalog(inhalte, anna, zeilen.map((zeile) => zeile.id), KATALOG),
+    ).toBe(1)
+
+    const aufgaben = await aufgabenVon(zeilen, anna)
+    expect(aufgaben.map((aufgabe) => aufgabe.titel)).toContain('Sterbeurkunden bestellen')
+  })
+
+  it('übersetzt haengtAbVon in die Item-IDs dieses Falls', async () => {
+    // §7: `dependsOn` ist eine schlichte UUID-Liste. Der Katalog nennt
+    // Katalog-IDs; übersetzt wird beim Instanziieren, denn nur dort stehen
+    // `K_cat` und die `case_id` beisammen.
+    const anna = mitglied(1)
+    const { inhalte, zeilen } = itemtabelle()
+
+    await instanziiereKatalog(inhalte, anna, [], KATALOG)
+
+    const aufgaben = await aufgabenVon(zeilen, anna)
+    const anzeigen = aufgaben.find((aufgabe) => aufgabe.katalog?.aufgabeId === 'sterbefall-anzeigen')
+    const ausschlagung = aufgaben.find(
+      (aufgabe) => aufgabe.katalog?.aufgabeId === 'erbausschlagung-pruefen',
+    )
+
+    expect(ausschlagung?.dependsOn).toEqual([anzeigen?.id])
+    expect(anzeigen?.dependsOn).toEqual([])
   })
 })

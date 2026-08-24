@@ -78,3 +78,35 @@
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
 }
+
+/* Titel und Fristbadge nebeneinander, mit Umbruch bei grosser Schrift (§7). */
+.titelzeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Der Titel einer Aufgabe mit Unteraufgaben. Sie hat kein eigenes Haekchen
+ * (§7), steht aber trotzdem so gross da wie eine mit.
+ */
+.titel {
+  font-weight: 600;
+}
+
+/*
+ * §7: Blockierte Aufgaben erscheinen ausgegraut. Nur die Farbe wird gedaempft,
+ * keine `opacity` — die zoege den Kontrast des Textes unter AA (§7), und die
+ * Zeile bleibt bedienbar.
+ */
+.blockiert {
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text-sekundaer);
+}
+
+.detaillink {
+  align-self: center;
+  color: var(--farbe-akzent);
+}

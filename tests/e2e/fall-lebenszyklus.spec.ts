@@ -45,7 +45,7 @@ test('Trauerfall anlegen', async ({ page }) => {
    * die Voreinstellung dafür nicht. Die Zusagen je Schritt hängen weiterhin an
    * `expect.timeout` aus der Konfiguration; hier steht nur die Summe.
    */
-  test.setTimeout(90_000)
+  test.setTimeout(120_000)
 
   await test.step('ohne Fall steht die Fallweiche aus §7', async () => {
     await gotoVerlaesslich(page, '/')
@@ -114,8 +114,11 @@ test('Trauerfall anlegen', async ({ page }) => {
    *
    * Gezählt statt aus dem Katalog importiert: Die Zahl ändert sich mit jedem
    * `npm run import:content`, und dieser Test soll davon nichts wissen.
+   *
+   * Gezählt werden **Zeilen und nicht Häkchen**: Eine Aufgabe mit
+   * Unteraufgaben hat kein eigenes Häkchen (§7), steht aber als Zeile da.
    */
-  let ausDemKatalog = 0
+  let katalogZeilen = 0
 
   await test.step('der neue Fall bringt die Aufgaben der Juristinnen mit', async () => {
     // §8: „Ein neu angelegter Trauerfall ist nicht mehr leer." Instanziiert hat
@@ -129,13 +132,139 @@ test('Trauerfall anlegen', async ({ page }) => {
       page.getByRole('checkbox', { name: 'Ausschlagung der Erbschaft prüfen' }),
     ).toBeVisible()
 
-    ausDemKatalog = await page.getByRole('checkbox').count()
-    expect(ausDemKatalog).toBeGreaterThan(1)
+    katalogZeilen = await page.getByRole('listitem').count()
+    expect(katalogZeilen).toBeGreaterThan(1)
+
+    /*
+     * §7: „Blockierte Aufgaben erscheinen ausgegraut mit 'Zuerst: …'." Der
+     * Katalog sagt, dass das Standesamt die Todesbescheinigung braucht — und
+     * die ist am ersten Tag noch offen.
+     */
+    // `.first()`: Mehrere Katalogaufgaben warten auf dieselbe Todesbescheinigung.
+    await expect(
+      page.getByText('Zuerst: Ärztliche Todesbescheinigung ausstellen lassen').first(),
+    ).toBeVisible()
+
+    /*
+     * §7: Fristen sind sichtbar, als Badge mit der Restzeit. Der Sterbefall
+     * liegt in diesem Test Jahre zurück, also ist die Drei-Tage-Frist aus
+     * § 28 PStG abgelaufen — und das Badge sagt genau das, statt bei null
+     * stehen zu bleiben. Gerechnet wird es bei jedem Rendern, gespeichert nie
+     * (§8); deshalb steht hier ein Muster und keine Zahl.
+     */
+    await expect(page.getByText(/überfällig/)).toBeVisible()
+
+    // §8: Wo das Gesetz keine Frist nennt, erfindet die App keine.
+    await expect(page.getByText('Frist ab Ihrer Kenntnis')).toBeVisible()
 
     // Und beim Neuladen steht dieselbe Liste: kein zweiter Satz, keine
     // Duplikate. Die IDs sind deterministisch, das Anlegen ist idempotent (§8).
     await gotoVerlaesslich(page, '/alle')
-    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog)
+    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen)
+  })
+
+  await test.step('das Aufgabendetail zeigt die juristische Arbeit (§7, §8)', async () => {
+    /*
+     * Der Screen, an dem §8 sichtbar wird: Rechtsgrundlage, Quelle, zuständige
+     * Stelle und Frist stehen im Item — beim Instanziieren aus dem Katalog
+     * kopiert und seither mit der Aufgabe gealtert.
+     */
+    await page
+      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
+      .click()
+
+    await expect(
+      page.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen' }),
+    ).toBeVisible()
+
+    // `exact`, weil derselbe Paragraph auch im Hinweistext steht.
+    await expect(page.getByText('§ 28 PStG', { exact: true })).toBeVisible()
+    await expect(page.getByText('Standesamt des Sterbeortes', { exact: true })).toBeVisible()
+    await expect(page.getByText('Todesbescheinigung', { exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'https://www.gesetze-im-internet.de/pstg/__28.html' }),
+    ).toBeVisible()
+
+    /*
+     * Das Fristende wird gerechnet und nirgends gespeichert (§8): 15. März 2024
+     * plus die drei Tage aus § 28 PStG. Keine Zeile trägt dieses Datum — es
+     * entsteht aus `{fristTage, fristAb}` und dem Sterbedatum des Falls.
+     */
+    await expect(page.getByText(/endet am 18. März 2024/)).toBeVisible()
+    // Zweimal auf dem Schirm: als Badge neben dem Titel und in der Fristzeile.
+    await expect(page.getByText(/überfällig/).first()).toBeVisible()
+
+    // §7: „Zuerst: …" auch hier, und der Weg dorthin ist ein Link.
+    await expect(
+      page.getByRole('link', { name: 'Ärztliche Todesbescheinigung ausstellen lassen' }),
+    ).toBeVisible()
+  })
+
+  await test.step('Unteraufgaben sind eigene Zeilen und tragen den Abschluss (§7)', async () => {
+    const ausDemKatalog = page.getByRole('checkbox', {
+      name: 'Sterbeurkunden in ausreichender Zahl bestellen',
+    })
+
+    // Die Unteraufgabe aus dem Katalog ist eine eigene Zeile mit eigener UUID.
+    await expect(ausDemKatalog).toBeVisible()
+    await expect(ausDemKatalog).not.toBeChecked()
+
+    // Und die Elternaufgabe hat kein eigenes Häkchen mehr.
+    await expect(page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toHaveCount(0)
+    await expect(page.getByText('Offen: 0 von 1 Unteraufgaben erledigt.')).toBeVisible()
+
+    const abgehakt = gespeichert(page, 'PATCH')
+    await ausDemKatalog.check()
+    await abgehakt
+
+    // §7: Sind alle Kinder erledigt, gilt die Aufgabe zwingend als erledigt.
+    await expect(page.getByText('Erledigt: alle 1 Unteraufgaben sind abgehakt.')).toBeVisible()
+
+    // Eine weitere Unteraufgabe macht sie wieder offen — das ist der Weg, den
+    // §7 anbietet, wenn inhaltlich noch etwas fehlt.
+    const angelegt = gespeichert(page, 'POST')
+    await page.getByLabel('Neue Unteraufgabe').fill('Sechs Ausfertigungen abholen')
+    await page.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click()
+    await angelegt
+
+    await expect(page.getByText('Offen: 1 von 2 Unteraufgaben erledigt.')).toBeVisible()
+
+    // Der abgeleitete Abschluss überlebt das Neuladen, weil er nirgends
+    // gespeichert ist: Er entsteht bei jedem Rendern neu.
+    await gotoVerlaesslich(page, '/alle')
+    await page
+      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
+      .click()
+    await expect(page.getByText('Offen: 1 von 2 Unteraufgaben erledigt.')).toBeVisible()
+
+    // Wieder aufgeräumt: die eigene Unteraufgabe weg, das Häkchen zurück.
+    const geloescht = gespeichert(page, 'PATCH')
+    await page.getByRole('button', { name: /^Löschen.*Sechs Ausfertigungen abholen/ }).click()
+    await page.getByRole('button', { name: 'Endgültig löschen' }).click()
+    await geloescht
+
+    const zurueckgenommen = gespeichert(page, 'PATCH')
+    await page
+      .getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' })
+      .uncheck()
+    await zurueckgenommen
+  })
+
+  await test.step('Notizen überleben das Neuladen', async () => {
+    const gesichert = gespeichert(page, 'PATCH')
+    await page.getByLabel(/Notizen/).fill('Termin am Montag um 9 Uhr')
+    await page.getByRole('button', { name: 'Notizen speichern' }).click()
+    await gesichert
+
+    await gotoVerlaesslich(page, '/alle')
+    await page
+      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
+      .click()
+
+    await expect(page.getByLabel(/Notizen/)).toHaveValue('Termin am Montag um 9 Uhr')
+
+    await page.getByRole('link', { name: 'Zurück zu allen Aufgaben' }).click()
+    await expect(page).toHaveURL(/\/alle$/)
   })
 
   await test.step('legt im Tab "Alle" eine Aufgabe an', async () => {
@@ -147,7 +276,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     await page.getByLabel('Neue Aufgabe').fill('Konten kündigen')
     await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
 
-    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog + 2)
+    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen + 2)
   })
 
   await test.step('die Reihenfolge bleibt, wenn eine Aufgabe geändert wird', async () => {
@@ -162,20 +291,29 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     await gotoVerlaesslich(page, '/alle')
 
-    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog + 2)
+    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen + 2)
 
     // Hinter dem Katalog: Der steht in der Reihenfolge der Juristinnen vorn
     // (§8), selbst angelegte Aufgaben folgen in ihrer Anlagereihenfolge.
-    await expect(page.getByRole('listitem').nth(ausDemKatalog)).toContainText(
+    await expect(page.getByRole('listitem').nth(katalogZeilen)).toContainText(
       'Sterbeurkunde beantragen',
     )
     await expect(page.getByRole('listitem').last()).toContainText('Konten kündigen')
 
-    // Aufgeräumt, damit die folgenden Schritte wieder mit genau einer selbst
-    // angelegten Aufgabe arbeiten.
+    /*
+     * Aufgeräumt, damit die folgenden Schritte wieder mit genau einer selbst
+     * angelegten Aufgabe arbeiten — und **abgewartet**, bis der Tombstone
+     * draußen ist. `toHaveCount` ist schon erfüllt, sobald die Queue die
+     * Mutation überlagert hat (§5); die PATCH-Antwort kommt später. Ohne dieses
+     * Warten löste sie im nächsten Schritt das dortige `gespeichert(…)` aus,
+     * die Navigation käme dem eigentlichen Schreibvorgang zuvor, und der
+     * Schritt prüfte einen Server, der die Änderung nie gesehen hat.
+     */
+    const geloescht = gespeichert(page, 'PATCH')
     await page.getByRole('button', { name: /^Löschen.*Konten kündigen/ }).click()
     await page.getByRole('button', { name: 'Endgültig löschen' }).click()
-    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog + 1)
+    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen + 1)
+    await geloescht
   })
 
   await test.step('nimmt das Haekchen zurueck und setzt es wieder; beides ueberlebt das Neuladen', async () => {
@@ -276,7 +414,7 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     await gotoVerlaesslich(page, '/alle')
     await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toHaveCount(0)
-    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog)
+    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen)
   })
 
   await test.step('eine gelöschte Katalogaufgabe kommt nicht wieder', async () => {
@@ -296,7 +434,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(
       page.getByRole('checkbox', { name: 'Ausschlagung der Erbschaft prüfen' }),
     ).toHaveCount(0)
-    await expect(page.getByRole('checkbox')).toHaveCount(ausDemKatalog - 1)
+    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen - 1)
   })
 
   await test.step('der Fall steht in Profil unter "Für wen?"', async () => {

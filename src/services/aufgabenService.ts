@@ -86,15 +86,37 @@ export type Katalogherkunft = Omit<Katalogaufgabe, 'id' | 'titel' | 'kurzbeschre
  * einer Aufgabe trennt, ohne raten zu müssen. Ein Feld nachträglich zum
  * Unterscheidungsmerkmal zu erklären ginge nicht — alte Payloads trügen es nicht.
  *
- * `erledigt` ist hier ein gespeichertes Feld, weil es in diesem Stand nur
- * Blätter gibt. Sobald eine Aufgabe Unteraufgaben hat, leitet der Client es
- * bei jedem Rendern aus den Kindern ab und speichert es nicht (§7).
+ * `erledigt` gilt nur für Blätter. Eine Aufgabe mit Unteraufgaben trägt das
+ * Feld zwar weiter mit — schreiben lässt sich kein Payload ohne —, aber
+ * gelesen wird es dort nie: Der Client leitet ihren Abschluss bei jedem
+ * Rendern aus den Kindern ab (§7, `aufgabenbaum.ts`). Es gibt deshalb nichts
+ * zu synchronisieren und nichts, was divergieren kann.
+ *
+ * `parentId` und `dependsOn` sind UUIDs anderer Items desselben Falls und
+ * liegen mit im Payload — der Server erfährt über den Baum nichts (§3.3).
  */
 export type Aufgabenpayload = {
   typ: 'aufgabe'
   titel: string
   beschreibung: string
   erledigt: boolean
+  /** Freie Notizen zur Aufgabe, im Aufgabendetail (§7). */
+  notizen: string
+  /**
+   * Die Elternaufgabe, oder `null` bei einer Wurzelaufgabe.
+   *
+   * **Eine Ebene, keine Verschachtelung** (§7). Erzwungen wird das nicht hier,
+   * sondern beim Bauen des Baums: Ein `parentId`, das auf eine Unteraufgabe
+   * zeigt, macht aus dem Kind eine Wurzel, statt es verschwinden zu lassen.
+   */
+  parentId: string | null
+  /**
+   * Aufgaben, die vorher erledigt sein sollten — als schlichte UUID-Liste (§7).
+   *
+   * Beim Instanziieren entsteht sie aus `katalog.haengtAbVon`; die
+   * Katalog-IDs sind dabei bereits in die Item-IDs dieses Falls übersetzt (§8).
+   */
+  dependsOn: string[]
   /** Aus dem Katalog kopiert (§8), oder `null` bei einer selbst angelegten Aufgabe. */
   katalog: Katalogherkunft | null
 }
@@ -103,7 +125,14 @@ export type Aufgabe = {
   id: string
   titel: string
   beschreibung: string
+  /**
+   * Das gespeicherte Häkchen — gültig nur für Blätter (§7). Ob eine Aufgabe
+   * *gilt* als erledigt, beantwortet `aufgabenbaum.ts`, nicht dieses Feld.
+   */
   erledigt: boolean
+  notizen: string
+  parentId: string | null
+  dependsOn: string[]
   /**
    * Der DEK dieser Zeile, entpackt. Er bleibt im Speicher, weil jede Änderung
    * ihn wieder braucht — neu erzeugt würde er nur bei einer neuen Aufgabe.
@@ -134,7 +163,10 @@ export type Aufgabenliste = {
 export type Aufgabenaenderung = {
   titel?: string
   beschreibung?: string
+  notizen?: string
   erledigt?: boolean
+  /** Die UUID-Liste ganz, nicht einzelne Einträge — sie ist kurz genug (§7). */
+  dependsOn?: string[]
 }
 
 function pruefeTitel(titel: string): string {
@@ -219,17 +251,35 @@ function lesePayload(klartext: Uint8Array): Aufgabenpayload {
     titel: felder.titel ?? '',
     beschreibung: felder.beschreibung ?? '',
     erledigt: felder.erledigt === true,
+    // Dieselbe Vorsicht wie bei der Herkunft: Ein Payload, den eine ältere
+    // Fassung geschrieben hat, kennt diese Felder nicht. Fehlt eines, ist die
+    // Aufgabe eine Wurzel ohne Abhängigkeiten und ohne Notizen — und kein
+    // Absturz im Aufgabendetail.
+    notizen: typeof felder.notizen === 'string' ? felder.notizen : '',
+    parentId: typeof felder.parentId === 'string' && felder.parentId !== '' ? felder.parentId : null,
+    dependsOn: alsListe(felder.dependsOn),
     katalog: herkunftAus(felder.katalog),
   }
 }
 
 async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufgabe> {
   const dek = await entpackeDek(fall.kc, zeile.wrappedDek)
-  const { titel, beschreibung, erledigt, katalog } = lesePayload(
+  const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, katalog } = lesePayload(
     await entschluessele(dek, zeile.payload),
   )
 
-  return { id: zeile.id, titel, beschreibung, erledigt, katalog, dek, kid: zeile.kid }
+  return {
+    id: zeile.id,
+    titel,
+    beschreibung,
+    erledigt,
+    notizen,
+    parentId,
+    dependsOn,
+    katalog,
+    dek,
+    kid: zeile.kid,
+  }
 }
 
 /**
@@ -279,12 +329,16 @@ export async function aufgabenAusZeilen(
 export async function mutationAnlegen(
   fall: Fallschluessel,
   titel: string,
+  parentId: string | null = null,
 ): Promise<Mutation> {
   const { id, wrappedDek, payload } = await verschluesselterInhalt(fall, uuidv7(), {
     typ: 'aufgabe',
     titel: pruefeTitel(titel),
     beschreibung: '',
     erledigt: false,
+    notizen: '',
+    parentId,
+    dependsOn: [],
     katalog: null,
   })
 
@@ -341,6 +395,13 @@ export async function mutationAendern(
     titel: aenderung.titel === undefined ? aufgabe.titel : pruefeTitel(aenderung.titel),
     beschreibung: aenderung.beschreibung ?? aufgabe.beschreibung,
     erledigt: aenderung.erledigt ?? aufgabe.erledigt,
+    notizen: aenderung.notizen ?? aufgabe.notizen,
+    // `parentId` schreibt jede Änderung unverändert mit: Eine Unteraufgabe
+    // wechselt ihre Elternaufgabe nicht, sie wird gelöscht und neu angelegt.
+    // Fiele das Feld beim ersten Häkchen heraus, sprängen die Unteraufgaben
+    // reihenweise auf die Wurzelebene (§7).
+    parentId: aufgabe.parentId,
+    dependsOn: aenderung.dependsOn ?? aufgabe.dependsOn,
     // Die Herkunft schreibt jede Änderung unverändert mit. Sie ist kein Feld,
     // das jemand bearbeitet — sie fiele sonst beim ersten Häkchen aus dem
     // Payload, und mit ihr Rechtsgrundlage und Quelle (§8).

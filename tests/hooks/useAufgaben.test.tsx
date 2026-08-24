@@ -4,7 +4,8 @@ import type { InhaltZeile } from '../../src/core/db/inhalte.ts'
 import type { AbgelehnteMutation, Mutation } from '../../src/core/sync/queue.ts'
 import type { Syncdaten, SyncZustand } from '../../src/hooks/useSync.ts'
 import type { Aufgabe } from '../../src/services/aufgabenService.ts'
-import type { Katalogfall } from '../../src/services/katalogService.ts'
+import type { Aufgabenfall } from '../../src/hooks/useAufgaben.ts'
+import { baueBaum } from '../../src/services/aufgabenbaum.ts'
 
 /**
  * Die Aufgaben eines Falls (DESIGN.md §3.1, §5, §7).
@@ -48,12 +49,13 @@ vi.mock('../../src/services/katalogService.ts', () => ({
 
 const { useAufgaben } = await import('../../src/hooks/useAufgaben.ts')
 
-const FALL: Katalogfall = {
+const FALL: Aufgabenfall = {
   id: 'fall-1',
   kid: 'case_fall-1:1',
   kc: new Uint8Array([1]),
   kcat: new Uint8Array([2]),
   katalogVersion: '2026-08+testtest',
+  sterbedatum: '2026-05-12',
 }
 
 function zeile(id: string, ueberschreibung: Partial<InhaltZeile> = {}): InhaltZeile {
@@ -78,6 +80,9 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     titel: 'Sterbeurkunde beantragen',
     beschreibung: '',
     erledigt: false,
+    notizen: '',
+    parentId: null,
+    dependsOn: [],
     katalog: null,
     dek: new Uint8Array([9]),
     kid: FALL.kid,
@@ -137,6 +142,7 @@ describe('useAufgaben', () => {
       expect(result.current.zustand).toEqual({
         status: 'bereit',
         aufgaben: [aufgabe()],
+        baum: baueBaum([aufgabe()]),
         uebersprungen: 0,
         laedtNetz: true,
         netzfehler: null,
@@ -245,7 +251,7 @@ describe('useAufgaben', () => {
     await act(async () => {
       await result.current.legeAn('Konten kündigen')
     })
-    expect(mutationAnlegen).toHaveBeenCalledWith(FALL, 'Konten kündigen')
+    expect(mutationAnlegen).toHaveBeenCalledWith(FALL, 'Konten kündigen', null)
     expect(mutiere).toHaveBeenCalledWith(angelegt)
 
     await act(async () => {
@@ -423,19 +429,23 @@ describe('useAufgaben', () => {
 
       const { result } = renderHook(() => useAufgaben(FALL))
 
-      await waitFor(() => expect(result.current.zustand).toMatchObject({ status: 'bereit' }))
-
-      const zustand = result.current.zustand
-      if (zustand.status !== 'bereit') {
-        throw new Error('Die Liste sollte stehen.')
-      }
-
-      expect(zustand.aufgaben.map((eintrag) => eintrag.titel)).toEqual([
-        'Erste',
-        'Zweite',
-        'Selbst angelegt',
-        'Auch selbst',
-      ])
+      /*
+       * Gewartet wird auf die Liste und nicht bloss auf „bereit". Sobald der
+       * Cache gelesen ist, steht der Zustand (§5) — die Zeilen sind dann aber
+       * noch am Entschlüsseln, und unter Last wäre die Erwartung darunter ein
+       * Rennen gegen einen leeren Zwischenstand.
+       */
+      await waitFor(() => {
+        expect(result.current.zustand).toMatchObject({
+          status: 'bereit',
+          aufgaben: [
+            { titel: 'Erste' },
+            { titel: 'Zweite' },
+            { titel: 'Selbst angelegt' },
+            { titel: 'Auch selbst' },
+          ],
+        })
+      })
     })
 
     it('lässt einen Fall ohne eingefrorenen Katalogstand in Ruhe', async () => {

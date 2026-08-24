@@ -9,6 +9,7 @@ import { fallBeschriftung } from '../services/fallbeschriftung.ts'
 import type { Fall } from '../services/fallService.ts'
 import { Alle } from '../screens/shared/Alle/Alle.tsx'
 import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
+import { Aufgabe } from '../screens/shared/Aufgabe/Aufgabe.tsx'
 import { KeinFall } from '../screens/shared/KeinFall/KeinFall.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
 import { Todesfall } from '../screens/shared/Todesfall/Todesfall.tsx'
@@ -122,6 +123,8 @@ export function App() {
     <Routes>
       <Route path="/" element={<FallSperre />} />
       <Route path="/alle" element={<Alle />} />
+      {/* Das ganzseitige Aufgabendetail (§7). */}
+      <Route path="/aufgabe/:id" element={<Aufgabe />} />
       <Route path="/todesfall" element={<Todesfall />} />
       <Route path="/profil" element={<Profil />} />
       <Route path="*" element={<Navigate to="/" replace />} />

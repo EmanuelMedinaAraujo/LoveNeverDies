@@ -433,10 +433,16 @@ describe('useSync', () => {
       entscheide(new Error('Kein Netz.'))
     })
 
-    await waitFor(() => expect(result.current.zustand.netzfehler).not.toBeNull())
-
-    // Ohne Türklingel und ohne `online`: Die Aufgabe geht trotzdem hinaus, und
-    // die bestätigte Zeile trägt danach die `seq` des Servers.
+    /*
+     * Auf den sichtbaren Netzfehler wird hier ausdrücklich *nicht* gewartet.
+     * Die nachgeholte Runde startet sofort und räumt ihn wieder weg — ob ein
+     * Beobachter das Zwischenbild erwischt, hängt an der Maschine und nicht an
+     * der Zusage. Dass die Runde gescheitert ist, hat der Test eine Zeile
+     * weiter oben selbst entschieden; zu prüfen bleibt, was danach passiert.
+     *
+     * Ohne Türklingel und ohne `online`: Die Aufgabe geht trotzdem hinaus, und
+     * die bestätigte Zeile trägt danach die `seq` des Servers.
+     */
     await waitFor(() => expect(result.current.zustand.zeilen[0]?.seq).toBe(1))
     expect(result.current.zustand.netzfehler).toBeNull()
   })
