@@ -3,23 +3,24 @@ import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthKontextProvider, type AuthZustand } from '../../src/core/auth/authProvider.ts'
-import type { Falldaten } from '../../src/hooks/useCase.ts'
 import { authWert } from '../screens/harness.tsx'
 
 /**
- * Die Fallsperre und das Routing aus DESIGN.md §7.
+ * Der Anmeldezustand und das Routing aus DESIGN.md §7.
  *
- * Alle Screens sind ersetzt: Was sie zeigen, steht in ihren eigenen Tests.
- * Hier geht es um die Weichen davor — angemeldet oder nicht, Fall oder kein
- * Fall, lesbar oder gesperrt — und darum, dass §7 nach der Anmeldung
- * `navigator.storage.persist()` still mitlaufen lässt.
+ * Alle Screens sind ersetzt: Was sie zeigen, steht in ihren eigenen Tests. Hier
+ * geht es um die Weiche davor — angemeldet oder nicht —, um die Routen, und
+ * darum, dass §7 nach der Anmeldung `navigator.storage.persist()` still
+ * mitlaufen lässt.
+ *
+ * **Die Fallsperre steht in `Start.test.tsx`.** Sie gehört zu dem Screen, der
+ * sie zeigt: Ohne Fall ist die App gesperrt, und das ist der Startbildschirm
+ * mit seiner Fallweiche (§7).
  */
 
-const useCase = vi.fn<() => Falldaten>()
 const useGeraeteanmeldung = vi.fn()
 const speicherDauerhaftAnfordern = vi.fn().mockResolvedValue('gewaehrt')
 
-vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
 vi.mock('../../src/hooks/useGeraete.ts', () => ({
   useGeraeteanmeldung: () => useGeraeteanmeldung(),
 }))
@@ -29,9 +30,7 @@ vi.mock('../../src/core/storage/persist.ts', () => ({
 vi.mock('../../src/screens/shared/Anmelden/Anmelden.tsx', () => ({
   Anmelden: () => <p>Anmeldeformular</p>,
 }))
-vi.mock('../../src/screens/shared/KeinFall/KeinFall.tsx', () => ({
-  KeinFall: () => <p>Fallweiche</p>,
-}))
+vi.mock('../../src/screens/shared/Start/Start.tsx', () => ({ Start: () => <p>Startseite</p> }))
 vi.mock('../../src/screens/shared/Alle/Alle.tsx', () => ({ Alle: () => <p>Aufgabenliste</p> }))
 vi.mock('../../src/screens/shared/Profil/Profil.tsx', () => ({ Profil: () => <p>Profilseite</p> }))
 vi.mock('../../src/screens/shared/Todesfall/Todesfall.tsx', () => ({
@@ -39,18 +38,6 @@ vi.mock('../../src/screens/shared/Todesfall/Todesfall.tsx', () => ({
 }))
 
 const { App } = await import('../../src/app/App.tsx')
-
-const LESBAR = {
-  zustand: 'lesbar' as const,
-  id: 'fall-1',
-  status: 'trauerfall' as const,
-  personName: 'Hans Weber',
-  sterbedatum: '2024-03-15',
-  kid: 'case_fall-1:1',
-  kc: new Uint8Array([1]),
-  kcat: new Uint8Array([2]),
-  katalogVersion: '2026-08+testtest',
-}
 
 function rendere(zustand: AuthZustand, pfad = '/') {
   function Huelle({ children }: { children: ReactNode }) {
@@ -71,7 +58,6 @@ const ANGEMELDET: AuthZustand = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useCase.mockReturnValue({ zustand: { status: 'kein-fall' }, legeTrauerfallAn: vi.fn() })
   useGeraeteanmeldung.mockReturnValue({ status: 'laedt' })
 })
 
@@ -86,7 +72,7 @@ describe('Anmeldezustand', () => {
     rendere({ status: 'abgemeldet' })
 
     expect(screen.getByText('Anmeldeformular')).toBeVisible()
-    expect(screen.queryByText('Fallweiche')).toBeNull()
+    expect(screen.queryByText('Startseite')).toBeNull()
   })
 
   it('bittet erst nach der Anmeldung um dauerhaften Speicher', async () => {
@@ -110,94 +96,13 @@ describe('Anmeldezustand', () => {
   })
 })
 
-describe('Fallsperre', () => {
-  it('zeigt einen Hinweis, solange die Faelle geladen werden', () => {
-    useCase.mockReturnValue({ zustand: { status: 'laedt' }, legeTrauerfallAn: vi.fn() })
-
-    rendere(ANGEMELDET)
-
-    expect(screen.getByRole('status')).toHaveTextContent('Ihre Daten werden geladen')
-  })
-
-  it('nennt den Grund, wenn die Faelle nicht abrufbar sind', () => {
-    useCase.mockReturnValue({
-      zustand: { status: 'fehler', nachricht: 'Kein Netz.' },
-      legeTrauerfallAn: vi.fn(),
-    })
-
-    rendere(ANGEMELDET)
-
-    expect(screen.getByRole('status')).toHaveTextContent('Kein Netz.')
-  })
-
-  it('zeigt ohne Fall die Fallweiche', () => {
-    rendere(ANGEMELDET)
-
-    expect(screen.getByText('Fallweiche')).toBeVisible()
-  })
-
-  it('zeigt den Namen samt Sterbedatum, sobald ein Fall lesbar ist', () => {
-    // §2 verlangt den Namen der Person, keinen Sammelbegriff.
-    useCase.mockReturnValue({
-      zustand: { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
-      legeTrauerfallAn: vi.fn(),
-    })
-
-    rendere(ANGEMELDET)
-
-    expect(
-      screen.getByRole('heading', { name: 'Hans Weber · Trauerfall seit 15. März 2024' }),
-    ).toBeVisible()
-  })
-
-  it('fuehrt von dort zu den Aufgaben und zum Profil', () => {
-    // Die untere Leiste aus §7 gibt es noch nicht; die beiden Screens, die es
-    // schon gibt, muessen trotzdem erreichbar sein.
-    useCase.mockReturnValue({
-      zustand: { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
-      legeTrauerfallAn: vi.fn(),
-    })
-
-    rendere(ANGEMELDET)
-
-    expect(screen.getByRole('link', { name: 'Alle Aufgaben' })).toHaveAttribute('href', '/alle')
-    expect(screen.getByRole('link', { name: 'Profil und Geräte' })).toHaveAttribute(
-      'href',
-      '/profil',
-    )
-  })
-
-  it('zeigt den blossen Namen, wenn kein Sterbedatum bekannt ist', () => {
-    const ohneDatum = { ...LESBAR, sterbedatum: null }
-    useCase.mockReturnValue({
-      zustand: { status: 'bereit', faelle: [ohneDatum], aktiver: ohneDatum },
-      legeTrauerfallAn: vi.fn(),
-    })
-
-    rendere(ANGEMELDET)
-
-    expect(screen.getByRole('heading', { name: 'Hans Weber' })).toBeVisible()
-  })
-
-  it('zeigt bei einem gesperrten Fall den Grund statt des Namens', () => {
-    const gesperrt = {
-      zustand: 'gesperrt' as const,
-      id: 'fall-1',
-      grund: 'Für dieses Gerät liegt noch kein Schlüssel vor.',
-    }
-    useCase.mockReturnValue({
-      zustand: { status: 'bereit', faelle: [gesperrt], aktiver: gesperrt },
-      legeTrauerfallAn: vi.fn(),
-    })
-
-    rendere(ANGEMELDET)
-
-    expect(screen.getByRole('heading', { name: 'Fall gesperrt' })).toBeVisible()
-    expect(screen.getByRole('alert')).toHaveTextContent('kein Schlüssel')
-  })
-})
-
 describe('Routen', () => {
+  it('fuehrt / zu "Meine Aufgaben"', () => {
+    rendere(ANGEMELDET)
+
+    expect(screen.getByText('Startseite')).toBeVisible()
+  })
+
   it('fuehrt /todesfall zur Fallanlage', () => {
     rendere(ANGEMELDET, '/todesfall')
 
@@ -219,6 +124,6 @@ describe('Routen', () => {
   it('leitet unbekannte Pfade auf die Startseite', () => {
     rendere(ANGEMELDET, '/gibt-es-nicht')
 
-    expect(screen.getByText('Fallweiche')).toBeVisible()
+    expect(screen.getByText('Startseite')).toBeVisible()
   })
 })

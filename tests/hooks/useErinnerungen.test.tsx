@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useErinnerungen } from '../../src/hooks/useErinnerungen.ts'
 import type { Aufgabe, Katalogherkunft } from '../../src/services/aufgabenService.ts'
 import { baueBaum } from '../../src/services/aufgabenbaum.ts'
+import { NIEMAND } from '../../src/services/zuweisung.ts'
 
 /**
  * Erinnerungen als Timer (DESIGN.md §7).
@@ -44,6 +45,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     notizen: '',
     parentId: null,
     dependsOn: [],
+    assignee: NIEMAND,
     katalog,
     dek: new Uint8Array([9]),
     kid: 'case_fall-1:1',
