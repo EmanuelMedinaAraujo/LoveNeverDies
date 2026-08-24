@@ -41,6 +41,10 @@ export type FallZeile = {
   vaultResplitPending: boolean
   vaultK: number | null
   vaultN: number | null
+  /** Ob nach einem Mitgliederaustritt eine Schlüsselrotation ansteht (§3.4). */
+  rotationPending: boolean
+  rotationClaimedBy: string | null
+  rotationClaimExpiresAt: string | null
   angelegtAm: string
 }
 
@@ -95,4 +99,20 @@ export type FaelleTabelle = {
    * `0`: Das hiesse "alles neu holen".
    */
   version(fallId: string): Promise<number | null>
+
+  /**
+   * Beansprucht ein 2-Minuten-Mandat zur Schlüsselrotation (§3.4).
+   */
+  claimRotation(fallId: string, expectedGeneration: number, geraeteId: string): Promise<boolean>
+
+  /**
+   * Bestätigt die Schlüsselrotation per Compare-and-Swap (§3.4).
+   */
+  commitRotation(
+    fallId: string,
+    expectedGeneration: number,
+    newKid: string,
+    geraeteId: string,
+    payload?: Uint8Array,
+  ): Promise<boolean>
 }

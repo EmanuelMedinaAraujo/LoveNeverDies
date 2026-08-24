@@ -51,6 +51,7 @@ describe('Die Migrationskette', () => {
       'memberships',
       'pairing_attempts',
       'pairing_codes',
+      'personal_key_wraps',
       'profiles',
       'vault_key_wraps',
       'vault_releases',

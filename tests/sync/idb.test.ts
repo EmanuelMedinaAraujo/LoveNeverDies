@@ -146,6 +146,21 @@ describe('Ciphertext-Cache', () => {
     expect(JSON.stringify(abgelegt)).not.toContain(klartext)
     expect(bytesText(abgelegt[0]?.payload ?? new Uint8Array())).not.toBe(klartext)
   })
+
+  it('löscht alle Zeilen und das Wasserzeichen eines Falls bei loescheFall', async () => {
+    const cache = frisch()
+
+    await cache.schreibe('fall-1', [zeile('a', 1), zeile('b', 2)], 2)
+    await cache.schreibe('fall-2', [zeile('c', 5, { fallId: 'fall-2' })], 5)
+
+    await cache.loescheFall('fall-1')
+
+    expect(await cache.lies('fall-1')).toEqual({ zeilen: [], wasserzeichen: 0 })
+    expect(await cache.lies('fall-2')).toEqual({
+      zeilen: [zeile('c', 5, { fallId: 'fall-2' })],
+      wasserzeichen: 5,
+    })
+  })
 })
 
 /** Liest an der Cache-Schnittstelle vorbei, was wirklich in IndexedDB steht. */

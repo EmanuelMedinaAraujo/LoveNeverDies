@@ -36,6 +36,7 @@ vi.mock('../../src/hooks/useCase.ts', () => ({
     loescheVorsorgefall: mockLoescheVorsorgefall,
     legeVorsorgefallAn: vi.fn(),
     legeTrauerfallAn: vi.fn(),
+    verlasseFall: vi.fn(),
     aktualisiere: vi.fn(),
   }),
 }))
@@ -75,6 +76,8 @@ function standardFall(ueberschreibung: Partial<LesbarerFall> = {}): LesbarerFall
     personName: 'Anna Müller',
     sterbedatum: null,
     kid: 'case_fall-1:1',
+    keyGeneration: 1,
+    rotationPending: false,
     kc: new Uint8Array(32),
     kcat: new Uint8Array(32),
     kv: new Uint8Array(32),

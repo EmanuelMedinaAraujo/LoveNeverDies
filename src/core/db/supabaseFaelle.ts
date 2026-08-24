@@ -14,7 +14,7 @@ import type { FaelleTabelle, Fallstatus, FallZeile, NeuerTrauerfall, NeuerVorsor
 const TABELLE = 'cases'
 
 const SPALTEN =
-  'id, status, current_kid, key_generation, version, catalog_version, payload, preparer_id, vault_commitment, vault_resplit_pending, vault_k, vault_n, created_at'
+  'id, status, current_kid, key_generation, version, catalog_version, payload, preparer_id, vault_commitment, vault_resplit_pending, vault_k, vault_n, rotation_pending, rotation_claimed_by, rotation_claim_expires_at, created_at'
 
 type RohZeile = {
   id: string
@@ -29,6 +29,9 @@ type RohZeile = {
   vault_resplit_pending: boolean
   vault_k: number | null
   vault_n: number | null
+  rotation_pending: boolean
+  rotation_claimed_by: string | null
+  rotation_claim_expires_at: string | null
   created_at: string
 }
 
@@ -57,6 +60,9 @@ function alsZeile(roh: RohZeile): FallZeile {
     vaultResplitPending: roh.vault_resplit_pending === true,
     vaultK: roh.vault_k === null || roh.vault_k === undefined ? null : Number(roh.vault_k),
     vaultN: roh.vault_n === null || roh.vault_n === undefined ? null : Number(roh.vault_n),
+    rotationPending: roh.rotation_pending === true,
+    rotationClaimedBy: roh.rotation_claimed_by ?? null,
+    rotationClaimExpiresAt: roh.rotation_claim_expires_at ?? null,
     angelegtAm: roh.created_at,
   }
 }
@@ -143,6 +149,36 @@ export function supabaseFaelle(client: SupabaseClient): FaelleTabelle {
       }
 
       return data === null ? null : Number(data.version)
+    },
+
+    async claimRotation(fallId, expectedGeneration, geraeteId) {
+      const { data, error } = await client.rpc('claim_rotation', {
+        p_case_id: fallId,
+        p_expected_generation: expectedGeneration,
+        p_device_id: geraeteId,
+      })
+
+      if (error !== null) {
+        throw new FaelleFehler('Das Mandat zur Schlüsselrotation konnte nicht angefordert werden', error)
+      }
+
+      return Boolean(data)
+    },
+
+    async commitRotation(fallId, expectedGeneration, newKid, geraeteId, payload) {
+      const { data, error } = await client.rpc('commit_rotation', {
+        p_case_id: fallId,
+        p_expected_generation: expectedGeneration,
+        p_new_kid: newKid,
+        p_device_id: geraeteId,
+        p_payload: payload === undefined ? null : alsBytea(payload),
+      })
+
+      if (error !== null) {
+        throw new FaelleFehler('Die Schlüsselrotation konnte nicht bestätigt werden', error)
+      }
+
+      return Boolean(data)
     },
   }
 }

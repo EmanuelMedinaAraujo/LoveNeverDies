@@ -8,7 +8,7 @@
  */
 
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
-import { ausBytea } from './bytea'
+import { alsBytea, ausBytea } from './bytea'
 import type { SchluesselwrapTabelle, SchluesselwrapZeile } from './fallschluessel'
 
 const TABELLE = 'key_wraps'
@@ -60,6 +60,28 @@ export function supabaseFallschluessel(client: SupabaseClient): SchluesselwrapTa
       }
 
       return data.map(alsZeile)
+    },
+
+    async schreibeWraps(wraps) {
+      if (wraps.length === 0) {
+        return
+      }
+
+      const { error } = await client.from(TABELLE).insert(
+        wraps.map((wrap) => ({
+          case_id: wrap.fallId,
+          kid: wrap.kid,
+          device_id: wrap.geraeteId,
+          kem_ct: alsBytea(wrap.kemCt),
+          wrapped_key: alsBytea(wrap.wrappedKey),
+          wrapped_by: wrap.wrappedBy,
+          signature: alsBytea(wrap.signatur),
+        })),
+      )
+
+      if (error !== null) {
+        throw new FallschluesselFehler('Die Schlüsselwraps konnten nicht gespeichert werden', error)
+      }
     },
   }
 }

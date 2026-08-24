@@ -24,4 +24,12 @@ export type MitgliedZeile = {
 export type MitgliederTabelle = {
   /** Die Mitglieder eines Falls. Ob man ihn sehen darf, entscheidet die RLS. */
   imFall(fallId: string): Promise<MitgliedZeile[]>
+
+  /**
+   * Löscht die eigene Mitgliedschaft in diesem Fall (§3.4).
+   *
+   * RLS sperrt sofort jeden Datenzugriff, der Trigger `on_membership_deleted`
+   * stößt die Schlüsselrotation und Bereinigung an.
+   */
+  verlasseFall(fallId: string): Promise<void>
 }

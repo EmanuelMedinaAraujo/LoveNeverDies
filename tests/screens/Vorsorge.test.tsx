@@ -24,6 +24,8 @@ vi.mock('../../src/hooks/useCase.ts', () => ({
     legeVorsorgefallAn: mockLegeVorsorgefallAn,
     legeTrauerfallAn: vi.fn(),
     loescheVorsorgefall: vi.fn(),
+    verlasseFall: vi.fn(),
+    aktualisiere: vi.fn(),
   }),
 }))
 

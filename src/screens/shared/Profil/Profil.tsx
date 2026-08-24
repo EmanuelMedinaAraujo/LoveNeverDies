@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/authProvider.ts'
+import { alsNachricht } from '../../../core/fehler.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
+import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Geraeteliste } from './Geraeteliste.tsx'
 import stile from './Profil.module.css'
@@ -20,8 +23,12 @@ import stile from './Profil.module.css'
  */
 export function Profil() {
   const { zustand } = useAuth()
-  const { zustand: fall } = useCase()
+  const { zustand: fall, verlasseFall } = useCase()
   const benutzer = zustand.status === 'angemeldet' ? zustand.benutzer : null
+
+  const [bestaetigung, setzeBestaetigung] = useState(false)
+  const [wirdVerlassen, setzeWirdVerlassen] = useState(false)
+  const [fehler, setzeFehler] = useState<string | null>(null)
 
   const fuerWen =
     fall.status === 'bereit' && fall.aktiver.zustand === 'lesbar' ? fall.aktiver.personName : null
@@ -29,6 +36,14 @@ export function Profil() {
   const faelle = fall.status === 'bereit' ? fall.faelle : []
   const gesperrte = faelle.filter((eintrag) => eintrag.zustand === 'gesperrt').length
   const kannTeilen = faelle.some((eintrag) => eintrag.zustand === 'lesbar')
+
+  const istVersiegelterVorsorgePreparer =
+    fall.status === 'bereit' &&
+    fall.aktiver.zustand === 'lesbar' &&
+    fall.aktiver.status === 'vorsorge' &&
+    fall.aktiver.vaultCommitment !== null &&
+    benutzer !== null &&
+    fall.aktiver.preparerId === benutzer.id
 
   return (
     <main className={stile.seite}>
@@ -113,6 +128,78 @@ export function Profil() {
 
         <Geraeteliste />
       </Card>
+
+      {fall.status === 'bereit' && fall.aktiver.zustand === 'lesbar' ? (
+        <Card>
+          <h2 className={stile.abschnitt}>Fall verlassen</h2>
+          {istVersiegelterVorsorgePreparer ? (
+            <p className={stile.hinweis}>
+              Als Ersteller dieses versiegelten Vorsorgefalls können Sie die Mitgliedschaft nicht
+              verlassen. Sie können stattdessen den gesamten Vorsorgefall im Tab Erbe löschen.
+            </p>
+          ) : bestaetigung ? (
+            <div className={stile.umbenennen}>
+              <p className={stile.hinweis}>
+                Möchten Sie den Fall für „{fuerWen}“ wirklich verlassen? Sie können danach nicht
+                mehr auf die Aufgaben und Daten dieses Falls zugreifen.
+              </p>
+              {fehler !== null ? (
+                <p className={stile.hinweis} role="alert">
+                  {fehler}
+                </p>
+              ) : null}
+              <div className={stile.knoepfe}>
+                <Button
+                  variante="primaer"
+                  disabled={wirdVerlassen}
+                  onClick={async () => {
+                    try {
+                      setzeWirdVerlassen(true)
+                      setzeFehler(null)
+                      await verlasseFall(fall.aktiver.id)
+                      setzeBestaetigung(false)
+                    } catch (err) {
+                      setzeFehler(alsNachricht(err))
+                    } finally {
+                      setzeWirdVerlassen(false)
+                    }
+                  }}
+                >
+                  {wirdVerlassen ? 'Wird verlassen…' : 'Ja, Fall verlassen'}
+                </Button>
+                <Button
+                  variante="sekundaer"
+                  disabled={wirdVerlassen}
+                  onClick={() => {
+                    setzeBestaetigung(false)
+                    setzeFehler(null)
+                  }}
+                >
+                  Abbrechen
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className={stile.hinweis}>
+                Wenn Sie diesen Fall verlassen, verlieren Sie den Zugriff auf alle Aufgaben und
+                Daten dieses Falls.
+              </p>
+              <div className={stile.knoepfe}>
+                <Button
+                  variante="sekundaer"
+                  onClick={() => {
+                    setzeBestaetigung(true)
+                    setzeFehler(null)
+                  }}
+                >
+                  Fall verlassen
+                </Button>
+              </div>
+            </>
+          )}
+        </Card>
+      ) : null}
     </main>
   )
 }

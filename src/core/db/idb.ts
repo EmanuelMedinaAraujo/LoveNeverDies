@@ -63,6 +63,11 @@ export type Ciphertextcache = {
    * ist eine geänderte Zeile, kein Löschen (§5).
    */
   schreibe(fallId: string, zeilen: InhaltZeile[], wasserzeichen: number): Promise<void>
+
+  /**
+   * Löscht alle gecachten Inhalte und das Wasserzeichen eines Falls (§3.4).
+   */
+  loescheFall(fallId: string): Promise<void>
 }
 
 function indexedDbOderFehler(): IDBFactory {
@@ -225,6 +230,20 @@ export function idbCiphertextcache(): Ciphertextcache {
           }
 
           transaktion.objectStore(STAND).put({ fallId, wasserzeichen })
+        },
+      )
+    },
+
+    loescheFall(fallId) {
+      return inTransaktion(
+        [INHALTE, STAND],
+        'readwrite',
+        'Der lokale Stand dieses Falls war nicht zu löschen.',
+        (transaktion) => {
+          transaktion
+            .objectStore(INHALTE)
+            .delete(IDBKeyRange.bound([fallId], [fallId, []]))
+          transaktion.objectStore(STAND).delete(fallId)
         },
       )
     },

@@ -10,10 +10,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { idbCiphertextcache } from '../core/db/idb.ts'
 import { supabaseFaelle } from '../core/db/supabaseFaelle.ts'
 import { supabaseFallschluessel } from '../core/db/supabaseFallschluessel.ts'
 import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
 import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
+import { supabaseMitglieder } from '../core/db/supabaseMitglieder.ts'
 import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import { alsNachricht } from '../core/fehler.ts'
@@ -22,16 +24,19 @@ import {
   legeTrauerfallAn as legeTrauerfallAnDienst,
   legeVorsorgefallAn as legeVorsorgefallAnDienst,
   loescheVorsorgefall as loescheVorsorgefallDienst,
+  verlasseFall as verlasseFallDienst,
   type Fall,
   type Trauerfallangaben,
   type Vorsorgefallangaben,
 } from '../services/fallService.ts'
+import { rotiereFallschluessel } from '../services/rotationService.ts'
 import { useGeraeteanmeldung } from './useGeraete.ts'
 
 type Ergebnis<T> = { wert: T } | { nachricht: string }
 
 export type FallZustand =
   | { status: 'laedt' }
+  | { status: 'schluessel-erneuerung' }
   | { status: 'kein-fall' }
   | { status: 'fehler'; nachricht: string }
   | { status: 'bereit'; faelle: Fall[]; aktiver: Fall }
@@ -41,6 +46,7 @@ export type Falldaten = {
   legeTrauerfallAn: (angaben: Trauerfallangaben) => Promise<void>
   legeVorsorgefallAn: (angaben: Vorsorgefallangaben) => Promise<void>
   loescheVorsorgefall: (fallId: string) => Promise<void>
+  verlasseFall: (fallId: string) => Promise<void>
   aktualisiere: () => void
 }
 
@@ -49,6 +55,7 @@ export function useCase(): Falldaten {
   const zugang = useSupabase()
 
   const [ergebnis, setzeErgebnis] = useState<Ergebnis<Fall[]> | null>(null)
+  const [erneuerung, setzeErneuerung] = useState(false)
   const [runde, setzeRunde] = useState(0)
 
   const identitaet = anmeldung.status === 'bereit' ? anmeldung.identitaet : null
@@ -73,6 +80,30 @@ export function useCase(): Falldaten {
           geraetId,
           supabaseTresor(client),
         )
+
+        if (!aktuell) return
+
+        const [aktiver] = faelle
+        if (aktiver !== undefined && aktiver.zustand === 'lesbar' && aktiver.rotationPending) {
+          setzeErneuerung(true)
+          const ergebnisRotation = await rotiereFallschluessel(
+            supabaseFaelle(client),
+            supabaseInhalte(client),
+            supabaseFallschluessel(client),
+            supabaseGeraeteschluessel(client),
+            supabaseMitglieder(client),
+            aktiver,
+            identitaet,
+            geraetId,
+          )
+          if (!aktuell) return
+          if (ergebnisRotation.status === 'erfolg') {
+            setzeErneuerung(false)
+            setzeRunde((vorher) => vorher + 1)
+            return
+          }
+          setzeErneuerung(false)
+        }
 
         if (aktuell) {
           setzeErgebnis({ wert: faelle })
@@ -137,11 +168,24 @@ export function useCase(): Falldaten {
     [zugang],
   )
 
+  const verlasseFall = useCallback(
+    async (fallId: string) => {
+      const client = zugang()
+      await verlasseFallDienst(supabaseMitglieder(client), idbCiphertextcache(), fallId)
+      setzeRunde((vorher) => vorher + 1)
+    },
+    [zugang],
+  )
+
   const aktualisiere = useCallback(() => setzeRunde((vorher) => vorher + 1), [])
 
   const zustand = useMemo<FallZustand>(() => {
     if (anmeldungFehler !== null) {
       return { status: 'fehler', nachricht: anmeldungFehler }
+    }
+
+    if (erneuerung) {
+      return { status: 'schluessel-erneuerung' }
     }
 
     if (identitaet === null || geraetId === null || ergebnis === null) {
@@ -154,13 +198,24 @@ export function useCase(): Falldaten {
 
     const [aktiver] = ergebnis.wert
 
+    if (aktiver !== undefined && aktiver.zustand === 'lesbar' && aktiver.rotationPending) {
+      return { status: 'schluessel-erneuerung' }
+    }
+
     return aktiver === undefined
       ? { status: 'kein-fall' }
       : { status: 'bereit', faelle: ergebnis.wert, aktiver }
-  }, [anmeldungFehler, ergebnis, geraetId, identitaet])
+  }, [anmeldungFehler, erneuerung, ergebnis, geraetId, identitaet])
 
   return useMemo(
-    () => ({ zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall, aktualisiere }),
-    [zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall, aktualisiere],
+    () => ({
+      zustand,
+      legeTrauerfallAn,
+      legeVorsorgefallAn,
+      loescheVorsorgefall,
+      verlasseFall,
+      aktualisiere,
+    }),
+    [zustand, legeTrauerfallAn, legeVorsorgefallAn, loescheVorsorgefall, verlasseFall, aktualisiere],
   )
 }

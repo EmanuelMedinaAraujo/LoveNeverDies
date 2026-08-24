@@ -33,6 +33,8 @@ function fall(id: string, personName: string): LesbarerFall {
     personName,
     sterbedatum: '2026-05-12',
     kid: `case_${id}:1`,
+    keyGeneration: 1,
+    rotationPending: false,
     katalogVersion: '2026-08+testtest',
     kc: new Uint8Array([1]),
     kcat: new Uint8Array([2]),

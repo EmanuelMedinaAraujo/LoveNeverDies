@@ -88,3 +88,63 @@ describe('fuerGeraet', () => {
     )
   })
 })
+
+describe('schreibeWraps', () => {
+  it('fügt Wraps mit bytea Feldern ein', async () => {
+    const { client, gesehen } = stubClient({ data: null, error: null })
+
+    const wraps = [
+      {
+        fallId: 'fall-1',
+        kid: 'case_fall-1:2',
+        geraeteId: 'geraet-1',
+        kemCt: new Uint8Array([0x01]),
+        wrappedKey: new Uint8Array([0x02]),
+        wrappedBy: 'geraet-2',
+        signatur: new Uint8Array([0x03]),
+      },
+    ]
+
+    await supabaseFallschluessel(client).schreibeWraps(wraps)
+
+    expect(gesehen.tabelle).toBe('key_wraps')
+    expect(gesehen.eingefuegt).toEqual([
+      {
+        case_id: 'fall-1',
+        kid: 'case_fall-1:2',
+        device_id: 'geraet-1',
+        kem_ct: '\\x01',
+        wrapped_key: '\\x02',
+        wrapped_by: 'geraet-2',
+        signature: '\\x03',
+      },
+    ])
+  })
+
+  it('tut nichts bei leerer Liste', async () => {
+    const { client, gesehen } = stubClient({ data: null, error: null })
+
+    await supabaseFallschluessel(client).schreibeWraps([])
+
+    expect(gesehen.tabelle).toBeUndefined()
+  })
+
+  it('macht aus einem PostgREST-Fehler einen FallschluesselFehler', async () => {
+    const { client } = stubClient({ data: null, error: fehler('insert failed') })
+
+    await expect(
+      supabaseFallschluessel(client).schreibeWraps([
+        {
+          fallId: 'fall-1',
+          kid: 'case_fall-1:2',
+          geraeteId: 'geraet-1',
+          kemCt: new Uint8Array([0x01]),
+          wrappedKey: new Uint8Array([0x02]),
+          wrappedBy: 'geraet-2',
+          signatur: new Uint8Array([0x03]),
+        },
+      ]),
+    ).rejects.toThrow(FallschluesselFehler)
+  })
+})
+

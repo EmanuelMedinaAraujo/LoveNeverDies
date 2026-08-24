@@ -143,6 +143,11 @@ export type InhalteTabelle = {
   umwrappe(id: string, kid: string, wrappedDek: Uint8Array): Promise<void>
 
   /**
+   * Aktualisiert den wrapped DEK und kid eines Items bei der Schlüsselrotation (§3.4).
+   */
+  rotiereItem(id: string, kid: string, wrappedDek: Uint8Array): Promise<void>
+
+  /**
    * Setzt den Tombstone und leert dabei Payload und DEK.
    *
    * Das Leeren ist keine Zugabe: Tombstones werden nie garbage-collected (§5),

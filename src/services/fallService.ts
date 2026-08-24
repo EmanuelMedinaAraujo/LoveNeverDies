@@ -28,7 +28,9 @@ import { entpackeSchluessel, wrappeSchluessel, type WrapKontext } from '../core/
 import type { FaelleTabelle, Fallstatus, FallZeile } from '../core/db/faelle'
 import type { SchluesselwrapTabelle, SchluesselwrapZeile } from '../core/db/fallschluessel'
 import type { GeraeteschluesselTabelle, GeraeteschluesselZeile } from '../core/db/geraeteschluessel'
+import type { Ciphertextcache } from '../core/db/idb'
 import type { InhalteTabelle } from '../core/db/inhalte'
+import type { MitgliederTabelle } from '../core/db/mitglieder'
 import type { TresorTabelle } from '../core/db/tresor'
 import { alsNachricht } from '../core/fehler'
 import { katalog as ausgelieferterKatalog } from '../content/katalog'
@@ -61,6 +63,8 @@ export type LesbarerFall = {
   sterbedatum: string | null
   /** `current_kid`, unter dem `kc` steht. */
   kid: string
+  keyGeneration: number
+  rotationPending: boolean
   kc: Uint8Array
   kcat: Uint8Array
   /**
@@ -174,6 +178,8 @@ export async function legeTrauerfallAn(
     personName: angaben.personName,
     sterbedatum: angaben.sterbedatum,
     kid: kidFall,
+    keyGeneration: 1,
+    rotationPending: false,
     kc,
     kcat,
     kv: null,
@@ -253,6 +259,8 @@ export async function legeVorsorgefallAn(
     personName,
     sterbedatum: null,
     kid: kidFall,
+    keyGeneration: 1,
+    rotationPending: false,
     kc,
     kcat,
     kv,
@@ -270,6 +278,26 @@ export async function legeVorsorgefallAn(
  */
 export async function loescheVorsorgefall(faelle: FaelleTabelle, fallId: string): Promise<void> {
   await faelle.loescheVorsorgefall(fallId)
+}
+
+/**
+ * Verlässt einen Fall (§3.4).
+ *
+ * 1. Die Mitgliedschaft wird serverseitig gelöscht. RLS sperrt sofort jeden Blob-Zugriff.
+ * 2. Der Client löscht lokal K_c, K_cat, K_p, Shares und den Cache dieses Falls (sk_u bleibt).
+ */
+export async function verlasseFall(
+  mitglieder: MitgliederTabelle,
+  cache: Ciphertextcache,
+  fallId: string,
+): Promise<void> {
+  await mitglieder.verlasseFall(fallId)
+
+  try {
+    await cache.loescheFall(fallId)
+  } catch {
+    /* Cache-Fehler beim Verlassen ist unkritisch, Serverzugriff ist bereits weg */
+  }
 }
 
 /**
@@ -378,6 +406,8 @@ async function leseFall(
     personName: angaben.personName,
     sterbedatum: angaben.sterbedatum ?? null,
     kid: zeile.currentKid,
+    keyGeneration: zeile.keyGeneration,
+    rotationPending: zeile.rotationPending,
     kc,
     kcat,
     kv,

@@ -97,6 +97,8 @@ function fall(ueberschreibung: Partial<LesbarerFall> = {}): LesbarerFall {
     personName: 'Hans Weber',
     sterbedatum: null,
     kid: 'case_11111111-1111-4111-8111-111111111111:1',
+    keyGeneration: 1,
+    rotationPending: false,
     kc: erzeugeAesSchluessel(),
     kcat: erzeugeAesSchluessel(),
     kv: null,

@@ -65,6 +65,7 @@ function inhalteDoppel(ueberschreibung: Partial<InhalteTabelle> = {}): {
     seit: vi.fn().mockResolvedValue([]),
     legeAlleNeuen: vi.fn().mockResolvedValue(undefined),
     umwrappe: vi.fn().mockResolvedValue(undefined),
+    rotiereItem: vi.fn().mockResolvedValue(undefined),
     lege: vi.fn((neu: NeuerInhalt) => {
       gesehen.push(`lege ${neu.id}`)
       return Promise.resolve()

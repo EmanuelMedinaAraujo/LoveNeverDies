@@ -24,6 +24,7 @@ export type Aufzeichnung = {
   eingefuegt?: unknown
   hochgeladen?: { werte: unknown; optionen: unknown }
   aktualisiert?: unknown
+  geloescht?: boolean
   filter: Record<string, unknown>
   groesserAls?: Record<string, unknown>
   spalten?: string
@@ -58,6 +59,10 @@ export function stubClient(
     },
     update(werte: unknown) {
       gesehen.aktualisiert = werte
+      return kette
+    },
+    delete() {
+      gesehen.geloescht = true
       return kette
     },
     eq(spalte: string, wert: unknown) {

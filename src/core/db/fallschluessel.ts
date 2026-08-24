@@ -21,4 +21,9 @@ export type SchluesselwrapZeile = Wrap & {
 
 export type SchluesselwrapTabelle = {
   fuerGeraet(fallId: string, geraeteId: string): Promise<SchluesselwrapZeile[]>
+
+  /**
+   * Schreibt Wraps für die Geräte der Mitglieder (§3.4, §3.6).
+   */
+  schreibeWraps(wraps: SchluesselwrapZeile[]): Promise<void>
 }
