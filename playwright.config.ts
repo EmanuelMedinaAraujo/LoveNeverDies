@@ -72,6 +72,7 @@ export default defineConfig({
     },
     {
       name: 'mobile-webkit',
+      testIgnore: /kopplung\.spec\.ts/,
       use: { ...devices['iPhone 13'], storageState: authDatei('mobile-webkit') },
       dependencies: ['setup-mobile-webkit'],
     },
@@ -82,8 +83,27 @@ export default defineConfig({
     },
     {
       name: 'desktop-chromium',
+      testIgnore: /kopplung\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], storageState: authDatei('desktop-chromium') },
       dependencies: ['setup-desktop-chromium'],
+    },
+    /*
+     * Die Kopplung (§6) hat als einzige kein Setup und keinen gespeicherten
+     * Sitzungszustand: Sie braucht mehrere Personen gleichzeitig, jede in einem
+     * eigenen Kontext, und meldet sie im Test selbst an (tests/e2e/nutzer.ts).
+     * Ein `storageState` waere hier sogar schaedlich — er braechte in jeden
+     * Kontext dieselbe Person.
+     *
+     * Nur WebKit-Handy und nicht zusaetzlich Desktop: Der Test verbraucht je
+     * Lauf vier Clerk-Personen und legt Faelle an, die er nicht wieder
+     * abraeumen kann. Ein zweiter Durchlauf derselben Personen in einem anderen
+     * Projekt liefe gegen bereits bestehende Faelle. Deshalb genau einmal, und
+     * dann auf dem Geraet, das zaehlt.
+     */
+    {
+      name: 'kopplung',
+      testMatch: /kopplung\.spec\.ts/,
+      use: { ...devices['iPhone 13'] },
     },
   ],
 })

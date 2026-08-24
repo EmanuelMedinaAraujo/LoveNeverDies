@@ -51,3 +51,28 @@ export function testpersonAdresse(projekt: Projektname): string {
 
   return adresse
 }
+
+/**
+ * Die Personen der Kopplung (tests/e2e/kopplung.spec.ts).
+ *
+ * Bewusst nicht in `PERSONEN` oben: Die dortigen Personen haengen je an einem
+ * Browser-Projekt und melden sich einmalig in `auth.setup.ts` an. Die Kopplung
+ * braucht das Gegenteil — mehrere Personen *gleichzeitig* im selben Test, jede
+ * in einem eigenen Kontext, weil die Geraeteidentitaet in IndexedDB liegt und
+ * ein geteilter Kontext ein geteiltes Geraet waere. Ein gespeicherter
+ * Sitzungszustand nuetzt dabei nichts; jeder Kontext meldet sich selbst an.
+ */
+export type Kopplungsrolle = 'a' | 'b' | 'c' | 'd'
+
+export function kopplungsperson(rolle: Kopplungsrolle): string {
+  const variable = `E2E_CLERK_USER_EMAIL_KOPPLUNG_${rolle.toUpperCase()}`
+  const adresse = process.env[variable]
+
+  if (!adresse) {
+    throw new Error(
+      `${variable} fehlt. Siehe tests/e2e/README.md, um die Kopplungspersonen anzulegen und in .env.test einzutragen.`,
+    )
+  }
+
+  return adresse
+}
