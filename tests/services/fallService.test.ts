@@ -230,7 +230,11 @@ describe('Einen Trauerfall anlegen (§2, §3.1)', () => {
 
     expect(fall.katalogVersion).toBe(katalog.version)
     expect(faelleZeilen[0]?.katalogVersion).toBe(katalog.version)
-    expect(itemZeilen).toHaveLength(katalog.aufgaben.length)
+    // Eine Zeile je Katalogaufgabe und eine je Unteraufgabe: Unteraufgaben
+    // sind eigene Zeilen mit eigener UUID (§7).
+    expect(itemZeilen).toHaveLength(
+      katalog.aufgaben.reduce((summe, aufgabe) => summe + 1 + aufgabe.unteraufgaben.length, 0),
+    )
     expect(itemZeilen.every((zeile) => zeile.fallId === fall.id)).toBe(true)
     expect(itemZeilen.every((zeile) => zeile.kid === fall.kid)).toBe(true)
   })
@@ -240,10 +244,12 @@ describe('Einen Trauerfall anlegen (§2, §3.1)', () => {
 
     const { aufgaben } = await aufgabenAusZeilen(itemZeilen, fall)
 
-    expect(aufgaben.map((aufgabe) => aufgabe.titel)).toEqual(
+    const wurzeln = aufgaben.filter((aufgabe) => aufgabe.parentId === null)
+
+    expect(wurzeln.map((aufgabe) => aufgabe.titel)).toEqual(
       ausgelieferterKatalog().aufgaben.map((aufgabe) => aufgabe.titel),
     )
-    expect(aufgaben.every((aufgabe) => aufgabe.katalog !== null)).toBe(true)
+    expect(wurzeln.every((aufgabe) => aufgabe.katalog !== null)).toBe(true)
   })
 
   it('legt den Fall an, auch wenn die Instanziierung scheitert', async () => {

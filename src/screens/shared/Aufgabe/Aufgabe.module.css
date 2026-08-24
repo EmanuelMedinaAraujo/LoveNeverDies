@@ -1,0 +1,116 @@
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/* Titel und Fristbadge nebeneinander, mit Umbruch bei grosser Schrift (§7). */
+.titelzeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--dichte-abstand-klein);
+}
+
+.abschnitt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Rechtsgrundlage, Quelle und zustaendige Stelle als Definitionsliste: Das ist,
+ * was sie sind, und eine Vorlesestimme sagt dann "Rechtsgrundlage: Paragraph 28
+ * PStG" statt zweier zusammenhangloser Zeilen (§7).
+ */
+.angaben {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  margin: 0;
+}
+
+.angabe {
+  display: flex;
+  flex-direction: column;
+}
+
+.angabe dt {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}
+
+.angabe dd {
+  margin: 0;
+}
+
+.liste {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.punkte {
+  margin: 0;
+  padding-left: var(--dichte-abstand-gross);
+}
+
+.zeile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+
+  padding: var(--dichte-abstand-klein);
+  border: 1px solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-karte);
+}
+
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eingabe {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  border: 1px solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+}
+
+.aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dichte-abstand-klein);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}

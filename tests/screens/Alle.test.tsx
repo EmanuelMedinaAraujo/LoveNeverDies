@@ -1,9 +1,11 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { Aufgabendaten } from '../../src/hooks/useAufgaben.ts'
+import type { AufgabenZustand, Aufgabendaten } from '../../src/hooks/useAufgaben.ts'
 import type { Falldaten } from '../../src/hooks/useCase.ts'
-import type { Aufgabe } from '../../src/services/aufgabenService.ts'
+import type { Erinnerungsdaten } from '../../src/hooks/useErinnerungen.ts'
+import type { Aufgabe, Katalogherkunft } from '../../src/services/aufgabenService.ts'
+import { baueBaum } from '../../src/services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 import { Huelle, rendereMitProvidern } from './harness.tsx'
 
@@ -42,6 +44,9 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     titel: 'Sterbeurkunde beantragen',
     beschreibung: '',
     erledigt: false,
+    notizen: '',
+    parentId: null,
+    dependsOn: [],
     katalog: null,
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,
@@ -65,16 +70,41 @@ function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
  */
 const NETZ = { laedtNetz: false, netzfehler: null }
 
-function aufgabendaten(ueberschreibung: Partial<Aufgabendaten> = {}): Aufgabendaten {
+/**
+ * Der Zustand, wie ein Test ihn hinschreibt — ohne `baum`.
+ *
+ * Den rechnet {@link aufgabendaten} daraus aus, denn er ist keine zweite
+ * Angabe: `useAufgaben` leitet ihn aus derselben Liste ab (§7). Ein von Hand
+ * gepflegter Baum könnte der Liste widersprechen, und dann prüfte der Test
+ * einen Zustand, den es nie gibt.
+ */
+type RohZustand =
+  | { status: 'laedt' }
+  | Omit<Extract<AufgabenZustand, { status: 'bereit' }>, 'baum'>
+
+const ERINNERUNGEN: Erinnerungsdaten = {
+  erlaubnis: 'nicht-verfuegbar',
+  frage: vi.fn().mockResolvedValue(undefined),
+  geplant: 0,
+}
+
+function aufgabendaten(
+  ueberschreibung: Partial<Omit<Aufgabendaten, 'zustand'>> & { zustand?: RohZustand } = {},
+): Aufgabendaten {
+  const { zustand = { status: 'bereit', aufgaben: [aufgabe()], uebersprungen: 0, ...NETZ }, ...rest } =
+    ueberschreibung
+
   return {
-    zustand: { status: 'bereit', aufgaben: [aufgabe()], uebersprungen: 0, ...NETZ },
+    zustand:
+      zustand.status === 'laedt' ? zustand : { ...zustand, baum: baueBaum(zustand.aufgaben) },
+    erinnerungen: ERINNERUNGEN,
     abgelehnt: [],
     bestaetige: vi.fn(),
     legeAn: vi.fn().mockResolvedValue(undefined),
     schreibe: vi.fn().mockResolvedValue(undefined),
     hakeAb: vi.fn().mockResolvedValue(undefined),
     loesche: vi.fn().mockResolvedValue(undefined),
-    ...ueberschreibung,
+    ...rest,
   }
 }
 
@@ -628,5 +658,172 @@ describe('Alle', () => {
         beschreibung: '',
       }),
     )
+  })
+})
+
+/**
+ * Fristen, Unteraufgaben und Abhängigkeiten in der Liste (DESIGN.md §7, §8).
+ *
+ * Was hier geprüft wird, ist nicht die Rechnung — die steht in
+ * `tests/services/fristen.test.ts` — sondern was davon auf dem Bildschirm
+ * ankommt: ein Badge mit der Restzeit, eine ausgegraute Zeile mit „Zuerst: …",
+ * eine Elternaufgabe ohne eigenes Häkchen und der Weg in das Detail.
+ */
+describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
+  /** Heute, als ISO-Kalendertag — damit die Fristen nicht mit dem Jahr altern. */
+  function heute(): string {
+    const jetzt = new Date()
+    const monat = `${jetzt.getMonth() + 1}`.padStart(2, '0')
+    const tag = `${jetzt.getDate()}`.padStart(2, '0')
+
+    return `${jetzt.getFullYear()}-${monat}-${tag}`
+  }
+
+  function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkunft {
+    return {
+      aufgabeId: 'sterbefall-anzeigen',
+      version: '2026-08+testtest',
+      fristTage: 3,
+      fristAb: 'sterbedatum',
+      rechtsgrundlage: '§ 28 PStG',
+      zustaendigeStelle: 'Standesamt des Sterbeortes',
+      benoetigteDokumente: [],
+      unteraufgaben: [],
+      haengtAbVon: [],
+      hinweis: '',
+      quelleUrl: '',
+      kategorie: 'Sofort',
+      reihenfolge: 10,
+      ...ueberschreibung,
+    }
+  }
+
+  /** Ein Fall, dessen Sterbedatum heute ist: die Fristen laufen also noch. */
+  function frischerFall() {
+    const fall: LesbarerFall = { ...LESBAR, sterbedatum: heute() }
+
+    useCase.mockReturnValue(
+      falldaten({ zustand: { status: 'bereit', faelle: [fall], aktiver: fall } }),
+    )
+  }
+
+  function zeige(aufgaben: Aufgabe[], ueberschreibung: Partial<Omit<Aufgabendaten, 'zustand'>> = {}) {
+    frischerFall()
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: { status: 'bereit', aufgaben, uebersprungen: 0, ...NETZ },
+        ...ueberschreibung,
+      }),
+    )
+
+    return rendereMitProvidern(<Alle />)
+  }
+
+  it('zeigt die Restzeit als Badge', () => {
+    zeige([aufgabe({ katalog: herkunft() })])
+
+    expect(screen.getByText('noch 3 Tage')).toBeVisible()
+  })
+
+  it('erfindet keine Frist, wo der Katalog keine nennt', () => {
+    zeige([aufgabe()])
+
+    expect(screen.queryByText(/noch \d+ Tage/)).toBeNull()
+    expect(screen.queryByText(/überfällig/)).toBeNull()
+  })
+
+  it('benennt bei einer blockierten Aufgabe, worauf sie wartet', () => {
+    zeige([
+      aufgabe({ id: 'zuerst', titel: 'Sterbefall anzeigen' }),
+      aufgabe({ id: 'danach', titel: 'Erbschein beantragen', dependsOn: ['zuerst'] }),
+    ])
+
+    expect(screen.getByText('Zuerst: Sterbefall anzeigen')).toBeVisible()
+  })
+
+  it('gibt die blockierte Aufgabe frei, sobald die Abhängigkeit erledigt ist', () => {
+    zeige([
+      aufgabe({ id: 'zuerst', titel: 'Sterbefall anzeigen', erledigt: true }),
+      aufgabe({ id: 'danach', titel: 'Erbschein beantragen', dependsOn: ['zuerst'] }),
+    ])
+
+    expect(screen.queryByText(/^Zuerst:/)).toBeNull()
+  })
+
+  it('gibt einer Aufgabe mit Unteraufgaben kein eigenes Häkchen', () => {
+    zeige([
+      aufgabe({ id: 'eltern', titel: 'Sterbefall anzeigen' }),
+      aufgabe({ id: 'kind-1', titel: 'Urkunden bestellen', parentId: 'eltern' }),
+      aufgabe({ id: 'kind-2', titel: 'Termin machen', parentId: 'eltern', erledigt: true }),
+    ])
+
+    expect(screen.queryByRole('checkbox', { name: 'Sterbefall anzeigen' })).toBeNull()
+    expect(screen.getByText('1 von 2 Unteraufgaben erledigt')).toBeVisible()
+  })
+
+  it('nennt eine Aufgabe erledigt, sobald alle Unteraufgaben es sind', () => {
+    zeige([
+      aufgabe({ id: 'eltern', titel: 'Sterbefall anzeigen', erledigt: false }),
+      aufgabe({ id: 'kind-1', titel: 'Urkunden bestellen', parentId: 'eltern', erledigt: true }),
+    ])
+
+    expect(screen.getByText('Erledigt: alle 1 Unteraufgaben sind abgehakt.')).toBeVisible()
+  })
+
+  it('zeigt Unteraufgaben nicht als eigene Zeilen in der Liste', () => {
+    // §7: Sie stehen im Aufgabendetail, unter ihrer Elternaufgabe.
+    zeige([
+      aufgabe({ id: 'eltern', titel: 'Sterbefall anzeigen' }),
+      aufgabe({ id: 'kind-1', titel: 'Urkunden bestellen', parentId: 'eltern' }),
+    ])
+
+    expect(screen.queryByRole('checkbox', { name: 'Urkunden bestellen' })).toBeNull()
+  })
+
+  it('verlinkt in das ganzseitige Aufgabendetail', () => {
+    zeige([aufgabe({ id: 'item-1', titel: 'Sterbeurkunde beantragen' })])
+
+    expect(screen.getByRole('link', { name: 'Details: „Sterbeurkunde beantragen"' })).toHaveAttribute(
+      'href',
+      '/aufgabe/item-1',
+    )
+  })
+
+  it('sortiert auf Wunsch nach Frist', async () => {
+    zeige([
+      aufgabe({ id: 'spaet', titel: 'Spät', katalog: herkunft({ fristTage: 40 }) }),
+      aufgabe({ id: 'ohne', titel: 'Ohne Frist' }),
+      aufgabe({ id: 'frueh', titel: 'Früh', katalog: herkunft({ fristTage: 3 }) }),
+    ])
+
+    const titel = () =>
+      screen.getAllByRole('link', { name: /^Details/ }).map((link) => link.getAttribute('href'))
+
+    // Voreingestellt bleibt die Reihenfolge der Juristinnen (§8).
+    expect(titel()).toEqual(['/aufgabe/spaet', '/aufgabe/ohne', '/aufgabe/frueh'])
+
+    await userEvent.selectOptions(screen.getByLabelText('Sortierung'), 'frist')
+
+    expect(titel()).toEqual(['/aufgabe/frueh', '/aufgabe/spaet', '/aufgabe/ohne'])
+  })
+
+  it('bietet Erinnerungen an, sobald es welche zu planen gibt', async () => {
+    const frage = vi.fn().mockResolvedValue(undefined)
+
+    zeige([aufgabe({ katalog: herkunft() })], {
+      erinnerungen: { erlaubnis: 'ungefragt', frage, geplant: 4 },
+    })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Erinnerungen einschalten' }))
+
+    expect(frage).toHaveBeenCalledTimes(1)
+  })
+
+  it('fragt nicht nach Erinnerungen, wo es keine Frist gibt', () => {
+    zeige([aufgabe()], {
+      erinnerungen: { erlaubnis: 'ungefragt', frage: vi.fn(), geplant: 0 },
+    })
+
+    expect(screen.queryByRole('button', { name: 'Erinnerungen einschalten' })).toBeNull()
   })
 })

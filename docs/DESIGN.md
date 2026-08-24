@@ -1217,3 +1217,14 @@ Dark Mode:
 - textPrimary: "#FAF8F5"
 - textSecondary: "#9AA89D"
 - inactiveIcon: "#5E7064"
+
+Fristfarben (§7). Die Palette oben kennt keine Warnfarbe; ein Badge „seit vier
+Tagen überfällig" in Akzentgrün wäre eine Beruhigung an der Stelle, an der die
+App am wenigsten beruhigen darf. Jedes Paar erfüllt auf `cardBackground` den
+AA-Kontrast aus §7.
+
+| Lage                    | Light Mode                        | Dark Mode                         |
+| ----------------------- | --------------------------------- | --------------------------------- |
+| Frist in Ruhe           | `#EFEDE5` auf Text `#5E6A61`      | `#212D25` auf Text `#9AA89D`      |
+| Frist wird knapp        | `#FBEBCF` auf Text `#6E4200`      | `#3A2E12` auf Text `#F0C674`      |
+| Frist abgelaufen        | `#FBE3E0` auf Text `#8A1C13`      | `#3B1D1B` auf Text `#F3A79E`      |

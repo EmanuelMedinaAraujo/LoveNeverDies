@@ -34,14 +34,29 @@ import {
   type Aufgabe,
   type Aufgabenaenderung,
 } from '../services/aufgabenService.ts'
+import { baueBaum, type Aufgabenknoten } from '../services/aufgabenbaum.ts'
 import { instanziiereKatalog, type Katalogfall } from '../services/katalogService.ts'
+import { useErinnerungen, type Erinnerungsdaten } from './useErinnerungen.ts'
 import { useSync } from './useSync.ts'
+
+/**
+ * Was dieser Hook vom Fall braucht: die Schlüssel — und das Sterbedatum, weil
+ * ohne es keine Frist zu rechnen ist (§8).
+ *
+ * `LesbarerFall` aus `fallService` erfüllt das.
+ */
+export type Aufgabenfall = Katalogfall & { sterbedatum: string | null }
 
 export type AufgabenZustand =
   | { status: 'laedt' }
   | {
       status: 'bereit'
       aufgaben: Aufgabe[]
+      /**
+       * Dieselben Aufgaben als Baum: Wurzeln mit ihren Unteraufgaben,
+       * abgeleitetem Abschluss und offenen Abhängigkeiten (§7).
+       */
+      baum: Aufgabenknoten[]
       uebersprungen: number
       /** Läuft gerade ein Netzwerk-Fetch? Die Liste steht trotzdem (§5). */
       laedtNetz: boolean
@@ -51,13 +66,16 @@ export type AufgabenZustand =
 
 export type Aufgabendaten = {
   zustand: AufgabenZustand
+  /** Die lokalen Erinnerungen an die Fristen dieses Falls (§7). */
+  erinnerungen: Erinnerungsdaten
   /**
    * Was der Server verworfen hat, mit entschlüsseltem Titel (§5). Verschwindet
    * erst, wenn jemand es zur Kenntnis nimmt.
    */
   abgelehnt: AbgelehnteAenderung[]
   bestaetige: () => void
-  legeAn: (titel: string) => Promise<void>
+  /** @param parentId gesetzt, wenn eine Unteraufgabe entsteht (§7). */
+  legeAn: (titel: string, parentId?: string | null) => Promise<void>
   schreibe: (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => Promise<void>
   hakeAb: (aufgabe: Aufgabe, erledigt: boolean) => Promise<void>
   loesche: (aufgabe: Aufgabe) => Promise<void>
@@ -95,7 +113,7 @@ function nachReihenfolge(links: Aufgabe, rechts: Aufgabe): number {
   return hier - dort
 }
 
-export function useAufgaben(fall: Katalogfall): Aufgabendaten {
+export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   const { zustand: sync, mutiere, bestaetige } = useSync(fall.id)
   const zugang = useSupabase()
 
@@ -235,7 +253,8 @@ export function useAufgaben(fall: Katalogfall): Aufgabendaten {
   }, [fall, sync.abgeglichen, sync.zeilen, zugang])
 
   const legeAn = useCallback(
-    async (titel: string) => mutiere(await mutationAnlegen(fall, titel)),
+    async (titel: string, parentId: string | null = null) =>
+      mutiere(await mutationAnlegen(fall, titel, parentId)),
     [fall, mutiere],
   )
 
@@ -255,22 +274,37 @@ export function useAufgaben(fall: Katalogfall): Aufgabendaten {
     [mutiere],
   )
 
+  /*
+   * Der Baum entsteht aus derselben Liste und wird mit ihr neu gerechnet. Ein
+   * eigener Zustand daneben wäre eine zweite Wahrheit, die genau so lange
+   * stimmt, bis jemand vergisst, sie mitzuziehen (§7).
+   */
+  const baum = useMemo(() => baueBaum(liste.aufgaben), [liste.aufgaben])
+
+  /*
+   * §7: „nach jeder Synchronisation neu geplant". Der Baum ist nach jedem
+   * Delta ein neuer, also plant der Hook darunter von selbst neu — es gibt
+   * keinen zweiten Auslöser, den jemand vergessen könnte.
+   */
+  const erinnerungen = useErinnerungen(baum, fall.sterbedatum)
+
   const zustand = useMemo<AufgabenZustand>(
     () =>
       sync.gecacht
         ? {
             status: 'bereit',
             aufgaben: liste.aufgaben,
+            baum,
             uebersprungen: liste.uebersprungen,
             laedtNetz: sync.laedtNetz,
             netzfehler: sync.netzfehler,
           }
         : { status: 'laedt' },
-    [liste, sync.gecacht, sync.laedtNetz, sync.netzfehler],
+    [baum, liste, sync.gecacht, sync.laedtNetz, sync.netzfehler],
   )
 
   return useMemo(
-    () => ({ zustand, abgelehnt, bestaetige, legeAn, schreibe, hakeAb, loesche }),
-    [zustand, abgelehnt, bestaetige, legeAn, schreibe, hakeAb, loesche],
+    () => ({ zustand, erinnerungen, abgelehnt, bestaetige, legeAn, schreibe, hakeAb, loesche }),
+    [zustand, erinnerungen, abgelehnt, bestaetige, legeAn, schreibe, hakeAb, loesche],
   )
 }
