@@ -14,7 +14,7 @@ import type { LesbarerFall } from '../../src/services/fallService.ts'
  * Der Hook hinter "Todesfall bestätigen" (DESIGN.md §3.5, §5).
  *
  * Zwei Zusagen hängen hier und nirgends sonst: Freigabe und `open_vault`
- * brauchen eine Verbindung und gehen **nicht** in die Offline-Queue (§5), und
+ * brauchen eine Verbindung und gehen nicht in die Offline-Queue (§5), und
  * der Übergang wird erst vollzogen, wenn `K_v` wirklich zusammenkam.
  */
 

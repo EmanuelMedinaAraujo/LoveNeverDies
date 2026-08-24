@@ -108,7 +108,7 @@ export type InhalteTabelle = {
 
   /**
    * Legt mehrere Items in einem Zug an und übergeht dabei, was es schon gibt:
-   * `insert … on conflict do nothing` (§8).
+   * `insert ... on conflict do nothing` (§8).
    *
    * Der Weg, den der Rechtskatalog nimmt. Die IDs sind deterministisch
    * (`katalogItemId`), also rechnen zwei gleichzeitig instanziierende
@@ -137,7 +137,7 @@ export type InhalteTabelle = {
    *
    * Der Payload bleibt, wo er ist: Der DEK ändert sich nie, es wechselt nur der
    * Schlüssel, unter dem er liegt (§3.1). `in_vault` fällt im selben Zug auf
-   * `false` — ein Item, dessen DEK unter `K_c` liegt, aber weiter im Tresor
+   * `false`. Ein Item, dessen DEK unter `K_c` liegt, aber weiter im Tresor
    * stünde, wäre für jeden lesbar und für niemanden auffindbar.
    */
   umwrappe(id: string, kid: string, wrappedDek: Uint8Array): Promise<void>

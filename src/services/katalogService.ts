@@ -8,7 +8,7 @@
  * Instanziierung ist strukturell idempotent: Zwei Mitglieder können
  * gleichzeitig beginnen; koordinieren kann der Server das nicht, denn er sieht
  * nur Ciphertext. Statt eines Mandats mit Ablauf und Aufräumlogik rechnet jedes
- * Gerät dieselbe Item-ID aus (`katalogItemId`), und ein `insert … on conflict
+ * Gerät dieselbe Item-ID aus (`katalogItemId`), und ein `insert ... on conflict
  * do nothing` macht aus dem zweiten Anlauf einen Nulleffekt.
  *
  * Der Katalog initialisiert, mehr nicht: Danach sind es gewöhnliche Items:
@@ -193,7 +193,7 @@ export async function fehlendeKatalogitems(
   /*
    * Zuerst alle Item-IDs, dann erst die Payloads. `dependsOn` einer Aufgabe
    * nennt andere Katalogaufgaben (§8), und deren Item-IDs müssen schon
-   * feststehen, wenn ihr Payload geschrieben wird. Der Import stellt sicher,
+   * feststehen, wenn ihr Payload geschrieben wird. Der Import prüft,
    * dass jeder Verweis eine Aufgabe derselben Tabelle trifft; der `filter`
    * unten wirft einen unauflösbaren Verweis trotzdem weg, denn ein Verweis
    * ins Leere darf höchstens eine fehlende Abhängigkeit sein und nie ein

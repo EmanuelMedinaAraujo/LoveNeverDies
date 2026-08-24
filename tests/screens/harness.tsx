@@ -12,10 +12,10 @@ import type { Geraet } from '../../src/services/geraeteService.ts'
 /**
  * Die Provider, die jeder Screen um sich herum erwartet (DESIGN.md §9).
  *
- * Was hier **nicht** steht, ist Absicht: kein echter Supabase-Client und kein
+ * Was hier nicht steht, ist Absicht: kein echter Supabase-Client und kein
  * Clerk. Die Screens sprechen ausschließlich über die Hooks mit beidem, und
  * die Hooks werden in den einzelnen Tests ersetzt. So prüfen die Screentests,
- * was ein Screen aus einem Zustand macht — nicht, ob Supabase antwortet.
+ * was ein Screen aus einem Zustand macht, nicht, ob Supabase antwortet.
  */
 
 export const BENUTZER = { id: 'user_1', anzeigename: 'Anna Müller', email: 'anna@example.de' }

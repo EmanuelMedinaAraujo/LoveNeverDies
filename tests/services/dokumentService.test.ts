@@ -23,17 +23,17 @@ import type { Fallschluessel } from '../../src/services/aufgabenService'
  *
  * Geprüft wird, was §7 zusagt und was der Dienst allein entscheidet: die
  * Grenze bei 15 MB, dass im Storage nichts Lesbares liegt, die Reihenfolge
- * beim Anlegen und beim Löschen — und dass ein Fehlschlag beim Aufräumen die
- * endgültige Aussage „gelöscht" nicht zurücknimmt.
+ * beim Anlegen und beim Löschen, und dass ein Fehlschlag beim Aufräumen die
+ * endgültige Aussage "gelöscht" nicht zurücknimmt.
  */
 
 const FALL: Fallschluessel = { id: 'fall-1', kid: 'case_fall-1:1', kc: erzeugeDek() }
 
 /**
- * Ciphertext als Text lesen — so weit er sich lesen lässt.
+ * Ciphertext als Text lesen: so weit er sich lesen lässt.
  *
  * `bytesText` wirft bei allem, was kein gültiges UTF-8 ist, und Ciphertext ist
- * das fast nie. Für die Frage „steht hier noch etwas Lesbares?" ist der
+ * das fast nie. Für die Frage "steht hier noch etwas Lesbares?" ist der
  * nachsichtige Decoder der richtige: Bliebe irgendwo Klartext stehen, stünde er
  * als ASCII mitten in den Ersatzzeichen.
  */
@@ -180,7 +180,7 @@ describe('nimmDokumentAuf', () => {
     expect(lesbar(abgelegt)).not.toContain('Sterbeurkunde')
     expect(lesbar(abgelegt)).not.toContain('Hans Weber')
 
-    // Und der Weg zurück steht offen — mit dem DEK, den nur ein Mitglied hat.
+    // Und der Weg zurück steht offen: mit dem DEK, den nur ein Mitglied hat.
     expect(bytesText(await oeffneDokument(dokument, w.ablage, w.krypto))).toBe(
       'JFIF Sterbeurkunde Hans Weber',
     )
@@ -214,7 +214,7 @@ describe('nimmDokumentAuf', () => {
       nimmDokumentAuf(w, datei('egal', { size: MAX_DOKUMENT_BYTES + 1, arrayBuffer })),
     ).rejects.toThrow(/15 MB/)
 
-    // „nicht stillschweigend abgeschnitten" (§7): Es wird gar nichts gelesen
+    // "nicht stillschweigend abgeschnitten" (§7): Es wird gar nichts gelesen
     // und gar nichts hochgeladen.
     expect(arrayBuffer).not.toHaveBeenCalled()
     expect(w.hilfen.ablage.objekte.size).toBe(0)

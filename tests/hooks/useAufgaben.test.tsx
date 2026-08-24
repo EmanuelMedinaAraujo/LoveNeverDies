@@ -11,13 +11,13 @@ import { ALLE, NIEMAND, personen } from '../../src/services/zuweisung.ts'
 /**
  * Die Aufgaben eines Falls (DESIGN.md §3.1, §5, §7).
  *
- * Der Sync liegt darunter und ist hier ersetzt — was er tut, prüft
+ * Der Sync liegt darunter und ist hier ersetzt. Was er tut, prüft
  * `useSync.test.tsx`. `aufgabenService` ist ebenfalls ersetzt; was er
  * verschlüsselt und wann er eine Zeile still verwirft, steht in
  * `tests/services/aufgabenService.test.ts`.
  *
  * Was bleibt, ist die Aufgabe dieses Hooks: aus Ciphertext-Zeilen Aufgaben
- * machen, und zwar **nur aus den geänderten** (§5), aus Klartext Mutationen
+ * machen, und zwar nur aus den geänderten (§5), aus Klartext Mutationen
  * machen und sie an die Queue geben.
  */
 
@@ -48,7 +48,7 @@ vi.mock('../../src/core/auth/authProvider.ts', () => ({
   }),
 }))
 
-/** Der Zugang zum Server. Angefasst wird er nicht — der Katalog ist ersetzt. */
+/** Der Zugang zum Server. Angefasst wird er nicht, da der Katalog ersetzt ist. */
 vi.mock('../../src/core/db/supabaseProvider.tsx', () => ({ useSupabase: () => () => ({}) }))
 
 const instanziiereKatalog = vi.fn()
@@ -141,7 +141,7 @@ describe('useAufgaben', () => {
   })
 
   it('zeigt die gecachten Aufgaben, noch bevor das Netz geantwortet hat', async () => {
-    // §5: „Gecachte Inhalte werden sofort gerendert." Die Ladeanzeige gehört
+    // §5: "Gecachte Inhalte werden sofort gerendert." Die Ladeanzeige gehört
     // dem Fetch, nicht dem Entschlüsseln.
     const eine = zeile('item-1')
     aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], uebersprungeneIds: [] })
@@ -162,8 +162,8 @@ describe('useAufgaben', () => {
   })
 
   it('laesst die Liste stehen, wenn der Abruf scheitert', async () => {
-    // Ein Server, der nicht antwortet, darf nicht als „keine Aufgaben"
-    // durchgehen — sonst sieht jemand einen leeren Fall und legt alles neu an.
+    // Ein Server, der nicht antwortet, darf nicht als "keine Aufgaben"
+    // durchgehen. Sonst sieht jemand einen leeren Fall und legt alles neu an.
     aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], uebersprungeneIds: [] })
     useSync.mockReturnValue(
       syncdaten({ zeilen: [zeile('item-1')], netzfehler: 'Kein Netz.' }),
@@ -182,9 +182,9 @@ describe('useAufgaben', () => {
 
   it('entschluesselt ausschliesslich die Zeilen, die sich geaendert haben', async () => {
     /*
-     * §5: „Sichtbare Screens aktualisieren sich nur für tatsächlich geänderte
+     * §5: "Sichtbare Screens aktualisieren sich nur für tatsächlich geänderte
      * Zeilen." Der Reconciler gibt unveränderte Zeilen unverändert zurück; wer
-     * das ignoriert, entschlüsselt bei jeder Türklingel den ganzen Fall neu —
+     * das ignoriert, entschlüsselt bei jeder Türklingel den ganzen Fall neu,
      * und bei hundert Aufgaben ist die Türklingel dann teurer als das Polling,
      * das sie ersetzt.
      */
@@ -215,7 +215,7 @@ describe('useAufgaben', () => {
     // Nur die neue Zeile ging noch einmal durch die Entschlüsselung.
     expect(aufgabenAusZeilen).toHaveBeenLastCalledWith([zweite], FALL)
 
-    // Und die unveränderte behält ihre Objektidentität — daran erkennt React,
+    // Und die unveränderte behält ihre Objektidentität. Daran erkennt React,
     // dass ihre Zeile nicht neu zu rendern ist.
     expect(
       result.current.zustand.status === 'bereit' ? result.current.zustand.aufgaben[0] : null,
@@ -286,7 +286,7 @@ describe('useAufgaben', () => {
 
   it('reicht einen Fehler der Mutation an den Aufrufer durch', async () => {
     // §5: Abgelehnte Änderungen werden nie stillschweigend verworfen. Der Hook
-    // faengt sie deshalb nicht ab — der Screen zeigt sie an.
+    // faengt sie deshalb nicht ab; der Screen zeigt sie an.
     mutationAnlegen.mockRejectedValue(new Error('Eine Aufgabe braucht einen Titel.'))
 
     const { result } = renderHook(() => useAufgaben(FALL))
@@ -296,7 +296,7 @@ describe('useAufgaben', () => {
   })
 
   it('meldet verworfene Aenderungen mit entschluesseltem Titel', async () => {
-    // §5: „mit ihrem entschlüsselten Inhalt als Mitteilung".
+    // §5: "mit ihrem entschlüsselten Inhalt als Mitteilung".
     const verworfen: AbgelehnteMutation[] = [
       {
         mutation: { op: 'aendern', itemId: 'item-1', payload: new Uint8Array([2]), ts: 1 },
@@ -330,7 +330,7 @@ describe('useAufgaben', () => {
     act(() => result.current.bestaetige())
 
     expect(bestaetige).toHaveBeenCalled()
-    // Weggeräumt wird im Sync — dort liegt die Liste, und ein zweiter Ort für
+    // Weggeräumt wird im Sync: Dort liegt die Liste, und ein zweiter Ort für
     // dieselbe Wahrheit liefe auseinander.
     expect(beschreibeAbgelehnte).not.toHaveBeenCalled()
   })
@@ -366,7 +366,7 @@ describe('useAufgaben', () => {
     it('holt die Instanziierung nach, sobald der Bestand abgeglichen ist', async () => {
       /*
        * Angelegt wird der Katalog bei der Fallanlage. Diese Stelle fängt die
-       * Fälle auf, bei denen das nicht durchkam — eine abgerissene Verbindung,
+       * Fälle auf, bei denen das nicht durchkam: eine abgerissene Verbindung,
        * oder ein Übergang nach `trauerfall`, den ein anderes Gerät vollzogen hat.
        */
       useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
@@ -443,8 +443,8 @@ describe('useAufgaben', () => {
       const { result } = renderHook(() => useAufgaben(FALL))
 
       /*
-       * Gewartet wird auf die Liste und nicht bloss auf „bereit". Sobald der
-       * Cache gelesen ist, steht der Zustand (§5) — die Zeilen sind dann aber
+       * Gewartet wird auf die Liste und nicht bloss auf "bereit". Sobald der
+       * Cache gelesen ist, steht der Zustand (§5). Die Zeilen sind dann aber
        * noch am Entschlüsseln, und unter Last wäre die Erwartung darunter ein
        * Rennen gegen einen leeren Zwischenstand.
        */
@@ -474,7 +474,7 @@ describe('useAufgaben', () => {
 
     it('lässt die Liste stehen, wenn die Instanziierung scheitert', async () => {
       // Kein Wurf und keine Mitteilung: Was hier scheitert, ist das Netz oder
-      // ein fremder Katalogstand — beides kann niemand hier beheben.
+      // ein fremder Katalogstand: Beides kann niemand hier beheben.
       instanziiereKatalog.mockRejectedValue(new Error('kein Netz'))
       aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], uebersprungeneIds: [] })
       useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
@@ -495,7 +495,7 @@ describe('useAufgaben', () => {
  * Zuweisung und der verlorene Zugriff (DESIGN.md §7).
  *
  * Was eine Zuweisung bedeutet, steht in `zuweisung.test.ts`. Hier steht, was
- * dieser Hook damit tut: die richtige Mutation bauen — und mitbekommen, wenn
+ * dieser Hook damit tut: die richtige Mutation bauen und mitbekommen, wenn
  * eine Reservierung an jemand anderen gegangen ist.
  */
 describe('Zuweisung', () => {
@@ -568,7 +568,7 @@ describe('Zuweisung', () => {
 
   it('beobachtet auch das Ankreuzen im Aufgabendetail', async () => {
     /*
-     * Sich selbst anzukreuzen ist dasselbe wie „Übernehmen" — und muss deshalb
+     * Sich selbst anzukreuzen ist dasselbe wie "Übernehmen" und muss deshalb
      * dieselbe Mitteilung nach sich ziehen, wenn ein anderes Gerät gewinnt (§7).
      */
     const eine = mitAufgabe()
@@ -624,7 +624,7 @@ describe('Zuweisung', () => {
   it('meldet, wer die Aufgabe stattdessen bekommen hat', async () => {
     /*
      * Der Fall aus §7: Zwei greifen gleichzeitig zu, die höhere `seq` gewinnt.
-     * Hier tippt die angemeldete Person auf „Übernehmen"; im nächsten Delta
+     * Hier tippt die angemeldete Person auf "Übernehmen"; im nächsten Delta
      * steht Bert. Statt eines stillen Verlusts gibt es einen Satz.
      */
     const eine = mitAufgabe()

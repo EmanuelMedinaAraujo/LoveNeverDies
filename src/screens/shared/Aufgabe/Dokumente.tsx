@@ -19,7 +19,7 @@ import stile from './Dokumente.module.css'
  *
  * Verschlüsselt wird vor dem Hochladen, außerhalb des Main-Threads (§7,
  * `core/crypto/workerDateikrypto.ts`). Sichtbar ist davon nur, dass die
- * Schaltfläche für einen Moment "Wird verschlüsselt…" sagt; die Liste bleibt
+ * Schaltfläche für einen Moment "Wird verschlüsselt..." sagt; die Liste bleibt
  * scrollbar, die Notizen bleiben tippbar.
  *
  * Angesehen wird im Fenster, nicht als Link auf den Server: Was im Storage

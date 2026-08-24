@@ -73,7 +73,7 @@ function fallId(): string {
 }
 
 /**
- * Läuft als `authenticated`, aber ohne `sub` im Token — der Zustand, den ein
+ * Läuft als `authenticated`, aber ohne `sub` im Token: der Zustand, den ein
  * abgelaufenes oder fehlendes Clerk-Token erzeugt.
  */
 function ohneAnmeldung<T>(arbeit: (fuehreAus: FuehreAus) => Promise<T>): Promise<T> {
@@ -113,7 +113,7 @@ describe('Katalogstand (§8)', () => {
 
   it('weist einen Trauerfall ohne Katalogstand auch an der RLS vorbei ab', async () => {
     // Der CHECK und nicht die Funktion trägt die Regel: Der zweite Weg in den
-    // Status `trauerfall` — der Übergang aus der Vorsorge — ist noch nicht
+    // Status `trauerfall`, der Übergang aus der Vorsorge, ist noch nicht
     // geschrieben, und er soll sie nicht neu erfinden müssen.
     await expect(
       db.query(
@@ -124,7 +124,7 @@ describe('Katalogstand (§8)', () => {
   })
 
   it('lässt einen Vorsorgefall ohne Katalogstand zu', async () => {
-    // §8: Bis zum Übergang bleibt `catalog_version` NULL — ein 2026 angelegter
+    // §8: Bis zum Übergang bleibt `catalog_version` NULL. Ein 2026 angelegter
     // Vorsorgefall instanziierte sonst 2031 das Recht von 2026.
     await expect(
       db.query(
@@ -273,7 +273,7 @@ describe('RLS auf key_wraps (§3.6, §4)', () => {
   it('verbirgt die Wraps eines fremden Geräts, auch im gemeinsamen Fall', async () => {
     // Bernd darf für Annas Gerät schreiben, aber nie lesen, was dort steht.
     // Sonst brächte ein zweites Mitglied im Fall nichts: Wer alle Wraps sieht,
-    // sieht sie nur nicht entschlüsselt — und die RLS wäre die einzige Schicht,
+    // sieht sie nur nicht entschlüsselt, und die RLS wäre die einzige Schicht,
     // die zwischen ihm und einem fremden `sk_u`-Ziel steht.
     const { id } = await fallMitWrap(ANNA, BERND)
 
@@ -322,7 +322,7 @@ describe('RLS auf key_wraps (§3.6, §4)', () => {
   it('lässt niemanden im Namen eines fremden Geräts wrappen', async () => {
     // `wrapped_by` ist die Adresse, gegen die das Empfängergerät die Signatur
     // prüft. Stünde dort ein fremdes Gerät, prüfte es gegen einen Schlüssel,
-    // den der Absender nie hatte — und der Wrap wäre unentpackbar statt
+    // den der Absender nie hatte, und der Wrap wäre unentpackbar statt
     // abgewiesen.
     const id = await fallMitMitgliedern(db, ANNA, BERND)
     const annasGeraet = await geraeteschluessel(db, ANNA)

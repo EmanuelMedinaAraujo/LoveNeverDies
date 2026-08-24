@@ -14,8 +14,8 @@ import { authWert, geraet } from '../screens/harness.tsx'
  *
  * Keystore, Supabase und der Dienst sind ersetzt: Was sie tun, steht in
  * `tests/crypto/keystore.test.ts`, `tests/db/` und
- * `tests/services/geraeteService.test.ts`. Hier geht es um die Zustandsführung
- * — wann `laedt`, wann `fehler`, und was beim Abmelden passiert.
+ * `tests/services/geraeteService.test.ts`. Hier geht es um die Zustandsführung:
+ * wann `laedt`, wann `fehler`, und was beim Abmelden passiert.
  */
 
 const ladeOderErzeugeIdentitaet = vi.fn()
@@ -30,7 +30,7 @@ vi.mock('../../src/core/db/supabaseGeraeteschluessel.ts', () => ({
   supabaseGeraeteschluessel: () => ({}),
 }))
 /*
- * Der Zugang muss über Renderrunden hinweg **dieselbe** Funktion bleiben — der
+ * Der Zugang muss über Renderrunden hinweg dieselbe Funktion bleiben: Der
  * echte Provider gibt ihn aus einem `useCallback` mit leerer Abhängigkeitsliste
  * heraus. Ein Doppel, das bei jedem Rendern eine neue Funktion liefert, dreht
  * den Effekt in `useGeraete` in eine Endlosschleife: Er hängt an `zugang`.

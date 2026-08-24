@@ -4,7 +4,7 @@ import { fallBeschriftung } from '../../src/services/fallbeschriftung'
 /**
  * Nahtstelle: wie ein Trauerfall in der Oberfläche heißt (DESIGN.md §2).
  *
- * §2 verlangt den Namen der Person, keinen Sammelbegriff — dieser Test hält
+ * §2 verlangt den Namen der Person, keinen Sammelbegriff: Dieser Test hält
  * genau den Satz fest, der auf dem Bildschirm stehen soll.
  */
 

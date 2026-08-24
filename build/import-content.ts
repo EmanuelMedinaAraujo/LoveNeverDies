@@ -10,7 +10,7 @@ import { KatalogQuelleFehler, alsJsonText, leseQuelltabelle } from './katalogQue
  * die juristische Arbeit versionieren laesst, und das Ergebnis, damit die App
  * kein Werkzeug braucht, um zu starten.
  *
- * Der Lauf ist wiederholbar — gleiche Quelle, gleiche Bytes. Ein Import ohne
+ * Der Lauf ist wiederholbar. Gleiche Quelle fuehrt zu gleichen Bytes. Ein Import ohne
  * inhaltliche Aenderung erzeugt deshalb keinen Diff.
  *
  * Dieses Skript ist die einzige Datei hier, die Dateien anfasst. Was

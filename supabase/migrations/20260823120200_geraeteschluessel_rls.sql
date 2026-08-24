@@ -9,7 +9,7 @@
 --
 -- Warum nur für sich selbst schreibbar: Wer eine fremde Zeile ändern könnte,
 -- tauschte den Schlüssel aus, an den die anderen wrappen, und läse ab dann mit.
--- Der Prüfcode aus §3.6 fängt das beim Koppeln ab — aber nur dort, und ein
+-- Der Prüfcode aus §3.6 fängt das beim Koppeln ab, aber nur dort. Ein
 -- bereits freigegebenes Gerät wird nie wieder verglichen.
 
 create function public.teilt_fall(p_user text) returns boolean

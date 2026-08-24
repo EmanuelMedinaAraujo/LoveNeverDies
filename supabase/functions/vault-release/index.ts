@@ -3,21 +3,21 @@
  *
  * Die einzige Edge Function mit Service-Role, die eine Zeile schreibt, die
  * kein Client schreiben darf: `vault_releases` ist für jedes Mitglied lesbar
- * und für niemanden schreibbar (§4). Der Grund steht in §3.5 — der
- * Primärschlüssel `(case_id, user_id)` setzt durch, dass **Personen** gezählt
+ * und für niemanden schreibbar (§4). Der Grund steht in §3.5: Der
+ * Primärschlüssel `(case_id, user_id)` setzt durch, dass Personen gezählt
  * werden und nicht Geräte, und das trägt nur, wenn niemand daran vorbei
  * einfügen kann.
  *
  * Hier steht ausschliesslich die Verdrahtung: Token, Datenbank, HTTP.
  * Entschieden wird in `freigabe.ts`, und dort ist es geprüft (§10).
  *
- * **Die `user_id` kommt aus dem Token, nie aus dem Body.** Geprüft wird es von
+ * Die `user_id` kommt aus dem Token, nie aus dem Body. Geprüft wird es von
  * PostgREST: Die Function ruft `angemeldete_kennung()` mit dem Token des
  * Aufrufers auf und bekommt den `sub`, den auch jede Policy dieses Projekts
- * sieht. Ein zweiter Prüfweg daneben — eigene JWKS, eigene Uhr, eigene
- * Fehlerfälle — wäre eine zweite Gelegenheit, sich zu irren.
+ * sieht. Ein zweiter Prüfweg daneben mit eigenen JWKS, eigener Uhr und eigenen
+ * Fehlerfällen böte nur eine zweite Gelegenheit, sich zu irren.
  *
- * Ausgeliefert wird sie deshalb **ohne** die eingebaute JWT-Prüfung des
+ * Ausgeliefert wird sie deshalb ohne die eingebaute JWT-Prüfung des
  * Gateways: Die Anmeldung kommt von Clerk (§1), und geprüft wird sie hier
  * ausdrücklich selbst.
  *
@@ -38,7 +38,7 @@ import {
  *
  * Der Client trägt seine Anmeldung im `Authorization`-Kopf; dieser Aufruf
  * reicht ihn unverändert an PostgREST weiter. Kommt eine Kennung zurück, hat
- * die Plattform das Token gegen den Anbieter geprüft — kommt keine, ist es
+ * die Plattform das Token gegen den Anbieter geprüft. Kommt keine, ist es
  * ungültig, abgelaufen oder gar nicht da.
  */
 async function angemeldeteKennung(url: string, anonKey: string, autorisierung: string) {
@@ -83,8 +83,8 @@ export function supabaseZugang(client: SupabaseClient): Freigabezugang {
     async schreibe(freigabe) {
       // `do update`, nicht `do nothing` (§3.5): Ein einziger kaputter Share
       // machte den Tresor sonst endgültig unöffenbar. Ersetzen ist
-      // ungefährlich — jede neue Zeile ist durch dieselbe Signaturprüfung
-      // gegangen, und gezählt werden Personen, keine Versuche.
+      // ungefährlich, denn jede neue Zeile ist durch dieselbe Signaturprüfung
+      // gegangen und gezählt werden Personen, keine Versuche.
       const { error } = await client.from('vault_releases').upsert(
         {
           case_id: freigabe.caseId,

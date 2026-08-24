@@ -26,7 +26,7 @@ import {
 /**
  * Der Worker aus dem eigenen Bündel.
  *
- * `new URL(…, import.meta.url)` ist die Form, die der Bundler erkennt und
+ * `new URL(..., import.meta.url)` ist die Form, die der Bundler erkennt und
  * mitbaut. Ein Pfad als Zeichenkette wäre nach dem Bauen ein 404. `module`,
  * weil der Worker `dateikrypto.ts` importiert.
  */

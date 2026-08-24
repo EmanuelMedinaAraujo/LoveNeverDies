@@ -46,7 +46,7 @@ import { entpackeEigenenAnteil } from '../../src/services/todesfallService'
  * lesen, den es dort vorher nicht gab.
  *
  * Der Server steht hier wieder als Speicher ohne Verstand (§11): Er nimmt an,
- * was kommt, und gibt zurück, was drinsteht — nur eingeschränkt auf das, was
+ * was kommt, und gibt zurück, was drinsteht, nur eingeschränkt auf das, was
  * die RLS herausgibt, denn genau daran hängt, ob `ladeFaelle` auf der anderen
  * Seite überhaupt etwas findet.
  */
@@ -704,7 +704,7 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     /*
      * Ein Fall, den Bernd sieht und nicht lesen kann: Mitgliedschaft ja, Wrap
      * für sein Gerät nein. Genau der Zustand, in dem ein Gerät steckt, das
-     * selbst noch auf eine Freigabe wartet (§3.6) — und er darf sich nicht
+     * selbst noch auf eine Freigabe wartet (§3.6), und er darf sich nicht
      * stillschweigend weitervererben.
      */
     lage.s.mitglieder.push({ fallId: 'fremder-fall', userId: BERND })
@@ -747,7 +747,7 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
 
   it('gibt nichts frei, wenn dieses Gerät selbst nichts lesen kann', async () => {
     /*
-     * Ohne diesen Wurf käme „0 von 0 Fällen freigeschaltet" zurück — die
+     * Ohne diesen Wurf käme "0 von 0 Fällen freigeschaltet" zurück: Die
      * Kopplung sähe erledigt aus, der Code wäre verbraucht, und das zweite
      * Gerät läse weiterhin nichts. Ein Fehlschlag, der wie ein Erfolg aussieht,
      * ist hier der schlimmste Ausgang.
@@ -831,7 +831,7 @@ describe('Gerätewechsel eines Angehörigen vor dem Öffnen (§3.5, §6)', () =>
       ANNAS_GERAET,
       { personName: 'Anna Müller' },
     )
-    // Bernd tritt dem Vorsorgefall bei — danach liest sein Gerät ihn.
+    // Bernd tritt dem Vorsorgefall bei, danach liest sein Gerät ihn.
     const { code: beitritt } = await lage.bernd.kopplung.erzeugeCode(BERNDS_GERAET, 'join')
     await fuegeZumFallHinzu(
       lage.anna.kopplung,
@@ -857,7 +857,7 @@ describe('Gerätewechsel eines Angehörigen vor dem Öffnen (§3.5, §6)', () =>
       wrappedShare: await verschluessele(kapselung.geteiltesGeheimnis, kv),
     })
 
-    // Bernd koppelt ein zweites Gerät. Anna — die vorsorgende Person — ist an
+    // Bernd koppelt ein zweites Gerät. Anna, die vorsorgende Person, ist an
     // diesem Ablauf nicht beteiligt.
     const zweitesGeraet = identitaet()
     lage.s.meldeGeraetAn(BERNDS_ZWEITES, zweitesGeraet, BERND)

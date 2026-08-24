@@ -8,7 +8,7 @@
  *
  * Daher auch die `.ts` an jedem Import in diesem Ordner: Deno löst einen
  * relativen Import ohne Endung nicht auf, und die Function lädt diese Dateien
- * unverändert. Ohne sie liefe sie erst beim Ausliefern auf einen Fehler — an
+ * unverändert. Ohne sie liefe sie erst beim Ausliefern auf einen Fehler, und zwar an
  * einer Stelle, die niemand mit einem weggelassenen Suffix in Verbindung
  * brächte.
  */

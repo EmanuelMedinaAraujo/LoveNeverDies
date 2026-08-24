@@ -4,25 +4,25 @@
  * Der Übergang von `vorsorge` nach `trauerfall`, in zwei Hälften, die auf
  * verschiedenen Geräten und zu verschiedenen Zeiten laufen.
  *
- * **Freigeben** passiert auf dem Gerät eines Angehörigen: `share_i` mit `sk_u`
+ * Freigeben passiert auf dem Gerät eines Angehörigen: `share_i` mit `sk_u`
  * entpacken, gegen `share_hash_i` prüfen, unter dem aktuellen `K_c` neu
  * verschlüsseln, zweifach signieren. Die Hash-Prüfung steht vor allem anderen,
- * damit ein kaputter Wrap auffällt, bevor irgendetwas hochgeladen wird — eine
+ * damit ein kaputter Wrap auffällt, bevor irgendetwas hochgeladen wird. Eine
  * Freigabe ist nichts, was man zurücknimmt (§5).
  *
- * **Öffnen** passiert auf dem Gerät irgendeines Mitglieds: jede Freigabe mit
+ * Öffnen passiert auf dem Gerät irgendeines Mitglieds: jede Freigabe mit
  * dem `K_c` ihrer eigenen Generation entschlüsseln, gegen ihren `share_hash`
  * prüfen, die gültigen zusammensetzen und das Ergebnis am `vault_commitment`
  * messen.
  *
- * Was hier **nicht** passiert: zählen. Der Zähler der Freigaben entscheidet
+ * Was hier nicht passiert: zählen. Der Zähler der Freigaben entscheidet
  * nichts (§3.5). Ein Mitglied kann jederzeit einen korrekt signierten,
  * inhaltlich falschen Share hochladen; der Zähler stiege trotzdem. Die
  * Entscheidung hängt allein am Nachweis, und den hat nur, wer `K_v` wirklich
  * rekonstruiert hat.
  *
  * Scheitert ein Share an seinem Hash, benennt dieses Modul die Person, von der
- * er kam — als Kennung, nicht als Name: Namen holt die Oberfläche aus
+ * er kam, und zwar als Kennung, nicht als Name: Namen holt die Oberfläche aus
  * `profiles`. Ohne diese Auskunft bliebe der Familie nur "geht nicht", und
  * niemand wüsste, wen sie um eine zweite Freigabe bitten muss.
  */
@@ -88,7 +88,7 @@ export type Freigabeidentitaet = Pick<Geraeteidentitaet, 'kem' | 'signatur'>
 /**
  * Entpackt den eigenen Anteil und misst ihn an seinem Klartext-Hash (§3.5).
  *
- * Steht vor jedem Weg, den ein Anteil dieses Geräts nimmt — der Freigabe und
+ * Steht vor jedem Weg, den ein Anteil dieses Geräts nimmt, der Freigabe und
  * dem Gerätewechsel (§6): Ein kaputter Wrap fällt so auf, bevor irgendetwas
  * hochgeht. Eine Freigabe, die an ihrem Hash scheitert, zählte beim Öffnen
  * mit und liesse die Rekonstruktion sicher scheitern; ein weitergereichter
@@ -208,7 +208,7 @@ export async function rekonstruiereTresorschluessel(
       // Kein Hash heisst: Zu dieser Person steht kein Share im Fall, ihre
       // Freigabe stammt aus einer früheren Runde oder von niemandem. Kein
       // `K_c` heisst: Dieses Gerät kennt die Generation nicht. Beides ist von
-      // hier aus dasselbe — unbrauchbar, und benennbar.
+      // hier aus dasselbe: unbrauchbar und benennbar.
       fehlerhafte.push(freigabe.userId)
       continue
     }
@@ -273,7 +273,7 @@ export type Umwrap = {
  *
  * Was sich nicht entpacken lässt, bleibt liegen. Beim Öffnen ist das kein
  * Defekt, sondern die Regel aus §3.7: Wer eine Zeile nicht lesen kann,
- * verwirft sie still — sonst bliebe der ganze Übergang an einem einzelnen
+ * verwirft sie still. Sonst bliebe der ganze Übergang an einem einzelnen
  * beschädigten Eintrag hängen.
  */
 export async function umzuwrappendeTresorItems(

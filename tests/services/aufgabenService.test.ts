@@ -21,14 +21,14 @@ import { ALLE, NIEMAND, personen } from '../../src/services/zuweisung'
  *
  * Der Dienst schreibt seit dem Sync-Slice nirgends mehr hin: Er gibt eine
  * {@link Mutation} zurück, fertig verschlüsselt, und die Queue trägt sie
- * hinaus (§5). Der Server steht hier trotzdem — als Speicher ohne Verstand, der
+ * hinaus (§5). Der Server steht hier trotzdem, als Speicher ohne Verstand, der
  * annimmt, was kommt, und die eine Regel aus §4 befolgt: `seq` vergibt er,
  * nicht der Client. Nur so lässt sich die ganze Kette prüfen, von der Eingabe
  * bis zur wieder entschlüsselten Zeile.
  *
  * Geprüft wird, worauf der Slice steht: Titel und Beschreibung gehen
  * ausschließlich verschlüsselt hinaus, jedes Item bekommt einen eigenen DEK,
- * was sich nicht entschlüsseln lässt verschwindet still — und eine abgelehnte
+ * was sich nicht entschlüsseln lässt verschwindet still, und eine abgelehnte
  * Änderung kommt mit ihrem Klartext zurück.
  */
 
@@ -104,7 +104,7 @@ function server() {
 /**
  * Eine Warteschlange im Speicher, die genau eine Mutation hält.
  *
- * Der Weg vom Dienst zum Server läuft über {@link arbeiteAb} — die Alternative
+ * Der Weg vom Dienst zum Server läuft über {@link arbeiteAb}: Die Alternative
  * wäre, im Test von Hand `inhalte.lege` zu rufen und damit einen Schreibweg zu
  * prüfen, den es in der App nicht gibt.
  */
@@ -124,7 +124,7 @@ function warteschlangeMit(...mutationen: Mutation[]): Warteschlange {
   }
 }
 
-/** Legt an, ändert oder löscht — über die Queue, so wie die App es tut. */
+/** Legt an, ändert oder löscht über die Queue, so wie die App es tut. */
 async function uebertrage(inhalte: InhalteTabelle, ...mutationen: Mutation[]): Promise<void> {
   const ergebnis = await arbeiteAb(warteschlangeMit(...mutationen), inhalte)
 
@@ -133,7 +133,7 @@ async function uebertrage(inhalte: InhalteTabelle, ...mutationen: Mutation[]): P
   }
 }
 
-/** Der Stand des Falls, entschlüsselt — der Weg aus §5 in voller Länge. */
+/** Der Stand des Falls, entschlüsselt: der Weg aus §5 in voller Länge. */
 async function lies(inhalte: InhalteTabelle, k: Fallschluessel) {
   return aufgabenAusZeilen(await inhalte.seit(k.id, 0), k)
 }
@@ -163,13 +163,13 @@ describe('Unteraufgaben als eigene Zeilen (§7)', () => {
 
   it('lässt zwei offline gesetzte Häkchen beide überleben', async () => {
     /*
-     * Die Begründung aus §7, geprüft am ganzen Weg: „Läge alles im Payload der
+     * Die Begründung aus §7, geprüft am ganzen Weg: "Läge alles im Payload der
      * Elternaufgabe, überlebte von zwei offline gesetzten Häkchen genau eines,
      * ohne dass jemand davon erführe."
      *
      * Hier haken zwei Geräte je eine andere Unteraufgabe ab, beide offline,
      * beide ohne den Stand des anderen zu kennen. Weil jede Unteraufgabe eine
-     * eigene Zeile ist, schreiben sie in verschiedene Zeilen — es gibt nichts
+     * eigene Zeile ist, schreiben sie in verschiedene Zeilen: Es gibt nichts
      * zu überschreiben und nichts, was verloren gehen könnte.
      */
     const { inhalte } = server()
@@ -272,7 +272,7 @@ describe('mutationAnlegen', () => {
 
   it('gibt eine Mutation zurück, ohne irgendwohin zu schreiben', async () => {
     // §5: Jede Mutation wird angehängt und beim Reconnect abgearbeitet. Ein
-    // Dienst, der nebenher selbst schriebe, hätte einen zweiten Weg — mit
+    // Dienst, der nebenher selbst schriebe, hätte einen zweiten Weg, mit
     // eigener Reihenfolge und der Frage, was gilt, wenn beide laufen.
     const { inhalte, zeilen } = server()
 
@@ -467,7 +467,7 @@ describe('aufgabenAusZeilen', () => {
 
   it('verwirft ein Item, dessen DEK unter einem fremden Schluessel liegt', async () => {
     // Der Normalfall aus §3.7: ein privates Item einer anderen Person. Es wird
-    // mitgeladen und still verworfen — rund 2 KB, und niemand erfaehrt davon.
+    // mitgeladen und still verworfen: rund 2 KB, und niemand erfaehrt davon.
     const { inhalte } = server()
     const k = fall()
     const fremd = erzeugeAesSchluessel()
@@ -489,7 +489,7 @@ describe('aufgabenAusZeilen', () => {
   })
 
   it('verwirft ein Item, dessen Payload kein Aufgabenpayload ist', async () => {
-    // Ein echter Defekt sieht von aussen genauso aus wie ein fremdes Item —
+    // Ein echter Defekt sieht von aussen genauso aus wie ein fremdes Item.
     // §11 nennt das als bewusst hingenommene Grenze. Umso wichtiger, dass er
     // die Liste nicht mitreisst.
     const { inhalte } = server()
@@ -569,8 +569,8 @@ describe('aufgabenAusZeilen', () => {
 
   it('entschlüsselt ohne Netz, weil ihm keine Tabelle übergeben wird', async () => {
     /*
-     * §5: „Gecachte Inhalte werden sofort gerendert." Das trägt nur, wenn das
-     * Entschlüsseln nichts vom Server braucht — deshalb bekommt diese Funktion
+     * §5: "Gecachte Inhalte werden sofort gerendert." Das trägt nur, wenn das
+     * Entschlüsseln nichts vom Server braucht. Deshalb bekommt diese Funktion
      * Zeilen und keinen Zugang. Woher die Zeilen kommen, Cache oder Delta, ist
      * ihr gleich.
      */
@@ -586,9 +586,9 @@ describe('aufgabenAusZeilen', () => {
 
 describe('beschreibeAbgelehnte', () => {
   /*
-   * §5: „Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern
-   * mit ihrem **entschlüsselten** Inhalt als Mitteilung angezeigt." Ohne den
-   * Inhalt wäre die Mitteilung eine Zumutung — „eine Änderung konnte nicht
+   * §5: "Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern
+   * mit ihrem entschlüsselten Inhalt als Mitteilung angezeigt." Ohne den
+   * Inhalt wäre die Mitteilung eine Zumutung: "eine Änderung konnte nicht
    * gespeichert werden" sagt niemandem, was er noch einmal tippen muss.
    */
 
@@ -648,7 +648,7 @@ describe('beschreibeAbgelehnte', () => {
   it('lässt den Titel leer, wenn die Zeile nicht mehr da ist', async () => {
     // Ein Edit auf ein Item, das ein anderes Gerät inzwischen gelöscht hat: Der
     // Server lehnt ab, und der DEK ist mit dem Tombstone weg (§5). Die
-    // Mitteilung bleibt trotzdem stehen — ohne Titel, aber nicht verschwiegen.
+    // Mitteilung bleibt trotzdem stehen: ohne Titel, aber nicht verschwiegen.
     const k = fall()
     const mutation: Mutation = {
       op: 'aendern',

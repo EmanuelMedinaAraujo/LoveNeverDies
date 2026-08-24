@@ -5,12 +5,12 @@ import { POLLING_ABSTAND_MS, tuerklingel } from '../../src/core/sync/realtime'
 /**
  * Nahtstelle: die Türklingel (DESIGN.md §5).
  *
- * §5, Schritt 3: „Realtime-Subscription auf die `cases`-Zeile. Als Fallback
- * Polling bei Fokus und alle 30 Sekunden, **nur** falls die Subscription nicht
+ * §5, Schritt 3: "Realtime-Subscription auf die `cases`-Zeile. Als Fallback
+ * Polling bei Fokus und alle 30 Sekunden, nur falls die Subscription nicht
  * verfügbar ist oder fehlgeschlagen ist."
  *
- * Das „nur" ist die eigentliche Zusage. Ein Fallback, der immer mitläuft, wäre
- * kein Fallback, sondern Polling mit einer Subscription obendrauf — auf einem
+ * Das "nur" ist die eigentliche Zusage. Ein Fallback, der immer mitläuft, wäre
+ * kein Fallback, sondern Polling mit einer Subscription obendrauf: auf einem
  * Telefon im Zug zwei Verbindungen für dieselbe Nachricht.
  *
  * Getestet wird gegen ein Kanaldoppel und nicht gegen einen echten Server: Ob
@@ -166,7 +166,7 @@ describe('tuerklingel', () => {
   })
 
   it('pollt, wenn es gar keine Subscription gibt', () => {
-    // „nicht verfügbar" aus §5: Der Client kann keinen Kanal aufmachen. Ohne
+    // "nicht verfügbar" aus §5: Der Client kann keinen Kanal aufmachen. Ohne
     // diesen Zweig bliebe die App stumm, ohne dass irgendwo etwas fehlschlägt.
     const client = {
       channel: () => {

@@ -7,7 +7,7 @@ import { entkapsele, erzeugeKemSchluesselpaar, kapsele } from '../../src/core/cr
 import { erzeugeSignaturSchluesselpaar, signiere, verifiziere } from '../../src/core/crypto/sign'
 
 /**
- * Nahtstelle: die vier Envelope-Formen aus §3.2 zusammen — verschlüsseln,
+ * Nahtstelle: die vier Envelope-Formen aus §3.2 zusammen: verschlüsseln,
  * serialisieren, parsen, entschlüsseln.
  *
  * Die Einzelteile stehen in den anderen Dateien. Hier läuft die
@@ -80,7 +80,7 @@ describe('Alle vier Envelope-Formen', () => {
     const zeile = await packeFallEin()
 
     // §3.2: Welches KEM den kem_ct erzeugt hat, sagt das `v` des wrapped_key
-    // daneben — hier nachgestellt, indem beide zusammen gelesen werden.
+    // daneben, hier nachgestellt, indem beide zusammen gelesen werden.
     expect(leseChiffretext(zeile.wrappedKey).v).toBe(1)
     expect(zeile.kemCt).toHaveLength(1120)
   })

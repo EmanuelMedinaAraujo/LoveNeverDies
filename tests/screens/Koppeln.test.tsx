@@ -11,7 +11,7 @@ import { rendereMitProvidern } from './harness.tsx'
  * Der Test hält vor allem eines fest: Zwischen Eingabe und Bestätigung steht
  * der Prüfcode, und die Bestätigung ist ein eigener Schritt. Ein Formular, das
  * beides in einem Zug erledigte, hätte für den mündlichen Abgleich keine
- * Stelle — und der ist der einzige Schutz gegen einen bösartigen Server (§3.6).
+ * Stelle, und der ist der einzige Schutz gegen einen bösartigen Server (§3.6).
  */
 
 const useEinloesung = vi.fn()
@@ -115,7 +115,7 @@ describe('Koppeln: bestätigen (§6, Schritt 5 und 6)', () => {
     expect(screen.getByText('Anna Müller')).toBeVisible()
     expect(screen.getByText('anna@example.de')).toBeVisible()
     expect(screen.getByText('481 253')).toBeVisible()
-    // Zum Vorlesen die Ziffern einzeln — verglichen werden Ziffern.
+    // Zum Vorlesen die Ziffern einzeln: Verglichen werden Ziffern.
     expect(screen.getByText('4 8 1 2 5 3')).toBeInTheDocument()
     expect(bestaetigen).not.toHaveBeenCalled()
   })
@@ -162,7 +162,7 @@ describe('Koppeln: bestätigen (§6, Schritt 5 und 6)', () => {
   it('lässt niemanden bestätigen, solange die Fallliste noch lädt', () => {
     /*
      * Der Code ist zu diesem Zeitpunkt eingelöst. Ein Klick auf eine Liste, die
-     * es noch nicht gibt, verbrennte ihn — bei `device` sogar mit einer Meldung,
+     * es noch nicht gibt, verbrennte ihn: bei `device` sogar mit einer Meldung,
      * die wie ein Erfolg aussieht.
      */
     useEinloesung.mockReturnValue(

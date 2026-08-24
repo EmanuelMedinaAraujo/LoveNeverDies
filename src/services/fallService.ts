@@ -284,7 +284,7 @@ export async function loescheVorsorgefall(faelle: FaelleTabelle, fallId: string)
  * Verlässt einen Fall (§3.4).
  *
  * 1. Die Mitgliedschaft wird serverseitig gelöscht. RLS sperrt sofort jeden Blob-Zugriff.
- * 2. Der Client löscht lokal K_c, K_cat, K_p, Shares und den Cache dieses Falls (sk_u bleibt).
+ * 2. Der Client löscht lokal den persistenten Cache dieses Falls (K_c/K_cat/K_p/Shares liegen flüchtig im Speicher; sk_u bleibt).
  */
 export async function verlasseFall(
   mitglieder: MitgliederTabelle,

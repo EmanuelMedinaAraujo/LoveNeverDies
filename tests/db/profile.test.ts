@@ -6,7 +6,7 @@ import { alsBenutzer, fallMitMitgliedern, frischeDatenbank, profil } from './pos
  * Nahtstelle: `profiles` und ihre RLS (DESIGN.md §3.3, §4).
  *
  * Die eine Tabelle mit personenbezogenem Klartext. Sichtbar ist sie für die
- * eigene Person und für alle, mit denen man einen Fall teilt — nicht für die
+ * eigene Person und für alle, mit denen man einen Fall teilt, nicht für die
  * Welt, und das ist der ganze Unterschied zwischen einer bewussten
  * Verbreiterung (§3.3) und einem Verzeichnis aller Namen dieser App.
  */
@@ -61,7 +61,7 @@ describe('RLS auf profiles (§4)', () => {
 
   it('lässt niemanden ein fremdes Profil ändern', async () => {
     // Kein Wurf, sondern null betroffene Zeilen: Die Policy schränkt ein, sie
-    // wirft nicht. Der Adapter macht daraus die Meldung — hier zählt, dass in
+    // wirft nicht. Der Adapter macht daraus die Meldung. Hier zählt, dass in
     // der Tabelle nichts anderes steht als vorher.
     await alsBenutzer(db, FREMDE)((fuehreAus) =>
       fuehreAus(`update profiles set display_name = 'Untergeschoben' where user_id = $1`, [BERND]),

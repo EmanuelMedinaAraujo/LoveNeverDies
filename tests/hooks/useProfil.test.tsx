@@ -91,8 +91,8 @@ describe('useProfilAbgleich (§3.3)', () => {
   it('schreibt auf Wunsch noch einmal', async () => {
     /*
      * Ohne diesen Weg bliebe die Sitzung nach einem einzigen misslungenen
-     * Rundlauf bis zum Neuladen ohne Profil — und jede Kopplung scheiterte an
-     * „Ohne hinterlegten Namen gibt es keinen Kopplungscode" (§6).
+     * Rundlauf bis zum Neuladen ohne Profil, und jede Kopplung scheiterte an
+     * "Ohne hinterlegten Namen gibt es keinen Kopplungscode" (§6).
      */
     speichere.mockRejectedValueOnce(new Error('permission denied'))
 

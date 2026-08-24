@@ -11,7 +11,7 @@ import { NIEMAND } from '../../src/services/zuweisung'
  *
  *   1. Eine Aufgabe ohne Unteraufgaben ist ein Blatt und wird direkt abgehakt.
  *   2. Eine Aufgabe mit Unteraufgaben hat kein eigenes Häkchen und gilt genau
- *      dann als erledigt, wenn alle Kinder es sind — und dann zwingend.
+ *      dann als erledigt, wenn alle Kinder es sind, und dann zwingend.
  *   3. Eine Aufgabe mit offenen Abhängigkeiten ist blockiert und benennt sie.
  *
  * Der abgeleitete Abschluss ist der Grund, warum hier nichts gespeichert wird:
@@ -80,7 +80,7 @@ describe('baueBaum (§7)', () => {
     const [knoten] = baueBaum([eltern, kind])
 
     // Das gespeicherte `erledigt` der Elternaufgabe zählt nicht mehr. Es steht
-    // im Payload, weil ein Payload ohne es nicht zu schreiben wäre — gelesen
+    // im Payload, weil ein Payload ohne es nicht zu schreiben wäre: Gelesen
     // wird es nie (§7).
     expect(knoten?.istBlatt).toBe(false)
     expect(knoten?.erledigt).toBe(false)
@@ -110,8 +110,8 @@ describe('baueBaum (§7)', () => {
 
   it('lässt zwei getrennt gesetzte Häkchen beide gelten', () => {
     /*
-     * §7: „Läge alles im Payload der Elternaufgabe, überlebte von zwei offline
-     * gesetzten Häkchen genau eines." Zwei Zeilen, zwei Häkchen, beide da —
+     * §7: "Läge alles im Payload der Elternaufgabe, überlebte von zwei offline
+     * gesetzten Häkchen genau eines." Zwei Zeilen, zwei Häkchen, beide da:
      * das ist die ganze Begründung für eigene Zeilen.
      */
     const eltern = aufgabe({ id: 'eltern' })
@@ -126,7 +126,7 @@ describe('baueBaum (§7)', () => {
 
   it('verschachtelt nicht: das Kind eines Kindes steht als Wurzel', () => {
     // §7: eine Ebene, keine Verschachtelung. Ein Enkel darf trotzdem nicht
-    // verschwinden — er wird eine Wurzelaufgabe.
+    // verschwinden: Er wird eine Wurzelaufgabe.
     const eltern = aufgabe({ id: 'eltern' })
     const kind = aufgabe({ id: 'kind', parentId: 'eltern' })
     const enkel = aufgabe({ id: 'enkel', parentId: 'kind' })
@@ -139,7 +139,7 @@ describe('baueBaum (§7)', () => {
 
   it('lässt eine verwaiste Unteraufgabe stehen statt sie zu verschlucken', () => {
     // Die Elternaufgabe ist gelöscht, das Kind nicht. Sichtbar bleiben muss es
-    // trotzdem — sonst hätte jemand eine Aufgabe, die es nirgends mehr gibt.
+    // trotzdem, sonst hätte jemand eine Aufgabe, die es nirgends mehr gibt.
     const waise = aufgabe({ id: 'kind', parentId: 'weg' })
 
     expect(baueBaum([waise]).map((knoten) => knoten.aufgabe.id)).toEqual(['kind'])
@@ -172,7 +172,7 @@ describe('Abhängigkeiten (§7)', () => {
 
   it('wartet auf den abgeleiteten Abschluss und nicht auf das gespeicherte Feld', () => {
     // Die Elternaufgabe trägt `erledigt: false` im Payload, ihre Kinder sind
-    // fertig — dann ist sie fertig, und was von ihr abhängt, ist frei.
+    // fertig: Dann ist sie fertig, und was von ihr abhängt, ist frei.
     const zuerst = aufgabe({ id: 'zuerst', erledigt: false })
     const kind = aufgabe({ id: 'kind', parentId: 'zuerst', erledigt: true })
     const danach = aufgabe({ id: 'danach', dependsOn: ['zuerst'] })
@@ -184,7 +184,7 @@ describe('Abhängigkeiten (§7)', () => {
 
   it('blockiert nicht auf eine Abhängigkeit, die es nicht mehr gibt', () => {
     /*
-     * Die Aufgabe, auf die verwiesen wird, ist gelöscht — oder sie ist die
+     * Die Aufgabe, auf die verwiesen wird, ist gelöscht oder sie ist die
      * private Aufgabe einer anderen Person und für dieses Mitglied gar nicht
      * da (§3.7). Eine Aufgabe, die dauerhaft blockiert bliebe, wäre in beiden
      * Fällen eine versäumte Frist ohne Ausweg.

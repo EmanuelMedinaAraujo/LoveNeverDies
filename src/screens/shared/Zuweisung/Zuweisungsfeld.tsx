@@ -18,15 +18,15 @@ import stile from './Zuweisungsfeld.module.css'
  * Wer sich um eine Aufgabe kümmert (DESIGN.md §7).
  *
  * Drei Handgriffe, in der Reihenfolge, in der eine Familie sie braucht:
- * übernehmen, wieder freigeben, jemanden eintragen. „Alle" steht als eigener
- * Wert daneben und nicht als Liste aller Namen — angehakt heißt es „das geht
- * jede:n an", und nicht „hier stehen zufällig gerade alle drin".
+ * übernehmen, wieder freigeben, jemanden eintragen. "Alle" steht als eigener
+ * Wert daneben und nicht als Liste aller Namen. Angehakt heißt es "das geht
+ * jede:n an" und nicht "hier stehen zufällig gerade alle drin".
  *
- * **Freigeben darf jede:r**, nicht nur die eingetragene Person (§7). In einer
+ * Freigeben darf jede:r, nicht nur die eingetragene Person (§7). In einer
  * Familie fällt jemand aus, und eine Aufgabe, die niemand mehr freigeben kann,
  * blockiert eine gesetzliche Frist.
  *
- * Ein Mitglied ohne Namen heißt „Weiteres Mitglied" — die Namenstabelle
+ * Ein Mitglied ohne Namen heißt "Weiteres Mitglied". Die Namenstabelle
  * `profiles` kommt mit der Kopplung (#10, §3.3), und bis dahin kennt dieses
  * Gerät nur die Namen, die in den Zuweisungen des Falls stehen. Weggelassen
  * wird deshalb niemand: Eine unsichtbare Person ist schlimmer als eine ohne
@@ -51,9 +51,9 @@ export function Zuweisungsfeld({
   /**
    * Eine Person an- oder abwählen.
    *
-   * Aus „Alle" heraus wird dabei die Art gewechselt, und zwar unabhängig davon,
-   * in welche Richtung das Kästchen kippt: Bei „Alle" stehen alle Häkchen, ein
-   * Tipp auf eine Person kommt also als „abwählen" an — gemeint ist aber „nur
+   * Aus "Alle" heraus wird dabei die Art gewechselt, und zwar unabhängig davon,
+   * in welche Richtung das Kästchen kippt: Bei "Alle" stehen alle Häkchen, ein
+   * Tipp auf eine Person kommt also als "abwählen" an. Gemeint ist aber "nur
    * sie". Ein Klick, der sichtbar nichts tut, wäre die schlechtere Antwort.
    */
   function schalte(person: Zugewiesene, an: boolean) {
@@ -97,8 +97,8 @@ export function Zuweisungsfeld({
           <Checkbox
             key={person.userId}
             checked={alle || istZugewiesen(zuweisung, person.userId)}
-            // Bei „Alle" ist jede:r zugewiesen; die einzelnen Häkchen zeigen das
-            // und lassen sich trotzdem anfassen — wer eines antippt, meint
+            // Bei "Alle" ist jede:r zugewiesen; die einzelnen Häkchen zeigen das
+            // und lassen sich trotzdem anfassen. Wer eines antippt, meint
             // genau diese Person und nicht mehr alle.
             disabled={gesperrt}
             onChange={(ereignis) => schalte(person, ereignis.target.checked)}

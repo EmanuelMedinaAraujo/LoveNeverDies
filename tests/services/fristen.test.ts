@@ -17,8 +17,8 @@ import {
  * und nirgends abgelegt. Dieselbe Zeile zeigt deshalb morgen einen Tag weniger,
  * ohne dass sich irgendwo etwas ändert.
  *
- * Und die zweite: **Fehlt eine gesetzliche Frist, wird keine erfunden.** Eine
- * Aufgabe ohne `fristTage` zeigt kein Datum, keinen Zähler und kein „bald".
+ * Und die zweite: Fehlt eine gesetzliche Frist, wird keine erfunden. Eine
+ * Aufgabe ohne `fristTage` zeigt kein Datum, keinen Zähler und kein "bald".
  */
 
 function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkunft {
@@ -84,7 +84,7 @@ describe('fristlage (§8)', () => {
     /*
      * §8: Aufgaben mit `frist_ab = kenntnis` bleiben ohne `kenntnisAm`
      * fristenlos und tragen den sichtbaren Hinweis. Die App rechnet nicht mit
-     * einer Vermutung — eine falsch berechnete Ausschlagungsfrist kostet den
+     * einer Vermutung: Eine falsch berechnete Ausschlagungsfrist kostet den
      * ganzen Nachlass. Das Kenntnisdatum selbst kommt in #12.
      */
     const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })

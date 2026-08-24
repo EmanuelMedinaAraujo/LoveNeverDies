@@ -14,7 +14,7 @@
  * derselben Domain-Präfixe wären zwei Gelegenheiten, sie auseinanderlaufen zu
  * lassen.
  *
- * Was diese Funktion **nicht** prüfen kann: ob der Share der richtige ist. Er
+ * Was diese Funktion nicht prüfen kann: ob der Share der richtige ist. Er
  * liegt unter `K_c`, und den hat der Server nie gesehen. Sie weiss
  * ausschliesslich, dass eine authentifizierte Person X diesen Blob signiert
  * hat. Deshalb löst der Zähler der Freigaben nichts aus (§3.5).
@@ -73,7 +73,7 @@ export type NeueFreigabe = {
 export type Freigabezugang = {
   geraet(deviceId: string): Promise<Freigabegeraet | null>
   istMitglied(caseId: string, userId: string): Promise<boolean>
-  /** `insert … on conflict (case_id, user_id) do update` (§3.5). */
+  /** `insert ... on conflict (case_id, user_id) do update` (§3.5). */
   schreibe(freigabe: NeueFreigabe): Promise<void>
 }
 
@@ -145,7 +145,7 @@ function abgewiesen(grund: string): Freigabeergebnis {
  * Kryptographie. Eine ML-DSA-Prüfung kostet mehr als zwei Abfragen, und wer
  * gar nicht im Fall ist, soll sie nicht auslösen können.
  *
- * @param userId der `sub` aus dem geprüften Token — **nie** aus dem Body
+ * @param userId der `sub` aus dem geprüften Token, nie aus dem Body
  * (§3.5). Er geht auch in die Nachricht ein, gegen die verifiziert wird: Eine
  * Signatur über eine fremde Kennung passt damit nicht mehr.
  * @returns 200 und eine geschriebene Zeile, oder 403 und keine.

@@ -128,6 +128,7 @@ describe('rotiereFallschluessel (§3.4, §4, §7)', () => {
 
     const geschriebeneWraps: SchluesselwrapZeile[] = []
     let committetPayload: Uint8Array | undefined
+    let committeteItems: { id: string; wrappedDek: Uint8Array }[] | undefined
 
     const faelle: FaelleTabelle = {
       version: () => Promise.resolve(1),
@@ -136,8 +137,18 @@ describe('rotiereFallschluessel (§3.4, §4, §7)', () => {
       loescheVorsorgefall: () => Promise.reject(new Error('nicht gebraucht')),
       eigene: () => Promise.resolve([]),
       claimRotation: (_id, gen) => Promise.resolve(gen === 1),
-      commitRotation: (_id, gen, _newKid, _geraet, payload) => {
+      commitRotation: (_id, gen, _newKid, _geraet, payload, umgewrappteItems) => {
         committetPayload = payload
+        committeteItems = umgewrappteItems
+        if (umgewrappteItems) {
+          for (const u of umgewrappteItems) {
+            const item = items.find((i) => i.id === u.id)
+            if (item) {
+              item.kid = _newKid
+              item.wrappedDek = u.wrappedDek
+            }
+          }
+        }
         return Promise.resolve(gen === 1)
       },
     }
@@ -148,14 +159,7 @@ describe('rotiereFallschluessel (§3.4, §4, §7)', () => {
       legeAlleNeuen: () => Promise.reject(new Error('nicht gebraucht')),
       schreibePayload: () => Promise.reject(new Error('nicht gebraucht')),
       umwrappe: () => Promise.reject(new Error('nicht gebraucht')),
-      rotiereItem: (id, kid, wrappedDek) => {
-        const item = items.find((i) => i.id === id)
-        if (item) {
-          item.kid = kid
-          item.wrappedDek = wrappedDek
-        }
-        return Promise.resolve()
-      },
+      rotiereItem: () => Promise.reject(new Error('rotiereItem darf nicht mehr einzeln gerufen werden')),
       loesche: () => Promise.reject(new Error('nicht gebraucht')),
     }
 
@@ -221,7 +225,9 @@ describe('rotiereFallschluessel (§3.4, §4, §7)', () => {
     )
     expect(entpacktKcClara).toEqual(ergebnis.kcNeu)
 
-    // 2. Geteiltes Item wurde umgewrappt
+    // 2. Geteiltes Item wurde atomar an commitRotation übergeben und umgewrappt
+    expect(committeteItems).toHaveLength(1)
+    expect(committeteItems![0]?.id).toBe('item-geteilt')
     const itemGeteilt = items.find((i) => i.id === 'item-geteilt')!
     expect(itemGeteilt.kid).toBe(`case_${fallId}:2`)
     // Mit dem neuen kc lässt sich der ursprüngliche DEK wieder entpacken

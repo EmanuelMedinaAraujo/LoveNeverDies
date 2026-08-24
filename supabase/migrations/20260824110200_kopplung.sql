@@ -9,14 +9,14 @@
 --
 -- Der Ablauf ist für beide Zwecke derselbe (§6):
 --
---   `join`   — eine andere Person kommt in einen Fall
---   `device` — ein zweites Gerät derselben Person wird freigeschaltet
+--   `join`: Eine andere Person kommt in einen Fall
+--   `device`: Ein zweites Gerät derselben Person wird freigeschaltet
 --
 -- Der einzige Unterschied steht in `loese_kopplungscode_ein`: Bei `join` muss
--- die einlösende eine **andere** Person sein, bei `device` dieselbe.
+-- die einlösende eine andere Person sein, bei `device` dieselbe.
 --
--- **Zwei Schritte, nicht einer.** Zwischen "Code eingegeben" und "Schlüssel
--- übergeben" liegt der mündliche Prüfcode-Abgleich (§3.6) — der einzige Schutz
+-- Zwei Schritte, nicht einer. Zwischen "Code eingegeben" und "Schlüssel
+-- übergeben" liegt der mündliche Prüfcode-Abgleich (§3.6), der einzige Schutz
 -- gegen einen Server, der beim Rendezvous fremde Schlüssel unterschiebt. Ein
 -- Ablauf, der in einem Aufruf durchliefe, hätte für diesen Abgleich keine
 -- Stelle. Deshalb `loese_kopplungscode_ein` (zeigt, wer da ist) und danach
@@ -49,7 +49,7 @@ create index pairing_codes_device_id_idx on pairing_codes (device_id);
  * Jeder Einlöseversuch, gelungen oder nicht (§4: "mit Rate-Limit").
  *
  * Eine eigene Tabelle und kein Zähler in `pairing_codes`: Gezählt werden muss,
- * was **keinen** Code trifft — ein Zähler auf der Zeile bekäme einen Fehlgriff
+ * was keinen Code trifft: Ein Zähler auf der Zeile bekäme einen Fehlgriff
  * nie zu sehen. Und ohne Zeitfenster wäre es kein Limit, sondern ein Kontingent
  * auf Lebenszeit.
  */
@@ -68,7 +68,7 @@ alter table pairing_attempts enable row level security;
  * Beide Tabellen bekommen keine Policy und kein Recht (§4: "`pairing_codes`
  * ist nicht offen selektierbar").
  *
- * RLS allein täte es schon — eine eingeschaltete Tabelle ohne Policy ist für
+ * RLS allein täte es schon: Eine eingeschaltete Tabelle ohne Policy ist für
  * jede Rolle außer `service_role` leer. Das fehlende `grant` ist die zweite
  * Sperre, und sie steht hier aus demselben Grund wie in
  * `20260823120300_datenapi_zugriff.sql`: Erteilt wird je Tabelle genau das,
@@ -90,12 +90,12 @@ alter table pairing_attempts enable row level security;
 -- selbst in einen fremden Fall, bevor die eingeladene Person ihn überhaupt
 -- vorgelesen hat.
 --
--- **Nicht jedes Byte einer UUID ist zufällig.** Ein UUIDv4 trägt in Byte 6 die
+-- Nicht jedes Byte einer UUID ist zufällig. Ein UUIDv4 trägt in Byte 6 die
 -- Versionsnummer im oberen Halbbyte und in Byte 8 zwei feste Variantenbits;
 -- diese beiden liefern nur 16 bzw. 64 Werte statt 256. Wer sie mitnähme,
--- schränkte zwei der acht Stellen still auf die Hälfte des Alphabets ein — ein
+-- schränkte zwei der acht Stellen still auf die Hälfte des Alphabets ein. Das wäre ein
 -- Bit weniger, und niemand sähe es dem Code an. Genommen werden deshalb die
--- Bytes 0–5 und 9–10, die vollständig aus dem Zufallsgenerator stammen.
+-- Bytes 0 bis 5 sowie 9 und 10, die vollständig aus dem Zufallsgenerator stammen.
 --
 -- 256 mod 32 = 0, also verzerrt der Rest die Verteilung nicht. Bei einem
 -- Alphabet mit anderer Länge wäre genau das der Fehler, den niemand sieht.
@@ -122,10 +122,10 @@ end $fn$;
  * angemeldeten Person, und es gibt ein Profil, aus dem die einladende Seite
  * später einen Namen liest.
  *
- * **Warum ohne Profil kein Code entsteht.** §6 verlangt, dass die einladende
+ * Warum ohne Profil kein Code entsteht. §6 verlangt, dass die einladende
  * Person einen echten Namen sieht, bevor sie das Familiengeheimnis weitergibt.
  * Ein Code, dessen Einlösung "(kein Name)" zeigt, unterläuft genau diesen
- * Schritt — und zwar an der Stelle, an der niemand mehr Nein sagt, weil der
+ * Schritt, und zwar an der Stelle, an der niemand mehr Nein sagt, weil der
  * Anruf ja schon läuft. Also scheitert lieber das Ausgeben.
  */
 create function public.erzeuge_kopplungscode(
@@ -157,7 +157,7 @@ begin
 
   /*
    * Ältere, noch offene Codes derselben Person für denselben Zweck fallen weg.
-   * Sonst blieben mehrere gültige Codes gleichzeitig im Umlauf — der Zettel vom
+   * Sonst blieben mehrere gültige Codes gleichzeitig im Umlauf: Der Zettel vom
    * ersten Versuch öffnet dann noch eine Viertelstunde lang dieselbe Tür wie
    * der Code, den gerade jemand am Telefon vorliest.
    */
@@ -188,22 +188,22 @@ end $fn$;
 /*
  * Einen Kopplungscode einlösen (§6, Schritt 4).
  *
- * Gibt zurück, was die einladende Person **vor** der Bestätigung sehen muss:
+ * Gibt zurück, was die einladende Person vor der Bestätigung sehen muss:
  * Name, E-Mail und beide öffentlichen Schlüssel, aus denen ihre Seite denselben
  * Prüfcode rechnet wie die beitretende (§3.6).
  *
- * **Warum ein `status` statt einer Ausnahme.** Jeder Aufruf wird gezählt, und
- * eine Ausnahme rollt die Zählung mit zurück — ein Rate-Limit, das nur
+ * Warum ein `status` statt einer Ausnahme. Jeder Aufruf wird gezählt, und
+ * eine Ausnahme rollt die Zählung mit zurück: Ein Rate-Limit, das nur
  * erfolgreiche Versuche zählt, ist keines. Die Fehlgründe stehen deshalb im
  * Ergebnis:
  *
- *   `ok`         — eingelöst, die übrigen Spalten sind gefüllt
- *   `gesperrt`   — zu viele Versuche in den letzten 15 Minuten
- *   `unbekannt`  — diesen Code gibt es nicht
- *   `abgelaufen` — älter als 15 Minuten
- *   `verbraucht` — schon eingelöst
- *   `selbst`     — ein `join`-Code der eigenen Person
- *   `fremd`      — ein `device`-Code einer anderen Person
+ *   `ok`: eingelöst, die übrigen Spalten sind gefüllt
+ *   `gesperrt`: zu viele Versuche in den letzten 15 Minuten
+ *   `unbekannt`: diesen Code gibt es nicht
+ *   `abgelaufen`: älter als 15 Minuten
+ *   `verbraucht`: schon eingelöst
+ *   `selbst`: ein `join`-Code der eigenen Person
+ *   `fremd`: ein `device`-Code einer anderen Person
  *
  * Verbraucht wird ausschließlich bei `ok`. Ein Fehlgriff darf keinen fremden
  * Code verbrennen: Sonst genügte Raten, um eine Kopplung zu verhindern, und
@@ -274,7 +274,7 @@ begin
   end if;
 
   -- Ein `join`-Code holt eine andere Person in einen Fall. Wer ihn selbst
-  -- einlöst, hat sich vertan — und der Code soll die Viertelstunde überleben,
+  -- einlöst, hat sich vertan, und der Code soll die Viertelstunde überleben,
   -- in der die andere Seite noch auf ihn wartet.
   if v_zeile.purpose = 'join' and v_zeile.user_id = v_user then
     return query select 'selbst'::text, null::text, null::text, null::text, null::text,
@@ -282,9 +282,9 @@ begin
     return;
   end if;
 
-  -- Ein `device`-Code gibt ein zweites Gerät **derselben** Person frei. Eine
+  -- Ein `device`-Code gibt ein zweites Gerät derselben Person frei. Eine
   -- fremde Person, die ihn einlöst, bekäme `K_c` an ein Gerät gewrappt, das ihr
-  -- nicht gehört — und das ist kein Versehen, das man durchgehen lässt.
+  -- nicht gehört. Das ist kein Versehen, das man durchgehen lässt.
   if v_zeile.purpose = 'device' and v_zeile.user_id is distinct from v_user then
     return query select 'fremd'::text, null::text, null::text, null::text, null::text,
                         null::uuid, null::bytea, null::bytea;
@@ -308,13 +308,13 @@ end $fn$;
  *
  * Läuft, nachdem beide Seiten denselben Prüfcode gelesen haben. Sie legt für
  * `join` die Mitgliedschaft an und wrappt in jedem Fall `K_c` und `K_cat` an
- * das Gerät der anderen Seite — in einem Zug, aus demselben Grund wie
+ * das Gerät der anderen Seite, in einem Zug, aus demselben Grund wie
  * `lege_trauerfall_an` (§4): Eine Mitgliedschaft ohne Wraps ist ein Fall, den
  * die beitretende Person sieht und nicht lesen kann, und Wraps ohne
  * Mitgliedschaft sieht sie überhaupt nicht.
  *
- * **Mehrfach aufrufbar, und das ist gewollt.** Ein `device`-Code schaltet alle
- * Fälle frei, die das freigebende Gerät lesen kann (§4) — das sind mehrere
+ * Mehrfach aufrufbar, und das ist gewollt. Ein `device`-Code schaltet alle
+ * Fälle frei, die das freigebende Gerät lesen kann (§4): Das sind mehrere
  * Aufrufe mit demselben Code. Der Code ist dabei längst verbraucht; was den
  * Aufruf trägt, ist `redeemed_by` zusammen mit dem Fenster darunter.
  */
@@ -357,7 +357,7 @@ begin
    * ihn jemand einlöst. Was danach kommt, ist ein Telefonat: Prüfcode vorlesen,
    * vergleichen, bestätigen. Liefe dafür dieselbe Uhr weiter, scheiterte
    * ausgerechnet die Kopplung, bei der sich beide Seiten Zeit für den Abgleich
-   * genommen haben — und der Abgleich ist der Teil, den man nicht überspringen
+   * genommen haben, und der Abgleich ist der Teil, den man nicht überspringen
    * soll.
    */
   if v_zeile.redeemed_at + interval '15 minutes' <= now() then
@@ -377,7 +377,7 @@ begin
   -- Dieselbe Prüfung wie in `lege_trauerfall_an` und aus demselben Grund: Beide
   -- `kid` gehen in die Wrap-Signatur ein (§3.2). Bildete die Funktion sie
   -- selbst, führte eine abweichende Schreibweise im Client zu einer Signatur,
-  -- die das Empfängergerät nicht mehr verifizieren kann — und dann liegt der
+  -- die das Empfängergerät nicht mehr verifizieren kann. Dann liegt der
   -- Wrap da und ist nicht zu gebrauchen.
   select current_kid into v_kid from cases where id = p_fall_id;
 
@@ -395,8 +395,8 @@ begin
       on conflict do nothing;
   end if;
 
-  -- „Erster Schreiber gewinnt" (§3.6). Ein vorhandener Wrap wird nicht
-  -- überschrieben — das ist genau der Angriff, gegen den `key_wraps` kein
+  -- "Erster Schreiber gewinnt" (§3.6). Ein vorhandener Wrap wird nicht
+  -- überschrieben. Das ist genau der Angriff, gegen den `key_wraps` kein
   -- UPDATE kennt, und `security definer` darf ihn nicht durch die Hintertür
   -- wieder möglich machen.
   insert into key_wraps (case_id, kid, device_id, kem_ct, wrapped_key, wrapped_by, signature)

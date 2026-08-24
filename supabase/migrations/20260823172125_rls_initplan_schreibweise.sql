@@ -3,14 +3,14 @@
 -- `20260823171924` hat getan, was es sollte: `explain` zeigt für
 -- `select ... from device_keys` einen InitPlan, der Clerk-sub wird einmal je
 -- Abfrage gelesen und nicht einmal je Zeile. Der Advisor meldet trotzdem
--- weiter `auth_rls_initplan` — er sucht wörtlich nach `select auth.<name>()`,
+-- weiter `auth_rls_initplan`, weil er wörtlich nach `select auth.<name>()` sucht,
 -- und Postgres schreibt `(select auth.jwt() ->> 'sub')` beim Speichern zu
 -- `( SELECT (auth.jwt() ->> 'sub'))` um. Die Klammer zwischen `select` und
 -- `auth` reicht, damit das Muster nicht mehr passt.
 --
 -- Gewrappt wird deshalb nur noch der Funktionsaufruf, nicht der ganze
--- Ausdruck: `(select auth.jwt()) ->> 'sub'`. Der Plan bleibt derselbe — ein
--- InitPlan, ein Vergleich je Zeile —, aber die gespeicherte Form enthält jetzt
+-- Ausdruck: `(select auth.jwt()) ->> 'sub'`. Der Plan bleibt derselbe: ein
+-- InitPlan, ein Vergleich je Zeile. Die gespeicherte Form enthält jetzt aber
 -- `SELECT auth.jwt()` am Stück.
 --
 -- Ein Linter, der dauerhaft vier Warnungen zeigt, die niemand mehr liest, ist

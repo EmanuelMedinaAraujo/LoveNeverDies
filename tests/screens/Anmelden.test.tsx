@@ -6,7 +6,7 @@ import { rendereMitProvidern } from './harness.tsx'
 /**
  * Anmeldung (DESIGN.md §7, Onboarding-Schritt 1).
  *
- * Clerk rendert das Formular selbst — hier wird deshalb nur festgehalten, was
+ * Clerk rendert das Formular selbst. Hier wird deshalb nur festgehalten, was
  * dieser Screen dazu beiträgt: die eigene Ansprache und die Farben aus §12.
  * Das Doppel schreibt die übergebenen `appearance`-Variablen als JSON in die
  * Seite, damit der Test sie lesen kann, ohne Clerk zu laden.

@@ -87,9 +87,8 @@ function alsShareZeile(roh: RohShareZeile): VaultShareZeile {
  *
  * `functions.invoke` meldet bei jedem Nicht-2xx dasselbe ("non-2xx status
  * code") und legt die Antwort selbst nach `context`. Der Satz, der die Person
- * vor dem Bildschirm etwas angeht — "Dieses Gerät gehört nicht zur
- * angemeldeten Person", "Die Signatur dieser Freigabe stimmt nicht" — steht
- * ausschliesslich dort.
+ * vor dem Bildschirm etwas angeht, etwa dass das Gerät nicht zur angemeldeten
+ * Person gehört oder die Signatur nicht stimmt, steht ausschliesslich dort.
  */
 async function grundAusAntwort(fehler: unknown): Promise<string> {
   const kontext = (fehler as { context?: unknown }).context

@@ -8,9 +8,9 @@ import { defineConfig } from 'vitest/config'
  *
  * Zwei Projekte, weil zwei Sorten Tests zwei Umgebungen brauchen:
  *
- * - **node** — Kryptokern, PGlite und die Dienste. `jsdom` brächte hier nichts
+ * - node. Kryptokern, PGlite und die Dienste. `jsdom` brächte hier nichts
  *   und stünde zwischen den Tests und dem echten WebCrypto bzw. Postgres.
- * - **jsdom** — alles, was rendert. Nur dieses Projekt lädt den React-Plugin
+ * - jsdom. Alles, was rendert. Nur dieses Projekt lädt das React-Plugin
  *   für die JSX-Transformation und die Matcher aus `@testing-library/jest-dom`.
  *
  * Die Aufteilung läuft über die Dateiendung: `.test.ts` ist node, `.test.tsx`

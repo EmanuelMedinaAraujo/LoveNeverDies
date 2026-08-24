@@ -8,10 +8,10 @@ import { PGlite } from '@electric-sql/pglite'
  *
  * Die Migrationskette muss aus einer leeren Datenbank durchlaufen (§4), und die
  * RLS-Policies müssen das tun, was §4 von ihnen behauptet. Beides lässt sich
- * nicht behaupten, sondern nur ausführen — deshalb PGlite: dasselbe Postgres,
+ * nicht behaupten, sondern nur ausführen. Deshalb PGlite: dasselbe Postgres,
  * nur als WASM, ohne Docker und ohne Projekt in der Cloud.
  *
- * Was hier steht und **nicht** in den Migrationen: alles, was die Plattform
+ * Was hier steht und nicht in den Migrationen: alles, was die Plattform
  * mitbringt. Die Rollen `anon`, `authenticated` und `service_role`, das Schema
  * `auth` samt `auth.jwt()`, und die Default-Privilegien, mit denen Supabase
  * neue Tabellen in `public` ausstattet. Stünde es in einer Migration, liefe sie
@@ -25,7 +25,7 @@ const MIGRATIONEN = fileURLToPath(new URL('../../supabase/migrations', import.me
  *
  * `auth.jwt()` liest denselben GUC wie in der Cloud: PostgREST setzt
  * `request.jwt.claims` pro Anfrage aus dem verifizierten Token. Hier setzt ihn
- * {@link alsBenutzer} — die Signaturprüfung ist nicht Gegenstand dieser Tests,
+ * {@link alsBenutzer}. Die Signaturprüfung ist nicht Gegenstand dieser Tests,
  * die Policies dahinter schon.
  */
 const PLATTFORM = `
@@ -124,7 +124,7 @@ export function migrationsdateien(): string[] {
  * Eine leere Datenbank, durch die die gesamte Migrationskette gelaufen ist.
  *
  * Nacheinander und in Dateinamenreihenfolge, so wie `supabase db push` es tut.
- * Scheitert eine Datei, nennt der Fehler sie beim Namen — sonst stünde nur
+ * Scheitert eine Datei, nennt der Fehler sie beim Namen. Sonst stünde nur
  * irgendein SQL-Fehler ohne Ort da.
  */
 export async function frischeDatenbank(): Promise<PGlite> {
@@ -175,7 +175,7 @@ export function alsBenutzer(db: PGlite, sub: string): AlsBenutzer {
  * Legt einen Fall samt Mitgliedschaften an, an der RLS vorbei.
  *
  * Mit Katalogstand: Ein Trauerfall ohne einen wird von der Datenbank
- * abgewiesen (§8), und das soll er auch — eingefroren wird beim Übergang nach
+ * abgewiesen (§8), und das soll er auch. Eingefroren wird beim Übergang nach
  * `trauerfall`.
  */
 export async function fallMitMitgliedern(
@@ -252,7 +252,7 @@ let naechstesGeraet = 0
  * Legt einen Geräteschlüssel an, an der RLS vorbei.
  *
  * @param pkKem der öffentliche Schlüssel. Ohne Angabe ein frischer, denn
- * `(user_id, public_key)` ist eindeutig — zwei Testgeräte derselben Person
+ * `(user_id, public_key)` ist eindeutig: Zwei Testgeräte derselben Person
  * dürfen nicht denselben tragen.
  */
 export async function geraeteschluessel(

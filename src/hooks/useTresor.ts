@@ -113,8 +113,8 @@ export function useTresor(
    * Ein `useState`-Wert in der Abhängigkeitsliste des Effekts reisst den
    * Effekt in dem Moment ab, in dem er ihn setzt: React räumt die alte
    * Fassung auf, bevor die RPC antwortet, und alles, was danach am
-   * Aufräum-Flag hängt — die Fehlermeldung, das Zurücksetzen der Anzeige —
-   * fällt weg. Die Anzeige "Schlüssel werden neu verteilt…" bliebe für immer
+   * Aufräum-Flag hängt, die Fehlermeldung, das Zurücksetzen der Anzeige,
+   * fällt weg. Die Anzeige "Schlüssel werden neu verteilt..." bliebe für immer
    * stehen und ein Fehlschlag verschwände wortlos.
    */
   const laeuftRef = useRef(false)
@@ -133,7 +133,7 @@ export function useTresor(
    * Jede frisch geladene Fassung des Falls ist neue Auskunft und darf einen
    * neuen Versuch auslösen; `fall` bekommt seine Identität ausschließlich vom
    * Nachladen in `useCase`. Ein Fehlschlag lädt nicht nach und kommt deshalb
-   * nicht wieder — bis der Screen neu aufgeht oder jemand von Hand nachhilft.
+   * nicht wieder, bis der Screen neu aufgeht oder jemand von Hand nachhilft.
    *
    * Steht vor dem Re-Split-Effekt, weil React die Effekte in dieser
    * Reihenfolge ausführt und die Sperre gelöst sein muss, bevor er sie liest.

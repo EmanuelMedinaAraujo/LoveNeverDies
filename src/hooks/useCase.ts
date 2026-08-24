@@ -19,6 +19,7 @@ import { supabaseMitglieder } from '../core/db/supabaseMitglieder.ts'
 import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import { alsNachricht } from '../core/fehler.ts'
+import { tuerklingel } from '../core/sync/realtime.ts'
 import {
   ladeFaelle,
   legeTrauerfallAn as legeTrauerfallAnDienst,
@@ -68,6 +69,7 @@ export function useCase(): Falldaten {
     }
 
     let aktuell = true
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
 
     void (async () => {
       try {
@@ -103,6 +105,12 @@ export function useCase(): Falldaten {
             return
           }
           setzeErneuerung(false)
+          // Mandat verweigert / fremde Rotation läuft: Nach 3 Sekunden erneut versuchen / prüfen
+          retryTimer = setTimeout(() => {
+            if (aktuell) {
+              setzeRunde((vorher) => vorher + 1)
+            }
+          }, 3000)
         }
 
         if (aktuell) {
@@ -117,8 +125,24 @@ export function useCase(): Falldaten {
 
     return () => {
       aktuell = false
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer)
+      }
     }
   }, [identitaet, geraetId, runde, zugang])
+
+  const aktiverFallId =
+    ergebnis !== null && 'wert' in ergebnis && ergebnis.wert[0] !== undefined
+      ? ergebnis.wert[0].id
+      : null
+
+  useEffect(() => {
+    if (aktiverFallId === null) return
+    const client = zugang()
+    return tuerklingel(client, aktiverFallId, () => {
+      setzeRunde((vorher) => vorher + 1)
+    })
+  }, [aktiverFallId, zugang])
 
   const legeTrauerfallAn = useCallback(
     async (angaben: Trauerfallangaben) => {

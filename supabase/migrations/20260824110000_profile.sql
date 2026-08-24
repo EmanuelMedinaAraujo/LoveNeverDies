@@ -3,8 +3,8 @@
 -- Die eine Tabelle dieses Projekts, die personenbezogene Klartextdaten trägt,
 -- und §3.3 benennt sie ausdrücklich als "bewusste Verbreiterung". Der Grund
 -- steht in §6: Die einladende Person sieht Name und E-Mail der beitretenden,
--- **bevor** ein gemeinsamer Schlüssel existiert. Das ist nicht ein Nebeneffekt
--- des Ablaufs, sondern sein Zweck — ein öffentlicher Schlüssel ist keine
+-- bevor ein gemeinsamer Schlüssel existiert. Das ist nicht ein Nebeneffekt
+-- des Ablaufs, sondern sein Zweck: Ein öffentlicher Schlüssel ist keine
 -- Identität, und wer das Familiengeheimnis weitergibt, soll vorher einen
 -- echten Namen lesen.
 --
@@ -22,12 +22,12 @@ create table profiles (
 alter table profiles enable row level security;
 
 /*
- * Lesbar für die eigene Person und für alle, mit denen man einen Fall teilt —
- * dieselbe Regel wie bei `device_keys` (§4) und aus demselben Grund: Sonst wäre
+ * Lesbar für die eigene Person und für alle, mit denen man einen Fall teilt.
+ * Das ist dieselbe Regel wie bei `device_keys` (§4) und aus demselben Grund: Sonst wäre
  * die Tabelle ein Verzeichnis aller Namen und E-Mail-Adressen aller Personen.
  *
  * Die Kopplung aus §6 braucht mehr, nämlich den Namen einer Person, mit der man
- * noch **keinen** Fall teilt. Genau dafür ist `loese_kopplungscode_ein`
+ * noch keinen Fall teilt. Genau dafür ist `loese_kopplungscode_ein`
  * `security definer` (§4): Der Weg an dieser Policy vorbei führt über einen
  * Code, den die beitretende Person selbst erzeugt und selbst weitergegeben hat,
  * und über keinen anderen.

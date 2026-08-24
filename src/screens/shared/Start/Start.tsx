@@ -11,31 +11,32 @@ import { istZugewiesen, zuweisungText } from '../../../services/zuweisung.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
+import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../Meldungen/Meldungen.tsx'
 import stile from './Start.module.css'
 
 /**
- * Der Tab „Start": H1 „Meine Aufgaben" (DESIGN.md §7).
+ * Der Tab "Start": H1 "Meine Aufgaben" (DESIGN.md §7).
  *
- * Der Screen wird das, was er verspricht — hier steht nur, was der angemeldeten
- * Person zugewiesen ist. Alles andere steht in „Alle", einen Fingertipp weiter.
+ * Der Screen wird das, was er verspricht: Hier steht nur, was der angemeldeten
+ * Person zugewiesen ist. Alles andere steht in "Alle", einen Fingertipp weiter.
  *
- * **Gefiltert wird clientseitig, nach dem Entschlüsseln** (§3.3). Die Zuweisung
+ * Gefiltert wird clientseitig, nach dem Entschlüsseln (§3.3). Die Zuweisung
  * liegt im Payload; der Server kann nach ihr nicht filtern und soll es auch
  * nicht können. Das ist keine Einschränkung, mit der man leben muss, sondern
- * genau der Punkt: „Der Server weiß, wer zu wem gehört. Er weiß nichts über den
+ * genau der Punkt: "Der Server weiß, wer zu wem gehört. Er weiß nichts über den
  * Inhalt."
  *
- * **Unteraufgaben stehen mit in der Liste.** Eine Familie teilt eine Aufgabe
- * auf — die Bank ruft der eine an, zum Standesamt geht die andere —, und wessen
+ * Unteraufgaben stehen mit in der Liste. Eine Familie teilt eine Aufgabe
+ * auf: Die Bank ruft der eine an, zum Standesamt geht die andere, und wessen
  * Name an der Unteraufgabe steht, muss sie auf seinem Start-Screen finden. Sie
- * nennt dabei ihre Elternaufgabe, damit „Termin machen" nicht ohne Zusammenhang
+ * nennt dabei ihre Elternaufgabe, damit "Termin machen" nicht ohne Zusammenhang
  * dasteht.
  *
- * **Ein Screen statt zweier Bäume.** §7 sieht für „Start" getrennte Bäume unter
+ * Ein Screen statt zweier Bäume. §7 sieht für "Start" getrennte Bäume unter
  * `screens/senior` und `screens/advanced` vor; getrennt wird, sobald die
- * einfache Ansicht wirklich weniger zeigt — das ist der Slice #17. Bis dahin
- * tragen die Dichtetokens den Größenunterschied, wie in „Alle" und im
+ * einfache Ansicht wirklich weniger zeigt, das ist der Slice #17. Bis dahin
+ * tragen die Dichtetokens den Größenunterschied, wie in "Alle" und im
  * Aufgabendetail.
  */
 
@@ -64,7 +65,7 @@ type Eintrag = {
 }
 
 /**
- * Aus dem Baum die Aufgaben dieser Person — Wurzeln und Unteraufgaben (§7).
+ * Aus dem Baum die Aufgaben dieser Person: Wurzeln und Unteraufgaben (§7).
  *
  * Die Reihenfolge des Baums bleibt: die der Juristinnen (§8), und eine
  * Unteraufgabe steht direkt hinter ihrer Elternaufgabe, auch wenn nur eine von
@@ -99,7 +100,7 @@ function meineAufgaben(baum: Aufgabenknoten[], userId: string): Eintrag[] {
   return eintraege
 }
 
-/** Eine Zeile auf Start: abhaken, hineingehen — mehr nicht. */
+/** Eine Zeile auf Start: abhaken, hineingehen, mehr nicht. */
 function Startzeile({
   eintrag,
   lage,
@@ -117,7 +118,7 @@ function Startzeile({
   const { knoten, unter } = eintrag
   const { aufgabe, unteraufgaben, istBlatt, erledigt: giltAlsErledigt, blockiertVon } = knoten
 
-  // Wie in „Alle": Das Häkchen folgt dem Finger und gibt die Führung erst ab,
+  // Wie in "Alle": Das Häkchen folgt dem Finger und gibt die Führung erst ab,
   // wenn der Bestand nachgezogen hat (§5).
   const [erledigt, setzeErledigt] = useState(aufgabe.erledigt)
   const [zuletztGesehen, setzeZuletztGesehen] = useState(aufgabe.erledigt)
@@ -249,12 +250,12 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
 
       {eintraege.length === 0 ? (
         // Ein leerer Cache und ein laufender erster Abruf sind nicht dasselbe
-        // wie „Ihnen ist nichts zugewiesen" (§5).
+        // wie "Ihnen ist nichts zugewiesen" (§5).
         zustand.laedtNetz && zustand.aufgaben.length === 0 ? (
           <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
         ) : (
           /*
-            Ohne Link: „Alle Aufgaben" steht als Weg schon im Kopf dieses
+            Ohne Link: "Alle Aufgaben" steht als Weg schon im Kopf dieses
             Screens, und zwei gleich benannte Links auf derselben Seite sind für
             eine Vorlesestimme zwei Ziele mit demselben Namen (§7).
           */
@@ -298,7 +299,7 @@ function Kopf({ fall, freigabeNoetig }: { fall: Fall | null; freigabeNoetig: boo
       )}
 
       {/*
-        Die untere Leiste aus §7 — Start · Erbe · Alle · Profil — kommt mit den
+        Die untere Leiste aus §7 mit Start, Erbe, Alle und Profil kommt mit den
         Screens, die sie verbindet. Zwei davon gibt es, und die beiden Wege
         stehen so lange hier.
       */}
@@ -306,9 +307,9 @@ function Kopf({ fall, freigabeNoetig }: { fall: Fall | null; freigabeNoetig: boo
         <Link to="/erbe">Erbe & Tresor</Link> · <Link to="/alle">Alle Aufgaben</Link>
       </p>
       {/*
-        §3.6 verlangt den Badge „in der unteren Leiste“, sobald ein Gerät auf
+        §3.6 verlangt das Badge in der unteren Leiste, sobald ein Gerät auf
         seine Freigabe wartet. Die Leiste gibt es noch nicht (§7); bis dahin
-        steht er an dem einen Link, der nach Profil führt — dort geschieht die
+        steht es an dem einen Link, der nach Profil führt. Dort geschieht die
         Freigabe. Der Hinweis muss dort stehen, wo ohnehin hingesehen wird.
       */}
       <p className={stile.hinweis}>
@@ -325,13 +326,7 @@ export function Start() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
-        <Ladeanzeige
-          text={
-            zustand.status === 'schluessel-erneuerung'
-              ? 'Schlüssel werden erneuert…'
-              : 'Ihre Daten werden geladen…'
-          }
-        />
+        <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
   }
@@ -343,7 +338,7 @@ export function Start() {
 
   /*
    * Ein gesperrter Fall in der Liste heißt: Dieses Gerät wartet auf eine
-   * Freigabe (§3.6). Das ist lokal ablesbar — die Wraps fremder Geräte sind es
+   * Freigabe (§3.6). Das ist lokal ablesbar: Die Wraps fremder Geräte sind es
    * nicht (§4), also kann nur das wartende Gerät selbst den Hinweis zeigen.
    */
   const freigabeNoetig =

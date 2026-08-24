@@ -7,7 +7,7 @@ import { DUNKEL, HELL, type Farbpalette } from '../../src/ui/farben.ts'
  * Geprüft wird die Form, nicht der Geschmack: Beide Paletten tragen dieselben
  * Schlüssel, und jeder Wert ist eine Farbe, die ein Browser versteht. Fehlte
  * ein Schlüssel in einer der beiden, fiele das Anmeldeformular im
- * betroffenen Schema auf Clerks Vorgabefarbe zurück — sichtbar erst dort.
+ * betroffenen Schema auf Clerks Vorgabefarbe zurück, sichtbar erst dort.
  */
 
 const SCHLUESSEL: (keyof Farbpalette)[] = [

@@ -5,7 +5,7 @@ import { DUNKEL, HELL } from '../../src/ui/farben.ts'
 
 /**
  * jsdom kennt `matchMedia` nicht. Der Stub gibt zusätzlich einen Auslöser
- * heraus, mit dem der Test den Schemawechsel des Systems nachstellt — genau
+ * heraus, mit dem der Test den Schemawechsel des Systems nachstellt: genau
  * das, was der Hook mit `addEventListener('change')` abonniert.
  */
 function stubMatchMedia(startetDunkel: boolean) {

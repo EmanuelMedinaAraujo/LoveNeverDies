@@ -12,8 +12,8 @@ import type { Plugin } from 'vite'
  *
  * Eine bewusste Ausnahme steht in `style-src`: Clerks vorgefertigte
  * Anmeldekomponenten injizieren ihre Styles inline. Ein XSS-Vektor ist das
- * nicht im selben Sinn — ausfuehrbarer Code entsteht daraus nicht — aber es ist
- * eine Abweichung von §11.2 und gehoert benannt statt weggeschwiegen. Faellt
+ * nicht im selben Sinn, denn ausfuehrbarer Code entsteht daraus nicht. Es ist
+ * aber eine Abweichung von §11.2 und gehoert benannt statt weggeschwiegen. Faellt
  * die Anmeldung irgendwann auf eigenes Markup um, faellt die Ausnahme mit.
  */
 
@@ -34,7 +34,7 @@ export type CspOptions = {
   /**
    * Der tatsaechlich konfigurierte Supabase-Origin (samt `ws`/`wss`-Pendant),
    * etwa `http://127.0.0.1:54321` fuer den lokalen Stack aus den E2E-Tests.
-   * `SUPABASE_PLACEHOLDER` deckt nur `*.supabase.co` ab — ein selbst gehostetes
+   * `SUPABASE_PLACEHOLDER` deckt nur `*.supabase.co` ab. Ein selbst gehostetes
    * oder lokales Projekt braeuchte ohne diese Ergaenzung eine eigene CSP-Bypass,
    * um `connect-src` ueberhaupt zu erreichen.
    */
@@ -67,7 +67,7 @@ export function buildCsp({ extraHosts = [], supabaseHosts = [] }: CspOptions = {
 
   /*
    * `upgrade-insecure-requests` schreibt jede `http:`-Anfrage der Seite auf
-   * `https:` um — auch eine, die `connect-src` gerade ausdruecklich erlaubt
+   * `https:` um, auch solche, die `connect-src` gerade ausdruecklich erlaubt
    * hat. Ein bewusst unverschluesseltes Supabase (lokaler Stack, selbst
    * gehostet im eigenen Netz) waere damit nicht erreichbar, sondern liefe
    * gegen ein `https:`, das dort gar nicht existiert.
@@ -88,9 +88,10 @@ export function buildCsp({ extraHosts = [], supabaseHosts = [] }: CspOptions = {
  * Direktivenliste das <meta charset> hinter die 1024 Bytes, in denen der
  * Browser es laut Spezifikation finden muss.
  *
- * Ein `<meta http-equiv>` ist die schwaechere Variante — `frame-ancestors` und
- * `upgrade-insecure-requests` ignorieren Browser dort. Der Hoster soll denselben
- * Wert zusaetzlich als Header setzen; bis dahin greift wenigstens der Rest.
+ * Ein `<meta http-equiv>` ist die schwaechere Variante. Browser ignorieren
+ * `frame-ancestors` und `upgrade-insecure-requests` an dieser Stelle. Der Hoster
+ * soll denselben Wert zusaetzlich als Header setzen; bis dahin greift wenigstens
+ * der Rest.
  */
 export function cspPlugin(options: CspOptions = {}): Plugin {
   return {

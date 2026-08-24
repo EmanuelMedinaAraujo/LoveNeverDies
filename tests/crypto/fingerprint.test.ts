@@ -20,7 +20,7 @@ import {
  * Der mündliche Abgleich ist bei dieser Zielgruppe die verletzlichste Stelle
  * des Protokolls. Deckte der Fingerprint nur den KEM-Schlüssel, könnte ein
  * bösartiger Server den Signaturschlüssel austauschen, ohne dass der Abgleich
- * es bemerkt — deshalb steht hier zu **jedem** der beiden Schlüssel ein Test.
+ * es bemerkt. Deshalb steht hier zu jedem der beiden Schlüssel ein Test.
  */
 
 const hex = (b: Uint8Array) => Buffer.from(b).toString('hex')

@@ -39,7 +39,7 @@ afterAll(async () => {
 })
 
 beforeEach(async () => {
-  // Das Rate-Limit zählt über Testgrenzen hinweg, wenn niemand aufräumt — und
+  // Das Rate-Limit zählt über Testgrenzen hinweg, wenn niemand aufräumt, und
   // dann scheitert irgendwann ein Test an einem Versuch, den ein anderer
   // unternommen hat.
   await db.exec('delete from pairing_attempts')
@@ -102,7 +102,7 @@ function schliesseAb(
 }
 
 /**
- * Läuft als `authenticated`, aber ohne `sub` im Token — der Zustand, den ein
+ * Läuft als `authenticated`, aber ohne `sub` im Token: der Zustand, den ein
  * abgelaufenes oder fehlendes Clerk-Token erzeugt.
  */
 function ohneAnmeldung<T>(arbeit: (fuehreAus: FuehreAus) => Promise<T>): Promise<T> {
@@ -129,7 +129,7 @@ describe('erzeuge_kopplungscode (§6)', () => {
     /*
      * Ein UUIDv4 trägt in Byte 6 die Version und in Byte 8 zwei Variantenbits.
      * Wer sie in den Code nähme, bekäme an diesen Stellen nur die Hälfte des
-     * Alphabets — und das sieht man einem einzelnen Code nicht an. Hier fällt
+     * Alphabets, und das sieht man einem einzelnen Code nicht an. Hier fällt
      * es auf: Bei 200 Codes müsste jede Stelle deutlich mehr als 16 der 32
      * Zeichen zeigen.
      */
@@ -492,7 +492,7 @@ describe('schliesse_kopplung_ab (§6, §3.6)', () => {
 
     await alsBenutzer(db, BERND)((fuehreAus) => schliesseAb(fuehreAus, code, fallId, berndsGeraet))
 
-    // „Erster Schreiber gewinnt" (§3.6): Der Wrap von vorhin steht noch da.
+    // "Erster Schreiber gewinnt" (§3.6): Der Wrap von vorhin steht noch da.
     const { rows } = await db.query(
       `select encode(kem_ct, 'hex') as kem_ct from key_wraps
         where case_id = $1 and kid = 'case_test:1'`,
@@ -565,7 +565,7 @@ describe('on_membership_created (§3.5, §4)', () => {
   })
 
   it('lässt den Preparer selbst die Fahne nicht setzen', async () => {
-    // Der Preparer tritt seinem eigenen Vorsorgefall bei — etwa mit einem
+    // Der Preparer tritt seinem eigenen Vorsorgefall bei, etwa mit einem
     // zweiten Gerät. Seine Shares liegen bereits, wo sie hingehören.
     const fallId = await vorsorgefall(db, BERND)
     await db.query('update cases set vault_resplit_pending = false where id = $1', [fallId])

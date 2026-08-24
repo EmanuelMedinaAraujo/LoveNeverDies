@@ -7,8 +7,8 @@ import { alsHex, fehler, stubClient } from './supabaseAdapter'
  * Die drei Wege des Todesfall-Slices über Supabase (DESIGN.md §3.5, §4, §9).
  *
  * Eine Freigabe geht durch die Edge Function, der Übergang durch eine RPC, der
- * Gerätewechsel durch eine zweite. Geprüft wird hier die Übersetzung — was der
- * Adapter verlangt und was er aus einer Antwort macht —, nicht die Regeln
+ * Gerätewechsel durch eine zweite. Geprüft wird hier die Übersetzung, was der
+ * Adapter verlangt und was er aus einer Antwort macht, nicht die Regeln
  * dahinter: Die stehen in `tests/db/todesfall.test.ts` gegen echtes Postgres.
  */
 

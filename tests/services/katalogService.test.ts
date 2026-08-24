@@ -24,7 +24,7 @@ import type { Katalog } from '../../src/types/katalog'
  *   1. Ein Trauerfall enthält direkt nach der Anlage die Aufgaben der
  *      Juristinnen, verschlüsselt wie jedes andere Item.
  *   2. Zwei gleichzeitige Instanziierungen erzeugen identische IDs und keine
- *      Duplikate — auch dann, wenn die beiden Clients auf verschiedenen
+ *      Duplikate, auch dann, wenn die beiden Clients auf verschiedenen
  *      `K_c`-Generationen stehen.
  *   3. Rechtsgrundlage, Quelle und zuständige Stelle stehen im Item selbst und
  *      ändern sich nicht mehr, wenn der Katalog neu importiert wird.
@@ -80,7 +80,7 @@ const KCAT = erzeugeAesSchluessel()
  * Ein Mitglied: eigener Blick auf denselben Fall.
  *
  * `kid` und `kc` unterscheiden sich zwischen zwei Mitgliedern, sobald `K_c`
- * rotiert hat (§3.4) — `kcat` nie. Genau das ist die Konstruktion, die geprüft
+ * rotiert hat (§3.4), `kcat` nie. Genau das ist die Konstruktion, die geprüft
  * wird.
  */
 function mitglied(generation: number, kcat = KCAT): Katalogfall {
@@ -93,7 +93,7 @@ function mitglied(generation: number, kcat = KCAT): Katalogfall {
   }
 }
 
-/** `items` mit dem `on conflict do nothing` aus §8 — und einem Zähler. */
+/** `items` mit dem `on conflict do nothing` aus §8 und einem Zähler. */
 function itemtabelle() {
   const zeilen: InhaltZeile[] = []
   let versuche = 0
@@ -246,7 +246,7 @@ describe('instanziiereKatalog (§8)', () => {
   })
 
   it('belebt eine gelöschte Katalogaufgabe nicht wieder', async () => {
-    // Der Tombstone steht im Bestand (§5). Wer ihn als „fehlt" läse, legte die
+    // Der Tombstone steht im Bestand (§5). Wer ihn als "fehlt" läse, legte die
     // Aufgabe beim nächsten Start erneut an.
     const anna = mitglied(1)
     const { inhalte, zeilen } = itemtabelle()
@@ -354,7 +354,7 @@ describe('instanziiereKatalog (§8)', () => {
   })
 
   it('macht aus jeder Unteraufgabe eine eigene Zeile unter ihrer Elternaufgabe', async () => {
-    // §7: „Unteraufgaben sind eigene Zeilen, keine Liste im Payload der
+    // §7: "Unteraufgaben sind eigene Zeilen, keine Liste im Payload der
     // Elternaufgabe." Läge alles in einer Zeile, überlebte von zwei offline
     // gesetzten Häkchen genau eines.
     const anna = mitglied(1)

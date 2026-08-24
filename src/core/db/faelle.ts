@@ -75,6 +75,11 @@ export type NeuerVorsorgefall = {
   vaultWrappedKey: Uint8Array
 }
 
+export type RotierteItemZeile = {
+  id: string
+  wrappedDek: Uint8Array
+}
+
 export type FaelleTabelle = {
   /** Legt Fall, Mitgliedschaft und beide Wraps in einem Zug an. */
   legeTrauerfallAn(neu: NeuerTrauerfall): Promise<void>
@@ -114,5 +119,6 @@ export type FaelleTabelle = {
     newKid: string,
     geraeteId: string,
     payload?: Uint8Array,
+    items?: RotierteItemZeile[],
   ): Promise<boolean>
 }

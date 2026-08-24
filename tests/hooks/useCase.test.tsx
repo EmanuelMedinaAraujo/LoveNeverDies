@@ -6,7 +6,7 @@ import type { Fall } from '../../src/services/fallService.ts'
 /**
  * Der Fall, in dem die angemeldete Person gerade steckt (DESIGN.md §2, §3.6).
  *
- * `fallService` ist ersetzt — was er entschlüsselt und wann er einen Fall
+ * `fallService` ist ersetzt. Was er entschlüsselt und wann er einen Fall
  * sperrt, steht in `tests/services/fallService.test.ts`. Hier geht es um die
  * Zustandsführung des Hooks: Er lädt erst, wenn das Gerät angemeldet ist, und
  * er lädt nach dem Anlegen vom Server neu statt lokal anzuhängen.
@@ -42,6 +42,7 @@ vi.mock('../../src/core/db/supabaseInhalte.ts', () => ({ supabaseInhalte: () => 
 vi.mock('../../src/core/db/supabaseMitglieder.ts', () => ({ supabaseMitglieder: () => ({}) }))
 vi.mock('../../src/core/db/supabaseTresor.ts', () => ({ supabaseTresor: () => ({}) }))
 vi.mock('../../src/core/db/idb.ts', () => ({ idbCiphertextcache: () => ({}) }))
+vi.mock('../../src/core/sync/realtime.ts', () => ({ tuerklingel: () => () => {} }))
 
 // Siehe useGeraete.test.tsx: Der Zugang muss stabil bleiben, sonst dreht sich
 // der Effekt endlos.
@@ -146,8 +147,8 @@ describe('useCase', () => {
 
   it('laedt nach dem Anlegen vom Server neu, statt lokal anzuhaengen', async () => {
     /*
-     * Was `ladeFaelle` liefert, hat den vollen Weg aus §3.6 durchlaufen —
-     * Wrap lesen, Signatur pruefen, entpacken — und genau das soll auch fuer
+     * Was `ladeFaelle` liefert, hat den vollen Weg aus §3.6 durchlaufen,
+     * Wrap lesen, Signatur pruefen, entpacken, und genau das soll auch fuer
      * den eigenen, gerade erst angelegten Fall gelten.
      */
     const { result } = renderHook(() => useCase())
@@ -232,6 +233,40 @@ describe('useCase', () => {
     await waitFor(() =>
       expect(result.current.zustand.status).toBe('schluessel-erneuerung'),
     )
+  })
+
+  it('wiederholt nach mandat_verweigert den Abruf und wechselt nach erfolgreicher Fremdrotation auf bereit', async () => {
+    vi.useFakeTimers()
+    const rotierenderFall: Fall = {
+      ...LESBAR,
+      rotationPending: true,
+    }
+    const fertigRotierterFall: Fall = {
+      ...LESBAR,
+      keyGeneration: 2,
+      rotationPending: false,
+    }
+
+    ladeFaelle.mockResolvedValueOnce([rotierenderFall])
+    rotiereFallschluesselDienst.mockResolvedValueOnce({
+      status: 'mandat_verweigert',
+    })
+    ladeFaelle.mockResolvedValueOnce([fertigRotierterFall])
+
+    const { result } = renderHook(() => useCase())
+
+    await vi.waitFor(() =>
+      expect(result.current.zustand.status).toBe('schluessel-erneuerung'),
+    )
+
+    // 3 Sekunden verstreichen lassen -> Retry-Timer triggert neue Runde
+    await vi.advanceTimersByTimeAsync(3000)
+
+    await vi.waitFor(() =>
+      expect(result.current.zustand.status).toBe('bereit'),
+    )
+    expect(result.current.zustand).toMatchObject({ aktiver: fertigRotierterFall })
+    vi.useRealTimers()
   })
 })
 

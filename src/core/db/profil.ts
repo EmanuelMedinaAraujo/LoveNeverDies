@@ -26,7 +26,7 @@ export type ProfilTabelle = {
    * Hash, benennt die App die Person, von der er kam, statt nur "geht nicht"
    * zu melden. Kennungen stehen in `vault_releases`, Namen in `profiles`.
    *
-   * @returns eine Zuordnung, die nur enthält, was die RLS hergibt — lesbar
+   * @returns eine Zuordnung, die nur enthält, was die RLS hergibt. Lesbar
    * sind Profile der eigenen Person und derer, mit denen man einen Fall teilt.
    */
   namen(userIds: string[]): Promise<Map<string, string>>

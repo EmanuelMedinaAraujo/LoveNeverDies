@@ -20,7 +20,7 @@ import {
  * Sie läuft bei jedem Start, also muss sie idempotent sein, und sie schickt
  * öffentliche Schlüssel an den Server, also darf sie nichts anderes schicken.
  * Beides wird hier gegen eine Tabelle geprüft, die sich merkt, was ihr
- * übergeben wurde — die SQL-Seite derselben Zusage steht in
+ * übergeben wurde: Die SQL-Seite derselben Zusage steht in
  * `tests/db/geraeteschluessel.test.ts`.
  */
 
@@ -64,7 +64,7 @@ function speicherTabelle() {
 
       // `(user_id, public_key)` ist eindeutig: Der zweite Schreiber bekommt
       // nichts zurück, so wie `on conflict do nothing`. Die Prüfung steht
-      // bewusst ohne `await` davor — der Index in Postgres ist atomar, und ein
+      // bewusst ohne `await` davor: Der Index in Postgres ist atomar, und ein
       // Double, das dazwischen die Kontrolle abgibt, verspräche weniger als die
       // Datenbank hält.
       const gesucht = neu.pkKem.join(',')
@@ -173,7 +173,7 @@ describe('Registrierung', () => {
   it('nimmt hin, dass ein zweiter Tab schneller war', async () => {
     // Beide Tabs finden nichts, beide legen an, einer verliert am eindeutigen
     // Index. Der Verlierer darf nicht scheitern, sondern muss die Zeile des
-    // Gewinners bekommen — es ist dieselbe Identität.
+    // Gewinners bekommen, es ist dieselbe Identität.
     const { tabelle, zeilen } = speicherTabelle()
 
     const [links, rechts] = await Promise.all([

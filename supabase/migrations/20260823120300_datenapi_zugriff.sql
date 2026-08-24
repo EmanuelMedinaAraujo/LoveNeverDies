@@ -1,7 +1,7 @@
 -- Zugriff auf die Daten-API (DESIGN.md §4)
 --
 -- RLS entscheidet, welche *Zeilen* jemand sieht. Ob die Tabelle für die Rolle
--- überhaupt existiert, entscheidet Postgres davor — und darauf hat RLS keinen
+-- überhaupt existiert, entscheidet Postgres davor. Darauf hat RLS keinen
 -- Einfluss. Neue Supabase-Projekte statten `public` nicht mehr mit
 -- Lese- und Schreibrechten für `anon` und `authenticated` aus; ohne die Rechte
 -- hier antwortet PostgREST mit `permission denied for table`, egal wie richtig
@@ -21,7 +21,7 @@ grant select on memberships to authenticated;
 
 -- Die beiden Prüffunktionen stehen in `public` und sind damit über
 -- `/rest/v1/rpc/...` erreichbar. Postgres gibt neuen Funktionen `execute` an
--- `public`, und `anon` erbt das — auch wenn die Funktionen dort nichts als
+-- `public`, und `anon` erbt das, auch wenn die Funktionen dort nichts als
 -- `false` liefern können. Entzogen und gezielt neu erteilt: Die Policies rufen
 -- sie als `authenticated` auf, und nur die Rolle braucht sie.
 revoke execute on function public.is_member(uuid) from public;

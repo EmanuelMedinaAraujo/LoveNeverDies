@@ -9,11 +9,11 @@ import { authWert } from '../screens/harness.tsx'
  * Der Anmeldezustand und das Routing aus DESIGN.md §7.
  *
  * Alle Screens sind ersetzt: Was sie zeigen, steht in ihren eigenen Tests. Hier
- * geht es um die Weiche davor — angemeldet oder nicht —, um die Routen, und
+ * geht es um die Weiche davor, ob angemeldet oder nicht, um die Routen und
  * darum, dass §7 nach der Anmeldung `navigator.storage.persist()` still
  * mitlaufen lässt.
  *
- * **Die Fallsperre steht in `Start.test.tsx`.** Sie gehört zu dem Screen, der
+ * Die Fallsperre steht in `Start.test.tsx`. Sie gehört zu dem Screen, der
  * sie zeigt: Ohne Fall ist die App gesperrt, und das ist der Startbildschirm
  * mit seiner Fallweiche (§7).
  */

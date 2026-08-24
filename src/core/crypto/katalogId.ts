@@ -8,7 +8,7 @@
  * Zwei Mitglieder können gleichzeitig instanziieren. Koordinieren kann der
  * Server das nicht. Die Aufgaben sind Ende-zu-Ende-verschlüsselt, er sieht nur
  * Ciphertext. Statt eines Mandats mit Ablauf und Aufräumlogik rechnen alle
- * dieselbe ID aus, und ein `insert … on conflict do nothing` macht aus dem
+ * dieselbe ID aus, und ein `insert ... on conflict do nothing` macht aus dem
  * zweiten Anlauf einen Nulleffekt.
  *
  * Warum der HMAC und nicht `UUIDv5(fall_id, catalog_task_id)`: Das schlichte

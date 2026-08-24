@@ -77,7 +77,7 @@ describe('entpackeSchluessel', () => {
      * unlesbar, ohne dass irgendetwas kaputt aussaehe.
      *
      * Von Hand zusammengesetzt statt ueber `wrappeSchluessel`: Der prueft die
-     * Laenge schon auf dem Hinweg. Genau das ist der Punkt — diese Zeile kann
+     * Laenge schon auf dem Hinweg. Genau das ist der Punkt: Diese Zeile kann
      * nur von einer fremden, boesartigen oder kaputten Gegenstelle kommen, und
      * gegen die verteidigt die Pruefung beim Entpacken.
      */
@@ -115,8 +115,8 @@ describe('entpackeSchluessel', () => {
   it('macht aus einer unlesbaren Signatur ein "verifiziert nicht"', async () => {
     /*
      * Ein Signatur-Envelope aus einer fremden Version oder eine abgeschnittene
-     * Spalte: beides ist „verifiziert nicht" und darf nicht als fremde
-     * Ausnahme an einer Stelle landen, die nur „gueltig oder nicht" wissen
+     * Spalte: Beides ist "verifiziert nicht" und darf nicht als fremde
+     * Ausnahme an einer Stelle landen, die nur "gueltig oder nicht" wissen
      * will.
      */
     const empfaenger = geraet()

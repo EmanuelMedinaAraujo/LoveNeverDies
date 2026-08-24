@@ -6,13 +6,13 @@
 -- das Gegenteil: Der Wert hängt von keiner Zeile ab, also wird er als InitPlan
 -- einmal berechnet und danach nur noch verglichen.
 --
--- Das ist derselbe Ausdruck und dieselbe Entscheidung — wer was sehen und
+-- Das ist derselbe Ausdruck und dieselbe Entscheidung: Wer was sehen und
 -- ändern darf, ändert sich mit dieser Migration nicht. Nur der Aufwand ändert
 -- sich, und zwar von "einmal je Zeile" auf "einmal".
 --
 -- `teilt_fall(user_id)` bleibt unangetastet: Sein Argument ist eine Spalte, es
 -- hängt also wirklich von der Zeile ab und lässt sich nicht herausziehen.
--- Dass es trotzdem selten läuft, liegt an der Reihenfolge — `or` prüft die
+-- Dass es trotzdem selten läuft, liegt an der Reihenfolge: `or` prüft die
 -- linke Seite zuerst, und für die eigenen Geräte trifft sie zu.
 --
 -- `alter policy` statt `drop`/`create`: Zwischen den beiden Anweisungen gäbe

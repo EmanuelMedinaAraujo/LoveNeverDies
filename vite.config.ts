@@ -8,9 +8,9 @@ export default defineConfig(({ mode }) => {
    * `loadEnv` statt `process.env`: Vite lädt diese Datei, bevor es die
    * `.env`-Dateien liest, und kopiert `VITE_`-Variablen nie nach `process.env`.
    * Ohne den Aufruf bliebe `VITE_CLERK_FRONTEND_API` aus `.env.local`
-   * unsichtbar und die CSP ohne den Host — eine Clerk-Produktionsinstanz, die
-   * ihr ClerkJS von `clerk.<domain>` ausliefert, wäre blockiert. Erst nach dem
-   * Deployen, ohne Warnung beim Bauen.
+   * unsichtbar und die CSP ohne den Host. Eine Clerk-Produktionsinstanz, die
+   * ihr ClerkJS von `clerk.<domain>` ausliefert, wäre dann erst nach dem Deployen
+   * ohne Vorwarnung beim Bauen blockiert.
    */
   const env = loadEnv(mode, process.cwd(), 'VITE_')
 

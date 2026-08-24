@@ -7,16 +7,16 @@ import { arbeiteAb, idbWarteschlange, type Mutation } from '../../src/core/sync/
 /**
  * Nahtstelle: die Offline-Queue und ihr Replay (DESIGN.md §5, §10).
  *
- * §5: „Jede Mutation wird optimistisch lokal angewandt und angehängt
- * (`{op, itemId, payload, ts}`), beim Reconnect abgearbeitet." Und: „Abgelehnte
+ * §5: "Jede Mutation wird optimistisch lokal angewandt und angehängt
+ * (`{op, itemId, payload, ts}`), beim Reconnect abgearbeitet." Und: "Abgelehnte
  * Mutationen werden nie stillschweigend verworfen."
  *
  * Daraus folgen drei Zusagen, die dieser Test einzeln festhält:
  *
- *   1. **Reihenfolge.** Was zuerst angehängt wurde, geht zuerst hinaus.
- *   2. **Ein Urteil beendet die Mutation.** Der Server hat Nein gesagt: aus der
- *      Queue heraus, als Mitteilung zurück — aber der Rest läuft weiter.
- *   3. **Ein Netzproblem beendet gar nichts.** Die Mutation bleibt stehen, und
+ *   1. Reihenfolge. Was zuerst angehängt wurde, geht zuerst hinaus.
+ *   2. Ein Urteil beendet die Mutation. Der Server hat Nein gesagt: aus der
+ *      Queue heraus, als Mitteilung zurück, aber der Rest läuft weiter.
+ *   3. Ein Netzproblem beendet gar nichts. Die Mutation bleibt stehen, und
  *      mit ihr alles dahinter: Sonst käme ein Häkchen vor der Aufgabe an, an
  *      der es hängt.
  */
@@ -126,7 +126,7 @@ describe('Warteschlange', () => {
 
   it('legt die Bytes ab, wie sie kamen', async () => {
     // Die Mutation trägt Ciphertext. Sie liegt neben dem Cache und untersteht
-    // derselben Zusage aus §5 — verschlüsselt wird vor dem Anhängen.
+    // derselben Zusage aus §5: Verschlüsselt wird vor dem Anhängen.
     const warteschlange = idbWarteschlange()
     await warteschlange.haengeAn(ANLEGEN)
 
@@ -181,8 +181,8 @@ describe('arbeiteAb', () => {
 
   it('nimmt eine abgelehnte Mutation aus der Queue und meldet sie', async () => {
     /*
-     * Der Testfall aus §10: „Ein Offline-Queue-Replay-Test inklusive
-     * abgelehnter Mutation." Der Server hat geurteilt — wiederholen brächte
+     * Der Testfall aus §10: "Ein Offline-Queue-Replay-Test inklusive
+     * abgelehnter Mutation." Der Server hat geurteilt: Wiederholen brächte
      * dasselbe Ergebnis, also verlässt die Mutation die Queue. Aber sie
      * verschwindet nicht: §5 verlangt, dass sie mit ihrem Inhalt als Mitteilung
      * erscheint, und dafür kommt sie hier vollständig zurück.
@@ -210,9 +210,9 @@ describe('arbeiteAb', () => {
     /*
      * Die Reihenfolge ist die halbe Zusage. Liefe die Queue nach einem
      * gescheiterten `lege` einfach weiter, träfe das `schreibePayload` auf ein
-     * Item, das es auf dem Server nicht gibt — der Server lehnte ab, und eine
+     * Item, das es auf dem Server nicht gibt: Der Server lehnte ab, und eine
      * Aufgabe, die nur wegen einer schlechten Verbindung noch nicht da war,
-     * käme als „konnte nicht gespeichert werden" zurück.
+     * käme als "konnte nicht gespeichert werden" zurück.
      */
     const warteschlange = idbWarteschlange()
     await warteschlange.haengeAn(ANLEGEN)

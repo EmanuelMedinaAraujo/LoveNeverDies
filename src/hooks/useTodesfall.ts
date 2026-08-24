@@ -7,13 +7,13 @@
  *
  * Zwei Dinge unterscheiden diesen Hook von allem anderen in dieser App:
  *
- * **Er geht nicht durch die Offline-Queue** (§5). Freigabe und `open_vault`
+ * Er geht nicht durch die Offline-Queue (§5). Freigabe und `open_vault`
  * erfordern eine Verbindung. Eine versehentlich abgeschickte Todesbestätigung
  * nimmt niemand zurück; eine Fehlermeldung im Moment des Tippens ist das
  * kleinere Übel. Deshalb steht die Prüfung auf eine Verbindung hier ganz vorn
  * und nicht im Fehlerpfad.
  *
- * **Er entscheidet nicht am Zähler.** Der Zähler zeigt an, mehr nicht (§3.5).
+ * Er entscheidet nicht am Zähler. Der Zähler zeigt an, mehr nicht (§3.5).
  * Ob der Übergang stattfindet, entscheidet der Nachweis über `K_v`, und der
  * entsteht erst beim Zusammensetzen.
  */
@@ -194,7 +194,7 @@ export function useTodesfall(fall: LesbarerFall, aktualisiereFall: () => void): 
      * Auch die Vorprüfungen stehen im `try`: Ein Wurf davor käme nie bei
      * `setzeFehler` an, und der Screen fängt die Ausnahme ab, weil die Meldung
      * aus dem Zustand kommt. Offline zu sein sähe dann aus wie eine
-     * Schaltfläche, die nichts tut — genau der stille Fehlschlag, den §5 hier
+     * Schaltfläche, die nichts tut, genau der stille Fehlschlag, den §5 hier
      * ausschliesst.
      */
     try {
@@ -253,7 +253,7 @@ export function useTodesfall(fall: LesbarerFall, aktualisiereFall: () => void): 
 
         /*
          * Zuerst das Datum, dann das Netz: Ein Tippfehler im Sterbedatum soll
-         * auffallen, bevor irgendeine Freigabe entschlüsselt wird — und nicht
+         * auffallen, bevor irgendeine Freigabe entschlüsselt wird, und nicht
          * erst, wenn `K_v` schon im Speicher liegt.
          */
         const payload = await fallPayloadMitSterbedatum(fall.kc, fall.personName, sterbedatum)
@@ -268,7 +268,7 @@ export function useTodesfall(fall: LesbarerFall, aktualisiereFall: () => void): 
           /*
            * Der volle Bestand, frisch und nicht aus dem Sync-Stream: Ein
            * Delta, das gerade erst begonnen hat, kennt womöglich nicht alle
-           * Tresor-Items — und was hier nicht umgewrappt wird, liegt danach
+           * Tresor-Items. Was hier nicht umgewrappt wird, liegt danach
            * unter einem `K_v`, den niemand mehr hat. `seq > 0` ist die
            * vollständige Resynchronisation aus §5 und kein Sonderweg; sie
            * läuft genau einmal, beim Übergang.
@@ -287,15 +287,15 @@ export function useTodesfall(fall: LesbarerFall, aktualisiereFall: () => void): 
         })
 
         /*
-         * Die Tresor-DEKs wechseln **vor** dem Statuswechsel von `K_v` auf
+         * Die Tresor-DEKs wechseln vor dem Statuswechsel von `K_v` auf
          * `K_c`, und das ist die eine Stelle, an der die Reihenfolge aus §3.5
          * bewusst umgedreht ist.
          *
          * Der Grund ist die Unumkehrbarkeit: `open_vault` ist der einzige
          * Schritt, den niemand zurücknimmt. Bricht danach die Verbindung ab,
          * bevor alle DEKs umgewrappt sind, liegen die übrigen für immer unter
-         * einem `K_v`, den nur noch dieser eine Aufruf im Speicher hatte —
-         * die vorsorgende Person ist tot, `vault_key_wraps` gehört ihren
+         * einem `K_v`, den nur noch dieser eine Aufruf im Speicher hatte.
+         * Die vorsorgende Person ist tot, `vault_key_wraps` gehört ihren
          * Geräten. Vorher gescheitert heisst dagegen: Der Fall steht
          * unverändert in der Vorsorge, die Freigaben stehen noch, und der
          * nächste Versuch setzt `K_v` erneut zusammen und macht weiter.

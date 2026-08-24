@@ -44,7 +44,7 @@ export default tseslint.config(
       'coverage/**',
       'node_modules/**',
       // `supabase start` erzeugt hier eine Edge-Runtime-Kopie fuer den lokalen
-      // Stack (supabase/README.md) — kein Quellcode, schon in .gitignore.
+      // Stack (supabase/README.md). Das ist kein Quellcode und bereits in .gitignore.
       'supabase/.temp/**',
       'supabase/.branches/**',
       'playwright-report/**',

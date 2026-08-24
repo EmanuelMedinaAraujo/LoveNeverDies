@@ -30,7 +30,7 @@ describe('buildCsp', () => {
 
   it('laesst upgrade-insecure-requests weg, sobald ein Ziel bewusst unverschluesselt ist', () => {
     // Sonst schriebe die Direktive genau die http-Anfrage auf https um, die
-    // `connect-src` gerade erst erlaubt hat — gegen ein https, das dort nicht
+    // `connect-src` gerade erst erlaubt hat, gegen ein https, das dort nicht
     // existiert (vite.config.ts, lokaler Supabase-Stack).
     const csp = buildCsp({ supabaseHosts: ['http://127.0.0.1:54321', 'ws://127.0.0.1:54321'] })
 

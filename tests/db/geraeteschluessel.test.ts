@@ -11,7 +11,7 @@ import {
 /**
  * Nahtstelle: `device_keys` und seine RLS (DESIGN.md §4).
  *
- * Die Tabelle trägt ausschließlich öffentliche Schlüssel — trotzdem entscheidet
+ * Die Tabelle trägt ausschließlich öffentliche Schlüssel, trotzdem entscheidet
  * ihre RLS über die Sicherheit des Protokolls. Wer fremde Zeilen ändern könnte,
  * tauschte den Schlüssel aus, an den andere `K_c` wrappen, und läse ab dann mit.
  * Der Prüfcode aus §3.6 ist genau deshalb da, aber er wird nur beim Koppeln
@@ -73,7 +73,7 @@ describe('Die Migrationskette', () => {
 
   it('lässt kein zweites Gerät mit demselben öffentlichen Schlüssel zu', async () => {
     // Ohne diese Zusage legte ein Neuladen, das zweimal gleichzeitig
-    // registriert, zwei Zeilen für dasselbe Gerät an — und `key_wraps` zeigte
+    // registriert, zwei Zeilen für dasselbe Gerät an, und `key_wraps` zeigte
     // ab dann auf die falsche.
     const pkKem = new Uint8Array(8).fill(0xd0)
     await geraeteschluessel(db, 'user_doppelt', 'Erster Versuch', pkKem)
@@ -148,7 +148,7 @@ describe('RLS auf device_keys (§4)', () => {
 
   it('lässt einen fremden Datensatz weder ändern noch löschen', async () => {
     // Der eigentliche Angriff: Bernds Gerät steht in Annas Fall, also sieht
-    // Anna es. Sehen darf sie es, austauschen nicht — sonst wrappten die
+    // Anna es. Sehen darf sie es, austauschen nicht. Sonst wrappten die
     // anderen ihren Fallschlüssel an einen Schlüssel, den Anna kontrolliert.
     await fallMitMitgliedern(db, ANNA, BERND)
     const pkKem = new Uint8Array(8).fill(0xbe)

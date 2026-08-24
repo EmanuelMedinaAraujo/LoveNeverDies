@@ -252,4 +252,131 @@ describe('Schlüsselrotation und Fall verlassen (§3.4, §4, §7)', () => {
     })
     expect(commitClara).toBe(false)
   })
+
+  it('weist commit_rotation ab, wenn rotation_pending false ist oder kein Mandat vorliegt', async () => {
+    const fallId = await fallMitMitgliedern(db, ANNA, BERND)
+    const geraetBernd = await geraeteschluessel(db, BERND, 'Gerät Bernd')
+
+    // Ohne dass Anna den Fall verlassen hat (rotation_pending = false), scheitert commit_rotation
+    const commitOhnePending = await alsBenutzer(db, BERND)(async (fuehreAus) => {
+      const res = await fuehreAus(
+        'select commit_rotation($1, 1, $2, $3, $4) as commit_rotation',
+        [fallId, `case_${fallId}:2`, geraetBernd, new Uint8Array([0x99])],
+      )
+      const rows = res.rows as { commit_rotation: boolean }[]
+      return rows[0]?.commit_rotation
+    })
+    expect(commitOhnePending).toBe(false)
+
+    // Austritt Anna
+    await alsBenutzer(db, ANNA)(async (fuehreAus) => {
+      await fuehreAus('delete from memberships where case_id = $1', [fallId])
+    })
+
+    // Commit ohne vorheriges claim_rotation scheitert ebenfalls
+    const commitOhneClaim = await alsBenutzer(db, BERND)(async (fuehreAus) => {
+      const res = await fuehreAus(
+        'select commit_rotation($1, 1, $2, $3, $4) as commit_rotation',
+        [fallId, `case_${fallId}:2`, geraetBernd, new Uint8Array([0x99])],
+      )
+      const rows = res.rows as { commit_rotation: boolean }[]
+      return rows[0]?.commit_rotation
+    })
+    expect(commitOhneClaim).toBe(false)
+  })
+
+  it('aktualisiert Items atomar in commit_rotation (p_items)', async () => {
+    const fallId = await fallMitMitgliedern(db, ANNA, BERND)
+    const geraetBernd = await geraeteschluessel(db, BERND, 'Gerät Bernd')
+
+    const itemId1 = crypto.randomUUID()
+    const itemId2 = crypto.randomUUID()
+
+    await db.query(
+      `insert into items (id, case_id, kind, kid, wrapped_dek, payload)
+       values ($1, $2, 'item', 'case_test:1', '\\x11'::bytea, '\\x22'::bytea),
+              ($3, $2, 'item', 'case_test:1', '\\x33'::bytea, '\\x44'::bytea)`,
+      [itemId1, fallId, itemId2],
+    )
+
+    await alsBenutzer(db, ANNA)(async (fuehreAus) => {
+      await fuehreAus('delete from memberships where case_id = $1', [fallId])
+    })
+
+    await alsBenutzer(db, BERND)(async (fuehreAus) => {
+      await fuehreAus('select claim_rotation($1, 1, $2)', [fallId, geraetBernd])
+    })
+
+    const neuerKid = `case_${fallId}:2`
+    const itemsPayload = JSON.stringify([
+      { id: itemId1, wrapped_dek: '\\xaa11' },
+      { id: itemId2, wrapped_dek: '\\xbb22' },
+    ])
+
+    const commitBernd = await alsBenutzer(db, BERND)(async (fuehreAus) => {
+      const res = await fuehreAus(
+        'select commit_rotation($1, 1, $2, $3, $4, $5::jsonb) as commit_rotation',
+        [fallId, neuerKid, geraetBernd, new Uint8Array([0x99]), itemsPayload],
+      )
+      const rows = res.rows as { commit_rotation: boolean }[]
+      return rows[0]?.commit_rotation
+    })
+    expect(commitBernd).toBe(true)
+
+    const { rows: itemZeilen } = await db.query<{ id: string; kid: string; wrapped_dek: Uint8Array }>(
+      'select id, kid, wrapped_dek from items where case_id = $1 order by id',
+      [fallId],
+    )
+
+    const z1 = itemZeilen.find((i) => i.id === itemId1)!
+    const z2 = itemZeilen.find((i) => i.id === itemId2)!
+
+    expect(z1.kid).toBe(neuerKid)
+    expect(Array.from(z1.wrapped_dek)).toEqual([0xaa, 0x11])
+    expect(z2.kid).toBe(neuerKid)
+    expect(Array.from(z2.wrapped_dek)).toEqual([0xbb, 0x22])
+  })
+
+  it('behält rotation_pending = true, wenn während des Mandats ein weiteres Mitglied austritt', async () => {
+    const fallId = await fallMitMitgliedern(db, ANNA, BERND, CLARA)
+    const geraetBernd = await geraeteschluessel(db, BERND, 'Gerät Bernd')
+
+    // 1. Anna tritt aus -> rotation_pending = true, rotation_request_seq = 1
+    await alsBenutzer(db, ANNA)(async (fuehreAus) => {
+      await fuehreAus('delete from memberships where case_id = $1', [fallId])
+    })
+
+    // 2. Bernd beansprucht Mandat -> rotation_claimed_seq = 1
+    await alsBenutzer(db, BERND)(async (fuehreAus) => {
+      await fuehreAus('select claim_rotation($1, 1, $2)', [fallId, geraetBernd])
+    })
+
+    // 3. Clara tritt während des aktiven Mandats aus -> rotation_request_seq = 2
+    await alsBenutzer(db, CLARA)(async (fuehreAus) => {
+      await fuehreAus('delete from memberships where case_id = $1', [fallId])
+    })
+
+    // 4. Bernd schließt Rotation ab
+    const neuerKid = `case_${fallId}:2`
+    const commitBernd = await alsBenutzer(db, BERND)(async (fuehreAus) => {
+      const res = await fuehreAus(
+        'select commit_rotation($1, 1, $2, $3, $4) as commit_rotation',
+        [fallId, neuerKid, geraetBernd, new Uint8Array([0x99])],
+      )
+      const rows = res.rows as { commit_rotation: boolean }[]
+      return rows[0]?.commit_rotation
+    })
+    expect(commitBernd).toBe(true)
+
+    // 5. Weil Clara dazwischen austrat, bleibt rotation_pending = true für die nächste Rotation!
+    const { rows: fallZeilen } = await db.query<{
+      key_generation: number
+      current_kid: string
+      rotation_pending: boolean
+    }>('select key_generation, current_kid, rotation_pending from cases where id = $1', [fallId])
+
+    expect(fallZeilen[0]?.key_generation).toBe(2)
+    expect(fallZeilen[0]?.current_kid).toBe(neuerKid)
+    expect(fallZeilen[0]?.rotation_pending).toBe(true)
+  })
 })

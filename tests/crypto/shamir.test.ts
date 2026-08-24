@@ -32,7 +32,7 @@ describe('Teilen und Zusammensetzen', () => {
   })
 
   it('scheitert bei k-1 Teilen', async () => {
-    // „Scheitern“ heisst hier nicht „wirft“: Die Bibliothek gibt aus zu wenigen
+    // "Scheitern" heisst hier nicht "wirft": Die Bibliothek gibt aus zu wenigen
     // Teilen bereitwillig Bytes zurueck, nur eben die falschen. Genau deshalb
     // haengt die Entscheidung in §3.5 nicht am Zaehler, sondern am
     // `vault_commitment` ueber dem rekonstruierten K_v.
@@ -45,13 +45,16 @@ describe('Teilen und Zusammensetzen', () => {
 
   it('kombiniert einen Teil aus einem frueheren Polynom nicht mehr', async () => {
     // Neuverteilt wird auf demselben K_v mit frischem Polynom (§3.5). Ein Teil
-    // aus der vorigen Runde liegt nicht auf der neuen Kurve — der Cache einer
+    // aus der vorigen Runde liegt nicht auf der neuen Kurve: Der Cache einer
     // ausgetretenen Person ist damit wertlos.
     const geheimnis = erzeugeAesSchluessel()
     const alt = await teileGeheimnis(geheimnis, 3, 2)
     const neu = await teileGeheimnis(geheimnis, 3, 2)
 
-    expect(hex(await kombiniereShares([alt[0], neu[1]]))).not.toBe(hex(geheimnis))
+    const teilAlt = alt[0]!
+    const teilNeu = neu.find((t) => t[t.length - 1] !== teilAlt[teilAlt.length - 1])!
+
+    expect(hex(await kombiniereShares([teilAlt, teilNeu]))).not.toBe(hex(geheimnis))
     expect(hex(await kombiniereShares([neu[0], neu[1]]))).toBe(hex(geheimnis))
   })
 

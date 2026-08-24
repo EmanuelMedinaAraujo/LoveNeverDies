@@ -59,8 +59,8 @@ describe('useMitglieder', () => {
 
   it('hat die angemeldete Person dabei, noch bevor der Abruf zurück ist', () => {
     /*
-     * Ohne sie stünde in der Auswahl „niemand", während man selbst davorsitzt —
-     * und „Übernehmen" wäre für einen Moment eine Schaltfläche ohne Ziel (§7).
+     * Ohne sie stünde in der Auswahl "niemand", während man selbst davorsitzt,
+     * und "Übernehmen" wäre für einen Moment eine Schaltfläche ohne Ziel (§7).
      */
     const { result } = renderHook(() => useMitglieder('fall-1'), { wrapper: huelle() })
 

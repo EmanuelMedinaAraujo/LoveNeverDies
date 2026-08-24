@@ -3,9 +3,9 @@
 -- Ein Fall entsteht in einem Zug oder gar nicht. Drei Tabellen sind daran
 -- beteiligt, und jede unvollständige Zwischenstufe wäre dauerhaft kaputt:
 --
---   * `cases` ohne `memberships` — eine Zeile, die niemand sehen und niemand
+--   * `cases` ohne `memberships`: Eine Zeile, die niemand sehen und niemand
 --     löschen kann, weil jede Policy dieses Projekts an der Mitgliedschaft hängt.
---   * `memberships` ohne `key_wraps` — der Fall steht in der Liste, sein
+--   * `memberships` ohne `key_wraps`: Der Fall steht in der Liste, sein
 --     Payload ist verschlüsselt, und `K_c` liegt nur noch im Arbeitsspeicher
 --     des anlegenden Tabs. Nach dem nächsten Neuladen ist er fort, und mit ihm
 --     der Name der verstorbenen Person.
@@ -43,7 +43,7 @@ begin
   /*
    * Beide `kid` sind aus der `case_id` herleitbar, und genau das ist ihr Sinn:
    * Ein zweites Gerät findet den Wrap, ohne ihn zu suchen. Sie stehen trotzdem
-   * als Parameter da, weil sie in die Wrap-Signatur eingehen (§3.2) — würde die
+   * als Parameter da, weil sie in die Wrap-Signatur eingehen (§3.2). Würde die
    * Funktion sie selbst bilden, führte eine abweichende Schreibweise im Client
    * zu einer Signatur, die niemand mehr verifizieren kann. So scheitert
    * stattdessen der Aufruf, laut und sofort.

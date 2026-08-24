@@ -8,7 +8,7 @@
 --
 -- Drei Dinge entstehen hier, und alle drei sind Zusagen der Datenbank:
 --
---   1. Der Pfad ist an das Item gebunden — `{case_id}/{item_id}`, nichts sonst.
+--   1. Der Pfad ist an das Item gebunden: `{case_id}/{item_id}`, nichts sonst.
 --   2. Wer im Fall ist, liest und schreibt seinen Ordner; wer nicht, sieht ihn
 --      nicht (§7).
 --   3. Ein gelöschtes Dokument nimmt seine Datei mit. Der Client löscht sie
@@ -22,7 +22,7 @@
  * §7 nennt `{case_id}/{item_id}`, und der Aufräumjob unten findet die Datei zu
  * einem getombsteten Item ausschließlich über diese Gleichung. Stünde der Pfad
  * frei, zeigte ein Mitglied sein eigenes Item auf das Objekt eines fremden
- * Falls, löschte das Item — und der Job risse sieben Tage später eine fremde
+ * Falls, löschte das Item, und der Job risse sieben Tage später eine fremde
  * Sterbeurkunde weg. Die Storage-Policy allein verhindert das nicht: Sie prüft,
  * wer schreiben darf, nicht, worauf ein Item zeigt.
  *
@@ -42,7 +42,7 @@ alter table items
  *
  * Der Aufräumjob fragt für jedes Objekt im Bucket, ob es ein Item dazu gibt und
  * ob dessen Tombstone alt genug ist. Ohne Index sind das zwei Durchläufe über
- * `items` je Objekt — bei ein paar hundert Fällen ein täglicher Seq-Scan über
+ * `items` je Objekt: Bei ein paar hundert Fällen ein täglicher Seq-Scan über
  * alles, was es gibt.
  *
  * Partiell, weil ausser den Dokumenten niemand eine `storage_path` trägt (der
@@ -54,7 +54,7 @@ create index items_storage_path_idx on items (storage_path)
 
 /*
  * Der Bucket ist privat. Öffentlich hieße: Wer den Pfad kennt, lädt die Datei
- * ohne Anmeldung — und der Pfad ist aus `case_id` und `item_id` gebaut, also
+ * ohne Anmeldung. Der Pfad ist aus `case_id` und `item_id` gebaut, also
  * für jedes Mitglied ohnehin sichtbar. Verschlüsselt wäre sie trotzdem, aber
  * eine Zusage, die allein an der Kryptographie hängt, ist eine Zusage weniger.
  *
@@ -62,8 +62,8 @@ create index items_storage_path_idx on items (storage_path)
  * Client prüft dieselbe Grenze vorher und sagt dann etwas Verständliches; diese
  * Zeile trägt den Fall, in dem er es nicht tut.
  *
- * `on conflict do nothing`: Ein Projekt, in dem der Bucket schon steht — von
- * Hand angelegt, aus einer früheren Fassung — soll nicht an der Migration
+ * `on conflict do nothing`: Ein Projekt, in dem der Bucket schon steht (von
+ * Hand angelegt, aus einer früheren Fassung), soll nicht an der Migration
  * scheitern.
  */
 insert into storage.buckets (id, name, public, file_size_limit)
@@ -74,7 +74,7 @@ insert into storage.buckets (id, name, public, file_size_limit)
  * Zugriff über den ersten Pfadabschnitt (§7).
  *
  * `storage.foldername(name)` zerlegt `{case_id}/{item_id}` in seine Ordner;
- * `[1]` ist die `case_id`. Mehr braucht die Regel nicht — dass das Item
+ * `[1]` ist die `case_id`. Mehr braucht die Regel nicht. Dass das Item
  * existiert, entscheidet `items`, und dass der Pfad zu ihm gehört, der CHECK
  * oben.
  *
@@ -104,29 +104,29 @@ create policy dokumente_loeschen on storage.objects for delete
 /*
  * Der Aufräumjob, erster Teil: Was liegen geblieben ist (§7).
  *
- * „Löschen entfernt auch die Datei": Der Client löscht das Storage-Objekt beim
- * Setzen des Tombstones. Diese Funktion ist das Netz darunter — für den Client,
+ * "Löschen entfernt auch die Datei": Der Client löscht das Storage-Objekt beim
+ * Setzen des Tombstones. Diese Funktion ist das Netz darunter, für den Client,
  * dem beim Löschen die Verbindung wegbricht, und für den Upload, dessen
  * Item-Zeile nie geschrieben wurde.
  *
- * **Sie löscht nicht selbst, sie zeigt nur.** Ein `delete from storage.objects`
- * weist die Plattform ausdrücklich ab („Direct deletion from storage tables is
+ * Sie löscht nicht selbst, sie zeigt nur. Ein `delete from storage.objects`
+ * weist die Plattform ausdrücklich ab ("Direct deletion from storage tables is
  * not allowed"), und zwar zu Recht: Die Zeile ist nur der Katalogeintrag, die
  * Bytes liegen im Objektspeicher. Wer die Zeile wegnähme, hinterliesse die
- * Datei — genau das Gegenteil dessen, was §7 verlangt. Entfernt wird deshalb
+ * Datei, genau das Gegenteil dessen, was §7 verlangt. Entfernt wird deshalb
  * über die Storage-API, in der Edge Function `dokumente-aufraeumen`, die diese
  * Liste holt und abarbeitet.
  *
- * **Die Karenz ist kein Papierkorb.** Löschen gewinnt weiterhin endgültig (§5);
+ * Die Karenz ist kein Papierkorb. Löschen gewinnt weiterhin endgültig (§5);
  * die sieben Tage existieren allein, damit der Job kein Objekt unter einem
  * Client wegzieht, der gerade mitten im Download ist.
  *
  * Zwei Sorten Rückstand, dieselbe Frist:
  *
- *   - **Getombstetes Item, Datei liegt noch.** Der Fall aus §7. Gemessen wird
- *     an `items.updated_at`, denn das ist der Zeitpunkt des Tombstones — nicht
+ *   - Getombstetes Item, Datei liegt noch. Der Fall aus §7. Gemessen wird
+ *     an `items.updated_at`, denn das ist der Zeitpunkt des Tombstones und nicht
  *     das Alter der Datei, die Wochen vorher hochgeladen wurde.
- *   - **Datei ohne Item.** Der Upload gelingt, das INSERT auf `items` nicht.
+ *   - Datei ohne Item. Der Upload gelingt, das INSERT auf `items` nicht.
  *     Diese Datei gehört zu nichts, kann von niemandem geöffnet werden und
  *     stünde sonst für immer da. Gemessen wird hier am Alter des Objekts: Ein
  *     Upload, dessen INSERT gerade unterwegs ist, ist Sekunden alt.
@@ -159,8 +159,8 @@ $fn$;
  * Niemandem offen ausser dem Job.
  *
  * Postgres erteilt neuen Funktionen `execute` an `public`, und `anon` erbt das.
- * Diese hier läuft an den Policies vorbei und listet die Pfade *aller* Fälle —
- * für eine angemeldete Person wäre das eine Liste fremder Ordner, für `anon`
+ * Diese hier läuft an den Policies vorbei und listet die Pfade *aller* Fälle.
+ * Für eine angemeldete Person wäre das eine Liste fremder Ordner, für `anon`
  * eine ohne jede Anmeldung.
  */
 revoke execute on function public.dokumente_zum_aufraeumen(interval) from public;

@@ -18,8 +18,8 @@ import {
  *
  * Die Signatur wehrt genau einen Angriff ab: ein Mitglied, das einen formal
  * gültigen Wrap eines *falschen* `K_c` einstellt und ein Gerät damit dauerhaft
- * aussperrt. Der GCM-Tag erkennt Beschädigung, nicht die falsche Absicht —
- * deshalb wird hier geprüft, dass die Signatur **vor** dem Entpacken läuft und
+ * aussperrt. Der GCM-Tag erkennt Beschädigung, nicht die falsche Absicht.
+ * Deshalb wird hier geprüft, dass die Signatur vor dem Entpacken läuft und
  * dass sie an Fall, `kid` und Empfängergerät gebunden ist.
  */
 
@@ -151,7 +151,7 @@ describe('Die Signatur läuft vor dem Entpacken', () => {
 
 describe('Ein Wrap für ein fremdes Gerät', () => {
   it('lässt sich mit dem falschen geheimen Schlüssel nicht entpacken', async () => {
-    // Die Signatur stimmt — sie sagt nichts darüber, wer lesen darf. Bemerkt
+    // Die Signatur stimmt, sie sagt nichts darüber, wer lesen darf. Bemerkt
     // wird der Irrtum am GCM-Tag, weil ML-KEM implizit verwirft (§3.1).
     const { absender, wrap } = await frischerWrap()
     const anderer = geraet()

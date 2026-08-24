@@ -9,7 +9,7 @@ import {
  * Nahtstelle: was PostgREST als Erfolg zurückgibt (DESIGN.md §4).
  *
  * Ein `UPDATE`, das die RLS auf null Zeilen einschränkt, ist für PostgREST kein
- * Fehler — `error` bleibt `null`, und der Aufrufer erführe nichts. Genau dieser
+ * Fehler: `error` bleibt `null`, und der Aufrufer erführe nichts. Genau dieser
  * Fall steht in `geraeteschluessel.test.ts` gegen echtes Postgres: Anna darf
  * Bernds Zeile sehen, aber nicht ändern, und ihr `update` läuft ohne Fehler
  * durch. Hier wird geprüft, dass der Adapter daraus einen Fehler macht, statt

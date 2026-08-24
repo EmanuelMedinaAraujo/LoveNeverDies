@@ -20,7 +20,7 @@ import { pkSigBytes } from '../../src/core/crypto/sign'
  * WebCrypto nicht mehr herausgibt, und über einen Neustart hinweg derselbe.
  *
  * `fake-indexeddb` statt eines eingesetzten Speicher-Doubles: Was hier
- * schiefgehen kann, geht in IndexedDB schief — die Transaktion, die zweimal
+ * schiefgehen kann, geht in IndexedDB schief: Die Transaktion, die zweimal
  * schreibt, der strukturierte Klon, der einen `CryptoKey` verliert. Ein Double
  * mit einer `Map` würde beides nie zeigen.
  */
@@ -146,7 +146,7 @@ describe('Über Neuladen und Neustart hinweg (§3.6)', () => {
   it('gibt zwei nebenläufigen Aufrufen dieselbe Identität', async () => {
     // React im StrictMode ruft jeden Effekt zweimal auf, und der zweite Aufruf
     // startet, bevor der erste geschrieben hat. Ohne Absicherung entstünden
-    // zwei Keypairs, und eines davon wäre ab dem nächsten Neuladen verloren —
+    // zwei Keypairs, und eines davon wäre ab dem nächsten Neuladen verloren,
     // samt allem, was daran gewrappt war.
     const { ladeOderErzeugeIdentitaet } = await nachNeuladen()
 
@@ -161,7 +161,7 @@ describe('Über Neuladen und Neustart hinweg (§3.6)', () => {
 
   it('hält auch dann zusammen, wenn zwei frisch geladene Module gleichzeitig anlaufen', async () => {
     // Zwei Tabs derselben App. Der Modulzustand hilft hier nicht, weil jeder
-    // Tab seinen eigenen hat — nur die Transaktion in IndexedDB entscheidet.
+    // Tab seinen eigenen hat: Nur die Transaktion in IndexedDB entscheidet.
     const [links, rechts] = await Promise.all([
       import('../../src/core/crypto/keystore').then((m) => m.ladeOderErzeugeIdentitaet()),
       nachNeuladen().then((m) => m.ladeOderErzeugeIdentitaet()),

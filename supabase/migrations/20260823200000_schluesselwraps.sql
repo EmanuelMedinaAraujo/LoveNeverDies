@@ -16,7 +16,7 @@ create table key_wraps (
   primary key (case_id, kid, device_id)
 );
 
--- Der Primärschlüssel ist zugleich die Zusage „erster Schreiber gewinnt" (§3.6).
+-- Der Primärschlüssel ist zugleich die Zusage "erster Schreiber gewinnt" (§3.6).
 -- Rotation erzeugt ohnehin ein neues `kid` und kollidiert deshalb nie.
 
 -- Zwei Indizes für zwei Fremdschlüssel, die beide ohne sie sequenziell gelesen
@@ -31,9 +31,9 @@ alter table key_wraps enable row level security;
 /*
  * Lesen: nur die Wraps für die eigenen Geräte (§4).
  *
- * Nicht „alle Wraps des Falls": Ein Mitglied darf für ein fremdes Gerät
+ * Nicht "alle Wraps des Falls": Ein Mitglied darf für ein fremdes Gerät
  * schreiben, aber nichts darüber erfahren, was dort schon liegt. Der Wrap
- * selbst gibt `K_c` nicht preis — die Einschränkung kostet nichts und nimmt
+ * selbst gibt `K_c` nicht preis, die Einschränkung kostet nichts und nimmt
  * einer späteren Lücke im Kryptokern die Reichweite.
  */
 create policy key_wraps_read on key_wraps for select
@@ -44,7 +44,7 @@ create policy key_wraps_read on key_wraps for select
 /*
  * Schreiben: jedes Mitglied des Falls, aber nur im eigenen Namen.
  *
- * Der erste Teil ist der Zweck der Tabelle — ein neues Gerät liest nichts, bis
+ * Der erste Teil ist der Zweck der Tabelle: ein neues Gerät liest nichts, bis
  * ein anderes Mitglied `K_c` daran wrappt (§3.6). Der zweite Teil bindet
  * `wrapped_by` an den Schreibenden: Gegen dieses Gerät prüft der Empfänger die
  * Signatur. Stünde dort ein fremdes, prüfte er gegen einen Schlüssel, den der
@@ -60,7 +60,7 @@ create policy key_wraps_write on key_wraps for insert
  * Es gibt keine UPDATE-Policy, und das ist die eigentliche Aussage dieser
  * Datei. Ein überschriebener Wrap ist der Angriff aus §3.6: Ein Mitglied
  * stellt einen formal gültigen Wrap eines falschen `K_c` ein und sperrt ein
- * Gerät dauerhaft aus. Ohne UPDATE bleibt als Weg nur DELETE — und der steht
+ * Gerät dauerhaft aus. Ohne UPDATE bleibt als Weg nur DELETE, und der steht
  * ausschließlich dem Besitzer des betroffenen Geräts offen, damit er einen
  * fehlerhaften Wrap verwerfen und sich einen korrekten nachliefern lassen kann.
  */

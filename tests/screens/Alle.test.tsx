@@ -21,7 +21,7 @@ const { Alle } = await import('../../src/screens/shared/Alle/Alle.tsx')
 /**
  * Der Tab "Alle" (DESIGN.md §7).
  *
- * Der Screen verschlüsselt nichts — das tut `aufgabenService`, geprüft in
+ * Der Screen verschlüsselt nichts. Das tut `aufgabenService`, geprüft in
  * `tests/services/aufgabenService.test.ts`. Hier geht es darum, was er aus
  * einem Zustand macht: welche Schaltflächen es gibt, was vor dem Löschen
  * gefragt wird und was passiert, wenn eine Änderung abgelehnt wird.
@@ -79,13 +79,13 @@ function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
 /**
  * Der Ruhezustand des Netzes: kein Abruf unterwegs, nichts schiefgegangen.
  *
- * Steht als eigene Konstante da, weil §5 beides zur „bereit"-Form gehören
- * lässt — die Liste steht, und daneben steht, was das Netz gerade tut.
+ * Steht als eigene Konstante da, weil §5 beides zur "bereit"-Form gehören
+ * lässt: Die Liste steht, und daneben steht, was das Netz gerade tut.
  */
 const NETZ = { laedtNetz: false, netzfehler: null }
 
 /**
- * Der Zustand, wie ein Test ihn hinschreibt — ohne `baum`.
+ * Der Zustand, wie ein Test ihn hinschreibt: ohne `baum`.
  *
  * Den rechnet {@link aufgabendaten} daraus aus, denn er ist keine zweite
  * Angabe: `useAufgaben` leitet ihn aus derselben Liste ab (§7). Ein von Hand
@@ -182,7 +182,7 @@ describe('Alle', () => {
 
   it('laesst das Haekchen stehen, bis der Bestand nachgezogen hat', async () => {
     /*
-     * §5: Jede Mutation wird optimistisch lokal angewandt — nur passiert das
+     * §5: Jede Mutation wird optimistisch lokal angewandt, nur passiert das
      * eine Ebene tiefer, in der Queue, und der Weg dorthin kostet ein paar
      * Millisekunden. Eine Checkbox, die in dieser Zeit auf `erledigt: false`
      * zurückfällt, ist genau das sichtbare Zurückspringen, das §5 ausschliesst.
@@ -201,7 +201,7 @@ describe('Alle', () => {
     const kaestchen = screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })
     await userEvent.click(kaestchen)
 
-    // Der Zustand sagt weiterhin `erledigt: false` — die Zeile hält den Wunsch.
+    // Der Zustand sagt weiterhin `erledigt: false`; die Zeile hält den Wunsch.
     expect(kaestchen).toBeChecked()
 
     gibFrei()
@@ -210,11 +210,11 @@ describe('Alle', () => {
   it('nimmt das Haekchen zurueck, wenn die Mutation gar nicht erst angehaengt wurde', async () => {
     /*
      * Der Bestand zieht nur nach, wenn etwas in der Queue gelandet ist. Kommt
-     * es nicht so weit — kein Platz in IndexedDB, kein IndexedDB —, bleibt
+     * es nicht so weit, etwa wegen fehlendem Platz in IndexedDB, bleibt
      * `erledigt: false` stehen, und ein Abgleich gegen den Bestand fände nie
      * einen Unterschied. Ohne die Ruecknahme hier stuende das Haekchen fuer den
      * Rest der Sitzung auf einem Wert, den niemand gespeichert hat: die Meldung
-     * darueber sagte „ging nicht", das Kaestchen daneben sagte „erledigt".
+     * darueber sagte "ging nicht", das Kaestchen daneben sagte "erledigt".
      */
     const hakeAb = vi
       .fn()
@@ -361,7 +361,7 @@ describe('Alle', () => {
 
   it('nennt jede Schaltflaeche mit ihrer Aufgabe', async () => {
     // Ohne den Titel zum Vorlesen hoerte eine blinde Person in einer Liste von
-    // zwanzig Aufgaben zwanzigmal „Ändern" (§7).
+    // zwanzig Aufgaben zwanzigmal "Ändern" (§7).
     useAufgaben.mockReturnValue(
       aufgabendaten({
         zustand: {
@@ -473,7 +473,7 @@ describe('Alle', () => {
   })
 
   it('meldet einen gesperrten Fall, statt eine leere Liste zu zeigen', () => {
-    // Ohne `K_c` gibt es keine Aufgaben zu entschlüsseln. „Keine Aufgaben"
+    // Ohne `K_c` gibt es keine Aufgaben zu entschlüsseln. "Keine Aufgaben"
     // wäre an dieser Stelle eine Lüge (§3.6).
     useCase.mockReturnValue(
       falldaten({
@@ -520,7 +520,7 @@ describe('Alle', () => {
 
   it('nennt den Netzfehler, laesst die Liste aber stehen', () => {
     // §5: Gecachte Inhalte werden sofort gerendert. Ein Abruf, der scheitert,
-    // nimmt den zuletzt gecachten Stand nicht mit — sonst sieht jemand im Zug
+    // nimmt den zuletzt gecachten Stand nicht mit. Sonst sieht jemand im Zug
     // einen leeren Fall und legt alles neu an.
     useAufgaben.mockReturnValue(
       aufgabendaten({
@@ -544,8 +544,8 @@ describe('Alle', () => {
     /*
      * §5: Die Türklingel läutet im geteilten Fall im Sekundentakt. Eine Zeile,
      * die dabei erscheint und wieder verschwindet, verschöbe die Liste unter
-     * dem Finger, der gerade ein Häkchen setzen will — und eine Vorlesestimme
-     * sagte alle paar Sekunden „wird aktualisiert".
+     * dem Finger, der gerade ein Häkchen setzen will, und eine Vorlesestimme
+     * sagte alle paar Sekunden "wird aktualisiert".
      */
     useAufgaben.mockReturnValue(
       aufgabendaten({
@@ -587,7 +587,7 @@ describe('Alle', () => {
   })
 
   it('meldet verworfene Aenderungen mit Zahl, Titel und Grund', async () => {
-    // §5: „Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern
+    // §5: "Abgelehnte Mutationen werden nie stillschweigend verworfen, sondern
     // mit ihrem entschlüsselten Inhalt als Mitteilung angezeigt."
     const bestaetige = vi.fn()
     useAufgaben.mockReturnValue(
@@ -637,7 +637,7 @@ describe('Alle', () => {
   })
 
   it('nennt den Vorgang, wenn sich der Titel nicht mehr herstellen laesst', () => {
-    // Ohne DEK gibt es keinen Titel — die Zeile ist inzwischen ein Tombstone.
+    // Ohne DEK gibt es keinen Titel, da die Zeile inzwischen ein Tombstone ist.
     // Das ist immer noch mehr als Schweigen.
     useAufgaben.mockReturnValue(
       aufgabendaten({
@@ -671,7 +671,7 @@ describe('Alle', () => {
     await userEvent.click(screen.getByRole('button', { name: /^Ändern.*Konten kündigen/ }))
 
     // Nur eine Zeile steht im Änderungsmodus, also gibt es genau ein
-    // „Speichern" — und der vorbelegte Titel verrät, welche Zeile es ist.
+    // "Speichern", und der vorbelegte Titel verrät, welche Zeile es ist.
     expect(screen.getByLabelText('Titel')).toHaveValue('Konten kündigen')
     await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
@@ -687,13 +687,13 @@ describe('Alle', () => {
 /**
  * Fristen, Unteraufgaben und Abhängigkeiten in der Liste (DESIGN.md §7, §8).
  *
- * Was hier geprüft wird, ist nicht die Rechnung — die steht in
- * `tests/services/fristen.test.ts` — sondern was davon auf dem Bildschirm
- * ankommt: ein Badge mit der Restzeit, eine ausgegraute Zeile mit „Zuerst: …",
+ * Was hier geprüft wird, ist nicht die Rechnung aus
+ * `tests/services/fristen.test.ts`, sondern was davon auf dem Bildschirm
+ * ankommt: ein Badge mit der Restzeit, eine ausgegraute Zeile mit "Zuerst: ...",
  * eine Elternaufgabe ohne eigenes Häkchen und der Weg in das Detail.
  */
 describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
-  /** Heute, als ISO-Kalendertag — damit die Fristen nicht mit dem Jahr altern. */
+  /** Heute, als ISO-Kalendertag, damit die Fristen nicht mit dem Jahr altern. */
   function heute(): string {
     const jetzt = new Date()
     const monat = `${jetzt.getMonth() + 1}`.padStart(2, '0')
@@ -854,7 +854,7 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
 /**
  * Zuweisung in der Liste (DESIGN.md §7).
  *
- * „Bearbeiten darf nur, wem sie zugewiesen ist." In der Liste heißt das: Wer
+ * "Bearbeiten darf nur, wem sie zugewiesen ist." In der Liste heißt das: Wer
  * nicht zugewiesen ist, sieht die Aufgabe vollständig und findet statt der
  * Schaltflächen den einen Weg, der ihm offensteht.
  */
