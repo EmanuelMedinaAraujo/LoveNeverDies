@@ -979,7 +979,11 @@ abfotografieren".
 
 **Löschen entfernt auch die Datei.** Der Client löscht das Storage-Objekt beim Setzen des
 Tombstones; ein serverseitiger Aufräumjob entfernt nach 7 Tagen alles, was zu einem
-`deleted = true`-Item noch liegt. Die Karenz ist kein Papierkorb, Löschen gewinnt weiterhin
+`deleted = true`-Item noch liegt. Der Job ist eine Edge Function und kein SQL-Statement:
+Eine Zeile in `storage.objects` ist der Katalogeintrag, die Bytes liegen im
+Objektspeicher, und ein `delete` per SQL nähme den Eintrag und liesse die Datei liegen —
+die Plattform weist es deshalb ab. Welche Pfade fällig sind, sagt
+`dokumente_zum_aufraeumen()` in der Datenbank; entfernt werden sie über die Storage-API. Die Karenz ist kein Papierkorb, Löschen gewinnt weiterhin
 endgültig. Sie existiert nur, damit der Job kein Objekt unter einem Client wegzieht, der
 gerade mitten im Download ist.
 
@@ -1095,7 +1099,8 @@ src/
 supabase/
   migrations/     Schema, Trigger, RPCs, RLS
   functions/
-    vault-release/  einzige Edge Function: prüft Signaturen, schreibt vault_releases
+    vault-release/        prüft Signaturen, schreibt vault_releases
+    dokumente-aufraeumen/ entfernt die Dateien getombsteter Dokumente (§7)
 docs/
   DESIGN.md
 ```

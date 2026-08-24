@@ -156,6 +156,12 @@ export function supabaseInhalte(client: SupabaseClient): InhalteTabelle {
         kid: neu.kid,
         wrapped_dek: alsBytea(neu.wrappedDek),
         payload: alsBytea(neu.payload),
+        // `null` und nicht weggelassen: Bei einer Aufgabe *muss* die Spalte
+        // leer bleiben (§7, CHECK auf `items`), und ein fehlendes Feld hiesse
+        // in PostgREST „nimm den Default" — der hier zufällig derselbe ist.
+        // Ein Default, auf den sich eine Zusage stützt, ist eine Zusage, die
+        // sich still ändern lässt.
+        storage_path: neu.storagePfad ?? null,
       })
 
       if (error !== null) {

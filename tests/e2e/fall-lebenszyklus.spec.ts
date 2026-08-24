@@ -96,18 +96,28 @@ test('Trauerfall anlegen', async ({ page }) => {
     await page.getByRole('button', { name: 'Fall anlegen' }).click()
 
     await expect(page).toHaveURL(/\/$/)
-    await expect(
-      page.getByRole('heading', { name: 'Hans Weber · Trauerfall seit 15. März 2024' }),
-    ).toBeVisible()
+
+    // §7: Start heisst "Meine Aufgaben"; um wessen Fall es geht, steht darunter.
+    await expect(page.getByRole('heading', { name: 'Meine Aufgaben' })).toBeVisible()
+    await expect(page.getByText('Hans Weber · Trauerfall seit 15. März 2024')).toBeVisible()
   })
 
   await test.step('ein zweiter Besuch von /todesfall legt keinen zweiten Fall an', async () => {
     // Todesfall.tsx: "Wer schon einen Fall hat, legt hier keinen zweiten an."
     await page.goto('/todesfall')
     await expect(page).toHaveURL(/\/$/)
-    await expect(
-      page.getByRole('heading', { name: 'Hans Weber · Trauerfall seit 15. März 2024' }),
-    ).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Meine Aufgaben' })).toBeVisible()
+    await expect(page.getByText('Hans Weber · Trauerfall seit 15. März 2024')).toBeVisible()
+  })
+
+  await test.step('Start ist leer, solange nichts zugewiesen ist (§7)', async () => {
+    /*
+     * Die Aufgaben der Juristinnen kommen unzugewiesen in den Fall (§8): Wer
+     * sie übernimmt, entscheidet die Familie. Start zeigt deshalb genau nichts,
+     * obwohl der Fall gerade vierzig Aufgaben bekommen hat — und sagt, wo man
+     * eine findet.
+     */
+    await expect(page.getByText(/Ihnen ist gerade nichts zugewiesen/)).toBeVisible()
   })
 
   /**
@@ -201,6 +211,23 @@ test('Trauerfall anlegen', async ({ page }) => {
     ).toBeVisible()
   })
 
+  await test.step('eine unzugewiesene Aufgabe lässt sich übernehmen (§7)', async () => {
+    /*
+     * Bis hierher gehört diese Aufgabe niemandem: Sie kommt aus dem Katalog,
+     * und §7 lässt nur bearbeiten, wem sie zugewiesen ist. Also erst
+     * eintragen — das ist die Reservierung, mit der eine Familie sich die
+     * Arbeit teilt.
+     */
+    await expect(page.getByText('Zuständig: Niemand')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toBeDisabled()
+
+    const uebernommen = gespeichert(page, 'PATCH')
+    await page.getByRole('button', { name: 'Übernehmen' }).click()
+    await uebernommen
+
+    await expect(page.getByText('Zuständig: Sie')).toBeVisible()
+  })
+
   await test.step('Unteraufgaben sind eigene Zeilen und tragen den Abschluss (§7)', async () => {
     const ausDemKatalog = page.getByRole('checkbox', {
       name: 'Sterbeurkunden in ausreichender Zahl bestellen',
@@ -214,8 +241,29 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toHaveCount(0)
     await expect(page.getByText('Offen: 0 von 1 Unteraufgaben erledigt.')).toBeVisible()
 
+    /*
+     * Eine Unteraufgabe ist eine Zeile wie jede andere und trägt deshalb ihre
+     * eigene Zuweisung (§7) — die der Elternaufgabe gilt für sie nicht. Genau
+     * das ist der Punkt: Die Bank ruft der eine an, zum Standesamt geht die
+     * andere. Abgehakt wird sie also erst, nachdem jemand sich eingetragen hat.
+     */
+    await expect(ausDemKatalog).toBeDisabled()
+
+    await page
+      .getByRole('link', { name: /^Zuständigkeit ändern.*Sterbeurkunden in ausreichender Zahl/ })
+      .click()
+
+    const unteraufgabeUebernommen = gespeichert(page, 'PATCH')
+    await page.getByRole('button', { name: 'Übernehmen' }).click()
+    await unteraufgabeUebernommen
+
+    await page.getByRole('link', { name: 'Zurück zu allen Aufgaben' }).click()
+    await page
+      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
+      .click()
+
     const abgehakt = gespeichert(page, 'PATCH')
-    await ausDemKatalog.check()
+    await page.getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' }).check()
     await abgehakt
 
     // §7: Sind alle Kinder erledigt, gilt die Aufgabe zwingend als erledigt.
@@ -425,6 +473,13 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Instanziierung beim nächsten Laden übergeht ihn. Käme die Aufgabe wieder,
      * wäre „löschen" bei genau diesen Aufgaben eine Lüge.
      */
+    // Auch das Löschen ist Bearbeiten (§7): erst eintragen, dann löschen.
+    const uebernommen = gespeichert(page, 'PATCH')
+    await page
+      .getByRole('button', { name: /^Übernehmen.*Ausschlagung der Erbschaft prüfen/ })
+      .click()
+    await uebernommen
+
     const geloescht = gespeichert(page, 'PATCH')
     await page.getByRole('button', { name: /^Löschen.*Ausschlagung der Erbschaft prüfen/ }).click()
     await page.getByRole('button', { name: 'Endgültig löschen' }).click()
@@ -436,6 +491,63 @@ test('Trauerfall anlegen', async ({ page }) => {
       page.getByRole('checkbox', { name: 'Ausschlagung der Erbschaft prüfen' }),
     ).toHaveCount(0)
     await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen - 1)
+  })
+
+  await test.step('Start zeigt genau die eigenen Aufgaben (§7)', async () => {
+    /*
+     * Der Screen aus §7, jetzt mit Inhalt: Übernommen wurden die Aufgabe beim
+     * Standesamt und eine ihrer Unteraufgaben — und genau die beiden stehen
+     * hier. Gefiltert wird clientseitig, nach dem Entschlüsseln (§3.3): Der
+     * Server kann nach `assignee` nicht filtern, weil er ihn nicht lesen kann.
+     */
+    await gotoVerlaesslich(page, '/')
+
+    await expect(page.getByRole('heading', { name: 'Meine Aufgaben' })).toBeVisible()
+    // `exact`, weil der Titel auch im Hinweis der Unteraufgabe darunter steht.
+    await expect(
+      page.getByText('Sterbefall beim Standesamt anzeigen', { exact: true }),
+    ).toBeVisible()
+
+    // Eine zugewiesene Unteraufgabe steht mit da und nennt ihre Elternaufgabe.
+    await expect(
+      page.getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('Unteraufgabe von „Sterbefall beim Standesamt anzeigen“'),
+    ).toBeVisible()
+
+    /*
+     * Was niemand übernommen hat, steht hier nicht — es steht in "Alle".
+     * Geprüft am Detaillink und nicht am Titel: Der Titel taucht auf Start noch
+     * einmal auf, im „Zuerst: …" der Aufgabe, die auf ihn wartet (§7).
+     */
+    await expect(
+      page.getByRole('link', { name: /^Details.*Ärztliche Todesbescheinigung/ }),
+    ).toHaveCount(0)
+  })
+
+  await test.step('eine Reservierung lässt sich wieder lösen (§7)', async () => {
+    await gotoVerlaesslich(page, '/alle')
+
+    const freigegeben = gespeichert(page, 'PATCH')
+    await page
+      .getByRole('button', { name: /^Freigeben.*Sterbefall beim Standesamt anzeigen/ })
+      .click()
+    await freigegeben
+
+    await expect(
+      page.getByRole('button', { name: /^Übernehmen.*Sterbefall beim Standesamt anzeigen/ }),
+    ).toBeVisible()
+
+    // Und damit ist sie von Start verschwunden — die Unteraufgabe bleibt, denn
+    // sie trägt ihre eigene Zuweisung.
+    await gotoVerlaesslich(page, '/')
+    await expect(
+      page.getByText('Sterbefall beim Standesamt anzeigen', { exact: true }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' }),
+    ).toBeVisible()
   })
 
   await test.step('der Fall steht in Profil unter "Für wen?"', async () => {

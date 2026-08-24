@@ -36,6 +36,7 @@ import type { InhaltZeile, NeuerInhalt } from '../core/db/inhalte'
 import type { AbgelehnteMutation, Mutation } from '../core/sync/queue'
 import { uuidv7 } from '../core/uuidv7'
 import type { Katalogaufgabe } from '../types/katalog'
+import { NIEMAND, personen, zuweisungAus, type Zugewiesene, type Zuweisung } from './zuweisung'
 
 /** Eine Aufgabe war nicht anzulegen oder nicht zu ändern. */
 export class AufgabenFehler extends Error {
@@ -117,6 +118,14 @@ export type Aufgabenpayload = {
    * Katalog-IDs sind dabei bereits in die Item-IDs dieses Falls übersetzt (§8).
    */
   dependsOn: string[]
+  /**
+   * Wem die Aufgabe gehört (§7) — verschlüsselt wie alles andere hier (§3.3).
+   *
+   * Der Server kann danach nicht filtern, und deshalb tut es der Start-Screen
+   * nach dem Entschlüsseln. Was das für die Bearbeitungssperre bedeutet, steht
+   * in `zuweisung.ts`.
+   */
+  assignee: Zuweisung
   /** Aus dem Katalog kopiert (§8), oder `null` bei einer selbst angelegten Aufgabe. */
   katalog: Katalogherkunft | null
 }
@@ -133,6 +142,8 @@ export type Aufgabe = {
   notizen: string
   parentId: string | null
   dependsOn: string[]
+  /** Wem sie gehört (§7). Wer nicht darunter steht, sieht sie und ändert sie nicht. */
+  assignee: Zuweisung
   /**
    * Der DEK dieser Zeile, entpackt. Er bleibt im Speicher, weil jede Änderung
    * ihn wieder braucht — neu erzeugt würde er nur bei einer neuen Aufgabe.
@@ -167,6 +178,15 @@ export type Aufgabenaenderung = {
   erledigt?: boolean
   /** Die UUID-Liste ganz, nicht einzelne Einträge — sie ist kurz genug (§7). */
   dependsOn?: string[]
+  /**
+   * Die Zuweisung ganz: übernehmen, freigeben, jemanden eintragen (§7).
+   *
+   * Ganz und nicht als Einzelschritt, weil zwei Geräte denselben Payload
+   * schreiben und die höhere `seq` gewinnt. Ein „füge mich hinzu" hätte kein
+   * Gegenüber auf dem Server, der es ausführen könnte — die Zusammenführung
+   * findet hier statt, auf dem Stand, den dieses Gerät gerade sieht.
+   */
+  assignee?: Zuweisung
 }
 
 function pruefeTitel(titel: string): string {
@@ -258,15 +278,15 @@ function lesePayload(klartext: Uint8Array): Aufgabenpayload {
     notizen: typeof felder.notizen === 'string' ? felder.notizen : '',
     parentId: typeof felder.parentId === 'string' && felder.parentId !== '' ? felder.parentId : null,
     dependsOn: alsListe(felder.dependsOn),
+    assignee: zuweisungAus(felder.assignee),
     katalog: herkunftAus(felder.katalog),
   }
 }
 
 async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufgabe> {
   const dek = await entpackeDek(fall.kc, zeile.wrappedDek)
-  const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, katalog } = lesePayload(
-    await entschluessele(dek, zeile.payload),
-  )
+  const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, assignee, katalog } =
+    lesePayload(await entschluessele(dek, zeile.payload))
 
   return {
     id: zeile.id,
@@ -276,6 +296,7 @@ async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufg
     notizen,
     parentId,
     dependsOn,
+    assignee,
     katalog,
     dek,
     kid: zeile.kid,
@@ -325,11 +346,18 @@ export async function aufgabenAusZeilen(
  * Die ID entsteht hier und nicht auf dem Server — eine clientseitige UUIDv7
  * (§5), damit Anlegen offline funktioniert und die Queue eine Aufgabe benennen
  * kann, die der Server noch nie gesehen hat.
+ *
+ * @param wer die anlegende Person, die damit gleich eingetragen ist (§7).
+ * Etwas selbst aufzuschreiben *ist* die Ansage „ich mache das", und eine
+ * Aufgabe, die man nach dem Tippen erst noch übernehmen müsste, um ihren Titel
+ * zu korrigieren, wäre eine Hürde ohne Zweck. `null` lässt sie frei — so kommen
+ * die Aufgaben der Juristinnen in den Fall (§8).
  */
 export async function mutationAnlegen(
   fall: Fallschluessel,
   titel: string,
   parentId: string | null = null,
+  wer: Zugewiesene | null = null,
 ): Promise<Mutation> {
   const { id, wrappedDek, payload } = await verschluesselterInhalt(fall, uuidv7(), {
     typ: 'aufgabe',
@@ -339,6 +367,7 @@ export async function mutationAnlegen(
     notizen: '',
     parentId,
     dependsOn: [],
+    assignee: wer === null ? NIEMAND : personen([wer]),
     katalog: null,
   })
 
@@ -402,6 +431,11 @@ export async function mutationAendern(
     // reihenweise auf die Wurzelebene (§7).
     parentId: aufgabe.parentId,
     dependsOn: aenderung.dependsOn ?? aufgabe.dependsOn,
+    // Auch die Zuweisung schreibt jede Änderung mit. Fiele sie beim ersten
+    // Häkchen heraus, gäbe ein Abhaken die Aufgabe frei — und die Sperre, die
+    // zwei Menschen davor bewahrt, dieselbe Behörde anzurufen, hielte genau
+    // bis zum ersten Fortschritt (§7).
+    assignee: aenderung.assignee ?? aufgabe.assignee,
     // Die Herkunft schreibt jede Änderung unverändert mit. Sie ist kein Feld,
     // das jemand bearbeitet — sie fiele sonst beim ersten Häkchen aus dem
     // Payload, und mit ihr Rechtsgrundlage und Quelle (§8).

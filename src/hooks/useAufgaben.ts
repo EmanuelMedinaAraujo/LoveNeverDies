@@ -21,6 +21,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useAuth } from '../core/auth/authProvider.ts'
 import type { InhaltZeile } from '../core/db/inhalte.ts'
 import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
@@ -36,6 +37,14 @@ import {
 } from '../services/aufgabenService.ts'
 import { baueBaum, type Aufgabenknoten } from '../services/aufgabenbaum.ts'
 import { instanziiereKatalog, type Katalogfall } from '../services/katalogService.ts'
+import {
+  NIEMAND,
+  istZugewiesen,
+  mitPerson,
+  uebernommenVon,
+  type Zugewiesene,
+  type Zuweisung,
+} from '../services/zuweisung.ts'
 import { useErinnerungen, type Erinnerungsdaten } from './useErinnerungen.ts'
 import { useSync } from './useSync.ts'
 
@@ -64,8 +73,39 @@ export type AufgabenZustand =
       netzfehler: string | null
     }
 
+/**
+ * Eine Reservierung, die verloren ging (§7).
+ *
+ * „Greifen zwei gleichzeitig zu, gewinnt LWW, und die unterlegene Person
+ * bekommt 'Bert hat diese Aufgabe übernommen' statt eines stillen Verlusts."
+ */
+export type Uebernahme = {
+  itemId: string
+  titel: string
+  /** Wer sie jetzt hat. */
+  name: string
+}
+
 export type Aufgabendaten = {
   zustand: AufgabenZustand
+  /**
+   * Der Bestand dieses Falls als Ciphertext — alle Zeilen, nicht nur die
+   * Aufgaben (§5).
+   *
+   * Er steht hier, damit die Dokumente (§7) auf demselben Delta reiten können:
+   * Ein zweiter `useSync` daneben hielte einen zweiten Cache, ein zweites
+   * Wasserzeichen und eine zweite Queue für denselben Fall — zwei Runden, die
+   * um dieselben Zeilen konkurrieren. Was ein Aufrufer davon liest, entscheidet
+   * er über `art`.
+   */
+  zeilen: InhaltZeile[]
+  /**
+   * Stösst eine Sync-Runde an.
+   *
+   * Für alles, was am Delta vorbei geschrieben hat und trotzdem sofort
+   * sichtbar sein soll — die Dokumente aus §7 gehen nicht durch die Queue.
+   */
+  aktualisiere: () => void
   /** Die lokalen Erinnerungen an die Fristen dieses Falls (§7). */
   erinnerungen: Erinnerungsdaten
   /**
@@ -79,6 +119,24 @@ export type Aufgabendaten = {
   schreibe: (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => Promise<void>
   hakeAb: (aufgabe: Aufgabe, erledigt: boolean) => Promise<void>
   loesche: (aufgabe: Aufgabe) => Promise<void>
+  /**
+   * Die angemeldete Person, so wie sie in eine Zuweisung geschrieben wird (§7).
+   *
+   * Ohne Anmeldung ist die Kennung leer. Dann ist niemand zugewiesen, und alles
+   * bleibt schreibgeschützt — die Screens hängen ohnehin hinter der Anmeldung,
+   * aber die Sperre soll nicht davon abhängen, dass das so bleibt.
+   */
+  ich: Zugewiesene
+  /** Trägt die angemeldete Person ein und reserviert die Aufgabe damit (§7). */
+  uebernimm: (aufgabe: Aufgabe) => Promise<void>
+  /** Löst eine Reservierung — auch eine fremde (§7). */
+  gibFrei: (aufgabe: Aufgabe) => Promise<void>
+  /** Setzt die Zuweisung ganz: Personen, „Alle" oder niemand (§7). */
+  weiseZu: (aufgabe: Aufgabe, zuweisung: Zuweisung) => Promise<void>
+  /** Reservierungen, die an eine andere Person gingen. */
+  uebernahmen: Uebernahme[]
+  /** Nimmt sie zur Kenntnis und räumt sie weg. */
+  bestaetigeUebernahmen: () => void
 }
 
 const LEER = { aufgaben: [] as Aufgabe[], uebersprungen: 0 }
@@ -88,6 +146,12 @@ const VERWORFEN = Symbol('verworfen')
 
 /** Nichts abgelehnt — als eine Liste, damit sie ihre Identität behält. */
 const KEINE: AbgelehnteAenderung[] = []
+
+/** Solange niemand angemeldet ist, gibt es auch niemanden einzutragen. */
+const ABGEMELDET: Zugewiesene = { userId: '', name: '' }
+
+/** Nichts weggeschnappt — als eine Liste, damit sie ihre Identität behält. */
+const KEINE_UEBERNAHMEN: Uebernahme[] = []
 
 /**
  * Die Aufgaben der Juristinnen zuerst, in ihrer Reihenfolge (§8) — danach, was
@@ -114,8 +178,17 @@ function nachReihenfolge(links: Aufgabe, rechts: Aufgabe): number {
 }
 
 export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
-  const { zustand: sync, mutiere, bestaetige } = useSync(fall.id)
+  const { zustand: sync, mutiere, bestaetige, aktualisiere } = useSync(fall.id)
   const zugang = useSupabase()
+  const { zustand: authZustand } = useAuth()
+
+  const ich = useMemo<Zugewiesene>(
+    () =>
+      authZustand.status === 'angemeldet'
+        ? { userId: authZustand.benutzer.id, name: authZustand.benutzer.anzeigename }
+        : ABGEMELDET,
+    [authZustand],
+  )
 
   const [liste, setzeListe] = useState(LEER)
   const [abgelehnt, setzeAbgelehnt] = useState<AbgelehnteAenderung[]>([])
@@ -252,10 +325,17 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     })()
   }, [fall, sync.abgeglichen, sync.zeilen, zugang])
 
+  /*
+   * Wer eine Aufgabe aufschreibt, ist damit eingetragen (§7). Das Tippen *ist*
+   * die Ansage „ich mache das"; eine Aufgabe, die man nach dem Anlegen erst
+   * noch übernehmen müsste, um ihren Titel zu korrigieren, wäre eine Hürde ohne
+   * Zweck. Unzugewiesen kommen die Aufgaben der Juristinnen in den Fall (§8) —
+   * bei ihnen hat noch niemand etwas gesagt.
+   */
   const legeAn = useCallback(
     async (titel: string, parentId: string | null = null) =>
-      mutiere(await mutationAnlegen(fall, titel, parentId)),
-    [fall, mutiere],
+      mutiere(await mutationAnlegen(fall, titel, parentId, ich.userId === '' ? null : ich)),
+    [fall, ich, mutiere],
   )
 
   const schreibe = useCallback(
@@ -272,6 +352,106 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   const loesche = useCallback(
     (aufgabe: Aufgabe) => mutiere(mutationLoeschen(aufgabe)),
     [mutiere],
+  )
+
+  /**
+   * Die Aufgaben, auf die diese Sitzung „Übernehmen" getippt hat.
+   *
+   * Steht bei einer davon später jemand anderes, ging die Reservierung
+   * verloren, und §7 verlangt genau dafür eine Mitteilung statt eines stillen
+   * Verlusts.
+   *
+   * **Beobachtet wird bis zum Ende der Sitzung**, nicht nur die nächsten
+   * Sekunden. Ein Gerät kann die Mutation stundenlang in der Queue halten (§5),
+   * und auch ein später hereinkommendes „Bert hat sie jetzt" ist die Nachricht,
+   * um die es geht: dass die Aufgabe, die man sich vorgenommen hat, nicht mehr
+   * die eigene ist. Ein Neuladen vergisst die Liste — sie ist eine Erinnerung
+   * an das eigene Zutun, nichts, was zu speichern wäre.
+   */
+  const [versuchteUebernahmen, setzeVersuchte] = useState<string[]>([])
+
+  /**
+   * Was davon verloren ging — abgeleitet, nicht mitgeschrieben.
+   *
+   * Kein zweiter Zustand neben dem Bestand: Die Frage „gehört sie mir noch?"
+   * hat zu jedem Zeitpunkt genau eine Antwort, und die steht in der Aufgabe.
+   * Zugewiesen zu sein — auch neben jemand anderem, auch über „Alle" — heisst,
+   * dass nichts verloren ging; wieder frei heisst dasselbe, denn dann ist da
+   * keine andere Person, von der zu erzählen wäre.
+   */
+  const uebernahmen = useMemo<Uebernahme[]>(() => {
+    if (versuchteUebernahmen.length === 0) {
+      return KEINE_UEBERNAHMEN
+    }
+
+    const verloren: Uebernahme[] = []
+
+    for (const aufgabe of liste.aufgaben) {
+      if (!versuchteUebernahmen.includes(aufgabe.id)) {
+        continue
+      }
+
+      const name = uebernommenVon(aufgabe.assignee, ich.userId)
+
+      if (name !== null) {
+        verloren.push({ itemId: aufgabe.id, titel: aufgabe.titel, name })
+      }
+    }
+
+    return verloren.length === 0 ? KEINE_UEBERNAHMEN : verloren
+  }, [ich.userId, liste.aufgaben, versuchteUebernahmen])
+
+  const bestaetigeUebernahmen = useCallback(() => setzeVersuchte([]), [])
+
+  /**
+   * Die Zuweisung setzen — und dabei merken, ob man sich gerade selbst
+   * eingetragen hat.
+   *
+   * Beobachtet wird jede Zuweisung, die einen selbst einschliesst, und nicht
+   * nur die Schaltfläche „Übernehmen": Wer sich im Aufgabendetail ankreuzt,
+   * hat dasselbe getan und soll dieselbe Mitteilung bekommen, wenn ein anderes
+   * Gerät ihn gleich wieder verdrängt. Wer sich dagegen selbst austrägt oder
+   * die Aufgabe weitergibt, hat nichts verloren — sonst meldete die eigene
+   * Handlung sich gleich als fremde zurück.
+   */
+  const weiseZu = useCallback(
+    (aufgabe: Aufgabe, zuweisung: Zuweisung) => {
+      setzeVersuchte((vorher) => {
+        if (!istZugewiesen(zuweisung, ich.userId)) {
+          return vorher.filter((id) => id !== aufgabe.id)
+        }
+
+        return vorher.includes(aufgabe.id) ? vorher : [...vorher, aufgabe.id]
+      })
+
+      return schreibe(aufgabe, { assignee: zuweisung })
+    },
+    [ich.userId, schreibe],
+  )
+
+  /**
+   * Sich selbst eintragen (§7).
+   *
+   * Aus `mitPerson` und nicht aus „setze auf mich": Eine Aufgabe, die schon
+   * jemandem gehört, bekommt eine Person dazu, statt die andere hinauszuwerfen.
+   * Frei war sie, wenn niemand darunter stand — dann ist es die Reservierung,
+   * von der §7 spricht.
+   */
+  const uebernimm = useCallback(
+    (aufgabe: Aufgabe) => weiseZu(aufgabe, mitPerson(aufgabe.assignee, ich)),
+    [ich, weiseZu],
+  )
+
+  /**
+   * Die Reservierung lösen (§7) — die eigene wie die fremde.
+   *
+   * „In einer Familie fällt jemand aus, und eine Aufgabe, die niemand mehr
+   * freigeben kann, blockiert eine gesetzliche Frist." Deshalb prüft hier
+   * nichts, wer eingetragen ist.
+   */
+  const gibFrei = useCallback(
+    (aufgabe: Aufgabe) => weiseZu(aufgabe, NIEMAND),
+    [weiseZu],
   )
 
   /*
@@ -304,7 +484,41 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   )
 
   return useMemo(
-    () => ({ zustand, erinnerungen, abgelehnt, bestaetige, legeAn, schreibe, hakeAb, loesche }),
-    [zustand, erinnerungen, abgelehnt, bestaetige, legeAn, schreibe, hakeAb, loesche],
+    () => ({
+      zustand,
+      zeilen: sync.zeilen,
+      aktualisiere,
+      erinnerungen,
+      abgelehnt,
+      bestaetige,
+      legeAn,
+      schreibe,
+      hakeAb,
+      loesche,
+      ich,
+      uebernimm,
+      gibFrei,
+      weiseZu,
+      uebernahmen,
+      bestaetigeUebernahmen,
+    }),
+    [
+      zustand,
+      sync.zeilen,
+      aktualisiere,
+      erinnerungen,
+      abgelehnt,
+      bestaetige,
+      legeAn,
+      schreibe,
+      hakeAb,
+      loesche,
+      ich,
+      uebernimm,
+      gibFrei,
+      weiseZu,
+      uebernahmen,
+      bestaetigeUebernahmen,
+    ],
   )
 }
