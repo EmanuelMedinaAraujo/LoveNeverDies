@@ -60,7 +60,8 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(
       page.getByRole('button', { name: 'Ich möchte für später vorsorgen' }),
     ).toBeDisabled()
-    await expect(page.getByRole('button', { name: 'Ich wurde eingeladen' })).toBeDisabled()
+    // Seit §6 offen: Der Weg fuehrt auf /beitreten und den Kopplungscode.
+    await expect(page.getByRole('button', { name: 'Ich wurde eingeladen' })).toBeEnabled()
   })
 
   await test.step('Profil und Geräte ist von dort erreichbar', async () => {

@@ -407,7 +407,22 @@ describe('useSync', () => {
      * optimistisch angezeigt, aber auf keinem Server, und genau dieses stille
      * Auseinanderlaufen schliesst §5 aus.
      */
-    const { result } = renderHook(() => useSync(FALL))
+    /*
+     * `netzfehler` ist hier ein *vorübergehender* Zustand: Die gescheiterte
+     * Runde setzt ihn, die sofort folgende Wiederholung räumt ihn wieder ab.
+     * Ein `waitFor` darauf ist deshalb ein Wettlauf — es sieht den Wert nur,
+     * wenn es zwischen beidem einmal nachsieht, und unter Last tut es das
+     * manchmal nicht. Mitgeschrieben wird er stattdessen bei jedem Rendern.
+     */
+    const gesehen: (string | null)[] = []
+
+    const { result } = renderHook(() => {
+      const daten = useSync(FALL)
+      gesehen.push(daten.zustand.netzfehler)
+
+      return daten
+    })
+
     await waitFor(() => expect(result.current.zustand.gecacht).toBe(true))
     await waitFor(() => expect(result.current.zustand.laedtNetz).toBe(false))
 
@@ -436,14 +451,17 @@ describe('useSync', () => {
     /*
      * Auf den sichtbaren Netzfehler wird hier ausdrücklich *nicht* gewartet.
      * Die nachgeholte Runde startet sofort und räumt ihn wieder weg — ob ein
-     * Beobachter das Zwischenbild erwischt, hängt an der Maschine und nicht an
-     * der Zusage. Dass die Runde gescheitert ist, hat der Test eine Zeile
-     * weiter oben selbst entschieden; zu prüfen bleibt, was danach passiert.
+     * `waitFor` das Zwischenbild erwischt, hängt an der Maschine und nicht an
+     * der Zusage. Das Mitschreiben oben sieht ihn dagegen zuverlässig, weil es
+     * an jedem Rendern hängt und nicht am Zeitpunkt des Nachsehens.
      *
      * Ohne Türklingel und ohne `online`: Die Aufgabe geht trotzdem hinaus, und
      * die bestätigte Zeile trägt danach die `seq` des Servers.
      */
     await waitFor(() => expect(result.current.zustand.zeilen[0]?.seq).toBe(1))
+
+    // Gemeldet wurde der Fehlschlag trotzdem — und danach wieder abgeräumt.
+    expect(gesehen.some((fehler) => fehler !== null)).toBe(true)
     expect(result.current.zustand.netzfehler).toBeNull()
   })
 

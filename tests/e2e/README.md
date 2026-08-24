@@ -10,10 +10,11 @@ zwei realen Diensten dahinter:
 
 ## Browser-Projekte
 
-| Projekt            | Engine   | Viewport            | Testperson              |
-| ------------------ | -------- | ------------------- | ----------------------- |
-| `mobile-webkit`    | WebKit   | iPhone 13           | `e2e-webkit@gmail.com`  |
-| `desktop-chromium` | Chromium | Desktop Chrome      | `e2e-chromium@gmail.com`|
+| Projekt            | Engine   | Viewport            | Testperson                |
+| ------------------ | -------- | ------------------- | ------------------------- |
+| `mobile-webkit`    | WebKit   | iPhone 13           | `e2e-webkit@gmail.com`    |
+| `desktop-chromium` | Chromium | Desktop Chrome      | `e2e-chromium@gmail.com`  |
+| `kopplung`         | WebKit   | iPhone 13           | vier eigene, siehe unten  |
 
 `mobile-webkit` ist der Hauptfall: Mobile-first PWA, und auf iOS gibt es
 praktisch nur WebKit. Playwrights WebKit ist allerdings **nicht** Safari — es
@@ -26,6 +27,28 @@ dieselbe lokale Postgres, die pro Lauf genau einmal zurückgesetzt wird.
 Mit einem gemeinsamen Account sähe das zweite Projekt den Fall des ersten — und
 zwar gesperrt, weil sein Geräteschlüssel für keinen Wrap dieses Falls vorliegt.
 Die Zuordnung Projekt → Variable → Ablage steht in `tests/e2e/nutzer.ts`.
+
+### Das Projekt `kopplung`
+
+`kopplung.spec.ts` fällt aus dem obigen Schema heraus und hat deshalb ein
+eigenes Projekt — ohne Setup und ohne gespeicherten Sitzungszustand.
+
+Die Kopplung (DESIGN.md §6) braucht **mehrere Personen gleichzeitig**, jede in
+einem eigenen Browserkontext: Die Geräteidentität liegt in IndexedDB
+(`core/crypto/keystore.ts`), und die teilen sich zwei Tabs desselben Kontexts.
+Zwei Tabs wären ein Gerät, und die Kopplung hätte nichts zu tun. Ein
+`storageState` wäre hier sogar schädlich — er brächte in jeden Kontext dieselbe
+Person. Jeder Kontext meldet sich darum im Test selbst an.
+
+Dass die vier Personen einen echten Vor- und Nachnamen tragen, ist kein
+Beiwerk: Der Bestätigungsscreen aus §6 zeigt genau den, und wer nur eine
+Adresse hinterlegt hat, prüft an dieser Stelle nichts.
+
+Der Test läuft nur auf dem Handy-Projekt und nicht zusätzlich auf Desktop: Er
+verbraucht je Lauf vier Personen und legt Fälle an, die er nicht wieder
+abräumen kann. Ein zweiter Durchlauf derselben Personen liefe gegen bereits
+bestehende Fälle. Da `npm run test:e2e` die Datenbank vor jedem Lauf einmal
+zurücksetzt, sind die Personen zwischen zwei Läufen wieder unbelastet.
 
 ## Einmalig einrichten
 
@@ -66,6 +89,20 @@ Die Zuordnung Projekt → Variable → Ablage steht in `tests/e2e/nutzer.ts`.
    E2E_CLERK_USER_EMAIL_MOBILE_WEBKIT=<adresse-1>
    E2E_CLERK_USER_EMAIL_DESKTOP_CHROMIUM=<adresse-2>
    ```
+6. Die vier Personen für `kopplung.spec.ts` anlegen — hier zwingend **mit
+   Namen**, siehe oben:
+   ```bash
+   clerk users create --email e2e-kopplung-a@gmail.com --password <zufällig>      --first-name Anna --last-name Berger --instance dev --yes
+   ```
+   Ebenso für `-b` (Bernd Claasen), `-c` (Clara Dietrich) und `-d` (Doris
+   Engel), und in `.env.test` eintragen:
+   ```
+   E2E_CLERK_USER_EMAIL_KOPPLUNG_A=<adresse-a>
+   E2E_CLERK_USER_EMAIL_KOPPLUNG_B=<adresse-b>
+   E2E_CLERK_USER_EMAIL_KOPPLUNG_C=<adresse-c>
+   E2E_CLERK_USER_EMAIL_KOPPLUNG_D=<adresse-d>
+   ```
+   Welche Rolle welche Person spielt, steht in `kopplung.spec.ts`.
    `.env.test` ist gitignored (`.env.*` in der Wurzel-`.gitignore`) und enthält
    sonst denselben `VITE_CLERK_PUBLISHABLE_KEY` wie `.env.local`, dazu
    `CLERK_SECRET_KEY` und die URL/den Anon-Key des lokalen Supabase-Stacks. Den
