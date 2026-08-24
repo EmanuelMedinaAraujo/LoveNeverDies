@@ -4,12 +4,18 @@
  * Im Tab Erbe legt der Preparer Inhalte in den Tresor: `in_vault = true`, DEK
  * unter `K_v` statt `K_c`.
  *
+ * Gelesen wird aus demselben Delta wie Aufgaben und Dokumente: `zeilen` und
+ * `mutiere` werden aus dem Sync-Stream des Falls bezogen. Ein zweiter `useSync`
+ * daneben hielte einen zweiten Cache, ein zweites Wasserzeichen und eine zweite
+ * Queue für denselben Fall (DESIGN.md §5, useDokumente.ts:6-7).
+ *
  * Verwaltet Tresor-Items, Schwellwerte, Freigabestatus und stößt den Re-Split
  * bei Mitgliederänderungen an.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../core/auth/authProvider.ts'
+import type { InhaltZeile } from '../core/db/inhalte.ts'
 import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
 import { supabaseMitglieder } from '../core/db/supabaseMitglieder.ts'
 import { supabaseTresor } from '../core/db/supabaseTresor.ts'
@@ -25,7 +31,14 @@ import {
   type TresorItem,
   type TresorSchwelle,
 } from '../services/tresorService.ts'
-import { useSync } from './useSync.ts'
+import type { Mutation } from '../core/sync/queue.ts'
+
+export type TresorSyncStatus = {
+  gecacht: boolean
+  laedtNetz: boolean
+  netzfehler: string | null
+  abgeglichen?: boolean
+}
 
 export type TresorZustand =
   | { status: 'laedt' }
@@ -48,14 +61,22 @@ export type Tresordaten = {
   resplitFehler: string | null
 }
 
-export function useTresor(fall: LesbarerFall): Tresordaten {
-  const { zustand: sync, mutiere } = useSync(fall.id)
+export function useTresor(
+  fall: LesbarerFall,
+  zeilen: InhaltZeile[],
+  mutiere: (mutation: Mutation) => void,
+  syncStatus?: TresorSyncStatus,
+  onFallAktualisieren?: () => void,
+): Tresordaten {
   const zugang = useSupabase()
   const { zustand: authZustand } = useAuth()
 
   const [items, setzeItems] = useState<TresorItem[]>([])
   const [resplitLaeuft, setzeResplitLaeuft] = useState(false)
   const [resplitFehler, setzeResplitFehler] = useState<string | null>(null)
+
+  const resplitLaeuftRef = useRef(false)
+  const ausgefuehrtTriggerRef = useRef<string | null>(null)
 
   const istPreparer = fall.status === 'vorsorge' && fall.kv !== null
   const kv = fall.kv
@@ -71,7 +92,7 @@ export function useTresor(fall: LesbarerFall): Tresordaten {
         return
       }
 
-      const entschluesselt = await tresorItemsAusZeilen(sync.zeilen, kv)
+      const entschluesselt = await tresorItemsAusZeilen(zeilen, kv)
       if (aktuell) {
         setzeItems(entschluesselt)
       }
@@ -80,13 +101,87 @@ export function useTresor(fall: LesbarerFall): Tresordaten {
     return () => {
       aktuell = false
     }
-  }, [kv, sync.zeilen])
+  }, [kv, zeilen])
+
+  const triggerKey = fall.vaultResplitPending ? `${fall.id}:${fall.vaultN}` : null
+
+  // Automatischer Re-Split, wenn vault_resplit_pending gesetzt ist und Preparer online ist (§3.5)
+  useEffect(() => {
+    if (
+      !fall.vaultResplitPending ||
+      !istPreparer ||
+      kv === null ||
+      syncStatus?.abgeglichen === false ||
+      resplitLaeuft ||
+      resplitLaeuftRef.current ||
+      (triggerKey !== null && ausgefuehrtTriggerRef.current === triggerKey)
+    ) {
+      return
+    }
+
+    let aktuell = true
+    resplitLaeuftRef.current = true
+    setzeResplitLaeuft(true)
+    setzeResplitFehler(null)
+
+    void (async () => {
+      try {
+        const client = zugang()
+        const preparerId =
+          fall.preparerId ??
+          (authZustand.status === 'angemeldet' ? authZustand.benutzer.id : '')
+
+        await verteileSharesDienst(
+          supabaseTresor(client),
+          supabaseMitglieder(client),
+          supabaseGeraeteschluessel(client),
+          fall.id,
+          kv,
+          preparerId,
+        )
+
+        if (triggerKey !== null) {
+          ausgefuehrtTriggerRef.current = triggerKey
+        }
+        onFallAktualisieren?.()
+      } catch (ursache) {
+        if (aktuell) {
+          setzeResplitFehler(alsNachricht(ursache))
+        }
+      } finally {
+        resplitLaeuftRef.current = false
+        if (aktuell) {
+          setzeResplitLaeuft(false)
+        }
+      }
+    })()
+
+    return () => {
+      aktuell = false
+    }
+  }, [
+    authZustand,
+    fall.id,
+    fall.preparerId,
+    fall.vaultResplitPending,
+    istPreparer,
+    kv,
+    onFallAktualisieren,
+    resplitLaeuft,
+    syncStatus?.abgeglichen,
+    triggerKey,
+    zugang,
+  ])
 
   const verteileShares = useCallback(async () => {
     if (kv === null) {
       throw new Error('Ohne Tresorschlüssel können keine Shares verteilt werden.')
     }
+    if (resplitLaeuftRef.current) {
+      throw new Error('Eine Schlüsselverteilung läuft bereits.')
+    }
 
+    resplitLaeuftRef.current = true
     setzeResplitLaeuft(true)
     setzeResplitFehler(null)
 
@@ -105,59 +200,20 @@ export function useTresor(fall: LesbarerFall): Tresordaten {
         preparerId,
       )
 
+      if (triggerKey !== null) {
+        ausgefuehrtTriggerRef.current = triggerKey
+      }
+      onFallAktualisieren?.()
       return ergebnis
     } catch (ursache) {
       const nachricht = alsNachricht(ursache)
       setzeResplitFehler(nachricht)
       throw ursache
     } finally {
+      resplitLaeuftRef.current = false
       setzeResplitLaeuft(false)
     }
-  }, [authZustand, fall.id, fall.preparerId, kv, zugang])
-
-  // Automatischer Re-Split, wenn vault_resplit_pending gesetzt ist und Preparer online ist (§3.5)
-  useEffect(() => {
-    if (!fall.vaultResplitPending || !istPreparer || kv === null || !sync.abgeglichen || resplitLaeuft) {
-      return
-    }
-
-    let aktuell = true
-    void (async () => {
-      try {
-        const client = zugang()
-        const preparerId =
-          fall.preparerId ??
-          (authZustand.status === 'angemeldet' ? authZustand.benutzer.id : '')
-
-        await verteileSharesDienst(
-          supabaseTresor(client),
-          supabaseMitglieder(client),
-          supabaseGeraeteschluessel(client),
-          fall.id,
-          kv,
-          preparerId,
-        )
-      } catch (ursache) {
-        if (aktuell) {
-          setzeResplitFehler(alsNachricht(ursache))
-        }
-      }
-    })()
-
-    return () => {
-      aktuell = false
-    }
-  }, [
-    authZustand,
-    fall.id,
-    fall.preparerId,
-    fall.vaultResplitPending,
-    istPreparer,
-    kv,
-    resplitLaeuft,
-    sync.abgeglichen,
-    zugang,
-  ])
+  }, [authZustand, fall.id, fall.preparerId, kv, onFallAktualisieren, triggerKey, zugang])
 
   const legeItemAn = useCallback(
     async (titel: string, inhalt: string) => {
@@ -184,8 +240,12 @@ export function useTresor(fall: LesbarerFall): Tresordaten {
       : berechneTresorSchwelle(n)
   }, [fall.vaultK, fall.vaultN])
 
+  const gecacht = syncStatus?.gecacht ?? true
+  const laedtNetz = syncStatus?.laedtNetz ?? false
+  const netzfehler = syncStatus?.netzfehler ?? null
+
   const zustand = useMemo<TresorZustand>(() => {
-    if (!sync.gecacht) {
+    if (!gecacht) {
       return { status: 'laedt' }
     }
 
@@ -195,17 +255,17 @@ export function useTresor(fall: LesbarerFall): Tresordaten {
       schwelle,
       istPreparer,
       resplitPending: fall.vaultResplitPending,
-      laedtNetz: sync.laedtNetz,
-      netzfehler: sync.netzfehler,
+      laedtNetz,
+      netzfehler,
     }
   }, [
     fall.vaultResplitPending,
+    gecacht,
     istPreparer,
     items,
+    laedtNetz,
+    netzfehler,
     schwelle,
-    sync.gecacht,
-    sync.laedtNetz,
-    sync.netzfehler,
   ])
 
   return useMemo(

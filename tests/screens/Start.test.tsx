@@ -77,6 +77,7 @@ function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
     legeTrauerfallAn: vi.fn().mockResolvedValue(undefined),
     legeVorsorgefallAn: vi.fn().mockResolvedValue(undefined),
     loescheVorsorgefall: vi.fn().mockResolvedValue(undefined),
+    aktualisiere: vi.fn(),
     ...ueberschreibung,
   }
 }
@@ -103,6 +104,7 @@ function aufgabendaten(
     zustand:
       zustand.status === 'laedt' ? zustand : { ...zustand, baum: baueBaum(zustand.aufgaben) },
     zeilen: [],
+    mutiere: vi.fn(),
     aktualisiere: vi.fn(),
     erinnerungen: ERINNERUNGEN,
     abgelehnt: [],
