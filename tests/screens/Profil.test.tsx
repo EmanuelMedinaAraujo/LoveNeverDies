@@ -36,7 +36,7 @@ beforeEach(() => {
 
 /**
  * Profil (DESIGN.md §7). In diesem Stand: die eigene Person, „Für wen?" sobald
- * es einen lesbaren Fall gibt, und die Geräte.
+ * es einen lesbaren Fall gibt, die Geräte und die beiden Kopplungswege aus §6.
  */
 describe('Profil', () => {
   it('zeigt die angemeldete Person', () => {
@@ -90,5 +90,54 @@ describe('Profil', () => {
     expect(screen.getByRole('heading', { name: 'Geräte' })).toBeVisible()
     expect(screen.getByText('Geräteliste')).toBeVisible()
     expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/')
+  })
+
+  it('laesst jedes Mitglied einladen, sobald ein Fall lesbar ist', () => {
+    // §6: „Jedes Mitglied darf einladen. Das hier ist eine Familie, keine
+    // Organisation." Es haengt am lesbaren Fall, nicht an einer Rolle.
+    useCase.mockReturnValue(falldaten({ status: 'bereit', faelle: [LESBAR], aktiver: LESBAR }))
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByRole('link', { name: 'Angehörige einladen' })).toHaveAttribute(
+      'href',
+      '/koppeln',
+    )
+    expect(screen.getByRole('link', { name: 'Ein weiteres Gerät freigeben' })).toHaveAttribute(
+      'href',
+      '/koppeln',
+    )
+  })
+
+  it('laesst niemanden einladen, solange dieses Geraet nichts lesen kann', () => {
+    // Man kann nur weitergeben, was man selbst hat (§3.6).
+    const gesperrt = { zustand: 'gesperrt' as const, id: 'fall-1', grund: 'Kein Schlüssel.' }
+    useCase.mockReturnValue(falldaten({ status: 'bereit', faelle: [gesperrt], aktiver: gesperrt }))
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.queryByRole('link', { name: 'Angehörige einladen' })).toBeNull()
+    expect(screen.getByText(/lässt sich niemand hinzufügen/)).toBeVisible()
+  })
+
+  it('fuehrt immer zur Freischaltung dieses Geraets', () => {
+    // Der Weg steht auch dann da, wenn gerade nichts gesperrt ist: Ein zweites
+    // Geraet holt sich hier seinen Code, bevor es ueberhaupt einen Fall sieht.
+    rendereMitProvidern(<Profil />)
+
+    expect(
+      screen.getByRole('link', { name: 'Dieses Gerät freischalten lassen' }),
+    ).toHaveAttribute('href', '/geraet-freischalten')
+  })
+
+  it('zeigt den Freigabe-Badge an den Geraeten, sobald ein Fall gesperrt ist', () => {
+    const gesperrt = { zustand: 'gesperrt' as const, id: 'fall-2', grund: 'Kein Schlüssel.' }
+    useCase.mockReturnValue(
+      falldaten({ status: 'bereit', faelle: [LESBAR, gesperrt], aktiver: LESBAR }),
+    )
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByText('Freigabe nötig')).toBeVisible()
   })
 })

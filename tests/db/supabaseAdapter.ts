@@ -44,7 +44,7 @@ export function stubClient(antwort: Antwort) {
       gesehen.eingefuegt = werte
       return kette
     },
-    upsert(werte: unknown, optionen: unknown) {
+    upsert(werte: unknown, optionen?: unknown) {
       gesehen.hochgeladen = { werte, optionen }
       return kette
     },
@@ -84,10 +84,17 @@ export function stubClient(antwort: Antwort) {
       gesehen.tabelle = tabelle
       return kette
     },
+    /*
+     * `rpc` gibt dieselbe Kette zurück wie `from`, nicht bloß ein Promise:
+     * PostgREST-RPCs sind Filter-Builder, und die Adapter hängen `.returns<T>()`
+     * an eine Funktion, die eine Menge liefert (`supabaseKopplung.ts`). Ein
+     * blankes Promise hätte diese Methode nicht, und der Test schlüge an einer
+     * Stelle fehl, die mit dem Adapter nichts zu tun hat.
+     */
     rpc(name: string, argumente: Record<string, unknown>) {
       gesehen.rpc = name
       gesehen.rpcArgumente = argumente
-      return Promise.resolve(antwort)
+      return kette
     },
   } as unknown as SupabaseClient
 

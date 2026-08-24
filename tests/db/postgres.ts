@@ -138,6 +138,52 @@ export async function fallMitMitgliedern(
   return fallId
 }
 
+/**
+ * Legt einen Vorsorgefall samt Preparer an, an der RLS vorbei.
+ *
+ * Eigene Funktion neben {@link fallMitMitgliedern}, weil ein Vorsorgefall zwei
+ * Spalten mehr trägt, an denen Verhalten hängt: `preparer_id` und
+ * `vault_resplit_pending` (§3.5).
+ */
+export async function vorsorgefall(
+  db: PGlite,
+  preparerId: string,
+  ...userIds: string[]
+): Promise<string> {
+  const { rows } = await db.query<{ id: string }>(
+    `insert into cases (status, current_kid, payload, preparer_id)
+     values ('vorsorge', 'case_test:1', '\\x00', $1)
+     returning id`,
+    [preparerId],
+  )
+
+  const fallId = rows[0]?.id
+  if (fallId === undefined) {
+    throw new Error('Der Vorsorgefall wurde nicht angelegt.')
+  }
+
+  for (const userId of userIds) {
+    await db.query('insert into memberships (case_id, user_id) values ($1, $2)', [fallId, userId])
+  }
+
+  return fallId
+}
+
+/** Legt ein Profil an, an der RLS vorbei. */
+export async function profil(
+  db: PGlite,
+  userId: string,
+  displayName = 'Anna Müller',
+  email: string | null = 'anna@example.de',
+): Promise<void> {
+  await db.query(
+    `insert into profiles (user_id, display_name, email) values ($1, $2, $3)
+     on conflict (user_id) do update set display_name = excluded.display_name,
+                                         email = excluded.email`,
+    [userId, displayName, email],
+  )
+}
+
 let naechstesGeraet = 0
 
 /**

@@ -28,3 +28,12 @@
   color: var(--farbe-frist-abgelaufen-text);
   font-weight: 600;
 }
+
+/*
+ * Keine Frist, sondern der Freigabe-Hinweis aus §3.6. Akzentfarbe statt
+ * Fristenpalette: Er meldet nichts Dringliches, sondern etwas Offenes.
+ */
+.hinweis {
+  background: var(--farbe-akzent);
+  color: var(--farbe-auf-akzent);
+}

@@ -57,6 +57,20 @@ was einmal eingespielt ist, ist eingespielt.
 | `20260823120300_datenapi_zugriff.sql`   | Welche Rolle die Tabellen überhaupt kennt          |
 | `20260823171924_rls_initplan.sql`       | Den Clerk-`sub` einmal je Abfrage, nicht je Zeile  |
 | `20260823172125_rls_initplan_schreibweise.sql` | Dieselbe Optimierung, für den Linter lesbar |
+| `20260823200000_schluesselwraps.sql`    | `key_wraps`, insert-only, mit Signatur je Zeile     |
+| `20260823200100_fallanlage.sql`         | `lege_trauerfall_an`: Fall, Mitgliedschaft, Wraps   |
+| `20260823210000_aufgaben.sql`           | `items`, Sequenzzähler, Tombstone-Finalität        |
+| `20260824090000_tuerklingel.sql`        | Die `cases`-Zeile für Realtime veröffentlichen     |
+| `20260824100000_rechtskatalog.sql`      | Katalogstand einfrieren, `lege_trauerfall_an` neu |
+| `20260824110000_profile.sql`            | `profiles`: Anzeigename und E-Mail je Person       |
+| `20260824110100_mitgliedschaft.sql`     | `on_membership_created`: Beitritt setzt Re-Split   |
+| `20260824110200_kopplung.sql`           | `pairing_codes` und die drei Kopplungs-RPCs (§6)   |
+
+`pairing_codes` und `pairing_attempts` haben als einzige Tabellen weder Policy
+noch `grant`. Das ist kein Versehen: §4 verlangt, dass Kopplungscodes nicht
+offen selektierbar sind, und der einzige Weg an diese Zeilen führt über die drei
+`security definer`-Funktionen `erzeuge_kopplungscode`,
+`loese_kopplungscode_ein` und `schliesse_kopplung_ab`.
 
 `20260823120300_datenapi_zugriff.sql` ist die unscheinbarste Datei der Kette
 und die, ohne die nichts geht. RLS

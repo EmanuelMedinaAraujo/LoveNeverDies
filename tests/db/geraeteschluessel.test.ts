@@ -49,6 +49,9 @@ describe('Die Migrationskette', () => {
       'items',
       'key_wraps',
       'memberships',
+      'pairing_attempts',
+      'pairing_codes',
+      'profiles',
     ])
   })
 

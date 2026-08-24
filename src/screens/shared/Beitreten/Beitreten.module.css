@@ -1,0 +1,64 @@
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-gross);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.einleitung {
+  color: var(--farbe-text-sekundaer);
+}
+
+.abschnitt {
+  font-size: var(--dichte-schrift-gross);
+  margin-bottom: var(--dichte-abstand-klein);
+}
+
+/*
+ * Der Code wird vorgelesen und abgeschrieben. Tabellenziffern halten die
+ * Zeichenbreiten gleich, und der grosse Abstand trennt die beiden Vierergruppen
+ * so deutlich, dass niemand sich am Telefon verzaehlt.
+ */
+.code {
+  font-family: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Liberation Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: calc(var(--dichte-schrift-gross) * 1.6);
+  letter-spacing: 0.16em;
+  color: var(--farbe-text);
+  word-break: break-all;
+}
+
+.pruefcode {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  font-size: var(--dichte-schrift-gross);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}
+
+.schritte {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  padding-inline-start: var(--dichte-abstand-gross);
+}
+
+.knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dichte-abstand-klein);
+  margin-top: var(--dichte-abstand);
+}

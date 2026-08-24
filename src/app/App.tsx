@@ -5,14 +5,18 @@ import { speicherDauerhaftAnfordern } from '../core/storage/persist.ts'
 import { useAnsichtsmodus } from '../hooks/useAnsichtsmodus.ts'
 import { useCase } from '../hooks/useCase.ts'
 import { useGeraeteanmeldung } from '../hooks/useGeraete.ts'
+import { useProfilAbgleich } from '../hooks/useProfil.ts'
 import { fallBeschriftung } from '../services/fallbeschriftung.ts'
 import type { Fall } from '../services/fallService.ts'
 import { Alle } from '../screens/shared/Alle/Alle.tsx'
 import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
 import { Aufgabe } from '../screens/shared/Aufgabe/Aufgabe.tsx'
+import { Beitreten } from '../screens/shared/Beitreten/Beitreten.tsx'
 import { KeinFall } from '../screens/shared/KeinFall/KeinFall.tsx'
+import { Koppeln } from '../screens/shared/Koppeln/Koppeln.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
 import { Todesfall } from '../screens/shared/Todesfall/Todesfall.tsx'
+import { Badge } from '../ui/Badge/Badge.tsx'
 import stile from './App.module.css'
 
 function Ladeanzeige({ text }: { text: string }) {
@@ -24,12 +28,30 @@ function Ladeanzeige({ text }: { text: string }) {
 }
 
 /**
+ * Der Weg zu Profil, mit dem Freigabe-Hinweis daran (§3.6).
+ *
+ * §3.6 verlangt den Badge „in der unteren Leiste". Die gibt es noch nicht — sie
+ * kommt mit den Screens, die sie verbindet (§7). Bis dahin steht er am selben
+ * Ort wie der Profil-Eintrag der künftigen Leiste, nämlich an dem einen Link,
+ * der dorthin führt. Was er meldet, ändert sich damit nicht: Dieses Gerät sieht
+ * einen Fall, den es nicht lesen kann, und die Freigabe geschieht in Profil.
+ */
+function ProfilWeg({ freigabeNoetig }: { freigabeNoetig: boolean }) {
+  return (
+    <p className={stile.hinweis}>
+      <Link to="/profil">Profil und Geräte</Link>{' '}
+      {freigabeNoetig ? <Badge lage="hinweis">Freigabe nötig</Badge> : null}
+    </p>
+  )
+}
+
+/**
  * Der Fall selbst, sobald es einen gibt (§2). Es gibt noch keinen eigenen
  * Start-Screen mit den *zugewiesenen* Aufgaben — der kommt mit der Zuweisung,
  * die ihn füllt (§7). Bis dahin steht hier, wofür §2 die Beschriftung
  * verlangt: der Name der Person, kein Sammelbegriff, und der Weg zu "Alle".
  */
-function Fallanzeige({ fall }: { fall: Fall }) {
+function Fallanzeige({ fall, freigabeNoetig }: { fall: Fall; freigabeNoetig: boolean }) {
   if (fall.zustand === 'gesperrt') {
     return (
       <main className={stile.start}>
@@ -37,6 +59,15 @@ function Fallanzeige({ fall }: { fall: Fall }) {
         <p className={stile.hinweis} role="alert">
           {fall.grund}
         </p>
+        {/*
+          §3.6: Ein neues Gerät sieht den Fall und liest nichts, bis ein anderes
+          Mitglied `K_c` an seinen öffentlichen Schlüssel wrappt. Der Weg dorthin
+          gehört an diese Stelle und nicht drei Klicks entfernt.
+        */}
+        <p className={stile.hinweis}>
+          <Link to="/geraet-freischalten">Dieses Gerät freischalten lassen</Link>
+        </p>
+        <ProfilWeg freigabeNoetig={freigabeNoetig} />
       </main>
     )
   }
@@ -55,9 +86,7 @@ function Fallanzeige({ fall }: { fall: Fall }) {
       <p className={stile.hinweis}>
         <Link to="/alle">Alle Aufgaben</Link>
       </p>
-      <p className={stile.hinweis}>
-        <Link to="/profil">Profil und Geräte</Link>
-      </p>
+      <ProfilWeg freigabeNoetig={freigabeNoetig} />
     </main>
   )
 }
@@ -81,7 +110,12 @@ function FallSperre() {
     return <KeinFall />
   }
 
-  return <Fallanzeige fall={fall.aktiver} />
+  // Ein gesperrter Fall in der Liste heißt: Dieses Gerät wartet auf eine
+  // Freigabe (§3.6). Das ist lokal ablesbar — die Wraps fremder Geräte sind es
+  // nicht (§4), also kann nur das wartende Gerät selbst den Hinweis zeigen.
+  const freigabeNoetig = fall.faelle.some((eintrag) => eintrag.zustand === 'gesperrt')
+
+  return <Fallanzeige fall={fall.aktiver} freigabeNoetig={freigabeNoetig} />
 }
 
 export function App() {
@@ -94,6 +128,14 @@ export function App() {
    * nicht gebraucht; Profil holt sich denselben Zustand noch einmal.
    */
   useGeraeteanmeldung()
+
+  /*
+   * §3.3, §6: Name und E-Mail landen in `profiles`, damit die einladende Person
+   * sie sieht, bevor ein gemeinsamer Schlüssel existiert. Läuft ebenfalls still
+   * mit; ein Fehlschlag hält nichts an und meldet sich erst, wenn wirklich ein
+   * Kopplungscode gebraucht wird.
+   */
+  useProfilAbgleich()
 
   useEffect(() => {
     document.documentElement.dataset.dichte = ansichtsmodus
@@ -126,6 +168,14 @@ export function App() {
       {/* Das ganzseitige Aufgabendetail (§7). */}
       <Route path="/aufgabe/:id" element={<Aufgabe />} />
       <Route path="/todesfall" element={<Todesfall />} />
+      {/*
+        Beide Zwecke aus §6 auf demselben Screen, mit verschiedenen Wegen
+        hinein: „Ich wurde eingeladen" aus der Fallweiche, „Dieses Gerät
+        freischalten" aus Profil. Der Ablauf ist identisch (§6).
+      */}
+      <Route path="/beitreten" element={<Beitreten zweck="join" />} />
+      <Route path="/geraet-freischalten" element={<Beitreten zweck="device" />} />
+      <Route path="/koppeln" element={<Koppeln />} />
       <Route path="/profil" element={<Profil />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

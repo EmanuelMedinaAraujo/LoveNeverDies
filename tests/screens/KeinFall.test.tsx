@@ -22,14 +22,14 @@ describe('KeinFall', () => {
     expect(screen.getByRole('heading', { name: 'Willkommen' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Ein Todesfall ist eingetreten' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Ich möchte für später vorsorgen' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Ich wurde eingeladen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Ich wurde eingeladen' })).toBeEnabled()
   })
 
-  it('sagt, warum zwei der drei noch nicht gehen', () => {
+  it('sagt, warum der dritte Weg noch nicht geht', () => {
     // Ein deaktivierter Knopf ohne Erklaerung liest sich wie ein Fehler.
     rendereMitProvidern(<KeinFall />)
 
-    expect(screen.getByText(/werden gerade gebaut/)).toBeVisible()
+    expect(screen.getByText(/wird gerade gebaut/)).toBeVisible()
   })
 
   it('fuehrt zur Fallanlage', async () => {
@@ -39,6 +39,17 @@ describe('KeinFall', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Ein Todesfall ist eingetreten' }))
 
     expect(navigiere).toHaveBeenCalledWith('/todesfall')
+  })
+
+  it('fuehrt zum Kopplungscode, wer eingeladen wurde', async () => {
+    // §6: Die beitretende Seite meldet sich zuerst selbst an und holt sich
+    // dort einen Code, den sie am Telefon nennt.
+    navigiere.mockClear()
+    rendereMitProvidern(<KeinFall />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ich wurde eingeladen' }))
+
+    expect(navigiere).toHaveBeenCalledWith('/beitreten')
   })
 
   it('verlinkt Profil und Geraete', () => {
