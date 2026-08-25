@@ -15,7 +15,11 @@
  *
  * Doppelt laufen darf alles davon: Der Keystore gibt dieselbe Identität
  * zurück, und die Registrierung ist idempotent, oben im `geraeteService` und
- * unten am eindeutigen Index in `device_keys`.
+ * unten am eindeutigen Index in `device_keys`. Die Anmeldung nimmt trotzdem
+ * den gebündelten Weg: `StrictMode` ruft den Effekt im Dev-Modus doppelt auf,
+ * und zwei gleichzeitige `insert` hinterließen ein rotes 409 in der Konsole,
+ * das nach einem kaputten Zustand aussieht, obwohl das Ergebnis stimmt
+ * (Issue #21).
  *
  * Alle drei halten in ihrem State ausschließlich das Ergebnis der asynchronen
  * Arbeit. Was sich aus dem Anmeldezustand ergibt, entsteht beim Rendern: Ein
@@ -35,7 +39,7 @@ import { alsNachricht } from '../core/fehler.ts'
 import {
   benenneGeraetUm,
   eigeneGeraete,
-  registriereGeraet,
+  registriereGeraetGebuendelt,
   type Geraet,
 } from '../services/geraeteService.ts'
 import { standardGeraetename } from '../services/geraetename.ts'
@@ -150,10 +154,14 @@ export function useGeraeteanmeldung(): AnmeldungZustand {
 
     void (async () => {
       try {
-        const geraet = await registriereGeraet(supabaseGeraeteschluessel(zugang()), identitaet, {
-          userId: benutzerId,
-          label: standardGeraetename(navigator.userAgent, anzeigename),
-        })
+        const geraet = await registriereGeraetGebuendelt(
+          supabaseGeraeteschluessel(zugang()),
+          identitaet,
+          {
+            userId: benutzerId,
+            label: standardGeraetename(navigator.userAgent, anzeigename),
+          },
+        )
 
         if (aktuell) {
           setzeErgebnis({ wert: geraet })
