@@ -1,6 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useEinloesung } from '../../../hooks/useKopplung.ts'
+import {
+  formatiereKopplungscodeEingabe,
+  KOPPLUNGSCODE_LAENGE,
+} from '../../../services/kopplungService.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import stile from './Koppeln.module.css'
@@ -24,6 +28,23 @@ export function Koppeln() {
 
   const [eingabe, setzeEingabe] = useState('')
   const [gewaehlterFall, setzeGewaehltenFall] = useState<string | null>(null)
+
+  /*
+   * Getippt wird der Code, den Bindestrich setzt das Feld (§6, Schritt 4). Ob
+   * gerade gelöscht wurde, weiß nur das Ereignis; ohne diese Auskunft käme der
+   * Bindestrich nach jedem Löschversuch sofort zurück, und das vierte Zeichen
+   * ließe sich nicht mehr entfernen.
+   */
+  function tippen(ereignis: ChangeEvent<HTMLInputElement>) {
+    const art = (ereignis.nativeEvent as InputEvent).inputType ?? ''
+
+    setzeEingabe(
+      formatiereKopplungscodeEingabe(ereignis.target.value, {
+        geloescht: art.startsWith('delete'),
+        vorher: eingabe,
+      }),
+    )
+  }
 
   function absenden(ereignis: FormEvent) {
     ereignis.preventDefault()
@@ -151,8 +172,8 @@ export function Koppeln() {
       <div className={stile.kopf}>
         <h1>Kopplungscode eingeben</h1>
         <p className={stile.einleitung}>
-          Lassen Sie sich die acht Zeichen nennen. Groß- und Kleinschreibung und der Bindestrich
-          spielen keine Rolle.
+          Lassen Sie sich die acht Zeichen nennen. Groß- und Kleinschreibung spielen keine Rolle,
+          und den Bindestrich setzt das Feld selbst.
         </p>
       </div>
 
@@ -164,7 +185,9 @@ export function Koppeln() {
               id="koppeln-code"
               className={`${stile.eingabe} ${stile.codeeingabe}`}
               value={eingabe}
-              onChange={(ereignis) => setzeEingabe(ereignis.target.value)}
+              onChange={tippen}
+              maxLength={KOPPLUNGSCODE_LAENGE + 1}
+              inputMode="text"
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
