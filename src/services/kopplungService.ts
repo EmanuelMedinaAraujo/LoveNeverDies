@@ -49,6 +49,9 @@ export const KOPPLUNGSCODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
 
 export const KOPPLUNGSCODE_LAENGE = 8
 
+/** Nach so vielen Zeichen steht der Bindestrich (§6). */
+const GRUPPE = 4
+
 /** Die Kopplung ist gescheitert, bevor irgendein Schlüssel bewegt wurde. */
 export class KopplungFehler extends Error {
   constructor(nachricht: string, options?: ErrorOptions) {
@@ -65,7 +68,41 @@ export class KopplungFehler extends Error {
  * wird der Code mit und ohne Bindestrich (§6).
  */
 export function gruppierterKopplungscode(code: string): string {
-  return `${code.slice(0, 4)}-${code.slice(4)}`
+  return `${code.slice(0, GRUPPE)}-${code.slice(GRUPPE)}`
+}
+
+/**
+ * Was im Eingabefeld stehen soll, während jemand tippt (§6, Schritt 4).
+ *
+ * Der Bindestrich kommt von selbst, sobald das vierte Zeichen steht: Vorgelesen
+ * wird der Code in zwei Vierergruppen, und wer ihn ohne Trennung eintippt,
+ * verliert beim Mitzählen die Stelle. Er ist dabei Darstellung und kein
+ * Zeichen des Codes — deshalb zählt er auch beim Löschen nicht mit: Ein Druck
+ * auf Rückwärts hinter dem Bindestrich nimmt das vierte Zeichen mit, sonst
+ * hinge man an einer Trennung fest, die man gar nicht getippt hat.
+ *
+ * Erkannt wird das daran, dass beim Löschen kein Zeichen des Codes
+ * verschwunden ist: Dann war es der Bindestrich, und gemeint war das Zeichen
+ * davor.
+ */
+export function formatiereKopplungscodeEingabe(
+  eingabe: string,
+  { geloescht, vorher }: { geloescht: boolean; vorher: string },
+): string {
+  const roh = zeichenDesCodes(eingabe)
+  const zeichen = geloescht && roh === zeichenDesCodes(vorher) ? roh.slice(0, -1) : roh
+
+  return zeichen.length < GRUPPE
+    ? zeichen
+    : `${zeichen.slice(0, GRUPPE)}-${zeichen.slice(GRUPPE)}`
+}
+
+/** Nur die Zeichen, die zum Code gehören, höchstens so viele wie erlaubt. */
+function zeichenDesCodes(eingabe: string): string {
+  return eingabe
+    .replace(/[^0-9A-Za-z]/g, '')
+    .toUpperCase()
+    .slice(0, KOPPLUNGSCODE_LAENGE)
 }
 
 /**
