@@ -77,7 +77,16 @@ function alsTag(iso: string | null): number | null {
   const [, jahr, monat, tag] = treffer
   const zeit = Date.UTC(Number(jahr), Number(monat) - 1, Number(tag))
 
-  return Number.isNaN(zeit) ? null : zeit
+  if (Number.isNaN(zeit)) {
+    return null
+  }
+
+  /*
+   * Die Rundreise, weil `Date.UTC` überzählige Tage weiterrollt: Aus dem
+   * 31. Februar würde der 3. März, und ein vertipptes Kenntnisdatum ergäbe
+   * stillschweigend ein Fristende, das niemand eingegeben hat (§8, #12).
+   */
+  return alsIso(zeit) === iso ? zeit : null
 }
 
 function alsIso(zeit: number): string {
@@ -105,33 +114,69 @@ export function datumText(iso: string): string {
 }
 
 /**
+ * Ob dieser Text ein Kalendertag ist: `YYYY-MM-DD`, und den Tag gibt es.
+ *
+ * Die Prüfung, die vor jedem gespeicherten Kenntnisdatum steht (§8, #12).
+ * Ein `<input type="date">` liefert diese Form, ein älterer Browser fällt auf
+ * ein Textfeld zurück, und was von dort kommt, hat niemand geprüft.
+ */
+export function istKalendertag(text: string): boolean {
+  return alsTag(text) !== null
+}
+
+/**
+ * Woran die Fristen dieses Falls für *diese* Person hängen (§8).
+ *
+ * Zwei Daten und keine Aufgabe: Welches von beiden zählt, entscheidet
+ * `fristAb` am Item. Sie stehen zusammen in einem Wert, weil sie immer
+ * zusammen gebraucht werden und zwei Zeichenketten nebeneinander eine
+ * Einladung wären, sie zu vertauschen.
+ */
+export type Fristbezug = {
+  /** Aus `cases.payload` (§8), oder `null` bei einem Vorsorgefall. */
+  sterbedatum: string | null
+  /**
+   * Das eigene Kenntnisdatum, `null`, solange keines eingetragen ist (#12).
+   *
+   * Es liegt als privates Konfigurations-Item unter `K_p` (§3.7) und gehört
+   * ausschließlich der angemeldeten Person: Derselbe Fall hat für ihren Bruder
+   * ein anderes, und genau das ist der Zweck.
+   */
+  kenntnisAm: string | null
+}
+
+/**
  * Die Frist einer Aufgabe, gerechnet für heute.
  *
  * @param katalog die Herkunft der Aufgabe. `null` bei einer selbst angelegten:
  * Fristen stehen im Gesetz und nicht im Eingabefeld (§8).
- * @param sterbedatum aus `cases.payload` (§8), oder `null` bei einem
- * Vorsorgefall.
+ * @param bezug die beiden Daten, ab denen gezählt wird. `kenntnisAm` ist das
+ * *eigene* (§8, #12): Dieselbe geteilte Aufgabe ergibt für zwei Mitglieder
+ * zwei Fristenden, ohne dass sich an ihr etwas ändert.
  * @param heute der Kalendertag, gegen den gezählt wird: als Parameter, damit
  * diese Funktion rein bleibt und ein Test einen Tag vorgeben kann.
  */
 export function fristlage(
   katalog: Katalogherkunft | null,
-  sterbedatum: string | null,
+  bezug: Fristbezug,
   heute: string,
 ): Fristlage {
   if (katalog === null || katalog.fristTage === null || katalog.fristAb === null) {
     return { art: 'keine' }
   }
 
-  if (katalog.fristAb === 'kenntnis') {
-    return { art: 'ab-kenntnis' }
-  }
-
-  const beginn = alsTag(sterbedatum)
+  const abKenntnis = katalog.fristAb === 'kenntnis'
+  const beginn = alsTag(abKenntnis ? bezug.kenntnisAm : bezug.sterbedatum)
   const heuteTag = alsTag(heute)
 
   if (beginn === null || heuteTag === null) {
-    return { art: 'keine' }
+    /*
+     * Ohne Kenntnisdatum bleibt die Aufgabe fristenlos und sagt, woran das
+     * liegt (§8, #12). Geschätzt wird nichts, schon gar nicht aus dem
+     * Sterbedatum: Eine falsch berechnete Ausschlagungsfrist kostet den ganzen
+     * Nachlass.
+     */
+    return abKenntnis ? { art: 'ab-kenntnis' } : { art: 'keine' }
   }
 
   const ende = beginn + katalog.fristTage * TAG_MS

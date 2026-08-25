@@ -25,11 +25,15 @@ import {
   erzeugePersoenlichesKid,
   gibFuerAlleFrei,
   ladePersoenlichenSchluessel,
+  mutationKenntnisAendern,
+  mutationKenntnisAnlegen,
   mutationPrivatAnlegen,
   pruefeAbhaengigkeiten,
   stellePersoenlichenSchluesselBereit,
   uebergebePersoenlichenSchluessel,
 } from '../../src/services/privatService'
+import { baueBaum } from '../../src/services/aufgabenbaum'
+import { fristlage } from '../../src/services/fristen'
 import { darfBearbeiten, NIEMAND } from '../../src/services/zuweisung'
 
 /**
@@ -648,5 +652,185 @@ describe('Ein zweites eigenes Gerät (§3.7, §6)', () => {
     // Kein Schlüssel auf Vorrat: Er wäre eine Zeile, die dem Server sagt, hier
     // gebe es etwas zu verbergen, ohne dass es das gäbe (§3.3, §11.6).
     expect(s.persoenlicheZeilen).toHaveLength(0)
+  })
+})
+
+/**
+ * Das eigene Kenntnisdatum als privates Konfigurations-Item (DESIGN.md §3.7,
+ * §8, #12).
+ *
+ * Die zweite Sorte privater Items, und die einzige, die nie im Aufgabenbaum
+ * steht. Der Anlass ist die Ausschlagungsfrist nach § 1944 BGB: Sie knüpft an
+ * die Kenntnis des jeweiligen Erben von Anfall und Berufungsgrund an. Anna war
+ * am Sterbetag dabei, ihr Bruder erfährt es drei Wochen später vom Notar, und
+ * dieselbe geteilte Aufgabe hat für die beiden zwei verschiedene Enden.
+ */
+describe('Kenntnisdatum als privates Konfigurations-Item (§8, #12)', () => {
+  /** Die Ausschlagungsfrist, wie sie aus dem Katalog in das Item kommt (§8). */
+  const AUSSCHLAGUNG = {
+    aufgabeId: 'erbausschlagung-pruefen',
+    version: '2026-08+testtest',
+    fristTage: 42,
+    fristAb: 'kenntnis' as const,
+    rechtsgrundlage: '§ 1944 BGB',
+    zustaendigeStelle: 'Nachlassgericht',
+    benoetigteDokumente: [],
+    unteraufgaben: [],
+    haengtAbVon: [],
+    hinweis: '',
+    quelleUrl: '',
+    kategorie: 'Frist',
+    reihenfolge: 20,
+  }
+
+  it('legt es unter K_p ab und liest es zurück, ohne es als Aufgabe zu zählen', async () => {
+    const { s, k, anna, annasIdentitaet, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationPrivatAnlegen(k, schluessel, 'Erbausschlagung erwägen'),
+      await mutationKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const eigener = await ladePersoenlichenSchluessel(
+      anna.persoenlich,
+      k.id,
+      ANNAS_GERAET,
+      annasIdentitaet,
+    )
+
+    const { aufgaben, konfigurationen, uebersprungeneIds } = await aufgabenAusZeilen(
+      await s.inhalte.seit(k.id, 0),
+      k,
+      eigener,
+    )
+
+    expect(konfigurationen.map((eintrag) => eintrag.kenntnisAm)).toEqual(['2026-05-12'])
+    expect(konfigurationen[0]?.kid).toBe(schluessel.kid)
+
+    // Es ist keine Aufgabe und kein Defekt: weder im Baum noch im Zähler der
+    // übersprungenen Zeilen (§3.7).
+    expect(aufgaben.map((aufgabe) => aufgabe.titel)).toEqual(['Erbausschlagung erwägen'])
+    expect(baueBaum(aufgaben).map((knoten) => knoten.aufgabe.titel)).toEqual([
+      'Erbausschlagung erwägen',
+    ])
+    expect(uebersprungeneIds).toEqual([])
+  })
+
+  it('bleibt für ein anderes Mitglied unlesbar und wird still verworfen', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    // Bernd hält `K_c` und keinen fremden `K_p`. Was er nicht lesen kann,
+    // verwirft er, ohne dass jemand davon erfährt (§3.7).
+    const berndsSicht = await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k)
+
+    expect(berndsSicht.aufgaben).toEqual([])
+    expect(berndsSicht.konfigurationen).toEqual([])
+    expect(berndsSicht.uebersprungeneIds).toHaveLength(1)
+  })
+
+  it('ändert das Datum unter demselben DEK, statt ein zweites Item anzulegen', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const vorher = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    await uebertrage(s.inhalte, await mutationKenntnisAendern(vorher, '2026-06-02', '2026-06-10'))
+
+    const nachher = await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel)
+
+    expect(nachher.konfigurationen).toHaveLength(1)
+    expect(nachher.konfigurationen[0]?.id).toBe(vorher.id)
+    expect(nachher.konfigurationen[0]?.kenntnisAm).toBe('2026-06-02')
+    expect(s.itemZeilen).toHaveLength(1)
+  })
+
+  it('leert das Datum wieder und macht die Aufgabe damit erneut fristenlos', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const eingetragen = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    await uebertrage(s.inhalte, await mutationKenntnisAendern(eingetragen, null, '2026-05-20'))
+
+    const { konfigurationen } = await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel)
+
+    expect(konfigurationen[0]?.kenntnisAm).toBeNull()
+    expect(
+      fristlage(AUSSCHLAGUNG, { sterbedatum: '2026-05-12', kenntnisAm: null }, '2026-05-20'),
+    ).toEqual({ art: 'ab-kenntnis' })
+  })
+
+  it('lässt die Zeile der geteilten Aufgabe unberührt (§8)', async () => {
+    /*
+     * Die Zusage, an der #12 hängt: Zwei Mitglieder sehen auf derselben
+     * Aufgabe zwei Fristenden, und dabei ändert sich an ihr keine Zeile. Das
+     * Fristende wird gerechnet und nie gespeichert.
+     */
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(s.inhalte, await mutationPrivatAnlegen(k, schluessel, 'Geteilte Aufgabe'))
+
+    const aufgabenzeile = s.itemZeilen[0]!
+    const vorher = { seq: aufgabenzeile.seq, payload: aufgabenzeile.payload }
+
+    await uebertrage(
+      s.inhalte,
+      await mutationKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    expect(s.itemZeilen[0]?.seq).toBe(vorher.seq)
+    expect(s.itemZeilen[0]?.payload).toBe(vorher.payload)
+
+    const annasEnde = fristlage(
+      AUSSCHLAGUNG,
+      { sterbedatum: '2026-05-12', kenntnisAm: '2026-05-12' },
+      '2026-05-20',
+    )
+    const brudersEnde = fristlage(
+      AUSSCHLAGUNG,
+      { sterbedatum: '2026-05-12', kenntnisAm: '2026-06-02' },
+      '2026-05-20',
+    )
+
+    expect(annasEnde).toMatchObject({ ende: '2026-06-23' })
+    expect(brudersEnde).toMatchObject({ ende: '2026-07-14' })
+  })
+
+  it('weist ein Kenntnisdatum in der Zukunft ab', async () => {
+    // Aus einem vertippten Jahr würde sonst eine Frist, die viel später endet
+    // als die wirkliche, und eine versäumte Ausschlagung kostet den ganzen
+    // Nachlass (§8).
+    const { k, schluessel } = await ausgangslage()
+
+    await expect(mutationKenntnisAnlegen(k, schluessel, '2062-05-12', '2026-05-20')).rejects.toThrow(
+      AufgabenFehler,
+    )
+  })
+
+  it('weist einen Text ab, der kein Kalendertag ist', async () => {
+    const { k, schluessel } = await ausgangslage()
+
+    await expect(mutationKenntnisAnlegen(k, schluessel, 'im Mai', '2026-05-20')).rejects.toThrow(
+      AufgabenFehler,
+    )
+    await expect(
+      mutationKenntnisAnlegen(k, schluessel, '2026-02-31', '2026-05-20'),
+    ).rejects.toThrow(AufgabenFehler)
   })
 })

@@ -462,6 +462,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
     uebernahmen,
     bestaetigeUebernahmen,
     gibFuerAlleFrei,
+    fristbezug,
   } = useAufgaben(fall)
 
   const [neuerTitel, setzeNeuerTitel] = useState('')
@@ -633,13 +634,13 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
 
               <ul className={stile.liste}>
                 {(sortierung === 'frist'
-                  ? sortiereNachFrist(zustand.baum, fall.sterbedatum, heute)
+                  ? sortiereNachFrist(zustand.baum, fristbezug, heute)
                   : zustand.baum
                 ).map((knoten) => (
                   <Aufgabenzeile
                     key={knoten.aufgabe.id}
                     knoten={knoten}
-                    lage={fristlage(knoten.aufgabe.katalog, fall.sterbedatum, heute)}
+                    lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute)}
                     gesperrt={laeuft}
                     ichUserId={ich.userId}
                     aufHaken={(erledigt) => fuehreAus(() => hakeAb(knoten.aufgabe, erledigt))}

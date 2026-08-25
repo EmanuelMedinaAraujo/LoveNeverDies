@@ -15,6 +15,7 @@ import {
   type Fallschluessel,
 } from '../../src/services/aufgabenService'
 import { ALLE, NIEMAND, personen } from '../../src/services/zuweisung'
+import { mutationKenntnisAnlegen } from '../../src/services/privatService'
 
 /**
  * Aufgaben anlegen, ändern, abhaken und löschen (DESIGN.md §3.1, §3.3, §5).
@@ -608,6 +609,28 @@ describe('beschreibeAbgelehnte', () => {
       titel: 'Sterbeurkunde beantragen',
       grund: 'permission denied',
     })
+  })
+
+  it('benennt ein abgelehntes Konfigurations-Item, das gar keinen Titel hat', async () => {
+    /*
+     * §8, #12: Das Kenntnisdatum liegt in einem privaten Konfigurations-Item
+     * unter `K_p`. Es hat keinen Titel, und ohne Namen stünde in der Meldung
+     * eine Änderung ohne Gegenstand: Niemand wüsste, dass sein Kenntnisdatum
+     * nicht angekommen ist.
+     */
+    const k = fall()
+    const kp = { kid: 'a'.repeat(64), kp: erzeugeAesSchluessel() }
+
+    const mutation = await mutationKenntnisAnlegen(k, kp, '2026-05-12', '2026-05-20')
+
+    const [beschrieben] = await beschreibeAbgelehnte(
+      [{ mutation, grund: 'permission denied' }],
+      [],
+      k,
+      kp,
+    )
+
+    expect(beschrieben?.titel).toBe('Ihr Kenntnisdatum')
   })
 
   it('nennt den neuen Titel einer abgelehnten Änderung', async () => {

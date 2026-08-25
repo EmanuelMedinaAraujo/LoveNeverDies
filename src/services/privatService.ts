@@ -12,6 +12,12 @@
  * DEK ändert sich nie (§3.1). Danach ist es ein gewöhnliches Item, und der
  * Codepfad ist derselbe, den die Tresorfreigabe benutzt (§3.5).
  *
+ * Neben den privaten Aufgaben liegt hier die zweite Sorte privater Items: die
+ * Konfiguration, heute genau ein Feld, das eigene `kenntnisAm` (§8, #12). Sie
+ * steht nie im Aufgabenbaum, hat weder Eltern noch Kinder noch Abhängigkeiten
+ * und ist von den beiden Strukturregeln unten deshalb ausdrücklich nicht
+ * betroffen.
+ *
  * Zwei Strukturregeln stehen hier und nicht in der Datenbank: Private Aufgaben
  * sind immer Wurzelaufgaben, und nichts darf von einer privaten Aufgabe
  * abhängen (§3.7, §7). `parentId` und `dependsOn` liegen verschlüsselt im
@@ -21,7 +27,7 @@
  */
 
 import { entschluessele, erzeugeAesSchluessel, verschluessele } from '../core/crypto/aead'
-import { hexText, zufallsBytes } from '../core/crypto/bytes'
+import { hexText, textBytes, zufallsBytes } from '../core/crypto/bytes'
 import { wrappeDek } from '../core/crypto/dek'
 import { entkapsele, kapsele } from '../core/crypto/kem'
 import type { Geraeteidentitaet } from '../core/crypto/keystore'
@@ -39,7 +45,10 @@ import {
   verschluesselterInhalt,
   type Aufgabe,
   type Fallschluessel,
+  type Konfiguration,
+  type Konfigurationspayload,
 } from './aufgabenService'
+import { heuteIso, istKalendertag } from './fristen'
 import { NIEMAND, personen, type Zugewiesene } from './zuweisung'
 
 /** Der persönliche Schlüssel dieser Person in diesem Fall (§3.7). */
@@ -319,5 +328,100 @@ export function pruefeAbhaengigkeiten(
     throw new AufgabenFehler(
       `Von einer privaten Aufgabe kann nichts abhängen: „${privat.titel}". Machen Sie sie erst für alle sichtbar.`,
     )
+  }
+}
+
+/**
+ * Ein Kenntnisdatum, geprüft, oder ein Wurf.
+ *
+ * Zwei Prüfungen, und beide sind Rechtsschutz und keine Formsache (§8). Ein
+ * Datum, das kein Kalendertag ist, ergäbe eine Aufgabe, die stumm fristenlos
+ * bleibt, obwohl jemand etwas eingetragen hat. Ein Datum in der Zukunft ergäbe
+ * ein Fristende, das später liegt als das wirkliche: Aus einem vertippten Jahr
+ * würde eine versäumte Ausschlagungsfrist, und die kostet den ganzen Nachlass.
+ *
+ * @param heute der Kalendertag, gegen den geprüft wird: als Parameter, damit
+ * ein Test einen Tag vorgeben kann.
+ */
+function pruefeKenntnisdatum(kenntnisAm: string | null, heute: string): string | null {
+  if (kenntnisAm === null) {
+    // Zurücknehmen muss gehen: Wer sich vertan hat, soll das Feld leeren
+    // können, statt mit einem falschen Datum weiterzuleben. Danach ist die
+    // Aufgabe wieder fristenlos und sagt das auch (§8).
+    return null
+  }
+
+  if (!istKalendertag(kenntnisAm)) {
+    throw new AufgabenFehler('Ein Kenntnisdatum ist ein Kalendertag, etwa 2026-05-12.')
+  }
+
+  if (kenntnisAm > heute) {
+    throw new AufgabenFehler('Ein Kenntnisdatum liegt nicht in der Zukunft.')
+  }
+
+  return kenntnisAm
+}
+
+/**
+ * Das erste eigene Kenntnisdatum: ein privates Konfigurations-Item unter `K_p`
+ * (§3.7, §8).
+ *
+ * Dieselbe Kette wie bei einer privaten Aufgabe, nur mit dem anderen Payload:
+ * eigener DEK, Payload darunter, DEK unter `K_p`. Für die anderen Mitglieder
+ * ist es eine Zeile, die sie nicht entschlüsseln können und still verwerfen —
+ * und mehr sollen sie darüber auch nicht erfahren, denn wann jemand erfahren
+ * hat, dass er Erbe ist, geht seine Geschwister nichts an.
+ */
+export async function mutationKenntnisAnlegen(
+  fall: Pick<Fallschluessel, 'id'>,
+  schluessel: PersoenlicherSchluessel,
+  kenntnisAm: string | null,
+  heute: string = heuteIso(),
+): Promise<Mutation> {
+  const payload: Konfigurationspayload = {
+    typ: 'konfiguration',
+    kenntnisAm: pruefeKenntnisdatum(kenntnisAm, heute),
+  }
+
+  const { id, wrappedDek, payload: verschluesselt } = await verschluesselterInhalt(
+    { id: fall.id, kid: schluessel.kid, kc: schluessel.kp },
+    uuidv7(),
+    payload,
+  )
+
+  return {
+    op: 'anlegen',
+    itemId: id,
+    fallId: fall.id,
+    art: 'item',
+    kid: schluessel.kid,
+    wrappedDek,
+    payload: verschluesselt,
+    ts: Date.now(),
+  }
+}
+
+/**
+ * Ein geändertes Kenntnisdatum unter demselben DEK (§3.1).
+ *
+ * Geändert und nicht neu angelegt: Ein zweites Konfigurations-Item wäre eine
+ * zweite Wahrheit über denselben Tag, und welche davon gilt, entschiede dann
+ * die Reihenfolge der IDs statt der Mensch, der es eingetragen hat.
+ */
+export async function mutationKenntnisAendern(
+  konfiguration: Konfiguration,
+  kenntnisAm: string | null,
+  heute: string = heuteIso(),
+): Promise<Mutation> {
+  const payload: Konfigurationspayload = {
+    typ: 'konfiguration',
+    kenntnisAm: pruefeKenntnisdatum(kenntnisAm, heute),
+  }
+
+  return {
+    op: 'aendern',
+    itemId: konfiguration.id,
+    payload: await verschluessele(konfiguration.dek, textBytes(JSON.stringify(payload))),
+    ts: Date.now(),
   }
 }
