@@ -982,6 +982,31 @@ Zwei Regeln, beide beim Anlegen validiert:
   blockiert oder würde fälschlich freigegeben. Umgekehrt ist es erlaubt: "meine private
   Ausschlagung kann erst los, wenn der Erbschein da ist" funktioniert.
 
+### Erbe-Fragebaum
+
+Die erste Frage nach einem Todesfall ist nicht "welche Aufgaben habe ich", sondern "bin ich
+überhaupt Erbe". Der Fragebaum stellt sie: 141 Knoten, 80 Ergebnisse, eine Frage pro Seite
+unter `/erbe/fragebaum/:knotenId`, mit dem Zurück-Knopf des Browsers zwischen den Fragen.
+
+Er gehört zum Trauerfall; ein Vorsorgefall hat laut §2 keine Erben. Alles, was er
+hervorbringt — Antworten, Ergebnis, Erbstatus und die drei Aufgaben, die er anlegen kann —
+liegt privat unter `K_p` (§3.7). Bei Ausschlagung, Anfechtung und Erbenstellung ist die
+Familie die interessierte Partei, und §3.7 führt die Erbausschlagung selbst als Beispiel
+dafür an. Zwei Geschwister im selben Fall gehen den Baum getrennt und sehen voneinander
+nichts davon.
+
+Der Erbstatus erscheint als eine Zeile in Profil, sichtbar nur für die Person selbst. Die
+Katalogaufgabe, die auf den Baum führt, ist geteilt, ihr `erledigt` wird aber aus dem
+eigenen privaten Ergebnis abgeleitet und nicht gespeichert — dieselbe Konstruktion, mit der
+§8 die Fristen ab eigener Kenntnis löst.
+
+Anders als `Start`, `Aufgabe` und `Alle` hat der Fragebaum **keinen zweiten Screen-Baum**:
+ein Renderer, der auf `modus` verzweigt. Bei 80 Ergebnistexten wären zwei Fassungen
+desselben Rechtstextes zwei Fassungen, die auseinanderlaufen. In der einfachen Ansicht wird
+gekürzt angezeigt, nicht umformuliert.
+
+Alles Weitere in `ERBE_DESIGN.md`, die Entscheidungen in ADR-0001 und ADR-0002.
+
 ### Dokumente
 
 Pro Datei ein zufälliger DEK, clientseitig AES-256-GCM, hochgeladen als eine
@@ -1008,6 +1033,22 @@ sind in der App sichtbar, als Badges und in sortierten Listen.
 ---
 
 ## 8. Rechtsinhalte
+
+> **Der Katalog ist auf eine Aufgabe reduziert (ADR-0001).** Der frühere Bestand von zehn
+> Einträgen wurde zurückgezogen: Sein Inhalt gilt als überwiegend unzuverlässig, und ein
+> Rechtsinhalt, dem man nicht traut, ist schlimmer als keiner — er trägt
+> Fristen und Rechtsgrundlagen, und niemand prüft ihn nach, gerade weil er aussieht, als
+> sei er geprüft. Aufgaben entstehen seitdem durch Menschen oder durch den Erbe-Fragebaum
+> (`ERBE_DESIGN.md`). Die eine verbliebene Katalogaufgabe, *"Klären ob Sie Erbe sind"*,
+> führt dorthin.
+>
+> Die Mechanik dieses Abschnitts bleibt vollständig in Kraft: der Import, `K_cat`, die
+> deterministischen IDs, `catalog_version` und das `katalog`-Feld am Item. Sie trägt
+> weiterhin zwei Dinge, die der Fragebaum braucht — ein Anlegen, das auch bei zwei
+> gleichzeitig synchronisierenden Geräten genau einmal geschieht, und die Rechtsangaben an
+> den Aufgaben, die er erzeugt. Ohne `{fristTage, fristAb}` an der Ausschlagung rechnete
+> keine Frist, und das ist die eine Frist in dieser App, deren Versäumnis den ganzen
+> Nachlass kostet.
 
 Die Juristinnen pflegen eine Tabelle, ein Datensatz pro Aufgabe:
 
@@ -1079,7 +1120,10 @@ Sterbetag anwesend war, und ein Bruder, der drei Wochen später vom Notar erfäh
 verschiedene Fristenden.
 
 `kenntnisAm` liegt deshalb pro Person als privates Konfigurations-Item unter `K_p` (§3.7),
-ist standardmäßig leer und wird von jeder Person selbst eingetragen. Weil das Fristende
+ist standardmäßig leer und wird von jeder Person selbst eingetragen — im Aufgabendetail
+oder im Erbe-Fragebaum, wo dieselbe Frage ohnehin gestellt wird (`ERBE_DESIGN.md` §7).
+Dasselbe Item trägt seither auch das eigene Fragebaum-Ergebnis, aus demselben Grund: Es ist
+eine Auskunft über genau eine Person. Weil das Fristende
 abgeleitet und nie gespeichert wird, zeigt dieselbe geteilte Aufgabe jedem Mitglied sein
 eigenes Datum, ohne dass irgendetwas divergiert. Aufgaben mit `frist_ab = kenntnis` bleiben
 ohne dieses Datum fristenlos und tragen den sichtbaren Hinweis "Diese Frist läuft ab _Ihrer_

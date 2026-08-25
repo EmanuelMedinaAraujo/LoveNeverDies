@@ -5,7 +5,9 @@ import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { useTodesfall } from '../../../hooks/useTodesfall.ts'
 import { useTresor } from '../../../hooks/useTresor.ts'
+import type { Fragebaumergebnis } from '../../../services/aufgabenService.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
+import { knoten, statusText } from '../../../services/fragebaumService.ts'
 import type { TresorItem } from '../../../services/tresorService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
@@ -505,6 +507,78 @@ function VorsorgeTresor({
   )
 }
 
+/**
+ * Der Erbstatus dieser Person und der Weg in den Fragebaum
+ * (ERBE_DESIGN.md §10).
+ *
+ * Das Ergebnis liegt privat unter `K_p` (§3.7): Zwei Geschwister im selben Fall
+ * sehen hier verschiedene Sätze, und keiner von beiden erfährt den des
+ * anderen. Deshalb kommt es aus `useAufgaben` und nicht aus `useCase` — genau
+ * wie das Kenntnisdatum, mit dem es sich die Zeile teilt (§8).
+ */
+function Erbstatus({ fall }: { fall: LesbarerFall }) {
+  const { zustand, fragebaum } = useAufgaben(fall)
+  const navigate = useNavigate()
+
+  if (zustand.status === 'laedt') {
+    return <Ladeanzeige text="Ihr Ergebnis wird geladen..." />
+  }
+
+  return (
+    <Card>
+      <div className={stile.statusKopf}>
+        <h2 className={stile.abschnitt}>Ihr Erbstatus</h2>
+        {fragebaum === null || fragebaum.status === null ? null : (
+          <Badge lage="hinweis">{statusText(fragebaum.status)}</Badge>
+        )}
+      </div>
+
+      {fragebaum === null ? (
+        <>
+          <p className={stile.hinweis}>
+            Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für
+            Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch. Ihre Antworten
+            sehen nur Sie.
+          </p>
+          <Button volleBreite onClick={() => navigate('/erbe/fragebaum')}>
+            Fragebaum starten
+          </Button>
+        </>
+      ) : (
+        <>
+          <p className={stile.itemInhalt}>{ergebnisSatz(fragebaum)}</p>
+          <p className={stile.hinweis}>
+            {fragebaum.am === ''
+              ? 'Ermittelt mit dem Fragebaum.'
+              : `Ermittelt am ${new Date(fragebaum.am).toLocaleDateString('de-DE')}.`}{' '}
+            Nur für Sie sichtbar.
+          </p>
+        </>
+      )}
+    </Card>
+  )
+}
+
+/**
+ * Der gespeicherte Ergebnistext.
+ *
+ * Aus der Inhaltsdatei und nicht aus dem gespeicherten Payload: Der Payload
+ * trägt die Knoten-Id und nicht den Satz, damit ein korrigierter Rechtstext
+ * auch für die gilt, die den Baum schon durchlaufen haben. Findet sich der
+ * Knoten nicht mehr, bleibt der Status — er steht mit im Ergebnis.
+ */
+function ergebnisSatz(ergebnis: Fragebaumergebnis): string {
+  const ziel = knoten(ergebnis.knotenId)
+
+  if (ziel === null) {
+    return ergebnis.status === null
+      ? 'Ihr Ergebnis liegt vor.'
+      : `Ihr Ergebnis: ${statusText(ergebnis.status)}.`
+  }
+
+  return ziel.text.split('\n')[0] ?? ziel.text
+}
+
 export function Erbe() {
   const { zustand, loescheVorsorgefall: onLoescheFall, aktualisiere: onFallAktualisieren } = useCase()
 
@@ -557,17 +631,41 @@ export function Erbe() {
           onFallAktualisieren={onFallAktualisieren}
         />
       ) : (
-        <Card>
-          <div className={stile.statusKopf}>
-            <h2 className={stile.abschnitt}>Nachlass-Tresor</h2>
-            <Badge lage="ruhig">Trauerfall</Badge>
-          </div>
-          <p className={stile.hinweis}>
-            Der Fall ist ein Trauerfall. Die Aufgaben und Dokumente stehen im Tab „Alle"
-            bereit.
-          </p>
-        </Card>
+        <>
+          <Erbstatus fall={fall} />
+
+          <Card>
+            <div className={stile.statusKopf}>
+              <h2 className={stile.abschnitt}>Nachlass-Tresor</h2>
+              <Badge lage="ruhig">Trauerfall</Badge>
+            </div>
+            <p className={stile.hinweis}>
+              Der Fall ist ein Trauerfall. Die Aufgaben und Dokumente stehen im Tab „Alle"
+              bereit.
+            </p>
+          </Card>
+
+          <ErneutDurchlaufen />
+        </>
       )}
     </main>
+  )
+}
+
+/**
+ * Der Weg noch einmal durch den Baum, ganz unten (ERBE_DESIGN.md §10).
+ *
+ * Unten und nicht neben dem Ergebnis: Wer ihn sucht, sucht ihn bewusst. Was ein
+ * zweiter Durchlauf mit dem gespeicherten Ergebnis macht, steht dort, wo es
+ * passiert — auf der Ergebnisseite —, und nicht hier: Ein Hinweis an dieser
+ * Stelle wäre eine Warnung vor etwas, das noch gar nicht ansteht (§6).
+ */
+function ErneutDurchlaufen() {
+  const navigate = useNavigate()
+
+  return (
+    <Button variante="sekundaer" volleBreite onClick={() => navigate('/erbe/fragebaum')}>
+      Fragebaum erneut durchlaufen
+    </Button>
   )
 }

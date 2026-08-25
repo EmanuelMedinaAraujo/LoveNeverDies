@@ -1,0 +1,168 @@
+/*
+ * Der Fragebaum (ERBE_DESIGN.md §3).
+ *
+ * Ohne Karten. Eine Seite besteht hier aus genau einer Sache — einer Frage und
+ * ihren Antworten —, und eine Karte trennt Dinge voneinander, die
+ * nebeneinander stehen. Wo nichts nebeneinander steht, umrandet sie nur.
+ */
+
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-gross);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand) var(--raster-12);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Der Weg zurück steht über der Frage und nicht unter den Antworten: Wer ihn
+ * sucht, sucht ihn, bevor er gelesen hat.
+ */
+.zurueck {
+  align-self: flex-start;
+}
+
+.schritt {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  margin: 0;
+}
+
+.frage {
+  margin: 0;
+  line-height: var(--typo-zeile-titel);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  margin: 0;
+}
+
+/*
+ * Der Ergebnistext. `pre-wrap`, weil die Absätze aus der Inhaltsdatei kommen
+ * und dort echte Umbrueche sind.
+ */
+.text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: var(--typo-zeile-text);
+}
+
+.antworten {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/*
+ * Eine Antwort ist ein ganzes Feld und kein Wort in einer Zeile: Sie wird auf
+ * einem Telefon mit dem Daumen getroffen, oft von jemandem, der gerade einen
+ * Todesfall hinter sich hat.
+ */
+.antwort {
+  width: 100%;
+  text-align: left;
+  padding: var(--dichte-abstand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-karte);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+  line-height: var(--typo-zeile-text);
+  cursor: pointer;
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
+}
+
+.antwort:hover {
+  border-color: var(--farbe-akzent);
+}
+
+.antwort:focus-visible {
+  outline: 0.125rem solid var(--farbe-akzent);
+  outline-offset: 0.125rem;
+}
+
+/* Die aufklappbaren Bereiche: Info, "Mehr anzeigen", zuständige Stelle. */
+.klapp {
+  border-top: 0.0625rem solid var(--farbe-kartenrand);
+  padding-top: var(--dichte-abstand);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  align-items: flex-start;
+}
+
+.klappInhalt {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  white-space: pre-wrap;
+  line-height: var(--typo-zeile-text);
+  margin: 0;
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  width: 100%;
+}
+
+.eingabe {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+}
+
+.aktionen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Der Hinweis, dass die Suche noch keine ist. Auffaellig genug, um nicht
+ * ueberlesen zu werden, und nicht als Fehler gefaerbt: Es ist keiner.
+ */
+.platzhalter {
+  color: var(--farbe-frist-knapp-text);
+  background: var(--farbe-frist-knapp-flaeche);
+  border-radius: var(--dichte-radius);
+  padding: var(--dichte-abstand-klein);
+  font-size: var(--dichte-schrift-klein);
+  margin: 0;
+}
+
+.warnung {
+  color: #8a1c13;
+  font-size: var(--dichte-schrift-klein);
+  font-weight: var(--typo-gewicht-betont);
+  margin: 0;
+}
+
+.statusZeile {
+  display: flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+  flex-wrap: wrap;
+}

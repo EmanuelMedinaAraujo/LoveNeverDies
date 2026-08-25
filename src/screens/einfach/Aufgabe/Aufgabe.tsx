@@ -14,6 +14,7 @@ import {
   type Fristbezug,
   type Fristlage,
 } from '../../../services/fristen.ts'
+import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import {
   NIEMAND,
   darfBearbeiten,
@@ -81,6 +82,24 @@ function Angabe({ was, children }: { was: string; children: ReactNode }) {
       <dt className={stile.etikett}>{was}</dt>
       <dd className={stile.wert}>{children}</dd>
     </div>
+  )
+}
+
+/**
+ * Der Weg in den Erbe-Fragebaum (ERBE_DESIGN.md §9).
+ *
+ * Er steht hier im Screen und nicht im Payload der Aufgabe: Der Fragebaum ist
+ * eine Sache dieser App und keine Angabe der Juristinnen, und eine URL im
+ * verschlüsselten Payload wäre ein Link, der beim nächsten Umbau der Routen
+ * ins Leere zeigt, ohne dass jemand ihn findet.
+ */
+function ZumFragebaum() {
+  const navigate = useNavigate()
+
+  return (
+    <Button volleBreite onClick={() => navigate('/erbe/fragebaum')}>
+      Fragebaum starten
+    </Button>
   )
 }
 
@@ -432,7 +451,19 @@ function Detail({
       <div className={[stile.abschnitt, stile.ohnelinie].join(' ')}>
         {aufgabe.beschreibung === '' ? null : <p>{aufgabe.beschreibung}</p>}
 
-        {istBlatt ? (
+        {/*
+          Die Seed-Aufgabe hat kein eigenes Häkchen (ERBE_DESIGN.md §9): Sie
+          ist geteilt, ihr Ergebnis liegt privat, und ein gespeichertes Häkchen
+          hakte sie für alle ab. Anna wäre fertig und Bert, der den Fragebaum
+          nie gegangen ist, sähe seine Aufgabe erledigt.
+        */}
+        {istSeedAufgabe(aufgabe.katalog) ? (
+          <p className={stile.hinweis} role="status">
+            {aufgabe.erledigt
+              ? 'Erledigt: Sie haben den Fragebaum durchlaufen.'
+              : 'Offen, solange Sie den Fragebaum nicht durchlaufen haben. Das entscheidet jede:r für sich.'}
+          </p>
+        ) : istBlatt ? (
           <Checkbox
             checked={eigenesHaken}
             disabled={aktionen.gesperrt || !darfAendern}
@@ -460,6 +491,13 @@ function Detail({
           </p>
         )}
       </div>
+
+      {/*
+        Die eine Aufgabe, die noch aus dem Katalog kommt (ADR-0001), führt in
+        den Fragebaum. Erkannt wird sie an ihrer Herkunft und nicht am Titel:
+        Wer sie umbenennt, soll den Weg dorthin nicht verlieren.
+      */}
+      {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
 
       <Rechtliches aufgabe={aufgabe} lage={lage} />
 

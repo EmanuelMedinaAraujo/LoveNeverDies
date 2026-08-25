@@ -45,6 +45,8 @@ import {
   verschluesselterInhalt,
   type Aufgabe,
   type Fallschluessel,
+  type Fragebaumergebnis,
+  type Katalogherkunft,
   type Konfiguration,
   type Konfigurationspayload,
 } from './aufgabenService'
@@ -220,6 +222,24 @@ export async function uebergebePersoenlichenSchluessel(
 }
 
 /**
+ * Was eine private Aufgabe ausser dem Titel mitbekommen kann.
+ *
+ * Drei Felder und ausdrücklich nicht `parentId` oder `dependsOn`: Die beiden
+ * Strukturregeln aus §3.7 bleiben Tatsachen ohne Parameter (siehe unten).
+ * Gebraucht werden die drei von den Aufgaben aus dem Fragebaum, die ihre
+ * Rechtsangaben selbst tragen müssen (ERBE_DESIGN.md §7).
+ */
+export type Privatinhalt = {
+  beschreibung?: string
+  notizen?: string
+  /**
+   * Die Herkunftsangabe (§8). Bei einer Aufgabe aus dem Fragebaum steht hier
+   * dessen Vorlage, nicht ein Katalogeintrag: Der Katalog kennt sie nicht.
+   */
+  katalog?: Katalogherkunft | null
+}
+
+/**
  * Eine private Aufgabe: eigener DEK, Payload darunter, DEK unter `K_p`.
  *
  * Immer eine Wurzelaufgabe und immer ohne Abhängigkeiten (§3.7). Beides steht
@@ -235,6 +255,7 @@ export async function mutationPrivatAnlegen(
   schluessel: PersoenlicherSchluessel,
   titel: string,
   wer: Zugewiesene | null = null,
+  inhalt: Privatinhalt = {},
 ): Promise<Mutation> {
   const { id, wrappedDek, payload } = await verschluesselterInhalt(
     { id: fall.id, kid: schluessel.kid, kc: schluessel.kp },
@@ -242,13 +263,13 @@ export async function mutationPrivatAnlegen(
     {
       typ: 'aufgabe',
       titel: pruefeTitel(titel),
-      beschreibung: '',
+      beschreibung: inhalt.beschreibung ?? '',
       erledigt: false,
-      notizen: '',
+      notizen: inhalt.notizen ?? '',
       parentId: null,
       dependsOn: [],
       assignee: wer === null ? NIEMAND : personen([wer]),
-      katalog: null,
+      katalog: inhalt.katalog ?? null,
     },
   )
 
@@ -381,6 +402,7 @@ export async function mutationKenntnisAnlegen(
   const payload: Konfigurationspayload = {
     typ: 'konfiguration',
     kenntnisAm: pruefeKenntnisdatum(kenntnisAm, heute),
+    fragebaum: null,
   }
 
   const { id, wrappedDek, payload: verschluesselt } = await verschluesselterInhalt(
@@ -413,11 +435,79 @@ export async function mutationKenntnisAendern(
   kenntnisAm: string | null,
   heute: string = heuteIso(),
 ): Promise<Mutation> {
-  const payload: Konfigurationspayload = {
+  return schreibeKonfiguration(konfiguration, {
     typ: 'konfiguration',
     kenntnisAm: pruefeKenntnisdatum(kenntnisAm, heute),
+    // Das Ergebnis des Fragebaums bleibt stehen: Der Payload wird ganz
+    // geschrieben, und ein hier vergessenes Feld wäre kein leeres Feld,
+    // sondern ein geloeschtes (ERBE_DESIGN.md §6).
+    fragebaum: konfiguration.fragebaum,
+  })
+}
+
+/**
+ * Das erste eigene Fragebaum-Ergebnis: dasselbe private Item wie beim
+ * Kenntnisdatum, nur mit dem anderen Feld (ERBE_DESIGN.md §6).
+ *
+ * Gibt es das Item schon — weil jemand zuerst ein Kenntnisdatum eingetragen
+ * hat —, gehört das Ergebnis mit `mutationFragebaumAendern` hinein und nicht
+ * in eine zweite Zeile. Welches von zwei Konfigurations-Items gilt, entschiede
+ * sonst die Reihenfolge der Ids.
+ */
+export async function mutationFragebaumAnlegen(
+  fall: Pick<Fallschluessel, 'id'>,
+  schluessel: PersoenlicherSchluessel,
+  ergebnis: Fragebaumergebnis,
+): Promise<Mutation> {
+  const payload: Konfigurationspayload = {
+    typ: 'konfiguration',
+    kenntnisAm: null,
+    fragebaum: ergebnis,
   }
 
+  const { id, wrappedDek, payload: verschluesselt } = await verschluesselterInhalt(
+    { id: fall.id, kid: schluessel.kid, kc: schluessel.kp },
+    uuidv7(),
+    payload,
+  )
+
+  return {
+    op: 'anlegen',
+    itemId: id,
+    fallId: fall.id,
+    art: 'item',
+    kid: schluessel.kid,
+    wrappedDek,
+    payload: verschluesselt,
+    ts: Date.now(),
+  }
+}
+
+/**
+ * Ein ersetztes Fragebaum-Ergebnis unter demselben DEK (§3.1).
+ *
+ * Der Weg, den ausschließlich "Gespeichertes Ergebnis ersetzen" geht
+ * (ERBE_DESIGN.md §6): Ein zweiter Durchlauf schreibt von sich aus nichts,
+ * sonst schriebe neugieriges Durchklicken den eigenen Rechtsstand um.
+ */
+export async function mutationFragebaumAendern(
+  konfiguration: Konfiguration,
+  ergebnis: Fragebaumergebnis,
+): Promise<Mutation> {
+  return schreibeKonfiguration(konfiguration, {
+    typ: 'konfiguration',
+    // Umgekehrt genauso: Das Kenntnisdatum überlebt ein neues Ergebnis. Es
+    // hängt an § 1944 BGB und nicht daran, was der Baum zuletzt gesagt hat.
+    kenntnisAm: konfiguration.kenntnisAm,
+    fragebaum: ergebnis,
+  })
+}
+
+/** Schreibt einen ganzen Konfigurations-Payload unter den DEK, der schon da ist. */
+async function schreibeKonfiguration(
+  konfiguration: Konfiguration,
+  payload: Konfigurationspayload,
+): Promise<Mutation> {
   return {
     op: 'aendern',
     itemId: konfiguration.id,
