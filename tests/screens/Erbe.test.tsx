@@ -25,6 +25,8 @@ let mockAufgabenZustand: { status: 'laedt' } | { status: 'bereit' }
 
 /** Das eigene Fragebaum-Ergebnis, privat unter `K_p` (ERBE_DESIGN.md §6). */
 const mockFragebaum = vi.fn<() => Fragebaumergebnis | null>(() => null)
+/** Ob Bestand, `K_p` und Anmeldung durch sind (ERBE_DESIGN.md §6). */
+const mockGeladen = vi.fn<() => boolean>(() => true)
 
 vi.mock('react-router-dom', async () => {
   const echt = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -52,6 +54,7 @@ vi.mock('../../src/hooks/useAufgaben.ts', () => ({
         ? { status: 'laedt' }
         : { status: 'bereit', laedtNetz: false, netzfehler: null, aufgaben: [], baum: [], uebersprungen: 0 },
     fragebaum: mockFragebaum(),
+    fragebaumGeladen: mockGeladen(),
     zeilen: [],
     mutiere: vi.fn(),
     bestaetige: vi.fn(),
@@ -111,6 +114,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
     mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
     mockAufgabenZustand = { status: 'bereit' }
     mockFragebaum.mockReturnValue(null)
+    mockGeladen.mockReturnValue(true)
     mockTresor = {
       items: [],
       schwelle: { n: 0, k: null },
@@ -355,6 +359,7 @@ describe('Erbstatus im Trauerfall (ERBE_DESIGN.md §10)', () => {
     mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
     mockAufgabenZustand = { status: 'bereit' }
     mockFragebaum.mockReturnValue(null)
+    mockGeladen.mockReturnValue(true)
     navigiere.mockClear()
   })
 
@@ -370,6 +375,23 @@ describe('Erbstatus im Trauerfall (ERBE_DESIGN.md §10)', () => {
     rendereMitProvidern(<Erbe />)
 
     expect(screen.getByRole('button', { name: 'Fragebaum starten' })).toBeInTheDocument()
+  })
+
+  it('lädt nicht in den Fragebaum ein, solange K_p noch unterwegs ist', () => {
+    /*
+     * Der Fehler, den dieser Test festhält: `fragebaum` ist `null`, solange
+     * `K_p` fehlt — auch dann, wenn ein Ergebnis gespeichert ist, denn das Item
+     * ist bis dahin unlesbar (§3.7). Ein „Fragebaum starten" an dieser Stelle
+     * ist eine Einladung, den eigenen Rechtsstand noch einmal zu ermitteln,
+     * obwohl er feststeht.
+     */
+    trauerfall()
+    mockGeladen.mockReturnValue(false)
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.queryByRole('button', { name: 'Fragebaum starten' })).not.toBeInTheDocument()
+    expect(screen.getByText('Ihr Ergebnis wird geladen...')).toBeInTheDocument()
   })
 
   it('zeigt das gespeicherte Ergebnis mit seinem Status', () => {

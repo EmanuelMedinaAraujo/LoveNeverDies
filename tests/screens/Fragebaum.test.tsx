@@ -26,6 +26,16 @@ const mockFragebaum = vi.fn<() => Fragebaumergebnis | null>(() => null)
 /** Ob Bestand und `K_p` schon da sind (ERBE_DESIGN.md §6). */
 const mockGeladen = vi.fn<() => boolean>(() => true)
 const mockVorhandene = vi.fn<() => Aufgabe | null>(() => null)
+/**
+ * Ob der Mock je Rendern eine neue `speichereFragebaum`-Identität ausgibt.
+ *
+ * Der echte Hook steckt die Funktion in ein `useCallback`, das an
+ * `liste.konfiguration` hängt: Sobald ein Schreiben durchkommt, ist sie eine
+ * andere. Ein Fehlschlag dagegen lässt die Konfiguration unberührt — dann
+ * bleibt sie dieselbe, und ein Wiederholungsversuch, der auf einen Wechsel
+ * wartet, wartet für immer. Beides muss prüfbar sein.
+ */
+const mockNeueIdentitaet = vi.fn<() => boolean>(() => true)
 const mockModus = vi.fn<() => 'einfach' | 'erweitert'>(() => 'erweitert')
 
 vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
@@ -38,7 +48,18 @@ vi.mock('../../src/hooks/useAufgaben.ts', () => ({
   useAufgaben: () => ({
     fragebaum: mockFragebaum(),
     fragebaumGeladen: mockGeladen(),
-    speichereFragebaum,
+    /*
+     * Bei jedem Rendern eine neue Identität, und nicht der Spion selbst.
+     *
+     * Der echte `speichereFragebaum` hängt in einem `useCallback` an
+     * `liste.konfiguration`, und die wechselt, sobald geschrieben wurde. Gäbe
+     * der Mock immer dieselbe Funktion zurück, änderte sich keine Abhängigkeit
+     * des schreibenden Effekts, er liefe ohnehin nur einmal — und der
+     * Doppelschreib-Test bestünde auch ohne den Riegel, den er prüft.
+     */
+    speichereFragebaum: mockNeueIdentitaet()
+      ? (...argumente: Parameters<typeof speichereFragebaum>) => speichereFragebaum(...argumente)
+      : speichereFragebaum,
     fragebaumAufgabe: () => mockVorhandene(),
     legeFragebaumAufgabeAn,
     setzeKenntnisAm,
@@ -130,6 +151,7 @@ beforeEach(() => {
   mockFragebaum.mockReturnValue(null)
   mockGeladen.mockReturnValue(true)
   mockVorhandene.mockReturnValue(null)
+  mockNeueIdentitaet.mockReturnValue(true)
   mockModus.mockReturnValue('erweitert')
   speichereFragebaum.mockResolvedValue(undefined)
   legeFragebaumAufgabeAn.mockResolvedValue(undefined)
@@ -282,6 +304,39 @@ describe('Ergebnis speichern (§6)', () => {
 
     loese()
     await waitFor(() => expect(speichereFragebaum).toHaveBeenCalledTimes(1))
+  })
+
+  it('wiederholt ein fehlgeschlagenes Speichern von selbst', async () => {
+    /*
+     * Der Fehler, den dieser Test festhält: Ein Fehlschlag lässt die
+     * Konfiguration unberührt, also wechselt `speichereFragebaum` gerade
+     * *nicht* seine Identität, und der Effekt lief nie wieder. Wer dann
+     * „Zurück zur Übersicht" klickte, hatte seinen Durchlauf verloren, ohne
+     * dass irgendwo etwas stand (§6).
+     */
+    mockNeueIdentitaet.mockReturnValue(false)
+    speichereFragebaum.mockRejectedValueOnce(new Error('Ohne angemeldetes Gerät geht das nicht.'))
+
+    zeige('/erbe/fragebaum/n6', { pfad: ERBE_PFAD })
+
+    await waitFor(() => expect(speichereFragebaum).toHaveBeenCalledTimes(2))
+    expect(speichereFragebaum).toHaveBeenLastCalledWith(ERBE_PFAD)
+
+    // Und nach dem geglückten Versuch steht die Meldung des ersten nicht mehr da.
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+
+  it('sagt es, wenn das Ergebnis nicht abgelegt werden konnte', async () => {
+    // Still verworfen wird nichts: Was auch nach den Wiederholungen nicht
+    // liegt, gehört auf die Seite (§6).
+    mockNeueIdentitaet.mockReturnValue(false)
+    speichereFragebaum.mockRejectedValue(new Error('Ohne angemeldetes Gerät geht das nicht.'))
+
+    zeige('/erbe/fragebaum/n6', { pfad: ERBE_PFAD })
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Ohne angemeldetes Gerät geht das nicht.',
+    )
   })
 
   it('schreibt einen zweiten Durchlauf nicht', () => {
