@@ -1,7 +1,7 @@
 {
-  "//": "Die Edge Functions laufen unter Deno und teilen sich den Kryptokern aus src/core/crypto (DESIGN.md §9). Der braucht dieselben Bibliotheken in denselben Versionen wie der Client — ein Wechsel der Konstruktion macht jeden gespeicherten wrapped_key unlesbar (§1, §3.2) und ist deshalb hier gepinnt und nicht mit einem Bereich versehen.",
+  "//": "Die Edge Functions laufen unter Deno und teilen sich den Kryptokern aus src/core/crypto (DESIGN.md §9). Der braucht dieselben Bibliotheken in denselben Versionen wie der Client — ein Wechsel der Konstruktion macht jeden gespeicherten wrapped_key unlesbar (§1, §3.2) und ist deshalb hier gepinnt und nicht mit einem Bereich versehen. Die Ziele stehen als `npm:/@scope/paket@version/` mit Schraegstrich hinter `npm:`: Nur so laesst Deno den Teil hinter dem Praefix (`ml-dsa.js`) als URL aufloesen; ohne ihn bricht `supabase functions deploy` beim Bundeln ab.",
   "imports": {
-    "@noble/curves/": "npm:@noble/curves@2.3.0/",
-    "@noble/post-quantum/": "npm:@noble/post-quantum@0.7.0/"
+    "@noble/curves/": "npm:/@noble/curves@2.3.0/",
+    "@noble/post-quantum/": "npm:/@noble/post-quantum@0.7.0/"
   }
 }
