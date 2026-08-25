@@ -21,7 +21,7 @@
  */
 
 import type { Aufgabe } from './aufgabenService'
-import { fristlage, vergleicheNachFrist } from './fristen'
+import { fristlage, vergleicheNachFrist, type Fristbezug } from './fristen'
 
 /** Eine Wurzelaufgabe mit allem, was sich über sie ableiten lässt. */
 export type Aufgabenknoten = {
@@ -153,11 +153,11 @@ export function knotenZu(aufgaben: Aufgabe[], id: string): Aufgabenknoten | null
  */
 export function sortiereNachFrist(
   baum: Aufgabenknoten[],
-  sterbedatum: string | null,
+  bezug: Fristbezug,
   heute: string,
 ): Aufgabenknoten[] {
   const lagen = new Map(
-    baum.map((knoten) => [knoten.aufgabe.id, fristlage(knoten.aufgabe.katalog, sterbedatum, heute)]),
+    baum.map((knoten) => [knoten.aufgabe.id, fristlage(knoten.aufgabe.katalog, bezug, heute)]),
   )
 
   return [...baum].sort((links, rechts) =>

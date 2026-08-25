@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Aufgabenknoten } from '../services/aufgabenbaum.ts'
 import { planeErinnerungen } from '../services/erinnerungen.ts'
+import type { Fristbezug } from '../services/fristen.ts'
 
 /**
  * Ob dieses Gerät erinnern darf.
@@ -54,15 +55,19 @@ function gelesen(): Erinnerungserlaubnis {
       : 'ungefragt'
 }
 
-export function useErinnerungen(
-  baum: Aufgabenknoten[],
-  sterbedatum: string | null,
-): Erinnerungsdaten {
+export function useErinnerungen(baum: Aufgabenknoten[], bezug: Fristbezug): Erinnerungsdaten {
   const [erlaubnis, setzeErlaubnis] = useState<Erinnerungserlaubnis>(gelesen)
 
+  /*
+   * Die beiden Daten einzeln und nicht der `bezug` als Objekt: Ein frisch
+   * gebautes Objekt bei jedem Rendern plante sonst jedes Mal neu und stellte
+   * damit sämtliche Timer neu, ohne dass sich etwas geändert hätte.
+   */
+  const { sterbedatum, kenntnisAm } = bezug
+
   const termine = useMemo(
-    () => planeErinnerungen(baum, sterbedatum, new Date()),
-    [baum, sterbedatum],
+    () => planeErinnerungen(baum, { sterbedatum, kenntnisAm }, new Date()),
+    [baum, sterbedatum, kenntnisAm],
   )
 
   useEffect(() => {

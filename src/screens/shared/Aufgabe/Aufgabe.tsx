@@ -8,7 +8,14 @@ import { useMitglieder } from '../../../hooks/useMitglieder.ts'
 import type { Aufgabe as Aufgabendatensatz } from '../../../services/aufgabenService.ts'
 import { knotenZu, type Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
-import { datumText, fristlage, fristText, heuteIso, type Fristlage } from '../../../services/fristen.ts'
+import {
+  datumText,
+  fristlage,
+  fristText,
+  heuteIso,
+  type Fristbezug,
+  type Fristlage,
+} from '../../../services/fristen.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
@@ -107,9 +114,16 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
         ) : null}
 
         {lage.art === 'ab-kenntnis' ? (
+          /*
+            §8: Ohne Kenntnisdatum wird kein Ende gerechnet und keines
+            geschätzt. Der Satz benennt den Grund, statt eine leere Angabe
+            stehen zu lassen: Die Frist hängt an einem Tag, den nur diese
+            Person kennt.
+          */
           <Angabe was="Frist">
-            {katalog.fristTage} Tage ab Ihrer Kenntnis. Ihr Kenntnisdatum steht noch nicht fest,
-            deshalb rechnet die App hier kein Ende aus.
+            Diese Frist läuft ab <em>Ihrer</em> Kenntnis: {katalog.fristTage} Tage ab dem Tag, an
+            dem Sie von Anfall und Berufungsgrund erfahren haben. Tragen Sie ihn unten ein, dann
+            rechnet die App das Ende aus.
           </Angabe>
         ) : null}
 
@@ -242,9 +256,108 @@ function Unteraufgabenzeile({
   )
 }
 
+/**
+ * Das eigene Kenntnisdatum (DESIGN.md §8, #12).
+ *
+ * Die Ausschlagungsfrist nach § 1944 BGB knüpft an die Kenntnis des jeweiligen
+ * Erben von Anfall und Berufungsgrund an: Ein Sohn, der am Sterbetag anwesend
+ * war, und ein Bruder, der drei Wochen später vom Notar erfährt, haben
+ * verschiedene Fristenden. Das Datum liegt deshalb privat unter `K_p` (§3.7)
+ * und wird von jeder Person selbst eingetragen.
+ *
+ * Ohne Bearbeitungssperre, anders als alles andere auf diesem Screen: Die
+ * Zuweisung regelt, wer die *Aufgabe* ändern darf (§7). Hier ändert niemand
+ * die Aufgabe. Wer sein eigenes Kenntnisdatum erst eintragen dürfte, nachdem
+ * er eine Aufgabe übernommen hat, sähe seine eigene gesetzliche Frist nicht.
+ */
+function Kenntnisdatum({
+  fristTage,
+  kenntnisAm,
+  lage,
+  gesperrt,
+  aufSpeichern,
+}: {
+  fristTage: number | null
+  /** Das eingetragene Datum, oder `null`. */
+  kenntnisAm: string | null
+  /** Die Lage dieser Aufgabe, damit das gerechnete Ende danebensteht. */
+  lage: Fristlage
+  gesperrt: boolean
+  aufSpeichern: (datum: string | null) => Promise<boolean>
+}) {
+  const [eingabe, setzeEingabe] = useState(kenntnisAm ?? '')
+  const [gespeichert, setzeGespeichert] = useState(kenntnisAm)
+
+  // Was der Bestand bringt, gewinnt, aber erst, wenn er sich wirklich geändert
+  // hat: dieselbe Überlegung wie bei den Notizen.
+  if (gespeichert !== kenntnisAm) {
+    setzeGespeichert(kenntnisAm)
+    setzeEingabe(kenntnisAm ?? '')
+  }
+
+  async function speichere(ereignis: FormEvent) {
+    ereignis.preventDefault()
+    await aufSpeichern(eingabe === '' ? null : eingabe)
+  }
+
+  return (
+    <Card className={stile.abschnitt}>
+      <h2>Ihr Kenntnisdatum</h2>
+
+      <p>
+        An welchem Tag haben Sie erfahren, dass Sie Erbe sind? Ab diesem Tag laufen
+        {fristTage === null ? ' die' : ` die ${fristTage}`} Tage dieser Frist. Das Datum sehen nur
+        Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein
+        anderes Ende.
+      </p>
+
+      {lage.art === 'datum' ? (
+        <p role="status">
+          Ihre Frist endet am {datumText(lage.ende)} ({fristText(lage)}).
+        </p>
+      ) : null}
+
+      <form className={stile.formular} onSubmit={(ereignis) => void speichere(ereignis)}>
+        <div className={stile.feld}>
+          <label htmlFor="kenntnis-am">Tag Ihrer Kenntnis</label>
+          {/*
+            `max`: Ein Kenntnisdatum in der Zukunft gibt es nicht, und ein
+            vertipptes Jahr ergäbe eine Frist, die viel später endet als die
+            wirkliche. Der Dienst weist es ausserdem ab (§8); dieses Attribut
+            ist die freundlichere von beiden Sperren.
+          */}
+          <input
+            id="kenntnis-am"
+            type="date"
+            className={stile.eingabe}
+            value={eingabe}
+            max={heuteIso()}
+            onChange={(ereignis) => setzeEingabe(ereignis.target.value)}
+          />
+        </div>
+
+        <Button type="submit" volleBreite disabled={gesperrt || eingabe === (kenntnisAm ?? '')}>
+          Kenntnisdatum speichern
+        </Button>
+      </form>
+
+      {kenntnisAm === null ? null : (
+        <Button
+          variante="sekundaer"
+          disabled={gesperrt}
+          onClick={() => void aufSpeichern(null)}
+        >
+          Datum entfernen
+        </Button>
+      )}
+    </Card>
+  )
+}
+
 function Detail({
   knoten,
   fall,
+  fristbezug,
   ich,
   mitglieder,
   mitgliederfehler,
@@ -254,6 +367,8 @@ function Detail({
 }: {
   knoten: Aufgabenknoten
   fall: LesbarerFall
+  /** Sterbedatum und eigenes Kenntnisdatum: woran die Fristen hängen (§8). */
+  fristbezug: Fristbezug
   /** Die angemeldete Person, so wie sie in eine Zuweisung geschrieben wird (§7). */
   ich: Zugewiesene
   /** Die Mitglieder des Falls, benannt so gut es geht. */
@@ -273,10 +388,12 @@ function Detail({
     weiseZu: (zuweisung: Zuweisung) => void
     /** Wrappt den DEK von `K_p` auf `K_c` (§3.7). */
     gibFuerAlleFrei: () => void
+    /** Legt das eigene Kenntnisdatum ab oder ändert es (§8, #12). */
+    speichereKenntnisAm: (datum: string | null) => Promise<boolean>
   }
 }) {
   const { aufgabe, unteraufgaben, istBlatt, erledigt, blockiertVon } = knoten
-  const lage = fristlage(aufgabe.katalog, fall.sterbedatum, heuteIso())
+  const lage = fristlage(aufgabe.katalog, fristbezug, heuteIso())
   const badge = fristText(lage)
 
   const [notizen, setzeNotizen] = useState(aufgabe.notizen)
@@ -369,6 +486,21 @@ function Detail({
       )}
 
       <Rechtliches aufgabe={aufgabe} lage={lage} />
+
+      {/*
+        §8: Nur bei den Fristen, die an der eigenen Kenntnis hängen. Bei allen
+        anderen gäbe es nichts einzutragen, und ein Feld ohne Wirkung wäre eine
+        Frage, die niemand beantworten muss.
+      */}
+      {aufgabe.katalog?.fristAb === 'kenntnis' ? (
+        <Kenntnisdatum
+          fristTage={aufgabe.katalog.fristTage}
+          kenntnisAm={fristbezug.kenntnisAm}
+          lage={lage}
+          gesperrt={aktionen.gesperrt}
+          aufSpeichern={aktionen.speichereKenntnisAm}
+        />
+      ) : null}
 
       <Card className={stile.abschnitt}>
         <h2>Erledigt?</h2>
@@ -602,6 +734,8 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     zeilen,
     aktualisiere,
     gibFuerAlleFrei,
+    fristbezug,
+    setzeKenntnisAm,
   } = useAufgaben(fall)
 
   const { userIds, fehler: mitgliederfehler } = useMitglieder(fall.id)
@@ -692,6 +826,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
         key={knoten.aufgabe.id}
         knoten={knoten}
         fall={fall}
+        fristbezug={fristbezug}
         ich={ich}
         mitglieder={mitglieder}
         mitgliederfehler={mitgliederfehler}
@@ -705,6 +840,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
           legeUnteraufgabeAn: (titel) => fuehreAus(() => legeAn(titel, knoten.aufgabe.id)),
           loesche: (aufgabe) => void fuehreAus(() => loesche(aufgabe)),
           gibFuerAlleFrei: () => void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe)),
+          speichereKenntnisAm: (datum) => fuehreAus(() => setzeKenntnisAm(datum)),
         }}
       />
     </>

@@ -227,6 +227,9 @@ describe('knotenZu', () => {
   })
 })
 
+/** Woran die Fristen hängen: das Sterbedatum, kein eigenes Kenntnisdatum (§8). */
+const BEZUG = { sterbedatum: '2026-05-12', kenntnisAm: null }
+
 describe('sortiereNachFrist (§7)', () => {
   it('stellt die knappste Frist nach vorn und lässt fristenlose hinten', () => {
     const spaet = aufgabe({
@@ -239,7 +242,7 @@ describe('sortiereNachFrist (§7)', () => {
       katalog: herkunft({ fristTage: 3, fristAb: 'sterbedatum' }),
     })
 
-    const sortiert = sortiereNachFrist(baueBaum([spaet, ohne, frueh]), '2026-05-12', '2026-05-12')
+    const sortiert = sortiereNachFrist(baueBaum([spaet, ohne, frueh]), BEZUG, '2026-05-12')
 
     expect(sortiert.map((knoten) => knoten.aufgabe.id)).toEqual(['frueh', 'spaet', 'ohne'])
   })
@@ -248,7 +251,7 @@ describe('sortiereNachFrist (§7)', () => {
     const erste = aufgabe({ id: 'a' })
     const zweite = aufgabe({ id: 'b' })
 
-    const sortiert = sortiereNachFrist(baueBaum([erste, zweite]), '2026-05-12', '2026-05-12')
+    const sortiert = sortiereNachFrist(baueBaum([erste, zweite]), BEZUG, '2026-05-12')
 
     expect(sortiert.map((knoten) => knoten.aufgabe.id)).toEqual(['a', 'b'])
   })
@@ -264,7 +267,7 @@ describe('sortiereNachFrist (§7)', () => {
     })
 
     const baum = baueBaum([spaet, frueh])
-    sortiereNachFrist(baum, '2026-05-12', '2026-05-12')
+    sortiereNachFrist(baum, BEZUG, '2026-05-12')
 
     expect(baum.map((knoten) => knoten.aufgabe.id)).toEqual(['spaet', 'frueh'])
   })

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
@@ -164,6 +164,8 @@ function aufgabendaten(
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
     gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
+    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null },
+    setzeKenntnisAm: vi.fn().mockResolvedValue(undefined),
     ...rest,
   }
 }
@@ -177,6 +179,37 @@ function zeigeDetail(id = 'item-1') {
     </Routes>,
     { pfad: `/aufgabe/${id}` },
   )
+}
+
+/** Ein Kalendertag, so viele Tage vor heute. */
+function vorTagen(tage: number): string {
+  const tag = new Date()
+  tag.setDate(tag.getDate() - tage)
+
+  const monat = `${tag.getMonth() + 1}`.padStart(2, '0')
+
+  return `${tag.getFullYear()}-${monat}-${`${tag.getDate()}`.padStart(2, '0')}`
+}
+
+/** Das Detail einer Aufgabe mit einer Frist ab der eigenen Kenntnis (§8, #12). */
+function zeigeAusschlagung({
+  kenntnisAm = null,
+  aufgaben = [aufgabe({ katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }) })],
+  setzeKenntnisAm = vi.fn().mockResolvedValue(undefined),
+}: {
+  kenntnisAm?: string | null
+  aufgaben?: Aufgabendatensatz[]
+  setzeKenntnisAm?: Aufgabendaten['setzeKenntnisAm']
+} = {}) {
+  useAufgaben.mockReturnValue(
+    aufgabendaten({
+      zustand: { status: 'bereit', aufgaben, uebersprungen: 0, ...NETZ },
+      fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm },
+      setzeKenntnisAm,
+    }),
+  )
+
+  return zeigeDetail()
 }
 
 beforeEach(() => {
@@ -219,22 +252,12 @@ describe('Aufgabendetail (§7, §8)', () => {
   })
 
   it('zeigt bei einer Frist ab Kenntnis kein gerechnetes Datum', () => {
-    // §8: Die App rechnet nicht mit einer Vermutung. Das Kenntnisdatum kommt
-    // in #12; bis dahin steht hier, woran die Frist hängt.
-    useAufgaben.mockReturnValue(
-      aufgabendaten({
-        zustand: {
-          status: 'bereit',
-          aufgaben: [aufgabe({ katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }) })],
-          uebersprungen: 0,
-          ...NETZ,
-        },
-      }),
-    )
-
-    zeigeDetail()
+    // §8: Die App rechnet nicht mit einer Vermutung. Ohne eingetragenes
+    // Kenntnisdatum steht hier, woran die Frist hängt, und kein Ende (#12).
+    zeigeAusschlagung()
 
     expect(screen.getByText('Frist ab Ihrer Kenntnis')).toBeVisible()
+    expect(screen.getByText(/Diese Frist läuft ab/)).toBeVisible()
     expect(screen.queryByText(/endet am/)).toBeNull()
   })
 
@@ -761,5 +784,94 @@ describe('Private Aufgaben im Detail (§3.7)', () => {
 
     expect(screen.queryByRole('heading', { name: 'Sichtbarkeit' })).toBeNull()
     expect(screen.getByLabelText('Neue Unteraufgabe')).toBeVisible()
+  })
+})
+
+/**
+ * Das eigene Kenntnisdatum auf dem Aufgabendetail (DESIGN.md §8, #12).
+ *
+ * Die Ausschlagungsfrist nach § 1944 BGB knüpft an die Kenntnis des jeweiligen
+ * Erben an. Das Datum liegt privat unter `K_p` (§3.7) und wird hier
+ * eingetragen: an der Aufgabe, für die es zählt.
+ */
+describe('Kenntnisdatum (§8, #12)', () => {
+  it('bietet das Feld nur bei einer Frist ab Kenntnis an', () => {
+    zeigeDetail()
+
+    // Die Sterbefallanzeige hängt am Sterbedatum. Ein Feld ohne Wirkung wäre
+    // eine Frage, die niemand beantworten muss.
+    expect(screen.queryByLabelText('Tag Ihrer Kenntnis')).toBeNull()
+  })
+
+  it('nimmt das Datum entgegen und gibt es an den Hook weiter', () => {
+    const setzeKenntnisAm = vi.fn().mockResolvedValue(undefined)
+    zeigeAusschlagung({ setzeKenntnisAm })
+
+    fireEvent.change(screen.getByLabelText('Tag Ihrer Kenntnis'), {
+      target: { value: '2026-05-12' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Kenntnisdatum speichern' }))
+
+    expect(setzeKenntnisAm).toHaveBeenCalledWith('2026-05-12')
+  })
+
+  it('rechnet das Fristende, sobald das Datum eingetragen ist', () => {
+    zeigeAusschlagung({ kenntnisAm: heute() })
+
+    expect(screen.getByText(/Ihre Frist endet am/)).toBeVisible()
+    expect(screen.getByText('noch 42 Tage')).toBeVisible()
+  })
+
+  it('zeigt zwei Mitgliedern auf derselben Aufgabe verschiedene Fristenden', () => {
+    /*
+     * Die Zusage aus §8: Dieselbe Aufgabe, dasselbe Objekt, zwei Enden. Was
+     * auseinandergeht, ist allein das Datum, das jede Person für sich
+     * eingetragen hat; an der Zeile ändert sich nichts.
+     */
+    const geteilt = aufgabe({ katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }) })
+
+    const { unmount } = zeigeAusschlagung({ kenntnisAm: heute(), aufgaben: [geteilt] })
+    const sohn = screen.getByText(/Ihre Frist endet am/).textContent
+    unmount()
+
+    zeigeAusschlagung({ kenntnisAm: vorTagen(21), aufgaben: [geteilt] })
+    const bruder = screen.getByText(/Ihre Frist endet am/).textContent
+
+    expect(sohn).not.toBe(bruder)
+  })
+
+  it('laesst auch jemanden eintragen, dem die Aufgabe nicht zugewiesen ist', () => {
+    /*
+     * §7 sperrt das Bearbeiten der Aufgabe, nicht das eigene Kenntnisdatum.
+     * Wer es erst nach einer Übernahme eintragen dürfte, sähe seine eigene
+     * gesetzliche Frist nicht.
+     */
+    const setzeKenntnisAm = vi.fn().mockResolvedValue(undefined)
+
+    zeigeAusschlagung({
+      setzeKenntnisAm,
+      aufgaben: [
+        aufgabe({
+          katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }),
+          assignee: personen([{ userId: 'user_bert', name: 'Bert Weber' }]),
+        }),
+      ],
+    })
+
+    fireEvent.change(screen.getByLabelText('Tag Ihrer Kenntnis'), {
+      target: { value: '2026-05-12' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Kenntnisdatum speichern' }))
+
+    expect(setzeKenntnisAm).toHaveBeenCalledWith('2026-05-12')
+  })
+
+  it('entfernt ein eingetragenes Datum wieder', () => {
+    const setzeKenntnisAm = vi.fn().mockResolvedValue(undefined)
+    zeigeAusschlagung({ kenntnisAm: heute(), setzeKenntnisAm })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Datum entfernen' }))
+
+    expect(setzeKenntnisAm).toHaveBeenCalledWith(null)
   })
 })

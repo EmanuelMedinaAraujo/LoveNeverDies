@@ -198,6 +198,7 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
     ich,
     uebernahmen,
     bestaetigeUebernahmen,
+    fristbezug,
   } = useAufgaben(fall)
 
   const [laeuft, setzeLaeuft] = useState(false)
@@ -270,7 +271,7 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
             <Startzeile
               key={eintrag.knoten.aufgabe.id}
               eintrag={eintrag}
-              lage={fristlage(eintrag.knoten.aufgabe.katalog, fall.sterbedatum, heute)}
+              lage={fristlage(eintrag.knoten.aufgabe.katalog, fristbezug, heute)}
               gesperrt={laeuft}
               ichUserId={ich.userId}
               aufHaken={(erledigt: boolean) =>

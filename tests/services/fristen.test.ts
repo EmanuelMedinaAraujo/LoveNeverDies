@@ -40,9 +40,14 @@ function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkun
   }
 }
 
+/** Sterbedatum und eigenes Kenntnisdatum, wie `fristlage` sie erwartet (§8). */
+function bezug(sterbedatum: string | null, kenntnisAm: string | null = null) {
+  return { sterbedatum, kenntnisAm }
+}
+
 describe('fristlage (§8)', () => {
   it('rechnet das Fristende aus Sterbedatum und Fristtagen', () => {
-    expect(fristlage(herkunft(), '2026-05-12', '2026-05-12')).toEqual({
+    expect(fristlage(herkunft(), bezug('2026-05-12'), '2026-05-12')).toEqual({
       art: 'datum',
       ende: '2026-05-15',
       restTage: 3,
@@ -50,13 +55,13 @@ describe('fristlage (§8)', () => {
   })
 
   it('zählt die Resttage von heute und nicht vom Sterbedatum', () => {
-    expect(fristlage(herkunft(), '2026-05-12', '2026-05-14')).toMatchObject({ restTage: 1 })
-    expect(fristlage(herkunft(), '2026-05-12', '2026-05-15')).toMatchObject({ restTage: 0 })
-    expect(fristlage(herkunft(), '2026-05-12', '2026-05-18')).toMatchObject({ restTage: -3 })
+    expect(fristlage(herkunft(), bezug('2026-05-12'), '2026-05-14')).toMatchObject({ restTage: 1 })
+    expect(fristlage(herkunft(), bezug('2026-05-12'), '2026-05-15')).toMatchObject({ restTage: 0 })
+    expect(fristlage(herkunft(), bezug('2026-05-12'), '2026-05-18')).toMatchObject({ restTage: -3 })
   })
 
   it('rechnet über einen Monatswechsel und über ein Schaltjahr hinweg', () => {
-    expect(fristlage(herkunft({ fristTage: 42 }), '2024-02-20', '2024-02-20')).toMatchObject({
+    expect(fristlage(herkunft({ fristTage: 42 }), bezug('2024-02-20'), '2024-02-20')).toMatchObject({
       ende: '2024-04-02',
     })
   })
@@ -64,40 +69,92 @@ describe('fristlage (§8)', () => {
   it('erfindet keine Frist, wo das Gesetz keine nennt', () => {
     const ohne = herkunft({ fristTage: null, fristAb: null, rechtsgrundlage: '' })
 
-    expect(fristlage(ohne, '2026-05-12', '2026-05-12')).toEqual({ art: 'keine' })
+    expect(fristlage(ohne, bezug('2026-05-12'), '2026-05-12')).toEqual({ art: 'keine' })
   })
 
   it('erfindet auch dann keine, wenn nur eines der beiden Felder fehlt', () => {
-    expect(fristlage(herkunft({ fristTage: null }), '2026-05-12', '2026-05-12')).toEqual({
+    expect(fristlage(herkunft({ fristTage: null }), bezug('2026-05-12'), '2026-05-12')).toEqual({
       art: 'keine',
     })
-    expect(fristlage(herkunft({ fristAb: null }), '2026-05-12', '2026-05-12')).toEqual({
+    expect(fristlage(herkunft({ fristAb: null }), bezug('2026-05-12'), '2026-05-12')).toEqual({
       art: 'keine',
     })
   })
 
   it('gibt einer selbst angelegten Aufgabe keine Frist', () => {
-    expect(fristlage(null, '2026-05-12', '2026-05-12')).toEqual({ art: 'keine' })
+    expect(fristlage(null, bezug('2026-05-12'), '2026-05-12')).toEqual({ art: 'keine' })
   })
 
-  it('rechnet eine Frist ab Kenntnis nicht aus, sondern benennt sie', () => {
+  it('rechnet eine Frist ab Kenntnis ohne Kenntnisdatum nicht aus, sondern benennt sie', () => {
     /*
      * §8: Aufgaben mit `frist_ab = kenntnis` bleiben ohne `kenntnisAm`
      * fristenlos und tragen den sichtbaren Hinweis. Die App rechnet nicht mit
      * einer Vermutung: Eine falsch berechnete Ausschlagungsfrist kostet den
-     * ganzen Nachlass. Das Kenntnisdatum selbst kommt in #12.
+     * ganzen Nachlass.
      */
     const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })
 
-    expect(fristlage(ausschlagung, '2026-05-12', '2026-05-12')).toEqual({ art: 'ab-kenntnis' })
+    expect(fristlage(ausschlagung, bezug('2026-05-12'), '2026-05-12')).toEqual({
+      art: 'ab-kenntnis',
+    })
+  })
+
+  it('leitet ein Kenntnisdatum nicht aus dem Sterbedatum ab (#12)', () => {
+    // Der Sohn war am Sterbetag dabei, der Bruder erfährt es drei Wochen
+    // später vom Notar. Wer nichts eingetragen hat, bekommt kein Datum
+    // untergeschoben, auch kein naheliegendes.
+    const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })
+
+    expect(fristlage(ausschlagung, bezug('2026-05-12'), '2026-06-30')).toEqual({
+      art: 'ab-kenntnis',
+    })
+  })
+
+  it('rechnet ab dem eigenen Kenntnisdatum, sobald es eingetragen ist (§ 1944 BGB, #12)', () => {
+    const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })
+
+    expect(fristlage(ausschlagung, bezug('2026-05-12', '2026-05-12'), '2026-05-12')).toEqual({
+      art: 'datum',
+      ende: '2026-06-23',
+      restTage: 42,
+    })
+  })
+
+  it('zeigt zwei Mitgliedern auf derselben Aufgabe verschiedene Fristenden (§8, #12)', () => {
+    /*
+     * Die eine Zusage, um die es in #12 geht: Dieselbe geteilte Aufgabe,
+     * dieselbe Zeile, zwei Enden. Der Sohn war am Sterbetag dabei, der Bruder
+     * erfuhr drei Wochen später davon.
+     */
+    const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })
+
+    const sohn = fristlage(ausschlagung, bezug('2026-05-12', '2026-05-12'), '2026-05-12')
+    const bruder = fristlage(ausschlagung, bezug('2026-05-12', '2026-06-02'), '2026-05-12')
+
+    expect(sohn).toMatchObject({ ende: '2026-06-23' })
+    expect(bruder).toMatchObject({ ende: '2026-07-14' })
+  })
+
+  it('lässt das Kenntnisdatum bei einer Frist ab Sterbedatum unbeachtet', () => {
+    expect(fristlage(herkunft(), bezug('2026-05-12', '2026-06-02'), '2026-05-12')).toMatchObject({
+      ende: '2026-05-15',
+    })
+  })
+
+  it('rechnet aus einem unbrauchbaren Kenntnisdatum nichts aus', () => {
+    const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })
+
+    expect(fristlage(ausschlagung, bezug('2026-05-12', '2026-02-31'), '2026-05-12')).toEqual({
+      art: 'ab-kenntnis',
+    })
   })
 
   it('rechnet ohne Sterbedatum nichts aus', () => {
-    expect(fristlage(herkunft(), null, '2026-05-12')).toEqual({ art: 'keine' })
+    expect(fristlage(herkunft(), bezug(null), '2026-05-12')).toEqual({ art: 'keine' })
   })
 
   it('rechnet aus einem unbrauchbaren Sterbedatum nichts aus', () => {
-    expect(fristlage(herkunft(), 'irgendwann', '2026-05-12')).toEqual({ art: 'keine' })
+    expect(fristlage(herkunft(), bezug('irgendwann'), '2026-05-12')).toEqual({ art: 'keine' })
   })
 })
 
