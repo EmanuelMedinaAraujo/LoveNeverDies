@@ -874,7 +874,16 @@ describe('Private Aufgaben (§3.7)', () => {
 
     const { result } = renderHook(() => useAufgaben(FALL))
 
-    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+    /*
+     * Gewartet wird auf die entschlüsselte Liste und nicht bloss auf
+     * `status: 'bereit'`: Der steht schon, sobald der Cache gelesen ist (§5),
+     * und `schreibe` prüft gegen das, was dieses Gerät entschlüsselt hat.
+     */
+    await waitFor(() => {
+      const zustand = result.current.zustand
+
+      expect(zustand.status === 'bereit' && zustand.aufgaben).toEqual([eine])
+    })
 
     await act(async () => {
       await result.current.schreibe(eine, { dependsOn: ['item-2'] })
@@ -915,7 +924,14 @@ describe('Private Aufgaben (§3.7)', () => {
 
     const { result } = renderHook(() => useAufgaben(FALL))
 
-    await waitFor(() => expect(ladePersoenlichenSchluessel).toHaveBeenCalled())
+    /*
+     * Nicht nur, dass der Schlüssel geholt wurde, sondern dass er angekommen
+     * ist: Er kostet einen eigenen Rundlauf, und erst danach entschlüsselt der
+     * Hook mit ihm. Vorher hielte `gibFuerAlleFrei` noch kein `K_p`.
+     */
+    await waitFor(() =>
+      expect(aufgabenAusZeilen).toHaveBeenCalledWith(expect.anything(), FALL, PRIVAT),
+    )
 
     await act(async () => {
       await result.current.gibFuerAlleFrei(meine)
@@ -954,11 +970,13 @@ describe('Private Aufgaben (§3.7)', () => {
 
     const { result } = renderHook(() => useAufgaben(FALL))
 
-    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+    // Auf die entschlüsselte Liste und nicht auf `status`: Der steht schon,
+    // sobald der Cache gelesen ist (§5).
+    await waitFor(() => {
+      const zustand = result.current.zustand
 
-    expect(
-      result.current.zustand.status === 'bereit' ? result.current.zustand.aufgaben : [],
-    ).toEqual([aufgabe()])
+      expect(zustand.status === 'bereit' && zustand.aufgaben).toEqual([aufgabe()])
+    })
   })
 })
 
