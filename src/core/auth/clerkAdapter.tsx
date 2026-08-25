@@ -73,7 +73,20 @@ export function ClerkAuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <ClerkProvider publishableKey={publishableKey} localization={deDE} afterSignOutUrl="/">
+    <ClerkProvider
+      publishableKey={publishableKey}
+      localization={deDE}
+      afterSignOutUrl="/"
+      /*
+       * ClerkJS meldet sonst Nutzungsdaten an `clerk-telemetry.com`. Die CSP
+       * blockt das ohnehin (§11.2 kennt den Host nicht), aber ein blockierter
+       * Aufruf ist eine Fehlermeldung in jeder Konsole und ein Versuch, der
+       * bei jedem Laden neu unternommen wird. Abgeschaltet gehoert er auch
+       * der Sache nach: Eine App, die Inhalte vor dem eigenen Server
+       * verbirgt, soll ihr Nutzungsverhalten nicht an einen Dritten geben.
+       */
+      telemetry={{ disabled: true }}
+    >
       <ClerkZustandBruecke>{children}</ClerkZustandBruecke>
     </ClerkProvider>
   )

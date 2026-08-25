@@ -2,6 +2,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import { cspPlugin } from './build/csp.ts'
+import { headersPlugin } from './build/headers.ts'
 
 export default defineConfig(({ mode }) => {
   /*
@@ -41,6 +42,12 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       cspPlugin({ extraHosts: clerkExtraHosts, supabaseHosts }),
+      /*
+       * Dieselben Direktiven noch einmal als `_headers` fuer Cloudflare
+       * (build/headers.ts). Das Meta-Tag bleibt daneben stehen: Es traegt, wo
+       * die Datei nicht gelesen wird, etwa unter `npm run preview`.
+       */
+      headersPlugin({ extraHosts: clerkExtraHosts, supabaseHosts }),
       VitePWA({
         registerType: 'autoUpdate',
         // Der Service Worker soll auch im Dev-Modus laufen, damit sich das

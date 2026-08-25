@@ -10,9 +10,22 @@ Paragraphennummern dorthin.
 
 ## Einrichten
 
+Node 22 oder 24. Die Untergrenze setzt Wrangler (ab 4.87 mindestens 22), die
+Obergrenze setzt Node 26: Es bringt ein eigenes, experimentelles `localStorage`
+mit, das ohne `--localstorage-file` `undefined` ist und in der
+jsdom-Umgebung von Vitest das funktionierende `localStorage` von jsdom
+verdeckt. 53 Tests fallen daran um, ohne dass am Code etwas falsch waere.
+`engines` in `package.json` haelt die Spanne fest.
+
 ```bash
 npm install
 ```
+
+`npm install` meldet nicht freigegebene Installationsskripte von `esbuild` und
+`workerd`. Sie bleiben es: Der ausgelieferte Worker buendelt nichts (kein
+`main`, siehe unten), und `npm run deploy` kommt ohne sie aus. Wer lokal
+`npm run preview:cf` fahren will, braucht `workerd` und gibt es dann gezielt
+mit `npm approve-scripts workerd` frei.
 
 Danach die Clerk-Zugangsdaten holen. Sie stehen **nicht** im Repo — jede Person
 zieht sie sich selbst aus der verknüpften Clerk-Anwendung:
@@ -42,15 +55,72 @@ npm run dev
 
 ## Befehle
 
-| Befehl              | Wirkung                                                    |
-| ------------------- | ---------------------------------------------------------- |
-| `npm run dev`       | Dev-Server samt Service Worker                             |
-| `npm run build`     | Produktionsbuild inklusive CSP und PWA-Manifest            |
-| `npm run preview`   | Den Produktionsbuild lokal ausliefern                      |
-| `npm run typecheck` | TypeScript ohne Emit                                       |
-| `npm run lint`      | ESLint samt der Importgrenzen aus §9                       |
-| `npm test`          | Vitest                                                     |
-| `npm run icons`     | PWA-Icons aus den Farbwerten in §12 neu erzeugen           |
+| Befehl               | Wirkung                                           |
+| -------------------- | ------------------------------------------------- |
+| `npm run dev`        | Dev-Server samt Service Worker                    |
+| `npm run build`      | Produktionsbuild inklusive CSP und PWA-Manifest   |
+| `npm run preview`    | Den Produktionsbuild lokal ausliefern             |
+| `npm run preview:cf` | Denselben Build unter Cloudflares Asset-Router    |
+| `npm run typecheck`  | TypeScript ohne Emit                              |
+| `npm run lint`       | ESLint samt der Importgrenzen aus §9              |
+| `npm test`           | Vitest                                            |
+| `npm run icons`      | PWA-Icons aus den Farbwerten in §12 neu erzeugen  |
+| `npm run deploy:dry` | Bauen und den Deploy prüfen, ohne ihn auszuführen |
+| `npm run deploy`     | Bauen und auf Cloudflare ausliefern               |
+
+## Ausliefern
+
+Die App liegt auf Cloudflare Workers unter
+<https://loveneverdies.emanuel-andre.workers.dev>. Die Konfiguration steht in
+`wrangler.jsonc`.
+
+```bash
+npm run deploy
+```
+
+Es gibt **kein** `main` und damit keinen Worker-Code: ausgeliefert werden nur
+die Dateien aus `dist/`. Wo kein Server-Code läuft, liegt auch kein Schlüssel
+und kein Token, das jemand herausholen könnte — alles Serverseitige steht in
+Supabase (§4). `not_found_handling: "single-page-application"` sorgt dafür, dass
+ein Reload auf `/fall/<id>` nicht im 404 endet; die Routen kennt react-router,
+nicht der Hoster.
+
+### Sicherheits-Header
+
+`build/headers.ts` erzeugt beim Bauen eine Datei `dist/_headers`, die Cloudflare
+liest und in Response-Header übersetzt. Sie wird nicht selbst ausgeliefert.
+
+Der Grund für die Datei: Ein `<meta http-equiv>` trägt `frame-ancestors` und
+`upgrade-insecure-requests` nicht — Browser verwerfen beide an dieser Stelle —,
+und wer das erste Byte des Dokuments kontrolliert, kontrolliert auch das
+Meta-Tag. Beide Wege fallen aus derselben Quelle (`build/csp.ts`), damit sie
+nicht auseinanderlaufen; das Meta-Tag bleibt für den Fall, dass die Datei
+niemand liest, etwa unter `npm run preview`.
+
+Dazu HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy` und eine
+`Permissions-Policy`, die alles abschaltet, was die App nicht braucht. Zwei
+Ausnahmen sind bewusst gesetzt und in `build/headers.ts` begründet:
+`Cross-Origin-Opener-Policy` steht auf `same-origin-allow-popups`, weil Clerks
+Anmelde-Popup sonst seinen Rückweg verliert, und `camera` bleibt offen, weil
+hinter dem Beleg-Upload ein `<input type="file" capture="environment">` steht.
+Ein `Cross-Origin-Embedder-Policy` gibt es nicht: Weder Clerks Frontend-API noch
+Turnstile liefern das nötige CORP-Bekenntnis, die Anmeldung wäre tot.
+
+Geprüft ist das in `tests/build/headers.test.ts`.
+
+### Clerk
+
+Ausgeliefert wird mit der **Entwicklungsinstanz**. Eine Produktionsinstanz
+(`pk_live_...`) verlangt eine eigene Domain samt `clerk.<domain>`-CNAME, und
+`*.workers.dev` gehört uns nicht. Was das kostet: höchstens 100 Konten, ein
+"Development mode"-Hinweis unter dem Anmeldeformular, und die Instanz nimmt
+jeden Origin an, statt sich an eine Domain zu binden. Für eine Demo trägt das;
+für echte Daten gehört eine Domain davor und danach `clerk deploy`.
+
+ClerkJS meldet standardmäßig Nutzungsdaten an `clerk-telemetry.com`. Das ist in
+`core/auth/clerkAdapter.tsx` abgeschaltet — eine App, die ihre Inhalte vor dem
+eigenen Server verbirgt, soll ihr Nutzungsverhalten nicht an einen Dritten
+geben. Die CSP kennt den Host ohnehin nicht.
 
 ## Abhängigkeiten
 
