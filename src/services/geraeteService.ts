@@ -114,6 +114,58 @@ export async function registriereGeraet(
 }
 
 /**
+ * Die Aufrufe, die gerade laufen, je Benutzer und Gerät.
+ *
+ * Modulweiter Zustand, und das ist hier die Aussage: Ein Bündel gilt genau so
+ * weit, wie ein Dokument reicht. Zwei Tabs haben zwei Module und laufen sich
+ * weiterhin ins Gehege — dafür ist der eindeutige Index da, nicht diese Map.
+ */
+const laufendeRegistrierungen = new Map<string, Promise<Geraet>>()
+
+function buendelSchluessel(userId: string, pkKem: Uint8Array): string {
+  // Der Strich trennt sauber: In einer Clerk-`sub` kommt er nicht vor, und die
+  // Bytes danach sind Zahlen mit Kommas. Dieselben zwei Felder wie der
+  // eindeutige Index `device_keys_pk_unique (user_id, public_key)`.
+  return `${userId}|${pkKem.join(',')}`
+}
+
+/**
+ * Wie `registriereGeraet`, aber ohne denselben Aufruf zweimal ans Netz zu
+ * lassen.
+ *
+ * Wer dazukommt, während für dieselbe `userId` und denselben `pkKem` schon
+ * einer läuft, bekommt dessen Promise. Der zweite Durchlauf schickt damit gar
+ * kein `insert` mehr, und die Konsole bleibt beim ersten Start still: Das
+ * doppelte `useEffect` aus `StrictMode` erzeugt kein 23505 mehr, das wie ein
+ * kaputter Zustand aussieht (Issue #21).
+ *
+ * Ein Bündel, kein Cache: Der Eintrag fällt weg, sobald der Aufruf fertig ist
+ * — auch wenn er scheitert. Sonst hinge ein Netzfehler für den Rest der
+ * Sitzung fest, und ein umbenanntes Gerät hieße nach dem Neuladen wieder wie
+ * beim ersten Start.
+ */
+export function registriereGeraetGebuendelt(
+  tabelle: GeraeteschluesselTabelle,
+  identitaet: Geraeteidentitaet,
+  registrierung: Registrierung,
+): Promise<Geraet> {
+  const schluessel = buendelSchluessel(registrierung.userId, identitaet.pkKem)
+  const laufender = laufendeRegistrierungen.get(schluessel)
+
+  if (laufender !== undefined) {
+    return laufender
+  }
+
+  const lauf = registriereGeraet(tabelle, identitaet, registrierung).finally(() => {
+    laufendeRegistrierungen.delete(schluessel)
+  })
+
+  laufendeRegistrierungen.set(schluessel, lauf)
+
+  return lauf
+}
+
+/**
  * Die eigenen Geräte, das aktuelle zuerst.
  *
  * Vorn steht, was die Person am Telefon vorlesen soll: "Dieses Gerät · iPhone

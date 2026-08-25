@@ -22,3 +22,6 @@ test-results/
 supabase/config.toml
 supabase/.temp/
 supabase/.branches/
+
+# Wrangler: lokaler Zustand von `wrangler dev`, kein Quelltext.
+.wrangler/

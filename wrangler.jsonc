@@ -1,0 +1,32 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "loveneverdies",
+  "compatibility_date": "2026-08-25",
+
+  // Kein "main": Es gibt keinen Worker-Code. Die App ist eine SPA, alles
+  // Serverseitige steht in Supabase (DESIGN.md §4). Ohne Skript gibt es auch
+  // keinen Ort, an dem ein Token oder ein Schluessel liegen koennte, und die
+  // Assets werden ausgeliefert, ohne dass je Code von uns laeuft.
+  "assets": {
+    "directory": "./dist",
+
+    // Die Routen kommen aus react-router (§9); der Server kennt sie nicht.
+    // Ohne diese Zeile antwortet ein Reload auf /fall/<id> mit 404.
+    "not_found_handling": "single-page-application"
+  },
+
+  // Jede Version bekommt sonst eine eigene oeffentliche URL. Das sind
+  // zusaetzliche Hostnamen mit derselben App und denselben Daten, die niemand
+  // mehr im Blick hat - und die Clerk-Entwicklungsinstanz nimmt jeden Origin
+  // an. Rollbacks (`wrangler rollback`) funktionieren auch ohne sie.
+  "preview_urls": false,
+
+  // Wrangler meldet sonst Nutzungsdaten an Cloudflare. Abgeschaltet aus
+  // demselben Grund wie Clerks Telemetrie in core/auth/clerkAdapter.tsx.
+  "send_metrics": false,
+
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
