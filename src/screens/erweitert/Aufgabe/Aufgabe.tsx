@@ -24,6 +24,10 @@ import { Gruppe } from '../../../ui/Liste/Liste.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import {
+  GerichtNachschlagen,
+  istGerichtStelle,
+} from '../../shared/Gericht/GerichtNachschlagen.tsx'
+import {
   benenne,
   darfAbhaken,
   darfBearbeiten,
@@ -154,7 +158,12 @@ function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlag
         ) : null}
 
         {katalog.zustaendigeStelle === '' ? null : (
-          <Angabe was="Zuständige Stelle">{katalog.zustaendigeStelle}</Angabe>
+          <Angabe was="Zuständige Stelle">
+            <div>
+              <span>{katalog.zustaendigeStelle}</span>
+              {istGerichtStelle(katalog.zustaendigeStelle) ? <GerichtNachschlagen /> : null}
+            </div>
+          </Angabe>
         )}
 
         {dokumente.length === 0 ? null : (
@@ -243,6 +252,7 @@ function Unteraufgabenzeile({
   return (
     <li className={stile.zeile}>
       <Checkbox
+        abhaken
         checked={erledigt}
         disabled={gesperrt || !darfHaken}
         onChange={(ereignis) => void haken(ereignis.target.checked)}
@@ -508,6 +518,7 @@ function Detail({
           </p>
         ) : istBlatt ? (
           <Checkbox
+            abhaken
             checked={eigenesHaken}
             disabled={aktionen.gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}

@@ -20,18 +20,44 @@ import stile from './Checkbox.module.css'
  * einem `<label for>` neben dem Feld: Die Beschriftung bleibt so im Element
  * stehen, der zugaengliche Name aendert sich nicht, und Tastatur und
  * Bildschirmleser merken von der Umstellung nichts.
+ *
+ * `abhaken` ist die zweite Auskunft und eine andere: Sie sagt, dass dieses
+ * Kaestchen etwas *erledigt* und die Beschriftung deshalb durchgestrichen
+ * gehoert. Beides trifft in einer Aufgabenliste zusammen und schliesst sich
+ * nicht aus.
  */
 
 type CheckboxProps = Omit<ComponentPropsWithoutRef<'input'>, 'type' | 'children'> & {
   label: ReactNode
   /** Nur das Kaestchen ist anzutippen, nicht die Beschriftung. */
   nurKaestchen?: boolean
+  /**
+   * Haekt das Kaestchen etwas ab, das damit erledigt ist? Dann wird die
+   * Beschriftung im angehakten Zustand durchgestrichen.
+   *
+   * Ausdruecklich zu setzen und nicht der Normalfall: Ein Haekchen waehlt oft
+   * nur aus (wem eine Aufgabe gehoert, ob sie privat ist). Einen Namen
+   * durchzustreichen, weil die Person zustaendig ist, liest sich wie
+   * "gestrichen" und ist genau das Gegenteil des Gemeinten.
+   */
+  abhaken?: boolean
 }
 
-export function Checkbox({ label, className, nurKaestchen = false, ...rest }: CheckboxProps) {
+export function Checkbox({
+  label,
+  className,
+  nurKaestchen = false,
+  abhaken = false,
+  ...rest
+}: CheckboxProps) {
   return (
     <label
-      className={[stile.zeile, nurKaestchen ? stile.nurKaestchen : null, className]
+      className={[
+        stile.zeile,
+        nurKaestchen ? stile.nurKaestchen : null,
+        abhaken ? stile.abhaken : null,
+        className,
+      ]
         .filter(Boolean)
         .join(' ')}
     >

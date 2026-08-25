@@ -12,6 +12,7 @@
  * Juristinnen (DESIGN.md §8).
  */
 
+import { ERBSCHEIN, ERBSCHEIN_ANTRAG, alsText } from '../content/erbstatus.ts'
 import { FRAGEBAUM, WURZEL } from '../content/fragebaum.ts'
 import type {
   Aufgabenvorlage,
@@ -19,7 +20,9 @@ import type {
   Fragebaumknoten,
   Infothema,
 } from '../types/fragebaum.ts'
+import type { Nachlassgericht } from '../types/gericht.ts'
 import type { Fragebaumergebnis, Katalogherkunft } from './aufgabenService'
+import { formatGerichtNotiz } from './gerichtService.ts'
 
 const KNOTEN = new Map(FRAGEBAUM.map((knoten) => [knoten.id, knoten]))
 
@@ -122,7 +125,7 @@ export type Aufgabenbauplan = {
 }
 
 /**
- * Die drei Aufgaben, die der Baum anlegen kann (ERBE_DESIGN.md §7).
+ * Die Aufgaben, die aus dem Baum und aus dem Erbstatus entstehen (§7, §10).
  *
  * Ihre Rechtsangaben stehen hier und nicht mehr im Katalog (ADR-0001). Sie
  * müssen mit: Ohne `{fristTage, fristAb}` rechnet `fristen.ts` keine Frist,
@@ -175,6 +178,35 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
       reihenfolge: 50,
     },
   },
+  /*
+   * Der Erbschein hängt an keinem Ergebnisknoten, sondern am Status "Erbe"
+   * auf der Erbe-Seite (§10). Seine Beschreibung ist der ganze Erklärtext:
+   * Wer "Ja" getippt hat, hat ihn eine Sekunde vorher gelesen und soll ihn in
+   * der Aufgabe wiederfinden, ohne den Weg dorthin noch einmal zu gehen.
+   *
+   * Ohne rechenbare Frist. Das Gesetz nennt für den Antrag keine, und §8
+   * rechnet lieber gar nicht als falsch — eine erfundene Frist auf einer
+   * Aufgabe, die keine hat, triebe jemanden zu einem Termin, den er nicht
+   * braucht.
+   */
+  erbschein: {
+    titel: 'Erbschein beantragen',
+    beschreibung: alsText(ERBSCHEIN, ERBSCHEIN_ANTRAG),
+    katalog: {
+      aufgabeId: 'fragebaum-erbschein',
+      version: FRAGEBAUM_STAND,
+      fristTage: null,
+      fristAb: null,
+      zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
+      benoetigteDokumente: [],
+      unteraufgaben: [],
+      haengtAbVon: [],
+      hinweis:
+        'Der Erbschein kostet Geld; der Betrag hängt vom Nachlass ab. Beim Notariat bekommen Sie schneller einen Termin, beim Nachlassgericht fallen keine zusätzlichen Kosten an.',
+      kategorie: 'Erbe',
+      reihenfolge: 55,
+    },
+  },
   anfechtung: {
     titel: 'Testament anfechten',
     beschreibung:
@@ -212,13 +244,21 @@ export function istSeedAufgabe(katalog: Katalogherkunft | null): boolean {
 /**
  * Die Notiz, die eine ermittelte Stelle oder ein Anfechtungsdatum festhaelt.
  *
- * Sie wandert in `notizen` der erzeugten Aufgabe, damit eine Eingabe nicht
- * verloren ist, die heute noch nirgends sonst hinkann (ERBE_DESIGN.md §8).
+ * Sie wandert in `notizen` der erzeugten Aufgabe, damit die ermittelten
+ * Kontaktdaten des Nachlassgerichts und das Anfechtungsdatum direkt an der
+ * Aufgabe stehen (ERBE_DESIGN.md §8).
  */
-export function notizAus(teile: { plz?: string; stelle?: string; anfechtungAm?: string }): string {
+export function notizAus(teile: {
+  plz?: string
+  stelle?: string
+  gericht?: Nachlassgericht | null
+  anfechtungAm?: string
+}): string {
   const zeilen: string[] = []
 
-  if (teile.plz !== undefined && teile.plz !== '') {
+  if (teile.gericht && teile.plz) {
+    zeilen.push(formatGerichtNotiz(teile.gericht, teile.plz))
+  } else if (teile.plz !== undefined && teile.plz !== '') {
     zeilen.push(
       teile.stelle === undefined || teile.stelle === ''
         ? `Letzter Wohnort (PLZ): ${teile.plz}`
@@ -227,6 +267,9 @@ export function notizAus(teile: { plz?: string; stelle?: string; anfechtungAm?: 
   }
 
   if (teile.anfechtungAm !== undefined && teile.anfechtungAm !== '') {
+    if (zeilen.length > 0) {
+      zeilen.push('')
+    }
     zeilen.push(`Vom Anfechtungsgrund erfahren am: ${teile.anfechtungAm}`)
     zeilen.push('Die Frist beträgt ein Jahr ab diesem Tag.')
   }

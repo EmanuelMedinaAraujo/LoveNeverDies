@@ -190,7 +190,13 @@ Drei Ergebnisse tragen einen Knopf **"Aufgabe erstellen"**:
 | Ausschlagung | Erbe ausschlagen | 42 Tage ab **Kenntnis** (§ 1944 BGB) |
 | Testamentsanfechtung | Testament anfechten | 1 Jahr ab Kenntnis des Anfechtungsgrundes |
 
-**Alle drei sind privat** (`K_p`) und **auf die anlegende Person zugewiesen**.
+Eine vierte hängt an keinem Ergebnis, sondern am Status "Erbe" auf der Erbe-Seite (§10):
+
+| Ort | Aufgabe | Frist |
+| --- | --- | --- |
+| Erbstatus "Erbe" → Erbschein → "Ja" | Erbschein beantragen | keine (§ 2353 BGB nennt keine) |
+
+**Alle vier sind privat** (`K_p`) und **auf die anlegende Person zugewiesen**.
 
 Privat auch das Testament, obwohl mehrere Angehörige je eines besitzen können und jede:r
 seines abliefern soll: Es ist eine Handlung, die man für sich tut und die einen
@@ -199,6 +205,14 @@ strafrechtlich betrifft, wenn man sie unterlässt. Zwei Folgen, die dazugehören
 
 - Die Familie sieht nicht, dass ein Testament abgeliefert wurde.
 - Keine geteilte Aufgabe darf von einer der drei abhängen (§3.7). Umgekehrt ist erlaubt.
+
+Die Beschreibung des Erbscheins ist der ganze Erklärtext aus §10, und zwar aus derselben
+Quelle: `content/erbstatus.ts` liefert ihn strukturiert an die Seite und als Fließtext an
+den Bauplan. Zwei Fassungen desselben Rechtstextes wären zwei Fassungen, die
+auseinanderlaufen (§2). Der Fließtext trägt die Aufzählungspunkte als `•` — die
+Beschreibung ist ein String und kann keine Liste sein —, und die Detailseiten der Aufgabe
+stellen ihn mit `white-space: pre-wrap` dar, damit die Gliederung nicht zu einem Absatz
+zusammenfällt.
 
 **Höchstens eine je Person und Art.** Ein zweiter Druck auf den Knopf legt nichts Neues
 an, sondern führt zur vorhandenen Aufgabe ("Aufgabe öffnen"). Erkannt wird sie an ihrer
@@ -223,13 +237,15 @@ Drei Seiten brauchen das zuständige Nachlassgericht. Sie zeigen eine aufklappba
 **"Zuständige Stelle ermitteln"** mit der Frage nach dem letzten Wohnort und einem
 Eingabefeld für die Postleitzahl.
 
-**Die Suche ist noch keine.** Sie antwortet immer "Nachlassgericht München", und das steht
-sichtbar dabei. Ein Gerichtsname, der für jemanden in Hamburg schlicht falsch ist und
-unkommentiert dasteht, ist etwas, wonach jemand handelt.
+**Echte Suche nach deutscher 5-stelliger PLZ.** Die Suche greift auf den normalisierten
+Datensatz (`src/content/gerichte.json`, 611 Amts-/Nachlassgerichte für 10.813 PLZs) zu
+und liefert Name, Anschrift, Telefon, Fax, E-Mail und Website.
 
-Eingegebene Postleitzahl und Antwort wandern in die Notizen der erzeugten Aufgabe, damit
-die Eingabe nicht verloren ist, wenn die echte Suche nachkommt. Die echte Suche ist ein
-eigener Vorgang und als Issue #22 erfasst.
+Bei mehrdeutigen PLZs wird ein Hinweis mit Verweis auf die Ortsteile und das Justizportal
+angezeigt; bei Sonder-/Großempfänger-PLZs der Hinweis auf eine Wohnort-PLZ.
+
+Eingegebene Postleitzahl und die vollständigen Kontaktdaten des ermittelten Gerichts wandern
+in die Notizen der erzeugten Aufgabe (`K_p`), damit Angehörige die Stelle sofort zur Hand haben.
 
 ---
 
@@ -280,6 +296,37 @@ Im Trauerfall, von oben nach unten:
 
 Im Vorsorgefall bleibt die Seite unverändert.
 
+### Hinter dem Wort "Erbe"
+
+Steht der Status auf **"Erbe"**, ist die Pille eine Schaltfläche. Ein Pfeil daneben sagt
+das; eine Pille, die sich erst beim Antippen als Knopf herausstellt, findet niemand, der
+sie nicht sucht. Nur dieser eine Status trägt sie: Wer "Wahrscheinlich Erbe" ist, soll
+keinen Erbschein beantragen, und "Noch Erbe" ist die Ausschlagung — dort wäre der
+Erbschein das Gegenteil dessen, was ansteht.
+
+Darunter geht eine Ebene auf, immer eine nach der anderen, mit einem Zurück-Pfeil aus
+jeder:
+
+```
+Erbe ▾
+├── Erbschein
+│     Erklärtext (§8) · "Möchten Sie einen Erbschein beantragen?" · Ja / Nein
+│     Ja  → legt sofort die Aufgabe "Erbschein beantragen" an (§7)
+│     Nein → zurück zur Wahl
+└── Erbengemeinschaft bzw. Alleinerbe
+      "Was trifft auf Sie zu?" · "Das Nachlassgericht informiert Sie darüber."
+      ├── Erbengemeinschaft → Erklärtext
+      └── Alleinerbe        → Erklärtext
+```
+
+**Keine eigene Adresse und kein Dialog**, dieselbe Überlegung wie in §3: Der Zurück-Knopf
+des Browsers soll die Seite verlassen und nicht eine Erläuterung schließen.
+
+**Die Aufzählungen sind `ul`-Listen** und tragen damit die gefüllten Punkte des Browsers.
+Ein `•`, das im Text stünde, wäre eine Grafik, die eine Vorlesestimme mitspricht — und im
+Export der Juristinnen steht dafür mal `*` und mal `-`. Die Texte liegen deshalb
+gegliedert in `content/erbstatus.ts` und nicht als ein String mit Zeilenumbrüchen.
+
 ---
 
 ## 11. Tests
@@ -290,6 +337,9 @@ Im Vorsorgefall bleibt die Seite unverändert.
 - **Konfigurations-Item**: Schreiben am Ergebnis, `kenntnisAm` bleibt unberührt, zweiter
   Durchlauf überschreibt nicht, "Ersetzen" überschreibt.
 - **Aufgaben**: privat, zugewiesen, Rechtsangaben gesetzt, zweiter Druck legt nichts an.
+- **Hinter dem Status "Erbe"**: nur "Erbe" ist antippbar, jede Ebene führt eine Ebene
+  zurück, "Ja" legt die Erbschein-Aufgabe an, "Nein" legt nichts an, und die Aufzählungen
+  stehen als Listeneinträge und nicht als Zeichen im Text.
 - **Seed-Aufgabe**: abgeleitetes "erledigt" folgt dem eigenen Ergebnis und nicht dem
   fremden.
 - **Playwright**: ein Weg vom Start bis zu einem Ergebnis, mit dem Zurück-Knopf des

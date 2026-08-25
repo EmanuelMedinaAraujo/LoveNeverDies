@@ -36,7 +36,7 @@
   color: var(--farbe-text);
 }
 
-.zeile:has(.feld:checked) .beschriftung {
+.zeile.abhaken:has(.feld:checked) .beschriftung {
   color: var(--farbe-text-sekundaer);
   text-decoration: line-through;
 }
