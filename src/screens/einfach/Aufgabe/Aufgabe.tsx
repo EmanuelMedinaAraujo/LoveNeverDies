@@ -330,6 +330,7 @@ function Unteraufgabenzeile({
   return (
     <li className={stile.eintrag}>
       <Checkbox
+        abhaken
         checked={erledigt}
         disabled={gesperrt || !darfAendern}
         onChange={(ereignis) => void haken(ereignis.target.checked)}
@@ -476,6 +477,7 @@ function Detail({
           </p>
         ) : istBlatt ? (
           <Checkbox
+            abhaken
             checked={eigenesHaken}
             disabled={aktionen.gesperrt || !darfAendern}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
