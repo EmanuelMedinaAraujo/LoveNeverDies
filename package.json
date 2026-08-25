@@ -12,6 +12,9 @@
     "build:test": "vite build --mode test",
     "preview": "vite preview",
     "preview:test": "vite preview --host 127.0.0.1 --port 4173 --strictPort",
+    "preview:cf": "npm run build && wrangler dev",
+    "deploy:dry": "npm run build && wrangler deploy --dry-run",
+    "deploy": "npm run build && wrangler deploy",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
@@ -58,6 +61,7 @@
     "typescript-eslint": "8.67.0",
     "vite": "8.2.2",
     "vite-plugin-pwa": "1.3.0",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "wrangler": "4.86.0"
   }
 }
