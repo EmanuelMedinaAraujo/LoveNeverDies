@@ -92,7 +92,7 @@ describe('Profil', () => {
 
     rendereMitProvidern(<Profil />)
 
-    expect(screen.getByRole('heading', { name: 'Für wen?' })).toBeVisible()
+    expect(screen.getByText('Für wen?')).toBeVisible()
     expect(screen.getByText('Hans Weber')).toBeVisible()
   })
 
@@ -103,15 +103,20 @@ describe('Profil', () => {
 
     rendereMitProvidern(<Profil />)
 
-    expect(screen.queryByRole('heading', { name: 'Für wen?' })).toBeNull()
+    expect(screen.queryByText('Für wen?')).toBeNull()
   })
 
-  it('zeigt die Geraete und den Weg zurueck', () => {
+  it('zeigt die Geraete und traegt keinen eigenen Weg zurueck mehr (§7)', () => {
+    /*
+     * Der Weg zurück ist der Start-Tab in der unteren Leiste. Er steht auf
+     * jedem Hauptscreen an derselben Stelle, und das ist mehr wert als ein
+     * „Zurück", das je nach Screen woanders sitzt.
+     */
     rendereMitProvidern(<Profil />)
 
     expect(screen.getByRole('heading', { name: 'Geräte' })).toBeVisible()
     expect(screen.getByText('Geräteliste')).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/')
+    expect(screen.queryByRole('link', { name: 'Zurück' })).toBeNull()
   })
 
   it('laesst jedes Mitglied einladen, sobald ein Fall lesbar ist', () => {
@@ -170,8 +175,10 @@ describe('Profil', () => {
 
     rendereMitProvidern(<Profil />)
 
-    expect(screen.getByRole('heading', { name: 'Fall verlassen' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Fall verlassen' })).toBeVisible()
+    expect(
+      screen.getByText(/Danach haben Sie keinen Zugriff mehr auf die Aufgaben/),
+    ).toBeVisible()
   })
 
   it('fragt nach Bestätigung und ruft verlasseFall auf', async () => {
@@ -188,7 +195,7 @@ describe('Profil', () => {
 
     await user.click(screen.getByRole('button', { name: 'Fall verlassen' }))
 
-    expect(screen.getByText(/Möchten Sie den Fall für „Hans Weber“ wirklich verlassen\?/)).toBeVisible()
+    expect(screen.getByText(/Den Fall für „Hans Weber“ wirklich verlassen\?/)).toBeVisible()
     expect(screen.getByRole('button', { name: 'Ja, Fall verlassen' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeVisible()
 
@@ -238,7 +245,7 @@ describe('Profil', () => {
     })
 
     expect(
-      screen.getByText(/Als Ersteller dieses versiegelten Vorsorgefalls können Sie die Mitgliedschaft nicht verlassen/),
+      screen.getByText(/Als Ersteller dieses versiegelten Vorsorgefalls können Sie ihn nicht verlassen/),
     ).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Fall verlassen' })).toBeNull()
   })

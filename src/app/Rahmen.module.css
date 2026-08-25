@@ -1,0 +1,15 @@
+/*
+ * Der Platz, den die fixierte Leiste unten einnimmt (DESIGN.md §7).
+ *
+ * Ohne diesen Abstand endete jede Liste unter der Leiste, und die letzte
+ * Aufgabe eines Falls waere die einzige, die niemand abhaken kann.
+ */
+.inhalt {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding-bottom: calc(
+    max(var(--ziel-mindestmass), var(--dichte-leiste-hoehe)) + env(safe-area-inset-bottom, 0rem) +
+      var(--raster-2)
+  );
+}

@@ -1,12 +1,13 @@
 /*
- * Masse aus den Dichtetokens, Farben aus §12. In der einfachen Ansicht wird das
+ * Masse aus den Tokens, Farben aus §12. In der einfachen Ansicht wird das
  * Badge damit von selbst groesser, ohne dass hier ein zweiter Satz Werte steht.
  */
 .badge {
   display: inline-block;
-  padding: 0.125rem 0.5rem;
-  border-radius: 999px;
+  padding: var(--raster-1) var(--raster-2);
+  border-radius: var(--radius-voll);
   font-size: var(--dichte-schrift-klein);
+  font-weight: var(--typo-gewicht-text);
   line-height: 1.4;
   /* Eine Frist soll sich nie ueber zwei Zeilen verteilen. */
   white-space: nowrap;
@@ -20,13 +21,13 @@
 .knapp {
   background: var(--farbe-frist-knapp-flaeche);
   color: var(--farbe-frist-knapp-text);
-  font-weight: 600;
+  font-weight: var(--typo-gewicht-betont);
 }
 
 .abgelaufen {
   background: var(--farbe-frist-abgelaufen-flaeche);
   color: var(--farbe-frist-abgelaufen-text);
-  font-weight: 600;
+  font-weight: var(--typo-gewicht-betont);
 }
 
 /*

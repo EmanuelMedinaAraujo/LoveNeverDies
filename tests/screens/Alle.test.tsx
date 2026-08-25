@@ -387,7 +387,7 @@ describe('Alle', () => {
     expect(screen.getByRole('button', { name: /^Löschen.*Konten kündigen/ })).toBeVisible()
   })
 
-  it('zeigt die Beschreibung, sobald es eine gibt', () => {
+  it('haelt die Beschreibung aus der Liste heraus', () => {
     useAufgaben.mockReturnValue(
       aufgabendaten({
         zustand: {
@@ -401,7 +401,14 @@ describe('Alle', () => {
 
     rendereMitProvidern(<Alle />)
 
-    expect(screen.getByText('Beim Standesamt Freiburg')).toBeVisible()
+    /*
+     * Die Beschreibung ist ein ganzer Absatz Fliesstext. In einer Liste von
+     * zwanzig Aufgaben macht sie aus jeder Zeile einen Block, durch den man
+     * scrollt, statt ihn zu lesen. Sie steht im Detail, einen Fingertipp
+     * weiter; die Liste zeigt den Titel und den Stand.
+     */
+    expect(screen.queryByText('Beim Standesamt Freiburg')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Details: „Sterbeurkunde beantragen“' })).toBeVisible()
   })
 
   it('zeigt den Grund, wenn eine Aenderung abgelehnt wird', async () => {
@@ -654,10 +661,17 @@ describe('Alle', () => {
     expect(screen.getByText('Ändern einer Aufgabe: Zu spät.')).toBeVisible()
   })
 
-  it('fuehrt zurueck zur Startseite', () => {
+  it('traegt keine eigene Navigationsreihe mehr (§7)', () => {
+    /*
+     * Der Weg zurück ist der Start-Tab in der unteren Leiste, und der steht
+     * auf jedem Hauptscreen an derselben Stelle. Ein zusätzliches „Zurück" im
+     * Kopf wäre ein zweiter Weg mit einem dritten Namen.
+     */
     rendereMitProvidern(<Alle />)
 
-    expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/')
+    for (const name of ['Zurück', 'Erbe & Tresor', 'Profil']) {
+      expect(screen.queryByRole('link', { name })).toBeNull()
+    }
   })
 
   it('aendert genau die Aufgabe, deren Schaltflaeche gedrueckt wurde', async () => {
@@ -789,7 +803,7 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
     ])
 
     expect(screen.queryByRole('checkbox', { name: 'Sterbefall anzeigen' })).toBeNull()
-    expect(screen.getByText('1 von 2 Unteraufgaben erledigt')).toBeVisible()
+    expect(screen.getByText('1/2 erledigt')).toBeVisible()
   })
 
   it('nennt eine Aufgabe erledigt, sobald alle Unteraufgaben es sind', () => {
@@ -798,7 +812,7 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
       aufgabe({ id: 'kind-1', titel: 'Urkunden bestellen', parentId: 'eltern', erledigt: true }),
     ])
 
-    expect(screen.getByText('Erledigt: alle 1 Unteraufgaben sind abgehakt.')).toBeVisible()
+    expect(screen.getByText('1/1 erledigt')).toBeVisible()
   })
 
   it('zeigt Unteraufgaben nicht als eigene Zeilen in der Liste', () => {
@@ -814,7 +828,7 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
   it('verlinkt in das ganzseitige Aufgabendetail', () => {
     zeige([aufgabe({ id: 'item-1', titel: 'Sterbeurkunde beantragen' })])
 
-    expect(screen.getByRole('link', { name: 'Details: „Sterbeurkunde beantragen"' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Details: „Sterbeurkunde beantragen“' })).toHaveAttribute(
       'href',
       '/aufgabe/item-1',
     )
@@ -889,7 +903,7 @@ describe('Zuweisung', () => {
 
     rendereMitProvidern(<Alle />)
 
-    expect(screen.getByText('Zuständig: Bert Müller')).toBeVisible()
+    expect(screen.getByText('Bert Müller')).toBeVisible()
   })
 
   it('lässt eine fremde Aufgabe sehen, aber nicht bearbeiten', () => {

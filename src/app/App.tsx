@@ -15,6 +15,7 @@ import { Profil } from '../screens/shared/Profil/Profil.tsx'
 import { Start } from '../screens/shared/Start/Start.tsx'
 import { Todesfall } from '../screens/shared/Todesfall/Todesfall.tsx'
 import { Vorsorge } from '../screens/shared/Vorsorge/Vorsorge.tsx'
+import { Rahmen } from './Rahmen.tsx'
 import stile from './App.module.css'
 
 function Ladeanzeige({ text }: { text: string }) {
@@ -71,14 +72,42 @@ export function App() {
   return (
     <Routes>
       {/*
-        Start ist der Screen aus §7: H1 "Meine Aufgaben", und darunter nur, was
-        der angemeldeten Person zugewiesen ist. Die Fallsperre trägt er selbst:
-        Ohne Fall ist die App gesperrt, und dann steht dort der Screen mit den
-        drei Schaltflächen.
+        Die vier Hauptscreens aus §7. Sie und nur sie stehen im `Rahmen`, der
+        die untere Leiste darunter setzt: Start, Erbe, Alle, Profil.
+
+        Was hier nicht im Rahmen steht, ist Absicht. Das Aufgabendetail ist
+        ganzseitig (§7), und Todesfall, Vorsorge, Koppeln und Beitreten sind
+        lineare Abläufe mit genau einem nächsten Schritt. Eine Leiste, die
+        mitten in einer Kopplung vier andere Wege anbietet, ist dort keine
+        Orientierung, sondern eine Abbruchkante.
+
+        Start trägt die Fallsperre selbst: Ohne Fall ist die App gesperrt, und
+        dann steht dort der Screen mit den drei Schaltflächen.
       */}
-      <Route path="/" element={<Start />} />
-      <Route path="/erbe" element={<Erbe />} />
-      <Route path="/alle" element={<Alle />} />
+      <Route
+        path="/"
+        element={
+          <Rahmen>
+            <Start />
+          </Rahmen>
+        }
+      />
+      <Route
+        path="/erbe"
+        element={
+          <Rahmen>
+            <Erbe />
+          </Rahmen>
+        }
+      />
+      <Route
+        path="/alle"
+        element={
+          <Rahmen>
+            <Alle />
+          </Rahmen>
+        }
+      />
       {/* Das ganzseitige Aufgabendetail (§7). */}
       <Route path="/aufgabe/:id" element={<Aufgabe />} />
       <Route path="/todesfall" element={<Todesfall />} />
@@ -91,7 +120,14 @@ export function App() {
       <Route path="/beitreten" element={<Beitreten zweck="join" />} />
       <Route path="/geraet-freischalten" element={<Beitreten zweck="device" />} />
       <Route path="/koppeln" element={<Koppeln />} />
-      <Route path="/profil" element={<Profil />} />
+      <Route
+        path="/profil"
+        element={
+          <Rahmen>
+            <Profil />
+          </Rahmen>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
