@@ -87,16 +87,12 @@ describe('Aufgabe (einfach)', () => {
     )
   })
 
-  it('zeigt die Rechtsgrundlage, aber nicht die Quelle (§7)', () => {
-    /*
-     * Weniger Elemente pro Screen: Der Link führt aus der App heraus in ein
-     * Dokument, das niemand ohne Vorkenntnis liest. Die erweiterte Ansicht
-     * zeigt ihn.
-     */
+  it('zeigt weder Rechtsgrundlage noch Quelle (ADR-0003)', () => {
     mitDetail([aufgabe({ katalog: herkunft() })])
 
-    expect(screen.getByText('§ 28 PStG')).toBeVisible()
     expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
+    expect(screen.queryByText(/§/)).toBeNull()
+    expect(screen.queryByText('Rechtsgrundlage')).toBeNull()
     expect(screen.queryByRole('link', { name: /gesetze-im-internet/ })).toBeNull()
   })
 
@@ -252,6 +248,6 @@ describe('Aufgabe (einfach)', () => {
     expect(screen.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeDisabled()
     expect(screen.getByText(/Diese Aufgabe ist Ihnen nicht zugewiesen/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Diese Aufgabe löschen' })).toBeNull()
-    expect(screen.getByText('§ 28 PStG')).toBeVisible()
+    expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
   })
 })

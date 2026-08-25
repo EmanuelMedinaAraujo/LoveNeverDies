@@ -95,13 +95,11 @@ function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkun
     version: '2026-08+testtest',
     fristTage: 3,
     fristAb: 'sterbedatum',
-    rechtsgrundlage: '§ 28 PStG',
     zustaendigeStelle: 'Standesamt des Sterbeortes',
     benoetigteDokumente: ['Todesbescheinigung', 'Personalausweis'],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: 'Werktage, keine Kalendertage.',
-    quelleUrl: 'https://www.gesetze-im-internet.de/pstg/__28.html',
     kategorie: 'Sofort',
     reihenfolge: 10,
     ...ueberschreibung,
@@ -232,21 +230,24 @@ beforeEach(() => {
 })
 
 describe('Aufgabendetail (§7, §8)', () => {
-  it('zeigt Rechtsgrundlage, zuständige Stelle, Dokumente, Hinweis und Quelle', () => {
+  it('zeigt zuständige Stelle, Dokumente und Hinweis', () => {
     zeigeDetail()
 
     expect(
       screen.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen' }),
     ).toBeVisible()
-    expect(screen.getByText('§ 28 PStG')).toBeVisible()
     expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
     expect(screen.getByText('Todesbescheinigung')).toBeVisible()
     expect(screen.getByText('Personalausweis')).toBeVisible()
     expect(screen.getByText('Werktage, keine Kalendertage.')).toBeVisible()
-    expect(screen.getByRole('link', { name: /gesetze-im-internet/ })).toHaveAttribute(
-      'href',
-      'https://www.gesetze-im-internet.de/pstg/__28.html',
-    )
+  })
+
+  it('zeigt weder Rechtsgrundlage noch Quelllink (ADR-0003)', () => {
+    zeigeDetail()
+
+    expect(screen.queryByText(/§/)).toBeNull()
+    expect(screen.queryByText('Rechtsgrundlage')).toBeNull()
+    expect(screen.queryByRole('link', { name: /gesetze-im-internet/ })).toBeNull()
   })
 
   it('rechnet das Fristende aus und zeigt die Restzeit', () => {
@@ -280,7 +281,7 @@ describe('Aufgabendetail (§7, §8)', () => {
 
     zeigeDetail()
 
-    expect(screen.queryByRole('heading', { name: 'Rechtliches' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
   })
 
   it('lässt ein Blatt direkt abhaken', async () => {
@@ -686,12 +687,12 @@ describe('Zuständigkeit (§7)', () => {
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeEnabled()
   })
 
-  it('lässt die Rechtsgrundlage trotzdem lesen', () => {
+  it('lässt die Angaben trotzdem lesen', () => {
     mitAufgabe({ assignee: personen([BERT]) })
 
     zeigeDetail()
 
-    expect(screen.getByText('§ 28 PStG')).toBeVisible()
+    expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
   })
 
   it('sperrt das Häkchen einer Unteraufgabe, die einer anderen Person gehört', () => {

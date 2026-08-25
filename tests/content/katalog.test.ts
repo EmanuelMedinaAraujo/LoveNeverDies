@@ -33,12 +33,21 @@ describe('catalog.de.json (§8)', () => {
     expect(stand.aufgaben.length).toBeGreaterThan(0)
   })
 
-  it('nennt zu jeder Frist eine Rechtsgrundlage (§8)', () => {
+  it('nennt zu jeder Frist ihren Anker (§8)', () => {
     for (const aufgabe of katalog().aufgaben) {
       if (aufgabe.fristTage !== null) {
-        expect(aufgabe.rechtsgrundlage, aufgabe.id).not.toBe('')
         expect(aufgabe.fristAb, aufgabe.id).not.toBeNull()
       }
+    }
+  })
+
+  it('führt in keinem Feld einen Paragraphen (ADR-0003)', () => {
+    for (const aufgabe of katalog().aufgaben) {
+      const text = Object.values(aufgabe)
+        .map((wert) => (Array.isArray(wert) ? wert.join(' ') : String(wert)))
+        .join(' ')
+
+      expect(text, aufgabe.id).not.toContain('§')
     }
   })
 })

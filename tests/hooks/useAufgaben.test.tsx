@@ -482,13 +482,11 @@ describe('useAufgaben', () => {
         version: '2026-08+testtest',
         fristTage: null,
         fristAb: null,
-        rechtsgrundlage: '',
         zustaendigeStelle: '',
         benoetigteDokumente: [],
         unteraufgaben: [],
         haengtAbVon: [],
         hinweis: '',
-        quelleUrl: '',
         kategorie: 'Sofort',
         reihenfolge,
       })

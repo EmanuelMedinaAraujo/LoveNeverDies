@@ -206,9 +206,9 @@ Herkunft aus dem Baum, nicht am Titel: Eine umbenannte Aufgabe soll keine zweite
 erzeugen. Für die beiden ohnehin privaten Arten fällt das zusammen; man sieht nur seine
 eigenen.
 
-**Die Aufgaben tragen ihre Rechtsangaben selbst** — `fristTage`, `fristAb`,
-Rechtsgrundlage, zuständige Stelle, Quelle — im selben `katalog`-Feld, das §8 dafür
-vorsieht. Ohne das rechnete die Ausschlagungsfrist nicht, und die Ausschlagungsfrist ist
+**Die Aufgaben tragen ihre Fristangaben selbst** — `fristTage`, `fristAb`, zuständige
+Stelle — im selben `katalog`-Feld, das §8 dafür vorsieht. Paragraph und Quelllink tragen
+sie seit ADR-0003 nicht mehr. Ohne das rechnete die Ausschlagungsfrist nicht, und die Ausschlagungsfrist ist
 die eine Frist in dieser App, deren Versäumnis den ganzen Nachlass kostet.
 
 Das Feld "Wann hat das Nachlassgericht Sie über die Erbschaft informiert?" schreibt in das
