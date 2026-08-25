@@ -5,7 +5,7 @@
 # Seit ADR-0001 steht hier genau eine Aufgabe. Der frühere Bestand von zehn
 # Einträgen ist zurückgezogen worden: Sein Inhalt gilt als überwiegend
 # unzuverlässig, und ein Rechtsinhalt, dem man nicht traut, ist
-# schlimmer als keiner — er trägt Fristen und Rechtsgrundlagen, und niemand
+# schlimmer als keiner — er trägt Fristen, und niemand
 # prüft ihn nach, gerade weil er aussieht, als sei er geprüft.
 #
 # Aufgaben entstehen seitdem durch Menschen oder durch den Erbe-Fragebaum
@@ -14,5 +14,9 @@
 # frist_tage bleibt leer, wo es keine gesetzliche Tagesfrist gibt. Erfunden
 # wird nichts: Eine Frist in Monaten oder in Werktagen lässt sich nicht in
 # Tage umrechnen und steht deshalb im hinweis statt in der Spalte.
-id,titel,kurzbeschreibung,frist_tage,frist_ab,rechtsgrundlage,zustaendige_stelle,benoetigte_dokumente,subtasks,depends_on,hinweis,quelle_url,kategorie,reihenfolge
-erbenstellung-klaeren,Klären ob Sie Erbe sind,"Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch.",,,,,,,,"Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.",,Erbe,10
+#
+# Seit ADR-0003 hat die Tabelle weder rechtsgrundlage noch quelle_url. Ein
+# Paragraph im Aufgabendetail sieht aus wie eine Rechtsberatung, und die
+# gibt diese App nicht.
+id,titel,kurzbeschreibung,frist_tage,frist_ab,zustaendige_stelle,benoetigte_dokumente,subtasks,depends_on,hinweis,kategorie,reihenfolge
+erbenstellung-klaeren,Klären ob Sie Erbe sind,"Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch.",,,,,,,Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.,Erbe,10

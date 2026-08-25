@@ -185,6 +185,7 @@ function Startzeile({
             disabled={gesperrt}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label={aufgabe.titel}
+            nurKaestchen
           />
         ) : (
           /*

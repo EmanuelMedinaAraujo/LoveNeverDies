@@ -12,7 +12,12 @@ import { Card } from '../../../ui/Card/Card.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
-import { darfBearbeiten, istFrei, zuweisungText } from '../../../services/zuweisung.ts'
+import {
+  darfAbhaken,
+  darfBearbeiten,
+  istFrei,
+  zuweisungText,
+} from '../../../services/zuweisung.ts'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
 import stile from './Alle.module.css'
@@ -265,6 +270,7 @@ function Aufgabenzeile({
    * Weg, der ihm offensteht: sie übernehmen.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ichUserId)
+  const darfHaken = darfAbhaken(aufgabe.assignee, ichUserId)
 
   /*
    * Was früher als vier eigene Absätze unter dem Titel stand, steht jetzt in
@@ -300,9 +306,10 @@ function Aufgabenzeile({
           <Checkbox
             abhaken
             checked={erledigt}
-            disabled={gesperrt || !darfAendern}
+            disabled={gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label={aufgabe.titel}
+            nurKaestchen
           />
         ) : (
           <p

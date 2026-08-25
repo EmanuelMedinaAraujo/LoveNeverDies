@@ -18,6 +18,22 @@ describe('Checkbox', () => {
     expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
   })
 
+  it('behaelt den zugaenglichen Namen, wenn nur das Kaestchen anzutippen ist', () => {
+    /*
+     * `nurKaestchen` arbeitet mit `pointer-events` und aendert deshalb nichts
+     * an Name, Tastatur und Bildschirmleser. Genau das ist die Zusage: In den
+     * Aufgabenlisten fuehrt ein Tipp auf den Titel ins Detail, aber wer die
+     * Liste mit der Tastatur oder mit einer Vorlesestimme bedient, findet
+     * dieselbe Beschriftung wie zuvor.
+     *
+     * Dass der Titel dort keine Tipps mehr annimmt, steht im E2E-Test: Es ist
+     * eine Zusage der CSS, und jsdom rechnet kein Layout.
+     */
+    render(<Checkbox label="Sterbeurkunde beantragen" nurKaestchen />)
+
+    expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
+  })
+
   it('laesst sich ueber die Beschriftung umschalten', async () => {
     // Der Fingertipp trifft die ganze Zeile, nicht nur das Kaestchen.
     const geaendert = vi.fn()

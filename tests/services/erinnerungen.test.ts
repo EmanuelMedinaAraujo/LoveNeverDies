@@ -41,13 +41,11 @@ function mitFrist(tage: number, ueberschreibung: Partial<Aufgabe> = {}): Aufgabe
     version: '2026-08+testtest',
     fristTage: tage,
     fristAb: 'sterbedatum',
-    rechtsgrundlage: '§ 28 PStG',
     zustaendigeStelle: '',
     benoetigteDokumente: [],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: '',
-    quelleUrl: '',
     kategorie: '',
     reihenfolge: 10,
   }

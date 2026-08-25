@@ -33,6 +33,7 @@ import {
   aufgabenAusZeilen,
   beschreibeAbgelehnte,
   istKonfiguration,
+  istNachlass,
   mutationAendern,
   mutationAnlegen,
   mutationLoeschen,
@@ -41,6 +42,7 @@ import {
   type Aufgabenaenderung,
   type Fragebaumergebnis,
   type Konfiguration,
+  type Nachlasseintrag,
 } from '../services/aufgabenService.ts'
 import type { Fristbezug } from '../services/fristen.ts'
 import type { Aufgabenvorlage } from '../types/fragebaum.ts'
@@ -66,6 +68,7 @@ import {
 import { instanziiereKatalog, type Katalogfall } from '../services/katalogService.ts'
 import {
   NIEMAND,
+  istFrei,
   istZugewiesen,
   mitPerson,
   uebernommenVon,
@@ -151,6 +154,14 @@ export type Aufgabendaten = {
    */
   legeAn: (titel: string, parentId?: string | null, nurFuerMich?: boolean) => Promise<void>
   schreibe: (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => Promise<void>
+  /**
+   * Das Haekchen setzen oder wegnehmen (§7).
+   *
+   * Eine *freie* Aufgabe traegt die angemeldete Person dabei gleich ein: In
+   * einem Payload, mit einer `seq`, nicht als zwei Schritte, die halb
+   * ankommen koennen. Nur beim Setzen -- ein Haekchen wegzunehmen ist keine
+   * Ansage, etwas erledigt zu haben.
+   */
   hakeAb: (aufgabe: Aufgabe, erledigt: boolean) => Promise<void>
   loesche: (aufgabe: Aufgabe) => Promise<void>
   /**
@@ -187,6 +198,17 @@ export type Aufgabendaten = {
    * anders aus, obwohl die Aufgaben dieselben sind.
    */
   fristbezug: Fristbezug
+  /**
+   * Die Einträge aus dem geöffneten Nachlass-Tresor (§3.5), älteste zuerst.
+   *
+   * Sie kommen aus demselben Sync-Stream wie die Aufgaben und werden im selben
+   * Durchgang entschlüsselt: Nach dem Öffnen sind es gewöhnliche Items unter
+   * `K_c`. Getrennt geführt werden sie trotzdem — eine Notiz ist keine
+   * Aufgabe, die jemand abhakt.
+   *
+   * In einem Vorsorgefall leer: Dort liegen sie unter `K_v`.
+   */
+  nachlass: Nachlasseintrag[]
   /**
    * Trägt das eigene Kenntnisdatum ein oder ändert es (§8, #12).
    *
@@ -249,6 +271,7 @@ export type Aufgabendaten = {
 const LEER = {
   aufgaben: [] as Aufgabe[],
   konfiguration: null as Konfiguration | null,
+  nachlass: [] as Nachlasseintrag[],
   uebersprungen: 0,
 }
 
@@ -323,7 +346,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * was die Stapel davor gefunden haben.
    */
   const entschluesselt = useRef(
-    new WeakMap<InhaltZeile, Aufgabe | Konfiguration | typeof VERWORFEN>(),
+    new WeakMap<InhaltZeile, Aufgabe | Konfiguration | Nachlasseintrag | typeof VERWORFEN>(),
   )
 
   /**
@@ -413,7 +436,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     void (async () => {
       const bekannt = entschluesselt.current
       const neue = sync.zeilen.filter((zeile) => !bekannt.has(zeile))
-      const { aufgaben, konfigurationen, uebersprungeneIds } = await aufgabenAusZeilen(
+      const { aufgaben, konfigurationen, nachlass, uebersprungeneIds } = await aufgabenAusZeilen(
         neue,
         fall,
         privat,
@@ -421,7 +444,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
 
       const nachId = new Map(neue.map((zeile) => [zeile.id, zeile]))
 
-      for (const eintrag of [...aufgaben, ...konfigurationen]) {
+      for (const eintrag of [...aufgaben, ...konfigurationen, ...nachlass]) {
         const zeile = nachId.get(eintrag.id)
 
         if (zeile !== undefined) {
@@ -446,7 +469,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       const eintraege = sync.zeilen.map((zeile) => bekannt.get(zeile))
 
       const gelesen = eintraege.filter(
-        (eintrag): eintrag is Aufgabe | Konfiguration =>
+        (eintrag): eintrag is Aufgabe | Konfiguration | Nachlasseintrag =>
           eintrag !== undefined && eintrag !== VERWORFEN,
       )
 
@@ -470,9 +493,19 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
 
       setzeListe({
         aufgaben: gelesen
-          .filter((eintrag): eintrag is Aufgabe => !istKonfiguration(eintrag))
+          .filter(
+            (eintrag): eintrag is Aufgabe =>
+              !istKonfiguration(eintrag) && !istNachlass(eintrag),
+          )
           .sort(nachReihenfolge),
         konfiguration,
+        /*
+         * §3.5: Die Einträge des geöffneten Tresors. Sie stehen hier neben den
+         * Aufgaben und nicht zwischen ihnen: Nach dem Öffnen sind es
+         * gewöhnliche Items unter `K_c`, aber eine Notiz ist keine Aufgabe,
+         * die jemand abhakt.
+         */
+        nachlass: gelesen.filter(istNachlass),
         uebersprungen: eintraege.filter((eintrag) => eintrag === VERWORFEN).length,
       })
     })()
@@ -722,11 +755,6 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     [liste.aufgaben, mutiere],
   )
 
-  const hakeAb = useCallback(
-    (aufgabe: Aufgabe, erledigt: boolean) => schreibe(aufgabe, { erledigt }),
-    [schreibe],
-  )
-
   const loesche = useCallback(
     (aufgabe: Aufgabe) => mutiere(mutationLoeschen(aufgabe)),
     [mutiere],
@@ -812,19 +840,62 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * die Aufgabe weitergibt, hat nichts verloren, sonst meldete die eigene
    * Handlung sich gleich als fremde zurück.
    */
-  const weiseZu = useCallback(
-    (aufgabe: Aufgabe, zuweisung: Zuweisung) => {
+  const merkeVersuch = useCallback(
+    (aufgabeId: string, zuweisung: Zuweisung) => {
       setzeVersuchte((vorher) => {
         if (!istZugewiesen(zuweisung, ich.userId)) {
-          return vorher.filter((id) => id !== aufgabe.id)
+          return vorher.filter((id) => id !== aufgabeId)
         }
 
-        return vorher.includes(aufgabe.id) ? vorher : [...vorher, aufgabe.id]
+        return vorher.includes(aufgabeId) ? vorher : [...vorher, aufgabeId]
       })
+    },
+    [ich.userId],
+  )
+
+  const weiseZu = useCallback(
+    (aufgabe: Aufgabe, zuweisung: Zuweisung) => {
+      merkeVersuch(aufgabe.id, zuweisung)
 
       return schreibe(aufgabe, { assignee: zuweisung })
     },
-    [ich.userId, schreibe],
+    [merkeVersuch, schreibe],
+  )
+
+  /**
+   * Das Haekchen -- und bei einer freien Aufgabe die Uebernahme gleich mit (§7).
+   *
+   * Eine freie Aufgabe abzuhaken *ist* die Ansage "ich habe das gemacht". Wer
+   * sie erst uebernehmen muesste, um sie abhaken zu duerfen, macht zwei
+   * Handgriffe fuer eine Auskunft, und die Bearbeitungssperre soll niemanden
+   * von seiner eigenen Arbeit fernhalten -- sie soll verhindern, dass zwei
+   * Menschen dieselbe Behoerde anrufen. Eine Aufgabe, die *jemand anderem*
+   * gehoert, bleibt deshalb gesperrt.
+   *
+   * **Ein Payload, nicht zwei.** Zuweisung und Haekchen liegen im selben
+   * verschluesselten Payload (§3.3), und `mutationAendern` schreibt ihn ganz.
+   * Zwei Mutationen koennten halb ankommen: Der Fall "abgehakt, aber niemand
+   * war es" ist genau der, den diese Aenderung abschaffen soll.
+   *
+   * Der Versuch wird gemerkt wie ein "Übernehmen": Tippen zwei Menschen im
+   * selben Moment, gewinnt die hoehere `seq`, und die unterlegene Person soll
+   * lesen, wer schneller war (§7), statt still zu verlieren.
+   *
+   * Nur beim Setzen. Ein Haekchen wegzunehmen sagt "doch nicht erledigt" und
+   * ist keine Ansage, etwas getan zu haben.
+   */
+  const hakeAb = useCallback(
+    (aufgabe: Aufgabe, erledigt: boolean) => {
+      if (!erledigt || !istFrei(aufgabe.assignee)) {
+        return schreibe(aufgabe, { erledigt })
+      }
+
+      const assignee = mitPerson(aufgabe.assignee, ich)
+      merkeVersuch(aufgabe.id, assignee)
+
+      return schreibe(aufgabe, { erledigt, assignee })
+    },
+    [ich, merkeVersuch, schreibe],
   )
 
   /**
@@ -929,6 +1000,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       bestaetigeUebernahmen,
       gibFuerAlleFrei,
       fristbezug,
+      nachlass: liste.nachlass,
       setzeKenntnisAm,
       fragebaum,
       fragebaumGeladen,
@@ -956,6 +1028,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       bestaetigeUebernahmen,
       gibFuerAlleFrei,
       fristbezug,
+      liste.nachlass,
       setzeKenntnisAm,
       fragebaum,
       fragebaumGeladen,

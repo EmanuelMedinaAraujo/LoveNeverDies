@@ -95,13 +95,11 @@ function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkun
     version: '2026-08+testtest',
     fristTage: 3,
     fristAb: 'sterbedatum',
-    rechtsgrundlage: '§ 28 PStG',
     zustaendigeStelle: 'Standesamt des Sterbeortes',
     benoetigteDokumente: ['Todesbescheinigung', 'Personalausweis'],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: 'Werktage, keine Kalendertage.',
-    quelleUrl: 'https://www.gesetze-im-internet.de/pstg/__28.html',
     kategorie: 'Sofort',
     reihenfolge: 10,
     ...ueberschreibung,
@@ -165,6 +163,7 @@ function aufgabendaten(
     bestaetigeUebernahmen: vi.fn(),
     gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
     fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null },
+    nachlass: [],
     setzeKenntnisAm: vi.fn().mockResolvedValue(undefined),
     fragebaum: null,
     fragebaumGeladen: true,
@@ -232,21 +231,24 @@ beforeEach(() => {
 })
 
 describe('Aufgabendetail (§7, §8)', () => {
-  it('zeigt Rechtsgrundlage, zuständige Stelle, Dokumente, Hinweis und Quelle', () => {
+  it('zeigt zuständige Stelle, Dokumente und Hinweis', () => {
     zeigeDetail()
 
     expect(
       screen.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen' }),
     ).toBeVisible()
-    expect(screen.getByText('§ 28 PStG')).toBeVisible()
     expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
     expect(screen.getByText('Todesbescheinigung')).toBeVisible()
     expect(screen.getByText('Personalausweis')).toBeVisible()
     expect(screen.getByText('Werktage, keine Kalendertage.')).toBeVisible()
-    expect(screen.getByRole('link', { name: /gesetze-im-internet/ })).toHaveAttribute(
-      'href',
-      'https://www.gesetze-im-internet.de/pstg/__28.html',
-    )
+  })
+
+  it('zeigt weder Rechtsgrundlage noch Quelllink (ADR-0003)', () => {
+    zeigeDetail()
+
+    expect(screen.queryByText(/§/)).toBeNull()
+    expect(screen.queryByText('Rechtsgrundlage')).toBeNull()
+    expect(screen.queryByRole('link', { name: /gesetze-im-internet/ })).toBeNull()
   })
 
   it('rechnet das Fristende aus und zeigt die Restzeit', () => {
@@ -280,7 +282,7 @@ describe('Aufgabendetail (§7, §8)', () => {
 
     zeigeDetail()
 
-    expect(screen.queryByRole('heading', { name: 'Rechtliches' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
   })
 
   it('lässt ein Blatt direkt abhaken', async () => {
@@ -530,7 +532,7 @@ describe('Aufgabendetail (§7, §8)', () => {
   it('führt zurück zu allen Aufgaben', async () => {
     zeigeDetail()
 
-    await userEvent.click(screen.getByRole('link', { name: 'Zurück zu allen Aufgaben' }))
+    await userEvent.click(screen.getByRole('link', { name: 'Zurück' }))
 
     await waitFor(() => expect(screen.getByText('Alle Aufgaben')).toBeVisible())
   })
@@ -617,7 +619,7 @@ describe('Zuständigkeit (§7)', () => {
 
     zeigeDetail()
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Alle' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Allen' }))
 
     expect(daten.weiseZu).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), ALLE)
   })
@@ -632,7 +634,7 @@ describe('Zuständigkeit (§7)', () => {
 
     zeigeDetail()
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Sie' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Ihnen' }))
 
     expect(daten.weiseZu).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'item-1' }),
@@ -645,8 +647,8 @@ describe('Zuständigkeit (§7)', () => {
 
     zeigeDetail()
 
-    expect(screen.getByRole('checkbox', { name: 'Alle' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Sie' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Allen' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Ihnen' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Weiteres Mitglied' })).toBeChecked()
   })
 
@@ -672,6 +674,20 @@ describe('Zuständigkeit (§7)', () => {
     ).toBeVisible()
   })
 
+  it('lässt eine freie Aufgabe abhaken und sagt, was das bedeutet', () => {
+    // §7: Wer sie erst übernehmen müsste, um sagen zu dürfen, dass er sie
+    // schon erledigt hat, macht zwei Handgriffe für eine Auskunft.
+    mitAufgabe({ assignee: NIEMAND })
+
+    zeigeDetail()
+
+    expect(screen.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeEnabled()
+    expect(screen.getByText(/Diese Aufgabe ist niemandem zugewiesen/)).toBeVisible()
+
+    // Die übrige Sperre bleibt: Ändern setzt weiterhin eine Zuweisung voraus.
+    expect(screen.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toBeDisabled()
+  })
+
   it('sagt es, wenn die Mitglieder nicht abrufbar sind', () => {
     useMitgliederfehler = 'Kein Netz.'
     mitAufgabe({ assignee: NIEMAND })
@@ -686,12 +702,12 @@ describe('Zuständigkeit (§7)', () => {
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeEnabled()
   })
 
-  it('lässt die Rechtsgrundlage trotzdem lesen', () => {
+  it('lässt die Angaben trotzdem lesen', () => {
     mitAufgabe({ assignee: personen([BERT]) })
 
     zeigeDetail()
 
-    expect(screen.getByText('§ 28 PStG')).toBeVisible()
+    expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
   })
 
   it('sperrt das Häkchen einer Unteraufgabe, die einer anderen Person gehört', () => {

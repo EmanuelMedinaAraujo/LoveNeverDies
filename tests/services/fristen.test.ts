@@ -27,13 +27,11 @@ function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkun
     version: '2026-08+testtest',
     fristTage: 3,
     fristAb: 'sterbedatum',
-    rechtsgrundlage: '§ 28 PStG',
     zustaendigeStelle: 'Standesamt des Sterbeortes',
     benoetigteDokumente: [],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: '',
-    quelleUrl: '',
     kategorie: 'Sofort',
     reihenfolge: 10,
     ...ueberschreibung,
@@ -67,7 +65,7 @@ describe('fristlage (§8)', () => {
   })
 
   it('erfindet keine Frist, wo das Gesetz keine nennt', () => {
-    const ohne = herkunft({ fristTage: null, fristAb: null, rechtsgrundlage: '' })
+    const ohne = herkunft({ fristTage: null, fristAb: null })
 
     expect(fristlage(ohne, bezug('2026-05-12'), '2026-05-12')).toEqual({ art: 'keine' })
   })

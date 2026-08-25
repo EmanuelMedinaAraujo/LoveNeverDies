@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import type { Kopplungszweck } from '../../../core/db/kopplung.ts'
 import { useKopplungscode, useKopplungswache } from '../../../hooks/useKopplung.ts'
 import {
@@ -8,6 +8,7 @@ import {
 } from '../../../services/kopplungService.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import stile from './Beitreten.module.css'
 
 /**
@@ -116,6 +117,8 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
 
   return (
     <main className={stile.seite}>
+      <Zurueck ziel={zweck === 'device' ? '/profil' : '/'} />
+
       <div className={stile.kopf}>
         <h1>{texte.titel}</h1>
         <p className={stile.einleitung}>{texte.einleitung}</p>
@@ -204,10 +207,6 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
           </Card>
         </>
       ) : null}
-
-      <p className={stile.hinweis}>
-        <Link to={zweck === 'device' ? '/profil' : '/'}>Zurück</Link>
-      </p>
     </main>
   )
 }

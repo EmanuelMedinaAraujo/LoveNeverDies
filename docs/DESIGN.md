@@ -175,7 +175,7 @@ Im Klartext liegen: `case_id`, `status`, `catalog_version`, `seq`, `updated_at`,
 Dazu Anzeigename und E-Mail jeder Person (Tabelle `profiles`, §4).
 
 Verschlüsselt sind: Titel, Beschreibung, Fristangaben (`fristTage`, `fristAb`),
-Zuständigkeit/Assignee, Notizen, Dokumente, Rechtsgrundlagen, Elternbeziehungen
+Zuständigkeit/Assignee, Notizen, Dokumente, Elternbeziehungen
 (`parentId`), Abhängigkeiten (`dependsOn`), Item-Typ, Erledigt-Status, Name und
 Sterbedatum der verstorbenen Person sowie `kenntnisAm` je Person.
 
@@ -926,7 +926,7 @@ wäre ein Risiko ohne Gegenwert.
 
 ### Aufgabendetail
 
-Ganzseitig. Enthält Rechtsgrundlage und Quelle, Frist, Dokumente, Notizen, Unteraufgaben
+Ganzseitig. Enthält Frist, zuständige Stelle, Dokumente, Notizen, Unteraufgaben
 (eine Ebene, keine Verschachtelung) und optional `dependsOn`. Blockierte Aufgaben erscheinen
 ausgegraut mit "Zuerst: …".
 
@@ -1054,16 +1054,18 @@ Die Juristinnen pflegen eine Tabelle, ein Datensatz pro Aufgabe:
 
 ```
 id · titel · kurzbeschreibung · frist_tage · frist_ab (sterbedatum|kenntnis|leer)
-rechtsgrundlage · zustaendige_stelle · benoetigte_dokumente (;) · subtasks (;)
-depends_on (;) · hinweis · quelle_url · kategorie · reihenfolge
+zustaendige_stelle · benoetigte_dokumente (;) · subtasks (;) · depends_on (;)
+hinweis · kategorie · reihenfolge
 ```
 
 `npm import:content` validiert und erzeugt `src/content/catalog.de.json` (eingecheckt).
 
-- Eine `frist` ohne `rechtsgrundlage` ist ein harter Importfehler.
+- Eine `frist_tage` ohne `frist_ab` ist ein harter Importfehler, und umgekehrt: Eine
+  Frist, die ab nichts läuft, ist nicht anzeigbar.
 - Fehlt eine gesetzliche Frist, bleibt das Feld leer. Erfunden wird nichts.
-- Rechtsgrundlage und Quelle stehen im Aufgabendetail. Direkter lässt sich die juristische
-  Arbeit nicht in das Bewertungskriterium "Rechtliche Qualität" übersetzen.
+- **Keine Rechtsgrundlage und keine Quelle** (ADR-0003). Ein Paragraph mit Fundstelle unter
+  einer Handlung ist der Form nach eine Rechtsauskunft, und die gibt diese App nicht. Was
+  bleibt, ist das, wonach jemand handelt: Frist, Stelle, Dokumente, Hinweis.
 
 ### Wann der Katalog eingefroren wird
 
@@ -1075,7 +1077,7 @@ Sonderfall.
 
 Der Katalog initialisiert, mehr nicht. Danach sind es gewöhnliche Items: frei änderbar,
 ergänzbar, löschbar. `catalog_version` ist eine Herkunftsangabe ("aufgesetzt aus
-Katalogstand 2031-03") und keine lebende Verknüpfung. Rechtsgrundlage und Quelle werden
+Katalogstand 2031-03") und keine lebende Verknüpfung. Frist und zuständige Stelle werden
 beim Instanziieren in das Item kopiert und altern mit ihm.
 
 ### Instanziierung ist strukturell idempotent

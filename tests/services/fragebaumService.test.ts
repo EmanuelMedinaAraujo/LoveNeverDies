@@ -85,7 +85,17 @@ describe('Bauplaene (§7)', () => {
     // diese beiden Felder rechnet `fristen.ts` gar nichts.
     expect(BAUPLAENE.ausschlagung.katalog.fristTage).toBe(42)
     expect(BAUPLAENE.ausschlagung.katalog.fristAb).toBe('kenntnis')
-    expect(BAUPLAENE.ausschlagung.katalog.rechtsgrundlage).toBe('§ 1944 BGB')
+  })
+
+  it('traegt in keiner Vorlage einen Paragraphen oder einen Quelllink (ADR-0003)', () => {
+    for (const [name, bauplan] of Object.entries(BAUPLAENE)) {
+      const text = [bauplan.titel, bauplan.beschreibung, ...Object.values(bauplan.katalog)]
+        .map((wert) => (Array.isArray(wert) ? wert.join(' ') : String(wert)))
+        .join(' ')
+
+      expect(text, name).not.toContain('§')
+      expect(text, name).not.toContain('gesetze-im-internet.de')
+    }
   })
 
   it('rechnet die Anfechtungsfrist ausdruecklich nicht', () => {
@@ -99,7 +109,7 @@ describe('Bauplaene (§7)', () => {
 
   it('laesst das Testament fristenlos, weil das Gesetz keine Tagesfrist nennt', () => {
     expect(BAUPLAENE.testament.katalog.fristTage).toBeNull()
-    expect(BAUPLAENE.testament.katalog.rechtsgrundlage).toBe('§ 2259 BGB')
+    expect(BAUPLAENE.testament.katalog.hinweis).toContain('Unverzüglich')
   })
 
   it('schreibt den ganzen Erbschein-Text in die Aufgabe (§10)', () => {
