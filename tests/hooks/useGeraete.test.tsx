@@ -19,7 +19,7 @@ import { authWert, geraet } from '../screens/harness.tsx'
  */
 
 const ladeOderErzeugeIdentitaet = vi.fn()
-const registriereGeraet = vi.fn()
+const registriereGeraetGebuendelt = vi.fn()
 const eigeneGeraete = vi.fn()
 const benenneGeraetUm = vi.fn()
 
@@ -40,7 +40,7 @@ vi.mock('../../src/core/db/supabaseProvider.tsx', () => {
   return { useSupabase: () => zugang }
 })
 vi.mock('../../src/services/geraeteService.ts', () => ({
-  registriereGeraet: (...a: unknown[]) => registriereGeraet(...a),
+  registriereGeraetGebuendelt: (...a: unknown[]) => registriereGeraetGebuendelt(...a),
   eigeneGeraete: (...a: unknown[]) => eigeneGeraete(...a),
   benenneGeraetUm: (...a: unknown[]) => benenneGeraetUm(...a),
 }))
@@ -65,7 +65,7 @@ function huelle(zustand: AuthZustand) {
 beforeEach(() => {
   vi.clearAllMocks()
   ladeOderErzeugeIdentitaet.mockResolvedValue(IDENTITAET)
-  registriereGeraet.mockResolvedValue(geraet())
+  registriereGeraetGebuendelt.mockResolvedValue(geraet())
   eigeneGeraete.mockResolvedValue([geraet()])
   benenneGeraetUm.mockResolvedValue(undefined)
 })
@@ -112,7 +112,7 @@ describe('useGeraeteanmeldung', () => {
      * Geraeteliste nicht in eine halb fertige Registrierung hineinliest.
      */
     let loese: (wert: Geraet) => void = () => {}
-    registriereGeraet.mockReturnValue(
+    registriereGeraetGebuendelt.mockReturnValue(
       new Promise<Geraet>((erfuellen) => {
         loese = erfuellen
       }),
@@ -120,7 +120,7 @@ describe('useGeraeteanmeldung', () => {
 
     const { result } = renderHook(() => useGeraeteanmeldung(), { wrapper: huelle(ANGEMELDET) })
 
-    await waitFor(() => expect(registriereGeraet).toHaveBeenCalled())
+    await waitFor(() => expect(registriereGeraetGebuendelt).toHaveBeenCalled())
     expect(result.current.status).toBe('laedt')
 
     loese(geraet())
@@ -131,7 +131,7 @@ describe('useGeraeteanmeldung', () => {
     const { result } = renderHook(() => useGeraeteanmeldung(), { wrapper: huelle(ANGEMELDET) })
 
     await waitFor(() => expect(result.current.status).toBe('bereit'))
-    expect(registriereGeraet).toHaveBeenCalledWith(
+    expect(registriereGeraetGebuendelt).toHaveBeenCalledWith(
       expect.anything(),
       IDENTITAET,
       expect.objectContaining({ userId: 'user_1', label: expect.any(String) }),
@@ -139,7 +139,7 @@ describe('useGeraeteanmeldung', () => {
   })
 
   it('meldet einen gescheiterten Rundlauf als Fehler', async () => {
-    registriereGeraet.mockRejectedValue(new Error('Kein Netz.'))
+    registriereGeraetGebuendelt.mockRejectedValue(new Error('Kein Netz.'))
 
     const { result } = renderHook(() => useGeraeteanmeldung(), { wrapper: huelle(ANGEMELDET) })
 
@@ -152,7 +152,7 @@ describe('useGeraeteanmeldung', () => {
     })
 
     expect(result.current.status).toBe('abgemeldet')
-    expect(registriereGeraet).not.toHaveBeenCalled()
+    expect(registriereGeraetGebuendelt).not.toHaveBeenCalled()
   })
 })
 
@@ -166,7 +166,7 @@ describe('useGeraete', () => {
 
   it('reicht einen Fehler aus der Anmeldung durch', async () => {
     // Ohne angemeldetes Geraet gibt es keine verlaessliche Liste.
-    registriereGeraet.mockRejectedValue(new Error('Kein Netz.'))
+    registriereGeraetGebuendelt.mockRejectedValue(new Error('Kein Netz.'))
 
     const { result } = renderHook(() => useGeraete(), { wrapper: huelle(ANGEMELDET) })
 

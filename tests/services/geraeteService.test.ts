@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { geraetePruefcode } from '../../src/core/crypto/fingerprint'
 import { erzeugeKemSchluesselpaar } from '../../src/core/crypto/kem'
 import type { Geraeteidentitaet } from '../../src/core/crypto/keystore'
@@ -12,6 +12,7 @@ import {
   benenneGeraetUm,
   eigeneGeraete,
   registriereGeraet,
+  registriereGeraetGebuendelt,
 } from '../../src/services/geraeteService'
 
 /**
@@ -238,5 +239,112 @@ describe('Die eigene Geräteliste (§7 Profil)', () => {
     const [geraet] = await eigeneGeraete(tabelle, dieses, ANNA)
 
     expect(geraet?.label).toBe('Unbenanntes Gerät')
+  })
+})
+
+/**
+ * Gleichzeitige Registrierungen desselben Geräts (Issue #21).
+ *
+ * `registriereGeraet` ist idempotent, aber nicht sparsam: Zwei Aufrufe, die
+ * sich überlappen, finden beide nichts und legen beide an. Einer verliert am
+ * eindeutigen Index — richtig im Ergebnis, sichtbar als rotes 409 in der
+ * Konsole. Im Dev-Modus passiert das bei jedem ersten Start, weil `StrictMode`
+ * Effekte doppelt ausführt.
+ *
+ * `registriereGeraetGebuendelt` legt einen Bündel um denselben Aufruf: Wer
+ * dazukommt, während einer läuft, bekommt dessen Promise statt eines eigenen
+ * Rundlaufs. Der Schutz am Index bleibt, wo er hingehört — er ist für zwei
+ * Tabs da, und zwei Tabs teilen sich kein Modul.
+ */
+describe('Gebündelte Registrierung', () => {
+  it('schickt bei zwei gleichzeitigen Aufrufen nur ein insert', async () => {
+    const { tabelle, zeilen } = speicherTabelle()
+    const legeAn = vi.spyOn(tabelle, 'legeAn')
+
+    const [links, rechts] = await Promise.all([
+      registriereGeraetGebuendelt(tabelle, dieses, { userId: ANNA, label: 'iPhone' }),
+      registriereGeraetGebuendelt(tabelle, dieses, { userId: ANNA, label: 'iPhone' }),
+    ])
+
+    expect(legeAn).toHaveBeenCalledTimes(1)
+    expect(zeilen).toHaveLength(1)
+    expect(links.id).toBe(rechts.id)
+  })
+
+  it('bündelt nur, solange ein Aufruf läuft', async () => {
+    // Sonst wäre es kein Bündel, sondern ein Cache: Ein umbenanntes Gerät
+    // hieße nach dem Neuladen wieder wie beim ersten Start.
+    const { tabelle } = speicherTabelle()
+
+    const erstes = await registriereGeraetGebuendelt(tabelle, dieses, {
+      userId: ANNA,
+      label: 'iPhone',
+    })
+    await benenneGeraetUm(tabelle, erstes.id, 'Annas altes iPhone')
+
+    const zweites = await registriereGeraetGebuendelt(tabelle, dieses, {
+      userId: ANNA,
+      label: 'iPhone',
+    })
+
+    expect(zweites.id).toBe(erstes.id)
+    expect(zweites.label).toBe('Annas altes iPhone')
+  })
+
+  it('bündelt zwei Geräte desselben Benutzers nicht zusammen', async () => {
+    const { tabelle, zeilen } = speicherTabelle()
+
+    const [iphone, laptop] = await Promise.all([
+      registriereGeraetGebuendelt(tabelle, dieses, { userId: ANNA, label: 'iPhone' }),
+      registriereGeraetGebuendelt(tabelle, anderes, { userId: ANNA, label: 'Laptop' }),
+    ])
+
+    expect(zeilen).toHaveLength(2)
+    expect(iphone.id).not.toBe(laptop.id)
+  })
+
+  it('bündelt dasselbe Gerät für zwei Benutzer nicht zusammen', async () => {
+    // Ein geteiltes Gerät: dieselben öffentlichen Schlüssel, zwei `user_id`.
+    // `device_keys` hat dafür zwei Zeilen (§3.6), also braucht es zwei Aufrufe.
+    const { tabelle, zeilen } = speicherTabelle()
+
+    const [anna, bruno] = await Promise.all([
+      registriereGeraetGebuendelt(tabelle, dieses, { userId: ANNA, label: 'iPhone' }),
+      registriereGeraetGebuendelt(tabelle, dieses, { userId: 'user_bruno', label: 'iPhone' }),
+    ])
+
+    expect(zeilen).toHaveLength(2)
+    expect(anna.id).not.toBe(bruno.id)
+  })
+
+  it('gibt einen Fehler an beide Wartenden weiter', async () => {
+    const { tabelle } = speicherTabelle()
+    vi.spyOn(tabelle, 'finde').mockRejectedValue(new Error('Kein Netz.'))
+
+    const beide = await Promise.allSettled([
+      registriereGeraetGebuendelt(tabelle, dieses, { userId: ANNA, label: 'iPhone' }),
+      registriereGeraetGebuendelt(tabelle, dieses, { userId: ANNA, label: 'iPhone' }),
+    ])
+
+    expect(beide.map((ergebnis) => ergebnis.status)).toEqual(['rejected', 'rejected'])
+  })
+
+  it('hält einen gescheiterten Aufruf nicht fest', async () => {
+    // Wer nach einem Netzfehler neu lädt, muss es wieder versuchen dürfen.
+    const { tabelle, zeilen } = speicherTabelle()
+    const finde = vi.spyOn(tabelle, 'finde').mockRejectedValueOnce(new Error('Kein Netz.'))
+
+    await expect(
+      registriereGeraetGebuendelt(tabelle, dieses, { userId: ANNA, label: 'iPhone' }),
+    ).rejects.toThrow('Kein Netz.')
+
+    const geraet = await registriereGeraetGebuendelt(tabelle, dieses, {
+      userId: ANNA,
+      label: 'iPhone',
+    })
+
+    expect(finde).toHaveBeenCalledTimes(2)
+    expect(zeilen).toHaveLength(1)
+    expect(geraet.diesesGeraet).toBe(true)
   })
 })
