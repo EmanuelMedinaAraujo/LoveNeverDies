@@ -16,11 +16,25 @@ import stile from './Checkbox.module.css'
 
 type CheckboxProps = Omit<ComponentPropsWithoutRef<'input'>, 'type' | 'children'> & {
   label: ReactNode
+  /**
+   * Haekt das Kaestchen etwas ab, das damit erledigt ist? Dann wird die
+   * Beschriftung im angehakten Zustand durchgestrichen.
+   *
+   * Ausdruecklich zu setzen und nicht der Normalfall: Ein Haekchen waehlt oft
+   * nur aus (wem eine Aufgabe gehoert, ob sie privat ist). Einen Namen
+   * durchzustreichen, weil die Person zustaendig ist, liest sich wie
+   * "gestrichen" und ist genau das Gegenteil des Gemeinten.
+   */
+  abhaken?: boolean
 }
 
-export function Checkbox({ label, className, ...rest }: CheckboxProps) {
+export function Checkbox({ label, className, abhaken = false, ...rest }: CheckboxProps) {
   return (
-    <label className={[stile.zeile, className].filter(Boolean).join(' ')}>
+    <label
+      className={[stile.zeile, abhaken ? stile.abhaken : null, className]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <input type="checkbox" className={stile.feld} {...rest} />
       <span className={stile.beschriftung}>{label}</span>
     </label>

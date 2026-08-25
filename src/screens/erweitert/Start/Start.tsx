@@ -180,6 +180,7 @@ function Startzeile({
       <div className={stile.spalte}>
         {istBlatt ? (
           <Checkbox
+            abhaken
             checked={erledigt}
             disabled={gesperrt}
             onChange={(ereignis) => void haken(ereignis.target.checked)}

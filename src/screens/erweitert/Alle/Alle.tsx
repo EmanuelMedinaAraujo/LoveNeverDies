@@ -298,6 +298,7 @@ function Aufgabenzeile({
       <div className={stile.spalte}>
         {istBlatt ? (
           <Checkbox
+            abhaken
             checked={erledigt}
             disabled={gesperrt || !darfAendern}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
