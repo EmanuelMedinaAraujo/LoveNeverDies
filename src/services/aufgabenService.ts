@@ -35,6 +35,7 @@ import { entpackeDek, erzeugeDek, wrappeDek } from '../core/crypto/dek'
 import type { InhaltZeile, NeuerInhalt } from '../core/db/inhalte'
 import type { AbgelehnteMutation, Mutation } from '../core/sync/queue'
 import { uuidv7 } from '../core/uuidv7'
+import type { Erbstatus } from '../types/fragebaum'
 import type { Katalogaufgabe } from '../types/katalog'
 import { istKalendertag } from './fristen'
 import type { PersoenlicherSchluessel } from './privatService'
@@ -165,12 +166,43 @@ export type Konfigurationspayload = {
    * bleiben dann fristenlos.
    */
   kenntnisAm: string | null
+  /**
+   * Das gespeicherte Ergebnis des Erbe-Fragebaums (ERBE_DESIGN.md §6), oder
+   * `null`, solange niemand ihn zu Ende gegangen ist.
+   *
+   * Es liegt hier und nicht in einer eigenen Zeile, weil es dieselbe Art
+   * Auskunft ist wie `kenntnisAm`: eine Aussage über genau eine Person, die
+   * ihre Geschwister nichts angeht (§3.7). Eine zweite private Zeile daneben
+   * wäre ein zweiter Ort mit denselben Regeln und demselben Schlüssel.
+   */
+  fragebaum: Fragebaumergebnis | null
+}
+
+/**
+ * Was ein abgeschlossener Durchlauf des Fragebaums hinterlaesst
+ * (ERBE_DESIGN.md §6).
+ *
+ * Der Pfad wird mitgeschrieben und nicht nur das Ergebnis: Wer in einem halben
+ * Jahr auf "Wahrscheinlich kein Erbe" schaut, soll nachsehen können, worauf
+ * das beruht. Er besteht aus Knoten-Ids und ist ohne die Inhaltsdatei nicht zu
+ * lesen — für den Server ist er ohnehin Ciphertext (§3.3).
+ */
+export type Fragebaumergebnis = {
+  /** Die Id des erreichten Ergebnisknotens. */
+  knotenId: string
+  /** Der gegangene Weg, von der Wurzel bis zum Ergebnis. */
+  pfad: string[]
+  /** Der abgeleitete Erbstatus, oder `null` bei einer reinen Auskunft. */
+  status: Erbstatus | null
+  /** Wann der Durchlauf endete, als ISO-Zeitpunkt. */
+  am: string
 }
 
 /** Ein gelesenes Konfigurations-Item mit allem, was ein Edit daran braucht. */
 export type Konfiguration = {
   id: string
   kenntnisAm: string | null
+  fragebaum: Fragebaumergebnis | null
   /** Der DEK dieser Zeile, entpackt: Ein neues Datum schreibt darunter weiter. */
   dek: Uint8Array
   /** Immer der eigene `K_p` (§3.7); anders wäre die Zeile nicht zu lesen. */
@@ -322,6 +354,48 @@ function alsDatum(wert: unknown): string | null {
   return typeof wert === 'string' && istKalendertag(wert) ? wert : null
 }
 
+/** Die gueltigen Statuswerte, zum Pruefen eines gelesenen Payloads. */
+const ERBSTATUS: readonly Erbstatus[] = [
+  'erbe',
+  'wahrscheinlich-erbe',
+  'wahrscheinlich-kein-erbe',
+  'kein-erbe',
+  'noch-erbe',
+]
+
+/**
+ * Ein Fragebaum-Ergebnis aus einem Payload, oder `null` (ERBE_DESIGN.md §6).
+ *
+ * Dieselbe Vorsicht wie bei den Aufgabenfeldern: Ein Konfigurations-Item, das
+ * eine ältere Fassung geschrieben hat, kennt das Feld nicht. Fehlt es oder ist
+ * es beschädigt, hat diese Person den Baum eben noch nicht durchlaufen — und
+ * kein Absturz auf der Erbe-Seite.
+ *
+ * Der `status` wird nicht gegen die Inhaltsdatei geprüft, der `knotenId` auch
+ * nicht: Ein Knoten, den es nicht mehr gibt, ist kein Grund, das Ergebnis
+ * wegzuwerfen. Was davon anzeigbar ist, entscheidet der Screen.
+ */
+function gelesenesErgebnis(wert: unknown): Fragebaumergebnis | null {
+  if (typeof wert !== 'object' || wert === null) {
+    return null
+  }
+
+  const roh = wert as Partial<Fragebaumergebnis>
+
+  if (typeof roh.knotenId !== 'string' || roh.knotenId === '') {
+    return null
+  }
+
+  return {
+    knotenId: roh.knotenId,
+    pfad: Array.isArray(roh.pfad)
+      ? roh.pfad.filter((id): id is string => typeof id === 'string')
+      : [],
+    status: ERBSTATUS.includes(roh.status as Erbstatus) ? (roh.status as Erbstatus) : null,
+    am: typeof roh.am === 'string' ? roh.am : '',
+  }
+}
+
 /**
  * Liest, was in einem entschlüsselten Payload steht: eine Aufgabe oder ein
  * privates Konfigurations-Item (§3.7, §8).
@@ -342,7 +416,13 @@ function lesePayload(klartext: Uint8Array): Aufgabenpayload | Konfigurationspayl
   }
 
   if ('typ' in roh && roh.typ === 'konfiguration') {
-    return { typ: 'konfiguration', kenntnisAm: alsDatum((roh as Partial<Konfigurationspayload>).kenntnisAm) }
+    const felder = roh as Partial<Konfigurationspayload>
+
+    return {
+      typ: 'konfiguration',
+      kenntnisAm: alsDatum(felder.kenntnisAm),
+      fragebaum: gelesenesErgebnis(felder.fragebaum),
+    }
   }
 
   if (!('titel' in roh) || typeof roh.titel !== 'string') {
@@ -401,7 +481,13 @@ async function leseZeile(
   const inhalt = lesePayload(await entschluessele(dek, zeile.payload))
 
   if (inhalt.typ === 'konfiguration') {
-    return { id: zeile.id, kenntnisAm: inhalt.kenntnisAm, dek, kid: zeile.kid }
+    return {
+      id: zeile.id,
+      kenntnisAm: inhalt.kenntnisAm,
+      fragebaum: inhalt.fragebaum,
+      dek,
+      kid: zeile.kid,
+    }
   }
 
   const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, assignee, katalog } = inhalt

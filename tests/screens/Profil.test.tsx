@@ -14,8 +14,22 @@ vi.mock('../../src/screens/shared/Profil/Geraeteliste.tsx', () => ({
   Geraeteliste: () => <p>Geräteliste</p>,
 }))
 
+/*
+ * Der Erbstatus kommt aus dem privaten Konfigurations-Item und damit über
+ * `useAufgaben` aus einem Sync-Stream (ERBE_DESIGN.md §6). Für diesen Test ist
+ * das Beiwerk: Er prüft Profil und nicht die Synchronisation.
+ */
+const mockFragebaum = vi.fn<() => Fragebaumergebnis | null>(() => null)
+/** Ob Bestand, `K_p` und Anmeldung durch sind (ERBE_DESIGN.md §6). */
+const mockGeladen = vi.fn<() => boolean>(() => true)
+
+vi.mock('../../src/hooks/useAufgaben.ts', () => ({
+  useAufgaben: () => ({ fragebaum: mockFragebaum(), fragebaumGeladen: mockGeladen() }),
+}))
+
 const { Profil } = await import('../../src/screens/shared/Profil/Profil.tsx')
 
+import type { Fragebaumergebnis } from '../../src/services/aufgabenService.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 
 function falldaten(
@@ -55,6 +69,8 @@ const LESBAR: LesbarerFall = {
 
 beforeEach(() => {
   useCase.mockReturnValue(falldaten())
+  mockFragebaum.mockReturnValue(null)
+  mockGeladen.mockReturnValue(true)
   localStorage.clear()
   ansichtZuruecksetzen()
 })
@@ -291,3 +307,81 @@ describe('Ansicht, Textgröße und Darstellung', () => {
   })
 })
 
+const VORSORGE: LesbarerFall = { ...LESBAR, status: 'vorsorge', sterbedatum: null }
+
+describe('Erbstatus im Profil (ERBE_DESIGN.md §6)', () => {
+  beforeEach(() => {
+    useCase.mockReturnValue(
+      falldaten({ status: 'bereit', aktiver: LESBAR, faelle: [LESBAR] }),
+    )
+  })
+
+  it('zeigt den eigenen Status, sobald der Fragebaum durchlaufen ist', () => {
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n6',
+      pfad: ['n0', 'n1', 'n2', 'n3', 'n4', 'n6'],
+      status: 'erbe',
+      am: '2026-08-25T10:00:00.000Z',
+    })
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByText('Erbstatus')).toBeInTheDocument()
+    expect(screen.getByText('Erbe')).toBeInTheDocument()
+  })
+
+  it('zeigt keine Zeile, solange K_p noch unterwegs ist', () => {
+    // `fragebaum` ist bis dahin `null`, weil das Item unlesbar ist, und nicht,
+    // weil es keins gäbe (§3.7). Die Zeile kommt, wenn sie stimmt.
+    mockGeladen.mockReturnValue(false)
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n6',
+      pfad: ['n0', 'n1', 'n2', 'n3', 'n4', 'n6'],
+      status: 'erbe',
+      am: '2026-08-25T10:00:00.000Z',
+    })
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.queryByText('Erbstatus')).not.toBeInTheDocument()
+  })
+
+  it('zeigt keine Zeile, solange kein Ergebnis vorliegt', () => {
+    // Ein "Noch nicht ermittelt" in einer Einstellungsliste wäre eine
+    // Aufforderung an einer Stelle, an der man nichts erledigen kann.
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.queryByText('Erbstatus')).not.toBeInTheDocument()
+  })
+
+  it('zeigt keine Zeile bei einem Ergebnis ohne Status', () => {
+    // Wer auf der Seite zur Testamentsanfechtung landet, hat etwas gelernt,
+    // aber nichts über seine Erbenstellung (§6).
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n52',
+      pfad: ['n0', 'n50', 'n52'],
+      status: null,
+      am: '2026-08-25T10:00:00.000Z',
+    })
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.queryByText('Erbstatus')).not.toBeInTheDocument()
+  })
+
+  it('zeigt im Vorsorgefall keinen Erbstatus', () => {
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n6',
+      pfad: ['n0'],
+      status: 'erbe',
+      am: '2026-08-25T10:00:00.000Z',
+    })
+    useCase.mockReturnValue(
+      falldaten({ status: 'bereit', aktiver: VORSORGE, faelle: [VORSORGE] }),
+    )
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.queryByText('Erbstatus')).not.toBeInTheDocument()
+  })
+})
