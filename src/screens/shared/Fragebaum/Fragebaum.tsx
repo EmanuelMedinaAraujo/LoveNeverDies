@@ -82,6 +82,49 @@ function Klapp({
 }
 
 /**
+ * `**fett**` aus der Inhaltsdatei als `<strong>`.
+ *
+ * Die Ueberschriften einer Aufzaehlung — "1. Frist", "Aussehen", "Nur fuer
+ * Pflichtteilsberechtigte:" — stehen mitten in einem Absatz, der seine
+ * Umbrueche behalten muss (`pre-wrap`). Ein eigenes Feld je Zeile machte aus
+ * jedem der 80 Ergebnistexte eine Struktur, die die Juristinnen pflegen
+ * muessten; zwei Sternchen sind das, was sie ohnehin schreiben.
+ *
+ * Bewusst kein Markdown: Fett ist die einzige Auszeichnung, die hier vorkommt,
+ * und eine Bibliothek dafuer brächte Ueberschriften, Links und Listen mit, die
+ * in diesen Texten nichts zu suchen haben.
+ */
+function mitFett(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((teil, nummer) =>
+    teil.startsWith('**') && teil.endsWith('**') ? (
+      <strong key={nummer}>{teil.slice(2, -2)}</strong>
+    ) : (
+      teil
+    ),
+  )
+}
+
+/** Derselbe Text ohne die Sternchen: fuer die Ueberschrift, die schon fett ist. */
+function ohneFett(text: string): string {
+  return text.replaceAll('**', '')
+}
+
+/**
+ * Die erste Zeile als Ueberschrift, der Rest als Fliesstext.
+ *
+ * Die Inhaltsdatei fuehrt einen einzigen Text je Knoten und kein eigenes Feld
+ * fuer den Titel: Bei 141 Knoten waere das ein zweites Feld, das an 137 von
+ * ihnen leer stuende. Die erste Zeile ist die Ueberschrift — auf einer Frage
+ * ("Wie erkenne ich ein Testament?") wie auf einem Ergebnis ("Sie wollen das
+ * Erbe nicht (Ausschlagung)"), und beide Seiten sehen dadurch gleich aus.
+ */
+function geteilt(text: string): [ueberschrift: string, rest: string] {
+  const [erste, ...weitere] = text.split('\n')
+
+  return [ohneFett(erste ?? ''), weitere.join('\n')]
+}
+
+/**
  * Ein langer Text, in der einfachen Ansicht gekuerzt (§4).
  *
  * Gekuerzt und nicht umformuliert: §8 sagt "Erfunden wird nichts", und eine in
@@ -95,12 +138,12 @@ function Langtext({ text }: { text: string }) {
   const kurz = modus === 'einfach' && zeilen.length > 2 && !ganz
 
   if (!kurz) {
-    return <p className={stile.text}>{text}</p>
+    return <p className={stile.text}>{mitFett(text)}</p>
   }
 
   return (
     <>
-      <p className={stile.text}>{zeilen[0]}</p>
+      <p className={stile.text}>{mitFett(zeilen[0] ?? '')}</p>
       <Button variante="text" onClick={() => setzeGanz(true)}>
         Mehr anzeigen
       </Button>
@@ -183,12 +226,20 @@ function Frageseite({
 }) {
   const navigate = useNavigate()
   const text = knoten.text.replaceAll('{person}', fall.personName)
+  /*
+   * Vier Fragen tragen unter der Ueberschrift noch einen Fliesstext mit
+   * Aufzaehlung — "Wie erkenne ich ein Testament?" und die Schritte nach einem
+   * gefundenen Testament. In der Ueberschrift stuenden die Punkte sonst als ein
+   * einziger langer Satz: `.frage` haelt die Umbrueche der Inhaltsdatei nicht.
+   */
+  const [ueberschrift, rest] = geteilt(text)
 
   return (
     <>
       <div className={stile.kopf}>
         <p className={stile.schritt}>Frage {pfad.length}</p>
-        <h1 className={stile.frage}>{text}</h1>
+        <h1 className={stile.frage}>{ueberschrift}</h1>
+        {rest === '' ? null : <p className={stile.text}>{mitFett(rest)}</p>}
         {knoten.hinweis === undefined ? null : <p className={stile.hinweis}>{knoten.hinweis}</p>}
       </div>
 
@@ -288,6 +339,13 @@ function Ergebnisseite({
   const [stelle, setzeStelle] = useState('')
   const [anfechtungAm, setzeAnfechtungAm] = useState('')
   const [kenntnis, setzeKenntnis] = useState(fristbezug.kenntnisAm ?? '')
+  /*
+   * Ein Ergebnis mit mehreren Absaetzen fuehrt seine erste Zeile als
+   * Ueberschrift, genau wie eine Frage. Ein einzeiliges Ergebnis ("Sie sind
+   * Erbe.") bekommt keine: Ueber ihm stuende eine Ueberschrift ohne Text
+   * darunter, und der Badge traegt die Seite dort schon.
+   */
+  const [ueberschrift, rest] = geteilt(knoten.text.replaceAll('{person}', fall.personName))
 
   /*
    * Sobald der Bestand steht und `K_p` geklärt ist: einmal nachsehen.
@@ -423,9 +481,10 @@ function Ergebnisseite({
             <Badge lage="hinweis">{statusText(knoten.status)}</Badge>
           </div>
         )}
+        {rest === '' ? null : <h1 className={stile.frage}>{ueberschrift}</h1>}
       </div>
 
-      <Langtext text={knoten.text.replaceAll('{person}', fall.personName)} />
+      <Langtext text={rest === '' ? ueberschrift : rest} />
 
       {knoten.info === undefined ? null : <Infoknopf thema={knoten.info} />}
 
@@ -463,9 +522,8 @@ function Ergebnisseite({
             onChange={(ereignis) => setzeAnfechtungAm(ereignis.target.value)}
           />
           <p className={stile.hinweis}>
-            Die Frist beträgt ein Jahr ab diesem Tag. Sie wird nicht ausgerechnet: Dieser Tag
-            ist ein anderer als Ihre Kenntnis von Anfall und Berufungsgrund. Das Datum wird in
-            die Aufgabe übernommen.
+            Ohne dieses Datum kann die Frist nicht berechnet werden. Sie können es auch später
+            in der Aufgabe eintragen.
           </p>
         </div>
       ) : null}
