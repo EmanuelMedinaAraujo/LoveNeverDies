@@ -1,0 +1,90 @@
+/*
+ * Der geoeffnete Nachlass-Tresor (DESIGN.md §3.5, §7). Alle Masse aus den
+ * Tokens, wie im Tab Erbe daneben.
+ */
+
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-gross);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}
+
+.liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eintrag {
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+}
+
+/*
+ * Die ganze Zusammenfassung ist die Trefferflaeche, volle 44 px hoch. Der
+ * voreingestellte Dreieckspfeil faellt weg: Rechts steht ein Wort, und zwei
+ * Anzeigen fuer denselben Zustand sind eine zu viel.
+ */
+.titel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dichte-abstand-klein);
+
+  padding: var(--dichte-abstand-klein) var(--dichte-abstand);
+  min-height: var(--ziel-mindestmass);
+
+  cursor: pointer;
+  font-size: var(--dichte-schrift);
+  font-weight: var(--typo-gewicht-betont);
+  list-style: none;
+}
+
+.titel::-webkit-details-marker {
+  display: none;
+}
+
+.schalter {
+  flex: none;
+  color: var(--farbe-akzent);
+  font-size: var(--dichte-schrift-klein);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+/*
+ * Zeilenumbrueche bleiben stehen: Wer einen Brief oder eine Liste von Zugaengen
+ * hinterlegt hat, hat sie gesetzt, und sie wegzurechnen machte aus der Liste
+ * einen Absatz. `break-word`, weil ein Kennwort ohne Leerzeichen sonst aus der
+ * Karte laeuft.
+ */
+.inhalt {
+  padding: 0 var(--dichte-abstand) var(--dichte-abstand);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.leer {
+  padding: 0 var(--dichte-abstand) var(--dichte-abstand);
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}

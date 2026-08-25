@@ -131,6 +131,7 @@ export function aufgabendaten(
     bestaetigeUebernahmen: vi.fn(),
     gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
     fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null },
+    nachlass: [],
     setzeKenntnisAm: vi.fn().mockResolvedValue(undefined),
     fragebaum: null,
     fragebaumGeladen: true,
