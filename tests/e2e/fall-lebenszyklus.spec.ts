@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { gotoVerlaesslich } from './helpers.ts'
+import { gotoVerlaesslich, zeilen } from './helpers.ts'
 
 /**
  * Wartet darauf, dass eine Änderung den Server erreicht hat (DESIGN.md §5).
@@ -44,8 +44,15 @@ test('Trauerfall anlegen', async ({ page }) => {
    * ein gutes Dutzend Mal wirklich neu. Auf einem langsameren Browser reicht
    * die Voreinstellung dafür nicht. Die Zusagen je Schritt hängen weiterhin an
    * `expect.timeout` aus der Konfiguration; hier steht nur die Summe.
+   *
+   * Bemessen nach WebKit auf dem Handy-Viewport, dem langsamsten der drei
+   * Projekte: Dort lief der Test zuletzt genau in die 120 Sekunden, und zwar
+   * im letzten Schritt an einem frischen Seitenaufbau — die Schlüsselerzeugung
+   * war noch bei "Einen Moment bitte…". Der Puffer ist Absicht: Sechs Worker
+   * teilen sich eine Maschine, und ein knapp bemessenes Limit macht aus dem
+   * Test einen Zufallsgenerator.
    */
-  test.setTimeout(120_000)
+  test.setTimeout(240_000)
 
   await test.step('ohne Fall steht die Fallweiche aus §7', async () => {
     await gotoVerlaesslich(page, '/')
@@ -81,7 +88,7 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Der Screen sagt an dieser einen Stelle, dass die Anmeldung durch ist;
      * das Formular unter /todesfall sagt es nirgends.
      */
-    await expect(page.getByRole('listitem').filter({ hasText: 'Dieses Gerät' })).toBeVisible()
+    await expect(zeilen(page).filter({ hasText: 'Dieses Gerät · Prüfcode' })).toBeVisible()
 
     await page.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Start' }).click()
     await expect(page).toHaveURL(/\/$/)
@@ -195,7 +202,7 @@ test('Trauerfall anlegen', async ({ page }) => {
       page.getByRole('checkbox', { name: 'Ausschlagung der Erbschaft prüfen' }),
     ).toBeVisible()
 
-    katalogZeilen = await page.getByRole('listitem').count()
+    katalogZeilen = await zeilen(page).count()
     expect(katalogZeilen).toBeGreaterThan(1)
 
     /*
@@ -223,7 +230,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     // Und beim Neuladen steht dieselbe Liste: kein zweiter Satz, keine
     // Duplikate. Die IDs sind deterministisch, das Anlegen ist idempotent (§8).
     await gotoVerlaesslich(page, '/alle')
-    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen)
+    await expect(zeilen(page)).toHaveCount(katalogZeilen)
   })
 
   await test.step('das Aufgabendetail zeigt die juristische Arbeit (§7, §8)', async () => {
@@ -294,7 +301,7 @@ test('Trauerfall anlegen', async ({ page }) => {
      * als Zeile noch als Aufgabe ohne Titel (§3.7).
      */
     await gotoVerlaesslich(page, '/alle')
-    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen)
+    await expect(zeilen(page)).toHaveCount(katalogZeilen)
 
     await page.getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ }).click()
     await expect(
@@ -416,7 +423,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     await page.getByLabel('Neue Aufgabe').fill('Konten kündigen')
     await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
 
-    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen + 2)
+    await expect(zeilen(page)).toHaveCount(katalogZeilen + 2)
   })
 
   await test.step('die Reihenfolge bleibt, wenn eine Aufgabe geändert wird', async () => {
@@ -431,14 +438,12 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     await gotoVerlaesslich(page, '/alle')
 
-    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen + 2)
+    await expect(zeilen(page)).toHaveCount(katalogZeilen + 2)
 
     // Hinter dem Katalog: Der steht in der Reihenfolge der Juristinnen vorn
     // (§8), selbst angelegte Aufgaben folgen in ihrer Anlagereihenfolge.
-    await expect(page.getByRole('listitem').nth(katalogZeilen)).toContainText(
-      'Sterbeurkunde beantragen',
-    )
-    await expect(page.getByRole('listitem').last()).toContainText('Konten kündigen')
+    await expect(zeilen(page).nth(katalogZeilen)).toContainText('Sterbeurkunde beantragen')
+    await expect(zeilen(page).last()).toContainText('Konten kündigen')
 
     /*
      * Aufgeräumt, damit die folgenden Schritte wieder mit genau einer selbst
@@ -452,7 +457,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     const geloescht = gespeichert(page, 'PATCH')
     await page.getByRole('button', { name: /^Löschen.*Konten kündigen/ }).click()
     await page.getByRole('button', { name: 'Endgültig löschen' }).click()
-    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen + 1)
+    await expect(zeilen(page)).toHaveCount(katalogZeilen + 1)
     await geloescht
   })
 
@@ -497,7 +502,16 @@ test('Trauerfall anlegen', async ({ page }) => {
     await page.getByRole('button', { name: 'Speichern' }).click()
 
     await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeVisible()
+
+    /*
+     * Die Beschreibung steht nicht in der Liste, sondern nur im Detail: Sie
+     * ist ein ganzer Absatz Fließtext, und in einer Liste von zwanzig
+     * Aufgaben macht sie aus jeder Zeile einen Block (Alle.tsx). Gespeichert
+     * ist sie trotzdem, und genau das prüft dieser Umweg.
+     */
+    await page.getByRole('link', { name: /^Details.*Sterbeurkunde abholen/ }).click()
     await expect(page.getByText('Sechs Ausfertigungen, Standesamt Freiburg')).toBeVisible()
+    await page.getByRole('link', { name: 'Zurück zu allen Aufgaben' }).click()
 
     // Das Häkchen überlebt das Umbenennen: Geändert wird der Payload, und der
     // trägt beides.
@@ -528,10 +542,19 @@ test('Trauerfall anlegen', async ({ page }) => {
       await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
       await angelegt
 
-      // Kein `goto`, kein `reload`: Der zweite Tab bekommt es von selbst mit.
+      /*
+       * Kein `goto`, kein `reload`: Der zweite Tab bekommt es von selbst mit.
+       *
+       * Länger als die 15 Sekunden aus der Konfiguration, weil hier als
+       * einziger Stelle im Test ein zweiter Dienst im Weg steht: Der Weg geht
+       * über den Trigger in Postgres, Supabase Realtime als eigenen Prozess,
+       * das Delta zurück und das Entschlüsseln im Tab. Sechs Worker teilen
+       * sich dabei eine Maschine. Ausbleiben darf die Klingel trotzdem nicht,
+       * deshalb eine größere Zusage und kein weicheres Kriterium.
+       */
       await expect(
         zweiterTab.getByRole('checkbox', { name: 'Konto der Sparkasse kündigen' }),
-      ).toBeVisible()
+      ).toBeVisible({ timeout: 30_000 })
 
       // Und wieder aufgeräumt, damit der nächste Schritt eine Aufgabe vorfindet.
       const geloescht = gespeichert(page, 'PATCH')
@@ -554,7 +577,7 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     await gotoVerlaesslich(page, '/alle')
     await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toHaveCount(0)
-    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen)
+    await expect(zeilen(page)).toHaveCount(katalogZeilen)
   })
 
   await test.step('eine gelöschte Katalogaufgabe kommt nicht wieder', async () => {
@@ -581,7 +604,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(
       page.getByRole('checkbox', { name: 'Ausschlagung der Erbschaft prüfen' }),
     ).toHaveCount(0)
-    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen - 1)
+    await expect(zeilen(page)).toHaveCount(katalogZeilen - 1)
   })
 
   await test.step('Start zeigt genau die eigenen Aufgaben (§7)', async () => {
@@ -603,9 +626,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(
       page.getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' }),
     ).toBeVisible()
-    await expect(
-      page.getByText('Unteraufgabe von „Sterbefall beim Standesamt anzeigen“'),
-    ).toBeVisible()
+    await expect(page.getByText('Teil von „Sterbefall beim Standesamt anzeigen“')).toBeVisible()
 
     /*
      * Was niemand übernommen hat, steht hier nicht, es steht in "Alle".
@@ -644,8 +665,13 @@ test('Trauerfall anlegen', async ({ page }) => {
   await test.step('der Fall steht in Profil unter "Für wen?"', async () => {
     await page.goto('/profil')
 
-    await expect(page.getByRole('heading', { name: 'Für wen?' })).toBeVisible()
-    await expect(page.getByText('Hans Weber', { exact: true })).toBeVisible()
+    /*
+     * "Für wen?" ist keine Überschrift mehr, sondern die Beschriftung einer
+     * Zeile in der Gruppe "Fall" (Profil.tsx). Geprüft wird deshalb die
+     * Gruppe und darin die Zeile, die den Namen trägt.
+     */
+    await expect(page.getByRole('heading', { name: 'Fall', exact: true })).toBeVisible()
+    await expect(zeilen(page).filter({ hasText: 'Für wen?' })).toContainText('Hans Weber')
   })
 
   await test.step('ein unbekannter Pfad landet auf der Startseite', async () => {

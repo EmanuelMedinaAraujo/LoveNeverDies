@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { gotoVerlaesslich } from './helpers.ts'
+import { gotoVerlaesslich, zeilen } from './helpers.ts'
 
 /**
  * Profil → Geräte (DESIGN.md §3.6, §7): unabhängig davon, ob schon ein Fall
@@ -16,15 +16,26 @@ test('zeigt die eigene Person', async ({ page }) => {
 test('zeigt dieses Gerät mit Prüfcode und kann es umbenennen', async ({ page }) => {
   await gotoVerlaesslich(page, '/profil')
 
-  const zeile = page.getByRole('listitem').filter({ hasText: 'Dieses Gerät' })
+  /*
+   * "Dieses Gerät · Prüfcode" und nicht bloss "Dieses Gerät": Unter den
+   * Geräten steht auch der Weg "Dieses Gerät freischalten lassen", und jeder
+   * frühere Testlauf hat eine weitere Zeile hinterlassen — jeder
+   * Browserkontext ist ein eigenes Gerät (§3.1). Eindeutig ist nur die eine
+   * Zeile, die sich selbst meint und ihren Prüfcode zeigt.
+   */
+  const zeile = zeilen(page).filter({ hasText: 'Dieses Gerät · Prüfcode' })
   await expect(zeile).toBeVisible()
-  await expect(zeile.getByText('Prüfcode')).toBeVisible()
+  await expect(zeile).toContainText(/Prüfcode \d{3} \d{3}/)
 
   await zeile.getByRole('button', { name: /umbenennen/i }).click()
 
-  const eingabe = zeile.getByLabel('Name dieses Geräts')
-  await eingabe.fill('Mein Testgerät')
-  await zeile.getByRole('button', { name: 'Speichern' }).click()
+  /*
+   * Ab hier nicht mehr über `zeile`: Die Zeile tauscht ihren Inhalt gegen das
+   * Eingabefeld, und mit ihm verschwindet das "Dieses Gerät · Prüfcode", an
+   * dem der Filter hängt. Offen ist ohnehin genau eine Zeile.
+   */
+  await page.getByLabel('Name dieses Geräts').fill('Mein Testgerät')
+  await page.getByRole('button', { name: 'Speichern' }).click()
 
-  await expect(zeile.getByText('Mein Testgerät', { exact: true })).toBeVisible()
+  await expect(zeile).toContainText('Mein Testgerät')
 })

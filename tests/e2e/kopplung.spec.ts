@@ -1,7 +1,7 @@
 import { devices, expect, test, type Browser, type Locator, type Page } from '@playwright/test'
 import { clerk } from '@clerk/testing/playwright'
 import { kopplungsperson, type Kopplungsrolle } from './nutzer.ts'
-import { ansichtErweitert, gotoVerlaesslich } from './helpers.ts'
+import { ansichtErweitert, gotoVerlaesslich, zeilen } from './helpers.ts'
 
 /**
  * Die Kopplung aus DESIGN.md §6, von Hand nicht sinnvoll zu prüfen: Sie
@@ -54,7 +54,7 @@ async function neuesGeraet(browser: Browser, rolle: Kopplungsrolle): Promise<Pag
   await clerk.signIn({ page: seite, emailAddress: kopplungsperson(rolle) })
 
   await gotoVerlaesslich(seite, '/profil')
-  await expect(seite.getByRole('listitem').filter({ hasText: 'Dieses Gerät' })).toBeVisible()
+  await expect(zeilen(seite).filter({ hasText: 'Dieses Gerät · Prüfcode' })).toBeVisible()
 
   return seite
 }

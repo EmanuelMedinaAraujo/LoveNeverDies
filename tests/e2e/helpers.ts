@@ -1,4 +1,4 @@
-import type { BrowserContext, Page } from '@playwright/test'
+import type { BrowserContext, Locator, Page } from '@playwright/test'
 
 /**
  * Die Ansichtswahl aus §7 vorwegnehmen: erweitert.
@@ -47,4 +47,21 @@ export async function gotoVerlaesslich(page: Page, pfad: string): Promise<void> 
       return
     }
   }
+}
+
+/**
+ * Die Listenzeilen eines Screens: alles unter `main`, ohne die untere Leiste.
+ *
+ * Die Leiste (§7) gibt ihre vier Bereiche als Liste aus, und `getByRole` sieht
+ * die Seite ganz. Ungegrenzt zaehlte jede Zeilenpruefung "Start", "Erbe",
+ * "Alle" und "Profil" mit, und ein `nth(...)` hinter der letzten Aufgabe
+ * landete in der Navigation statt in der Liste. Wer Zeilen zaehlt, meint die
+ * Liste im Screen und nicht die Wege aus ihm heraus.
+ *
+ * `main` und nicht die Liste selbst: Ein Screen hat mehrere Listen — Profil
+ * eine je Gruppe —, ihre Klassennamen tragen im Build einen Hash, an dem sich
+ * nichts festmachen laesst, und eine eigene Ueberschrift hat nicht jede.
+ */
+export function zeilen(seite: Page): Locator {
+  return seite.getByRole('main').getByRole('listitem')
 }
