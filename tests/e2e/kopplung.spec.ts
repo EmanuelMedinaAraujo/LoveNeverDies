@@ -1,7 +1,7 @@
 import { devices, expect, test, type Browser, type Locator, type Page } from '@playwright/test'
 import { clerk } from '@clerk/testing/playwright'
 import { kopplungsperson, type Kopplungsrolle } from './nutzer.ts'
-import { gotoVerlaesslich } from './helpers.ts'
+import { ansichtErweitert, gotoVerlaesslich } from './helpers.ts'
 
 /**
  * Die Kopplung aus DESIGN.md §6, von Hand nicht sinnvoll zu prüfen: Sie
@@ -46,6 +46,8 @@ const HANDY = { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch }
  */
 async function neuesGeraet(browser: Browser, rolle: Kopplungsrolle): Promise<Page> {
   const kontext = await browser.newContext(HANDY)
+  await ansichtErweitert(kontext)
+
   const seite = await kontext.newPage()
 
   await seite.goto('/')
@@ -257,7 +259,10 @@ test('zweites Gerät freischalten', async ({ browser }) => {
   test.setTimeout(180_000)
 
   const handy = await neuesGeraet(browser, 'c')
-  const tablet = await browser.newContext(HANDY).then((kontext) => kontext.newPage())
+  const tablet = await browser.newContext(HANDY).then(async (kontext) => {
+    await ansichtErweitert(kontext)
+    return kontext.newPage()
+  })
 
   try {
     await test.step('das erste Gerät legt einen Fall an', async () => {

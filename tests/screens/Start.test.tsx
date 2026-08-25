@@ -19,7 +19,7 @@ vi.mock('../../src/screens/shared/KeinFall/KeinFall.tsx', () => ({
   KeinFall: () => <p>Fallweiche</p>,
 }))
 
-const { Start } = await import('../../src/screens/shared/Start/Start.tsx')
+const { Start } = await import('../../src/screens/erweitert/Start/Start.tsx')
 
 /**
  * Der Tab "Start": H1 "Meine Aufgaben" (DESIGN.md §7).

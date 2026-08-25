@@ -1,0 +1,236 @@
+/*
+ * Der Look der einfachen Ansicht (DESIGN.md §7).
+ *
+ * Eine Datei fuer alle drei Screens, weil es eine Formensprache ist und nicht
+ * drei: Was auf "Start" eine Aufgabenzeile ist, ist auf "Alle" dieselbe Zeile,
+ * und ein zweiter Satz Klassen dafuer waere ein zweiter Ort, an dem sie
+ * auseinanderlaufen.
+ *
+ * Keine Kaesten. Die erweiterte Ansicht setzt Aufgaben in gruppierte Listen —
+ * eine Flaeche mit Haarlinien darin —, und das ist dort richtig: Sie zeigt
+ * viel auf einmal und braucht die Flaeche, um es zusammenzuhalten. Hier steht
+ * wenig auf dem Bildschirm, und jedes Element, das dieses Wenige noch einmal
+ * umrandet, ist eine Kante mehr zwischen der Leserin und dem Satz, den sie
+ * lesen soll. Getrennt wird deshalb mit Haarlinien und Luft, und die Groesse
+ * kommt aus den Dichtetokens, nicht aus eigenen Werten.
+ *
+ * Alle Farben kommen aus §12. Die Fristfarben sind dort auf `--farbe-karte`
+ * nachgerechnet, hier stehen sie auf `--farbe-hintergrund`. Nachgerechnet auch
+ * dafuer: hell 7,8:1 (knapp) und 8,5:1 (abgelaufen), dunkel 11,7:1 und 9,7:1,
+ * Nebentext 5,2:1 hell und 7,6:1 dunkel. AA aus §7 haelt in beiden Schemata.
+ */
+
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-gross);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Ein Abschnitt. Die Haarlinie darueber sagt "hier faengt etwas Neues an",
+ * ohne das Neue einzupacken.
+ */
+.abschnitt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+
+  padding-block-start: var(--dichte-abstand-gross);
+  border-block-start: 0.0625rem solid var(--farbe-kartenrand);
+}
+
+/* Der erste Abschnitt braucht keine Linie: Ueber ihm steht die Ueberschrift. */
+.ohnelinie {
+  padding-block-start: 0;
+  border-block-start: none;
+}
+
+.liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * Eine Zeile ist ein kleiner Absatz: Titel, darunter die Frist, darunter der
+ * eine Weg hinein. Nebeneinander waere kuerzer, aber auf einem Telefon in der
+ * Hand einer 78-Jaehrigen sind drei Dinge in einer Zeile drei Dinge, die man
+ * beim Tippen verwechseln kann.
+ */
+.eintrag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--raster-2);
+  padding-block: var(--dichte-abstand);
+}
+
+.eintrag + .eintrag {
+  border-block-start: 0.0625rem solid var(--farbe-kartenrand);
+}
+
+/* Der Titel einer Aufgabe, die kein eigenes Haekchen hat (§7). */
+.titel {
+  font-size: var(--dichte-schrift);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.fertig {
+  color: var(--farbe-text-sekundaer);
+  text-decoration: line-through;
+}
+
+/*
+ * Die Frist als Satz und nicht als Pille. Sie ist auf diesem Screen die
+ * wichtigste Auskunft nach dem Titel und deshalb so gross wie er.
+ */
+.frist {
+  font-size: var(--dichte-schrift);
+  line-height: var(--dichte-zeilenhoehe);
+  color: var(--farbe-text-sekundaer);
+}
+
+.knapp {
+  color: var(--farbe-frist-knapp-text);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.abgelaufen {
+  color: var(--farbe-frist-abgelaufen-text);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+/* Der eine Weg aus einer Zeile hinaus, mit Verb (§7). */
+.weiter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--raster-2);
+  align-self: flex-start;
+
+  min-height: var(--ziel-mindestmass);
+  color: var(--farbe-akzent);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.winkel {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Ein Satz, der etwas erklaert oder etwas meldet. */
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.warnung {
+  color: var(--farbe-frist-abgelaufen-text);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eingabe {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-karte);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+  /* §7: Ein Feld ist auch ein Ziel; es wird nicht kleiner als 44 px. */
+  min-height: var(--ziel-mindestmass);
+}
+
+.knoepfe {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Eine Rueckfrage vor einer Handlung, die sich nicht zuruecknehmen laesst
+ * (§7). Sie steht an der Stelle, an der gefragt wurde, und nicht als Dialog
+ * ueber dem Bildschirm: Ein Dialog nimmt den Satz weg, um den es geht.
+ */
+.frage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+/* Die Angaben aus dem Katalog: Etikett, darunter der Wert (§8). */
+.angaben {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+  margin: 0;
+}
+
+.etikett {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  line-height: 1.4;
+}
+
+.wert {
+  margin: 0;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.punkte {
+  margin: 0;
+  padding-inline-start: var(--dichte-abstand);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/*
+ * Die einzige Farbe, die etwas wegnimmt. Dieselbe wie in Profil: Die
+ * Fristpalette aus §12 traegt sie schon, und eine neunte Farbe nur fuer diese
+ * Knoepfe waere eine, die bei der naechsten Palettenaenderung vergessen wird.
+ *
+ * Zwei Klassen, weil es zwei Formen gibt: Der Textknopf in einer Zeile faerbt
+ * nur seine Schrift; der umrandete Knopf faerbt auch seinen Rand, sonst stuende
+ * roter Text in einem gruenen Rahmen.
+ */
+.gefahr {
+  color: var(--farbe-frist-abgelaufen-text);
+}
+
+.gefahrknopf {
+  border-color: var(--farbe-frist-abgelaufen-text);
+  color: var(--farbe-frist-abgelaufen-text);
+}
+
+/*
+ * Eine Aktion, die zu der Zeile darueber gehoert. In einer Spalte waere sie
+ * sonst so breit wie die Zeile und ihr Text mittig darin — und saehe aus wie
+ * die Hauptsache statt wie die Ausnahme.
+ */
+.zeilenaktion {
+  align-self: flex-start;
+}

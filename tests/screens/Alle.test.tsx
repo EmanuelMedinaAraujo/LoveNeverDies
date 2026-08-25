@@ -16,7 +16,7 @@ const useAufgaben = vi.fn<() => Aufgabendaten>()
 vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
 vi.mock('../../src/hooks/useAufgaben.ts', () => ({ useAufgaben: () => useAufgaben() }))
 
-const { Alle } = await import('../../src/screens/shared/Alle/Alle.tsx')
+const { Alle } = await import('../../src/screens/erweitert/Alle/Alle.tsx')
 
 /**
  * Der Tab "Alle" (DESIGN.md §7).

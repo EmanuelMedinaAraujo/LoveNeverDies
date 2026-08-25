@@ -282,7 +282,7 @@ export function useSync(fallId: string): Syncdaten {
        *
        * Dass ein Häkchen deshalb nicht springt, ist die Sache der Zeile, die es
        * trägt: Sie hält, was angetippt wurde, bis der Bestand nachgezogen hat
-       * (siehe `Aufgabenzeile` in `screens/shared/Alle`).
+       * (siehe `Aufgabenzeile` in `screens/erweitert/Alle`).
        */
       await warteschlange.haengeAn(mutation)
 

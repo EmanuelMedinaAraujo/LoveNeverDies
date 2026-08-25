@@ -43,8 +43,25 @@
   --farbe-frist-abgelaufen-text: #8a1c13;
 }
 
+/*
+ * Dunkel, auf zwei Wegen (§7).
+ *
+ * Der erste ist die Systemeinstellung, und sie bleibt der Normalfall: Solange
+ * der Override in Profil auf "Systemeinstellung folgen" steht, traegt die
+ * Wurzel kein `data-farbschema`, und allein `prefers-color-scheme` entscheidet.
+ * Der zweite ist der Override selbst; er setzt das Attribut und gewinnt damit
+ * gegen die Systemeinstellung in beide Richtungen — hell im dunklen System
+ * ueber `:not()`, dunkel im hellen ueber die eigene Regel.
+ *
+ * Die Werte stehen deshalb zweimal da, und ein `light-dark()` waere hier die
+ * schlechtere Loesung, so kuerzer es aussieht: Lightning CSS baut es fuer
+ * aeltere Ziele in ein Paar Custom Properties um, die ausschliesslich an
+ * `prefers-color-scheme` haengen. Der Override haette dann keine Wirkung mehr,
+ * und zwar still. Aendert sich unten ein Wert, aendert er sich oben mit; es
+ * sind dieselben acht plus sechs Farben aus §12.
+ */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-farbschema='hell']) {
     /* §12 Dark Mode */
     --farbe-hintergrund: #0c130e;
     --farbe-karte: #18231c;
@@ -62,6 +79,56 @@
     --farbe-frist-abgelaufen-flaeche: #3b1d1b;
     --farbe-frist-abgelaufen-text: #f3a79e;
   }
+}
+
+:root[data-farbschema='dunkel'] {
+  /* §12 Dark Mode */
+  --farbe-hintergrund: #0c130e;
+  --farbe-karte: #18231c;
+  --farbe-kartenrand: #25352b;
+  --farbe-akzent: #97ba8e;
+  --farbe-auf-akzent: #111a13;
+  --farbe-text: #faf8f5;
+  --farbe-text-sekundaer: #9aa89d;
+  --farbe-icon-inaktiv: #5e7064;
+
+  --farbe-frist-flaeche: #212d25;
+  --farbe-frist-text: #9aa89d;
+  --farbe-frist-knapp-flaeche: #3a2e12;
+  --farbe-frist-knapp-text: #f0c674;
+  --farbe-frist-abgelaufen-flaeche: #3b1d1b;
+  --farbe-frist-abgelaufen-text: #f3a79e;
+}
+
+/*
+ * `color-scheme` sagt dem Browser, welche Farben er selbst zeichnen soll:
+ * Bildlaufleisten, Datumsfelder, das Auswahlrad hinter einem `select`. Ohne
+ * diese beiden Zeilen stuende in einer dunkel gestellten App ein weisses
+ * Datumsfeld — und §8 stellt genau dort eines hin, wo es am meisten zaehlt.
+ */
+:root[data-farbschema='hell'] {
+  color-scheme: light;
+}
+
+:root[data-farbschema='dunkel'] {
+  color-scheme: dark;
+}
+
+/*
+ * Textgroesse (§7).
+ *
+ * Der Override multipliziert die Wurzelgroesse, statt sie zu setzen: Die
+ * Textskalierung des Browsers bleibt damit die Grundlage, und wer sie im
+ * System schon hochgedreht hat, bekommt hier nicht wieder die Werkseinstellung
+ * vorgesetzt. Alles in dieser App rechnet in `rem`, also waechst mit der
+ * Schrift auch jedes Polster und jedes Touch-Ziel.
+ */
+:root[data-textgroesse='gross'] {
+  font-size: 112.5%;
+}
+
+:root[data-textgroesse='sehr-gross'] {
+  font-size: 125%;
 }
 
 /*

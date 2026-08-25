@@ -1,0 +1,95 @@
+/*
+ * Die Ansichtswahl (DESIGN.md §7). Ohne Kasten wie die einfache Ansicht, in
+ * der die App danach voreingestellt steht: Der erste Screen soll aussehen wie
+ * der zweite.
+ */
+
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--dichte-abstand-gross);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/* Ein `fieldset` bringt Rand und Polster mit. Beides weg. */
+.auswahl {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+/*
+ * Eine Wahlmoeglichkeit ist die ganze Zeile, nicht der kleine Kreis davor. Die
+ * Haarlinie trennt die beiden, ohne sie einzupacken.
+ */
+.zeile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dichte-abstand-klein);
+
+  padding-block: var(--dichte-abstand);
+  min-height: var(--ziel-mindestmass);
+  cursor: pointer;
+}
+
+.zeile + .zeile {
+  border-block-start: 0.0625rem solid var(--farbe-kartenrand);
+}
+
+.feld {
+  flex: none;
+  width: var(--dichte-schrift-gross);
+  height: var(--dichte-schrift-gross);
+  /* Der Kreis steht auf der Mittellinie der ersten Textzeile. */
+  margin-top: calc(
+    (var(--dichte-schrift-mittel) * var(--typo-zeile-titel) - var(--dichte-schrift-gross)) / 2
+  );
+
+  accent-color: var(--farbe-akzent);
+  cursor: pointer;
+}
+
+.text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--raster-1);
+}
+
+.titel {
+  font-size: var(--dichte-schrift-mittel);
+  font-weight: var(--typo-gewicht-betont);
+  line-height: var(--typo-zeile-titel);
+}
+
+.erklaerung {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  line-height: 1.4;
+}
+
+/*
+ * Die gewaehlte Zeile traegt ihren Titel in der Akzentfarbe. Keine Flaeche
+ * darunter: Der gefuellte Kreis sagt es schon, und eine zweite Aussage
+ * daneben liesse die andere Zeile ausgegraut aussehen.
+ */
+.aktiv .titel {
+  color: var(--farbe-akzent);
+}

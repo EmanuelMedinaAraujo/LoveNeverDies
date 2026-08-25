@@ -12,7 +12,7 @@ vi.mock('../../src/hooks/useDokumente.ts', () => ({
   useDokumente: () => useDokumente(),
 }))
 
-const { Dokumente } = await import('../../src/screens/shared/Aufgabe/Dokumente.tsx')
+const { Dokumente } = await import('../../src/screens/shared/Dokumente/Dokumente.tsx')
 
 /**
  * Die Dokumente einer Aufgabe (DESIGN.md §7).

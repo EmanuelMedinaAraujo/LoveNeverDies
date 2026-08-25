@@ -11,9 +11,9 @@ import { istZugewiesen, zuweisungText } from '../../../services/zuweisung.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
-import { KeinFall } from '../KeinFall/KeinFall.tsx'
-import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
-import { Abgelehnt, Uebernahmen } from '../Meldungen/Meldungen.tsx'
+import { KeinFall } from '../../shared/KeinFall/KeinFall.tsx'
+import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
+import { Abgelehnt, Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
 import stile from './Start.module.css'
 
 /**
@@ -34,11 +34,11 @@ import stile from './Start.module.css'
  * nennt dabei ihre Elternaufgabe, damit "Termin machen" nicht ohne Zusammenhang
  * dasteht.
  *
- * Ein Screen statt zweier Bäume. §7 sieht für "Start" getrennte Bäume unter
- * `screens/senior` und `screens/advanced` vor; getrennt wird, sobald die
- * einfache Ansicht wirklich weniger zeigt, das ist der Slice #17. Bis dahin
- * tragen die Dichtetokens den Größenunterschied, wie in "Alle" und im
- * Aufgabendetail.
+ * Die erweiterte Fassung dieses Tabs (§7). Die einfache steht daneben in
+ * `screens/einfach/Start` und zeigt weniger: Sie schweigt über die
+ * Zuständigkeit, weil dieser Screen ohnehin nur zeigt, was der angemeldeten
+ * Person gehört. Welche der beiden gerendert wird, entscheidet `app/App.tsx`
+ * am Modus aus dem Onboarding.
  */
 
 function Ladeanzeige({ text }: { text: string }) {

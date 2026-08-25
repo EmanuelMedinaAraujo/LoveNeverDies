@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AuthKontextProvider, type AuthZustand } from '../../src/core/auth/authProvider.ts'
+import { ansichtSchreiben, ansichtZuruecksetzen } from '../../src/core/storage/ansicht.ts'
 import { authWert } from '../screens/harness.tsx'
 
 /**
@@ -16,6 +17,9 @@ import { authWert } from '../screens/harness.tsx'
  * Die Fallsperre steht in `Start.test.tsx`. Sie gehört zu dem Screen, der
  * sie zeigt: Ohne Fall ist die App gesperrt, und das ist der Startbildschirm
  * mit seiner Fallweiche (§7).
+ *
+ * Dazu die Ansichtswahl: Sie steht vor der Fallweiche, und danach entscheidet
+ * sie, welcher der beiden Screen-Bäume die Routen füllt (§7).
  */
 
 const useGeraeteanmeldung = vi.fn()
@@ -34,8 +38,20 @@ vi.mock('../../src/core/storage/persist.ts', () => ({
 vi.mock('../../src/screens/shared/Anmelden/Anmelden.tsx', () => ({
   Anmelden: () => <p>Anmeldeformular</p>,
 }))
-vi.mock('../../src/screens/shared/Start/Start.tsx', () => ({ Start: () => <p>Startseite</p> }))
-vi.mock('../../src/screens/shared/Alle/Alle.tsx', () => ({ Alle: () => <p>Aufgabenliste</p> }))
+vi.mock('../../src/screens/erweitert/Start/Start.tsx', () => ({ Start: () => <p>Startseite</p> }))
+vi.mock('../../src/screens/erweitert/Alle/Alle.tsx', () => ({ Alle: () => <p>Aufgabenliste</p> }))
+vi.mock('../../src/screens/erweitert/Aufgabe/Aufgabe.tsx', () => ({
+  Aufgabe: () => <p>Aufgabendetail</p>,
+}))
+vi.mock('../../src/screens/einfach/Start/Start.tsx', () => ({
+  Start: () => <p>Startseite einfach</p>,
+}))
+vi.mock('../../src/screens/einfach/Alle/Alle.tsx', () => ({
+  Alle: () => <p>Aufgabenliste einfach</p>,
+}))
+vi.mock('../../src/screens/einfach/Aufgabe/Aufgabe.tsx', () => ({
+  Aufgabe: () => <p>Aufgabendetail einfach</p>,
+}))
 vi.mock('../../src/screens/shared/Profil/Profil.tsx', () => ({ Profil: () => <p>Profilseite</p> }))
 vi.mock('../../src/screens/shared/Todesfall/Todesfall.tsx', () => ({
   Todesfall: () => <p>Fallanlage</p>,
@@ -87,6 +103,18 @@ beforeEach(() => {
   vi.clearAllMocks()
   useGeraeteanmeldung.mockReturnValue({ status: 'laedt' })
   useProfilAbgleich.mockReturnValue({ status: 'bereit' })
+
+  localStorage.clear()
+  ansichtZuruecksetzen()
+  delete document.documentElement.dataset.dichte
+  delete document.documentElement.dataset.farbschema
+  delete document.documentElement.dataset.textgroesse
+
+  /*
+   * Die Routentests unten prüfen die Wege, nicht die Ansichtswahl. Sie ist
+   * deshalb getroffen; ohne sie stünde vor jeder Route das Onboarding.
+   */
+  ansichtSchreiben({ modus: 'erweitert' })
 })
 
 describe('Anmeldezustand', () => {
@@ -120,6 +148,51 @@ describe('Anmeldezustand', () => {
 
     await waitFor(() => {
       expect(document.documentElement.dataset.dichte).toBe('erweitert')
+    })
+  })
+
+  it('fragt die Ansicht vor der Fallweiche, mit "Einfach" vorausgewaehlt', () => {
+    // §7: Ohne getroffene Wahl kommt niemand an dieser Frage vorbei.
+    localStorage.clear()
+    ansichtZuruecksetzen()
+
+    rendere(ANGEMELDET, '/alle')
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Wie möchten Sie die App nutzen?',
+    )
+    expect(screen.queryByText('Aufgabenliste')).toBeNull()
+    expect(screen.getByRole('radio', { name: /Einfach/ })).toBeChecked()
+  })
+
+  it('rendert bis zur Wahl in der einfachen Dichte', async () => {
+    localStorage.clear()
+    ansichtZuruecksetzen()
+
+    rendere(ANGEMELDET)
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.dichte).toBe('einfach')
+    })
+  })
+
+  it('setzt die Overrides aus Profil an die Wurzel, "system" gar nicht', async () => {
+    /*
+     * §7: "ein Override, der auf 'Systemeinstellung folgen' steht". Steht er
+     * dort, steht an der Wurzel nichts, und `prefers-color-scheme` entscheidet
+     * weiter allein.
+     */
+    rendere(ANGEMELDET)
+
+    await waitFor(() => expect(document.documentElement.dataset.dichte).toBe('erweitert'))
+    expect(document.documentElement.dataset.farbschema).toBeUndefined()
+    expect(document.documentElement.dataset.textgroesse).toBeUndefined()
+
+    ansichtSchreiben({ darstellung: 'dunkel', textgroesse: 'sehr-gross' })
+
+    await waitFor(() => {
+      expect(document.documentElement.dataset.farbschema).toBe('dunkel')
+      expect(document.documentElement.dataset.textgroesse).toBe('sehr-gross')
     })
   })
 })
@@ -172,5 +245,42 @@ describe('Routen', () => {
     rendere(ANGEMELDET, '/gibt-es-nicht')
 
     expect(screen.getByText('Startseite')).toBeVisible()
+  })
+})
+
+/**
+ * §7: "Getrennte Screen-Bäume für Start, Aufgabe und Alle." Dieselben Pfade,
+ * dieselbe Reihenfolge, andere Screens — damit Angehörige einander am Telefon
+ * helfen können.
+ */
+describe('Zwei Ansichten', () => {
+  const WEGE = [
+    { pfad: '/', erweitert: 'Startseite', einfach: 'Startseite einfach' },
+    { pfad: '/alle', erweitert: 'Aufgabenliste', einfach: 'Aufgabenliste einfach' },
+    { pfad: '/aufgabe/item-1', erweitert: 'Aufgabendetail', einfach: 'Aufgabendetail einfach' },
+  ]
+
+  for (const weg of WEGE) {
+    it(`zeigt unter ${weg.pfad} je nach Modus den passenden Screen`, () => {
+      const erweitert = rendere(ANGEMELDET, weg.pfad)
+      expect(screen.getByText(weg.erweitert)).toBeVisible()
+      erweitert.unmount()
+
+      ansichtSchreiben({ modus: 'einfach' })
+
+      rendere(ANGEMELDET, weg.pfad)
+      expect(screen.getByText(weg.einfach)).toBeVisible()
+      expect(screen.queryByText(weg.erweitert)).toBeNull()
+    })
+  }
+
+  it('laesst Erbe und Profil genau einmal stehen', () => {
+    // §7: Dort liegen die unumkehrbaren Abläufe; ein zweiter
+    // Bestätigungsdialog wäre ein Risiko ohne Gegenwert.
+    ansichtSchreiben({ modus: 'einfach' })
+
+    rendere(ANGEMELDET, '/profil')
+
+    expect(screen.getByText('Profilseite')).toBeVisible()
   })
 })
