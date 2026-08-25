@@ -10,9 +10,22 @@ Paragraphennummern dorthin.
 
 ## Einrichten
 
+Node 22 oder 24. Die Untergrenze setzt Wrangler (ab 4.87 mindestens 22), die
+Obergrenze setzt Node 26: Es bringt ein eigenes, experimentelles `localStorage`
+mit, das ohne `--localstorage-file` `undefined` ist und in der
+jsdom-Umgebung von Vitest das funktionierende `localStorage` von jsdom
+verdeckt. 53 Tests fallen daran um, ohne dass am Code etwas falsch waere.
+`engines` in `package.json` haelt die Spanne fest.
+
 ```bash
 npm install
 ```
+
+`npm install` meldet nicht freigegebene Installationsskripte von `esbuild` und
+`workerd`. Sie bleiben es: Der ausgelieferte Worker buendelt nichts (kein
+`main`, siehe unten), und `npm run deploy` kommt ohne sie aus. Wer lokal
+`npm run preview:cf` fahren will, braucht `workerd` und gibt es dann gezielt
+mit `npm approve-scripts workerd` frei.
 
 Danach die Clerk-Zugangsdaten holen. Sie stehen **nicht** im Repo — jede Person
 zieht sie sich selbst aus der verknüpften Clerk-Anwendung:

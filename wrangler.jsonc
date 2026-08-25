@@ -21,6 +21,10 @@
   // an. Rollbacks (`wrangler rollback`) funktionieren auch ohne sie.
   "preview_urls": false,
 
+  // Wrangler meldet sonst Nutzungsdaten an Cloudflare. Abgeschaltet aus
+  // demselben Grund wie Clerks Telemetrie in core/auth/clerkAdapter.tsx.
+  "send_metrics": false,
+
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1
