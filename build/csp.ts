@@ -39,9 +39,21 @@ export type CspOptions = {
    * um `connect-src` ueberhaupt zu erreichen.
    */
   supabaseHosts?: string[]
+  /**
+   * Wohin die Direktivenliste geht. `meta` laesst weg, was der Browser in
+   * einem `<meta http-equiv>` ohnehin verwirft — `frame-ancestors` und
+   * `upgrade-insecure-requests`. Stehen sie trotzdem dort, meldet die Konsole
+   * bei jedem Laden einen Fehler, und ein echter Fehler ginge darin unter.
+   * Beide traegt stattdessen der Header aus `build/headers.ts`.
+   */
+  ziel?: 'header' | 'meta'
 }
 
-export function buildCsp({ extraHosts = [], supabaseHosts = [] }: CspOptions = {}): string {
+export function buildCsp({
+  extraHosts = [],
+  supabaseHosts = [],
+  ziel = 'header',
+}: CspOptions = {}): string {
   const clerk = [...CLERK_HOSTS, ...extraHosts]
 
   const directives: Record<string, string[]> = {
@@ -61,9 +73,17 @@ export function buildCsp({ extraHosts = [], supabaseHosts = [] }: CspOptions = {
     'manifest-src': ["'self'"],
   }
 
+  if (ziel === 'meta') {
+    delete directives['frame-ancestors']
+  }
+
   const serialisiert = Object.entries(directives)
     .map(([name, werte]) => `${name} ${werte.join(' ')}`)
     .join('; ')
+
+  if (ziel === 'meta') {
+    return serialisiert
+  }
 
   /*
    * `upgrade-insecure-requests` schreibt jede `http:`-Anfrage der Seite auf
@@ -89,9 +109,11 @@ export function buildCsp({ extraHosts = [], supabaseHosts = [] }: CspOptions = {
  * Browser es laut Spezifikation finden muss.
  *
  * Ein `<meta http-equiv>` ist die schwaechere Variante. Browser ignorieren
- * `frame-ancestors` und `upgrade-insecure-requests` an dieser Stelle. Der Hoster
- * soll denselben Wert zusaetzlich als Header setzen; bis dahin greift wenigstens
- * der Rest.
+ * `frame-ancestors` und `upgrade-insecure-requests` an dieser Stelle, deshalb
+ * laesst `ziel: 'meta'` beide weg. Getragen werden sie vom echten Header, den
+ * `build/headers.ts` als `_headers` fuer Cloudflare erzeugt (§11.2). Das
+ * Meta-Tag bleibt daneben stehen, weil es auch dort greift, wo die Datei
+ * niemand liest — etwa unter `npm run preview`.
  */
 export function cspPlugin(options: CspOptions = {}): Plugin {
   return {
@@ -105,7 +127,7 @@ export function cspPlugin(options: CspOptions = {}): Plugin {
             tag: 'meta',
             attrs: {
               'http-equiv': 'Content-Security-Policy',
-              content: buildCsp(options),
+              content: buildCsp({ ...options, ziel: 'meta' }),
             },
             injectTo: 'head' as const,
           },
