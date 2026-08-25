@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import type { InhaltZeile } from '../../../core/db/inhalte.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
@@ -16,6 +16,7 @@ import {
   type Fristbezug,
   type Fristlage,
 } from '../../../services/fristen.ts'
+import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
@@ -83,6 +84,24 @@ function Angabe({ was: bezeichnung, children }: { was: string; children: ReactNo
       <dt>{bezeichnung}</dt>
       <dd>{children}</dd>
     </div>
+  )
+}
+
+/**
+ * Der Weg in den Erbe-Fragebaum (ERBE_DESIGN.md §9).
+ *
+ * Er steht hier im Screen und nicht im Payload der Aufgabe: Der Fragebaum ist
+ * eine Sache dieser App und keine Angabe der Juristinnen, und eine URL im
+ * verschlüsselten Payload wäre ein Link, der beim nächsten Umbau der Routen
+ * ins Leere zeigt, ohne dass jemand ihn findet.
+ */
+function ZumFragebaum() {
+  const navigate = useNavigate()
+
+  return (
+    <Button volleBreite onClick={() => navigate('/erbe/fragebaum')}>
+      Fragebaum starten
+    </Button>
   )
 }
 
@@ -487,7 +506,19 @@ function Detail({
           einem eigenen Kasten mit der Überschrift "Erledigt?", drei Abschnitte
           tiefer und hinter dem Rechtlichen. Jetzt steht es beim Titel.
         */}
-        {istBlatt ? (
+        {/*
+          Die Seed-Aufgabe hat kein eigenes Häkchen (ERBE_DESIGN.md §9): Sie
+          ist geteilt, ihr Ergebnis liegt privat, und ein gespeichertes Häkchen
+          hakte sie für alle ab. Anna wäre fertig und Bert, der den Fragebaum
+          nie gegangen ist, sähe seine Aufgabe erledigt.
+        */}
+        {istSeedAufgabe(aufgabe.katalog) ? (
+          <p className={stile.hinweis} role="status">
+            {aufgabe.erledigt
+              ? 'Erledigt: Sie haben den Fragebaum durchlaufen.'
+              : 'Offen, solange Sie den Fragebaum nicht durchlaufen haben. Das entscheidet jede:r für sich.'}
+          </p>
+        ) : istBlatt ? (
           <Checkbox
             checked={eigenesHaken}
             disabled={aktionen.gesperrt || !darfAendern}
@@ -518,6 +549,13 @@ function Detail({
       {aufgabe.beschreibung === '' ? null : (
         <p className={stile.anriss}>{aufgabe.beschreibung}</p>
       )}
+
+      {/*
+        Die eine Aufgabe, die noch aus dem Katalog kommt (ADR-0001), führt in
+        den Fragebaum. Erkannt wird sie an ihrer Herkunft und nicht am Titel:
+        Wer sie umbenennt, soll den Weg dorthin nicht verlieren.
+      */}
+      {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
 
       <Rechtliches aufgabe={aufgabe} lage={lage} />
 

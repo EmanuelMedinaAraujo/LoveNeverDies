@@ -14,6 +14,7 @@ import { Start } from '../screens/erweitert/Start/Start.tsx'
 import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
 import { Beitreten } from '../screens/shared/Beitreten/Beitreten.tsx'
 import { Erbe } from '../screens/shared/Erbe/Erbe.tsx'
+import { Fragebaum } from '../screens/shared/Fragebaum/Fragebaum.tsx'
 import { Koppeln } from '../screens/shared/Koppeln/Koppeln.tsx'
 import { Ansichtswahl } from '../screens/shared/Onboarding/Ansichtswahl.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
@@ -165,6 +166,19 @@ export function App() {
       />
       {/* Das ganzseitige Aufgabendetail (§7). */}
       <Route path="/aufgabe/:id" element={einfach ? <AufgabeEinfach /> : <Aufgabe />} />
+      {/*
+        Der Fragebaum steht ausserhalb des Rahmens (ERBE_DESIGN.md §3): Er ist
+        ein linearer Ablauf mit genau einem nächsten Schritt, wie Todesfall,
+        Vorsorge und Koppeln. Eine Leiste, die mitten im Baum vier andere Wege
+        anbietet, wäre dort keine Orientierung, sondern eine Abbruchkante —
+        und der Zurück-Knopf des Browsers, an dem hier alles hängt, bekaeme
+        eine zweite Bedeutung.
+
+        Zwei Pfade auf denselben Screen: `/erbe/fragebaum` ist der Einstieg und
+        leitet auf die erste Frage weiter.
+      */}
+      <Route path="/erbe/fragebaum" element={<Fragebaum />} />
+      <Route path="/erbe/fragebaum/:knotenId" element={<Fragebaum />} />
       <Route path="/todesfall" element={<Todesfall />} />
       <Route path="/vorsorge" element={<Vorsorge />} />
       {/*

@@ -5,6 +5,7 @@ import type { FallZustand } from '../../src/hooks/useCase.ts'
 import type { Todesfalldaten } from '../../src/hooks/useTodesfall.ts'
 import type { Tresordaten } from '../../src/hooks/useTresor.ts'
 import { Erbe } from '../../src/screens/shared/Erbe/Erbe.tsx'
+import type { Fragebaumergebnis } from '../../src/services/aufgabenService.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 import type { TresorItem } from '../../src/services/tresorService.ts'
 import { rendereMitProvidern } from './harness.tsx'
@@ -21,6 +22,11 @@ let mockFallZustand: FallZustand
 let mockTresor: Tresordaten
 let mockTodesfall: Todesfalldaten
 let mockAufgabenZustand: { status: 'laedt' } | { status: 'bereit' }
+
+/** Das eigene Fragebaum-Ergebnis, privat unter `K_p` (ERBE_DESIGN.md §6). */
+const mockFragebaum = vi.fn<() => Fragebaumergebnis | null>(() => null)
+/** Ob Bestand, `K_p` und Anmeldung durch sind (ERBE_DESIGN.md §6). */
+const mockGeladen = vi.fn<() => boolean>(() => true)
 
 vi.mock('react-router-dom', async () => {
   const echt = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -47,6 +53,8 @@ vi.mock('../../src/hooks/useAufgaben.ts', () => ({
       mockAufgabenZustand.status === 'laedt'
         ? { status: 'laedt' }
         : { status: 'bereit', laedtNetz: false, netzfehler: null, aufgaben: [], baum: [], uebersprungen: 0 },
+    fragebaum: mockFragebaum(),
+    fragebaumGeladen: mockGeladen(),
     zeilen: [],
     mutiere: vi.fn(),
     bestaetige: vi.fn(),
@@ -105,6 +113,8 @@ describe('Erbe Screen (§3.5, §7)', () => {
     const fall = standardFall()
     mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
     mockAufgabenZustand = { status: 'bereit' }
+    mockFragebaum.mockReturnValue(null)
+    mockGeladen.mockReturnValue(true)
     mockTresor = {
       items: [],
       schwelle: { n: 0, k: null },
@@ -337,5 +347,88 @@ describe('Erbe Screen (§3.5, §7)', () => {
       /Der Schlüsselanteil von Clara Weber ist unbrauchbar/,
     )
     expect(screen.getByRole('alert')).toHaveTextContent(/erneut zu bestätigen/)
+  })
+})
+
+describe('Erbstatus im Trauerfall (ERBE_DESIGN.md §10)', () => {
+  beforeEach(() => {
+    // Eigenes Setup: Das `beforeEach` des ersten Blocks gilt hier nicht, und
+    // ohne dieses trüge der Vorsorgetest den Trauerfall des vorigen Tests.
+    const fall = standardFall()
+
+    mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
+    mockAufgabenZustand = { status: 'bereit' }
+    mockFragebaum.mockReturnValue(null)
+    mockGeladen.mockReturnValue(true)
+    navigiere.mockClear()
+  })
+
+  function trauerfall() {
+    const fall = standardFall({ status: 'trauerfall', sterbedatum: '2026-03-15' })
+
+    mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
+  }
+
+  it('lädt in den Fragebaum ein, solange kein Ergebnis vorliegt', () => {
+    trauerfall()
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByRole('button', { name: 'Fragebaum starten' })).toBeInTheDocument()
+  })
+
+  it('lädt nicht in den Fragebaum ein, solange K_p noch unterwegs ist', () => {
+    /*
+     * Der Fehler, den dieser Test festhält: `fragebaum` ist `null`, solange
+     * `K_p` fehlt — auch dann, wenn ein Ergebnis gespeichert ist, denn das Item
+     * ist bis dahin unlesbar (§3.7). Ein „Fragebaum starten" an dieser Stelle
+     * ist eine Einladung, den eigenen Rechtsstand noch einmal zu ermitteln,
+     * obwohl er feststeht.
+     */
+    trauerfall()
+    mockGeladen.mockReturnValue(false)
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.queryByRole('button', { name: 'Fragebaum starten' })).not.toBeInTheDocument()
+    expect(screen.getByText('Ihr Ergebnis wird geladen...')).toBeInTheDocument()
+  })
+
+  it('zeigt das gespeicherte Ergebnis mit seinem Status', () => {
+    trauerfall()
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n6',
+      pfad: ['n0', 'n1', 'n2', 'n3', 'n4', 'n6'],
+      status: 'erbe',
+      am: '2026-08-25T10:00:00.000Z',
+    })
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByText('Erbe')).toBeInTheDocument()
+    expect(screen.getByText('Sie sind Erbe.')).toBeInTheDocument()
+    expect(screen.getByText(/Nur für Sie sichtbar/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Fragebaum starten' })).not.toBeInTheDocument()
+  })
+
+  it('bietet den erneuten Durchlauf ganz unten an', () => {
+    trauerfall()
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(
+      screen.getByRole('button', { name: 'Fragebaum erneut durchlaufen' }),
+    ).toBeInTheDocument()
+  })
+
+  it('zeigt im Vorsorgefall keinen Erbstatus', () => {
+    // §2: Ein Vorsorgefall hat keine Erben, und der Fragebaum erscheint dort
+    // gar nicht (ERBE_DESIGN.md §1).
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.queryByText('Ihr Erbstatus')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Fragebaum erneut durchlaufen' }),
+    ).not.toBeInTheDocument()
   })
 })

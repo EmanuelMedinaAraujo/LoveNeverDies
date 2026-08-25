@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { BAUPLAENE } from '../../src/services/fragebaumService'
 import { erzeugeAesSchluessel } from '../../src/core/crypto/aead'
 import { erzeugeKemSchluesselpaar } from '../../src/core/crypto/kem'
 import type { Geraeteidentitaet } from '../../src/core/crypto/keystore'
@@ -25,6 +26,8 @@ import {
   erzeugePersoenlichesKid,
   gibFuerAlleFrei,
   ladePersoenlichenSchluessel,
+  mutationFragebaumAendern,
+  mutationFragebaumAnlegen,
   mutationKenntnisAendern,
   mutationKenntnisAnlegen,
   mutationPrivatAnlegen,
@@ -832,5 +835,166 @@ describe('Kenntnisdatum als privates Konfigurations-Item (§8, #12)', () => {
     await expect(
       mutationKenntnisAnlegen(k, schluessel, '2026-02-31', '2026-05-20'),
     ).rejects.toThrow(AufgabenFehler)
+  })
+})
+
+describe('Fragebaum-Ergebnis als privates Konfigurations-Item (ERBE_DESIGN.md §6)', () => {
+  /** Ein Ergebnis, wie es die Ergebnisseite schreibt. */
+  const ERBE = {
+    knotenId: 'n6',
+    pfad: ['n0', 'n1', 'n2', 'n3', 'n4', 'n6'],
+    status: 'erbe' as const,
+    am: '2026-08-25T10:00:00.000Z',
+  }
+
+  const KEIN_ERBE = {
+    knotenId: 'n53',
+    pfad: ['n0', 'n50', 'n53'],
+    status: 'kein-erbe' as const,
+    am: '2026-09-01T10:00:00.000Z',
+  }
+
+  it('legt es unter K_p ab und liest es zurück, ohne es als Aufgabe zu zählen', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(s.inhalte, await mutationFragebaumAnlegen(k, schluessel, ERBE))
+
+    const { aufgaben, konfigurationen, uebersprungeneIds } = await aufgabenAusZeilen(
+      await s.inhalte.seit(k.id, 0),
+      k,
+      schluessel,
+    )
+
+    expect(konfigurationen).toHaveLength(1)
+    expect(konfigurationen[0]?.fragebaum).toEqual(ERBE)
+    expect(aufgaben).toEqual([])
+    expect(uebersprungeneIds).toEqual([])
+  })
+
+  it('bleibt für ein anderes Mitglied unlesbar (§3.7)', async () => {
+    // Der Kern der Sache: Wann jemand erfährt, dass er Erbe ist — und ob —,
+    // geht seine Geschwister nichts an.
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(s.inhalte, await mutationFragebaumAnlegen(k, schluessel, ERBE))
+
+    const berndsSicht = await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k)
+
+    expect(berndsSicht.konfigurationen).toEqual([])
+    expect(berndsSicht.uebersprungeneIds).toHaveLength(1)
+  })
+
+  it('ersetzt das Ergebnis unter demselben DEK, statt ein zweites Item anzulegen', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(s.inhalte, await mutationFragebaumAnlegen(k, schluessel, ERBE))
+
+    const vorher = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    await uebertrage(s.inhalte, await mutationFragebaumAendern(vorher, KEIN_ERBE))
+
+    const nachher = await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel)
+
+    expect(nachher.konfigurationen).toHaveLength(1)
+    expect(nachher.konfigurationen[0]?.id).toBe(vorher.id)
+    expect(nachher.konfigurationen[0]?.fragebaum).toEqual(KEIN_ERBE)
+    expect(s.itemZeilen).toHaveLength(1)
+  })
+
+  it('lässt das Kenntnisdatum stehen, wenn das Ergebnis ersetzt wird', async () => {
+    // Das Kenntnisdatum hängt an § 1944 BGB und nicht daran, was der Baum
+    // zuletzt gesagt hat. Ein hier vergessenes Feld wäre kein leeres Feld,
+    // sondern ein gelöschtes — und damit eine verlorene Ausschlagungsfrist.
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const mitDatum = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    await uebertrage(s.inhalte, await mutationFragebaumAendern(mitDatum, ERBE))
+
+    const nachher = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    expect(nachher.kenntnisAm).toBe('2026-05-12')
+    expect(nachher.fragebaum).toEqual(ERBE)
+  })
+
+  it('lässt das Ergebnis stehen, wenn das Kenntnisdatum geändert wird', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(s.inhalte, await mutationFragebaumAnlegen(k, schluessel, ERBE))
+
+    const mitErgebnis = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    await uebertrage(
+      s.inhalte,
+      await mutationKenntnisAendern(mitErgebnis, '2026-06-02', '2026-06-10'),
+    )
+
+    const nachher = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    expect(nachher.kenntnisAm).toBe('2026-06-02')
+    expect(nachher.fragebaum).toEqual(ERBE)
+  })
+
+  it('liest ein Konfigurations-Item ohne das Feld als "noch nicht durchlaufen"', async () => {
+    // Ein Payload, den eine ältere Fassung geschrieben hat, kennt das Feld
+    // nicht. Das ist kein Defekt und darf keiner werden.
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const gelesen = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    expect(gelesen.fragebaum).toBeNull()
+    expect(gelesen.kenntnisAm).toBe('2026-05-12')
+  })
+})
+
+describe('Aufgaben aus dem Fragebaum (ERBE_DESIGN.md §7)', () => {
+  it('legt sie privat, zugewiesen und mit ihren Rechtsangaben an', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+    const bauplan = BAUPLAENE.ausschlagung
+
+    await uebertrage(
+      s.inhalte,
+      await mutationPrivatAnlegen(k, schluessel, bauplan.titel, { userId: ANNA, name: 'Anna' }, {
+        beschreibung: bauplan.beschreibung,
+        notizen: 'PLZ 80331',
+        katalog: bauplan.katalog,
+      }),
+    )
+
+    const eigene = await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel)
+    const aufgabe = eigene.aufgaben[0]!
+
+    expect(aufgabe.titel).toBe(bauplan.titel)
+    expect(aufgabe.privat).toBe(true)
+    expect(aufgabe.katalog?.fristTage).toBe(42)
+    expect(aufgabe.katalog?.fristAb).toBe('kenntnis')
+    expect(aufgabe.notizen).toBe('PLZ 80331')
+    expect(aufgabe.assignee).toEqual({
+      art: 'personen',
+      personen: [{ userId: ANNA, name: 'Anna' }],
+    })
+    expect(aufgabe.parentId).toBeNull()
+    expect(aufgabe.dependsOn).toEqual([])
+
+    // Die anderen sehen davon nichts.
+    const berndsSicht = await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k)
+
+    expect(berndsSicht.aufgaben).toEqual([])
   })
 })
