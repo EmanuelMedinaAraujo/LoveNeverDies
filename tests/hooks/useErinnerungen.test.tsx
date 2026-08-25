@@ -49,6 +49,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     katalog,
     dek: new Uint8Array([9]),
     kid: 'case_fall-1:1',
+    privat: false,
     ...ueberschreibung,
   }
 }

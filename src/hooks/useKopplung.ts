@@ -27,6 +27,7 @@ import { supabaseFaelle } from '../core/db/supabaseFaelle.ts'
 import { supabaseFallschluessel } from '../core/db/supabaseFallschluessel.ts'
 import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
 import { supabaseKopplung } from '../core/db/supabaseKopplung.ts'
+import { supabasePersoenlicheSchluessel } from '../core/db/supabasePersoenlicheschluessel.ts'
 import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import { alsNachricht } from '../core/fehler.ts'
@@ -317,6 +318,7 @@ export function useEinloesung(): Einloesungsdaten {
 
   const identitaet = anmeldung.status === 'bereit' ? anmeldung.identitaet : null
   const geraetId = anmeldung.status === 'bereit' ? anmeldung.geraet.id : null
+  const benutzerId = anmeldung.status === 'bereit' ? anmeldung.benutzer.id : null
 
   /*
    * "Kein Fall" ist ein fertiges Ergebnis und kein halbes: Die Liste ist
@@ -356,7 +358,7 @@ export function useEinloesung(): Einloesungsdaten {
 
       const { anfrage } = zustand
 
-      if (identitaet === null || geraetId === null || !faelleBereit) {
+      if (identitaet === null || geraetId === null || benutzerId === null || !faelleBereit) {
         setzeZustand({
           status: 'angebot',
           anfrage,
@@ -374,10 +376,12 @@ export function useEinloesung(): Einloesungsdaten {
           const freischaltung = await schalteGeraetFrei(
             kopplung,
             supabaseTresor(zugang()),
+            supabasePersoenlicheSchluessel(zugang()),
             anfrage,
             faelle,
             identitaet,
             geraetId,
+            benutzerId,
           )
 
           setzeZustand({ status: 'fertig', nachricht: freischaltungText(freischaltung) })
@@ -404,7 +408,7 @@ export function useEinloesung(): Einloesungsdaten {
         setzeLaeuft(false)
       }
     },
-    [faelle, faelleBereit, geraetId, identitaet, laeuft, lesbareFaelle, zugang, zustand],
+    [benutzerId, faelle, faelleBereit, geraetId, identitaet, laeuft, lesbareFaelle, zugang, zustand],
   )
 
   const abbrechen = useCallback(() => setzeZustand({ status: 'leer', fehler: null }), [])

@@ -47,7 +47,7 @@ function Ladeanzeige({ text }: { text: string }) {
   )
 }
 
-type ZeilenModus = 'anzeigen' | 'aendern' | 'loeschen'
+type ZeilenModus = 'anzeigen' | 'aendern' | 'loeschen' | 'freigeben'
 
 /** Wie dringend eine Frist aussieht (§12). Ab drei Tagen wird es knapp. */
 function badgelage(lage: Fristlage): Badgelage {
@@ -69,6 +69,7 @@ function Aufgabenzeile({
   aufLoeschen,
   aufUebernehmen,
   aufFreigeben,
+  aufFuerAlleSichtbar,
 }: {
   knoten: Aufgabenknoten
   lage: Fristlage
@@ -82,6 +83,8 @@ function Aufgabenzeile({
   aufLoeschen: () => void
   aufUebernehmen: () => void
   aufFreigeben: () => void
+  /** Wrappt den DEK von `K_p` auf `K_c` und macht die Aufgabe damit sichtbar (§3.7). */
+  aufFuerAlleSichtbar: () => void
 }) {
   const { aufgabe, unteraufgaben, istBlatt, erledigt: giltAlsErledigt, blockiertVon } = knoten
 
@@ -194,6 +197,37 @@ function Aufgabenzeile({
     )
   }
 
+  if (modus === 'freigeben') {
+    return (
+      <li className={stile.zeile}>
+        {/*
+          §3.7: Freigeben wrappt den DEK von `K_p` auf `K_c`. Einen Weg zurück
+          gibt es nicht: Der Fallschlüssel liegt bei allen, und was einmal
+          darunter lag, hat jedes Mitglied beim nächsten Delta gesehen. Das
+          gehört vor die Aktion gesagt und nicht danach.
+        */}
+        <p>
+          „{aufgabe.titel}" für alle sichtbar machen? Danach sehen alle Mitglieder des Falls
+          diese Aufgabe. Zurücknehmen lässt sich das nicht.
+        </p>
+        <div className={stile.aktionen}>
+          <Button
+            onClick={() => {
+              setzeModus('anzeigen')
+              aufFuerAlleSichtbar()
+            }}
+            disabled={gesperrt}
+          >
+            Für alle sichtbar machen
+          </Button>
+          <Button variante="sekundaer" onClick={() => setzeModus('anzeigen')}>
+            Abbrechen
+          </Button>
+        </div>
+      </li>
+    )
+  }
+
   if (modus === 'loeschen') {
     return (
       <li className={stile.zeile}>
@@ -250,6 +284,15 @@ function Aufgabenzeile({
            */
           <p className={stile.titel}>{aufgabe.titel}</p>
         )}
+
+        {/*
+          §3.7: Eine private Aufgabe sieht sonst aus wie jede andere, und genau
+          das ist die Gefahr: Wer nicht sieht, dass die Geschwister sie nicht
+          sehen, schreibt dort etwas hinein, das er für geteilt hält, oder
+          umgekehrt. Der Hinweis steht deshalb im Titel und nicht bei den
+          Schaltflächen.
+        */}
+        {aufgabe.privat ? <Badge lage="hinweis">Nur für mich</Badge> : null}
 
         {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
       </div>
@@ -344,6 +387,22 @@ function Aufgabenzeile({
             Freigeben
           </Button>
         )}
+
+        {/*
+          §7: "genau eine Aktion 'Für alle sichtbar machen'". Sie steht bei der
+          Aufgabe und nicht in einem Menü darüber: Der Anlass ist eine einzelne
+          Aufgabe, die so weit gediehen ist, dass die anderen sie sehen dürfen.
+        */}
+        {aufgabe.privat ? (
+          <Button
+            variante="sekundaer"
+            disabled={gesperrt}
+            onClick={() => setzeModus('freigeben')}
+            vorleseText={`: „${aufgabe.titel}"`}
+          >
+            Für alle sichtbar machen
+          </Button>
+        ) : null}
       </div>
     </li>
   )
@@ -402,9 +461,11 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
     gibFrei,
     uebernahmen,
     bestaetigeUebernahmen,
+    gibFuerAlleFrei,
   } = useAufgaben(fall)
 
   const [neuerTitel, setzeNeuerTitel] = useState('')
+  const [nurFuerMich, setzeNurFuerMich] = useState(false)
   const [sortierung, setzeSortierung] = useState<Sortierung>('reihenfolge')
   const [laeuft, setzeLaeuft] = useState(false)
   const [fehler, setzeFehler] = useState<string | null>(null)
@@ -443,8 +504,15 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
 
     const titel = neuerTitel
 
-    if (await fuehreAus(() => legeAn(titel))) {
+    if (await fuehreAus(() => legeAn(titel, null, nurFuerMich))) {
       setzeNeuerTitel('')
+      /*
+       * Der Schalter fällt mit zurück. Er ist eine Angabe zu dieser einen
+       * Aufgabe und keine Einstellung: Stünde er stehen, wäre die nächste
+       * Aufgabe unbemerkt ebenfalls privat, und niemand sähe sie: die eine
+       * Verwechslung, die §3.7 teuer bezahlt.
+       */
+      setzeNurFuerMich(false)
     }
   }
 
@@ -462,6 +530,24 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
               required
             />
           </div>
+
+          {/*
+            §7: "ein Schalter 'Nur für mich' auf der Aufgabe". Er steht beim
+            Anlegen und nicht danach: Umgekehrt ginge es nicht, denn eine
+            geteilte Aufgabe nachträglich privat zu machen hiesse, sie den
+            anderen wieder wegzunehmen, und gesehen haben sie sie längst (§5).
+          */}
+          <Checkbox
+            checked={nurFuerMich}
+            onChange={(ereignis) => setzeNurFuerMich(ereignis.target.checked)}
+            label="Nur für mich"
+          />
+
+          <p className={stile.hinweis}>
+            {nurFuerMich
+              ? 'Diese Aufgabe sehen nur Sie, auf Ihren eigenen Geräten. Sie können sie später für alle sichtbar machen.'
+              : 'Diese Aufgabe sehen alle Mitglieder des Falls.'}
+          </p>
 
           <Button type="submit" volleBreite disabled={laeuft || neuerTitel.trim() === ''}>
             Aufgabe hinzufügen
@@ -563,6 +649,9 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
                     aufLoeschen={() => void fuehreAus(() => loesche(knoten.aufgabe))}
                     aufUebernehmen={() => void fuehreAus(() => uebernimm(knoten.aufgabe))}
                     aufFreigeben={() => void fuehreAus(() => gibFrei(knoten.aufgabe))}
+                    aufFuerAlleSichtbar={() =>
+                      void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe))
+                    }
                   />
                 ))}
               </ul>

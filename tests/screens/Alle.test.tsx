@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AufgabenZustand, Aufgabendaten } from '../../src/hooks/useAufgaben.ts'
@@ -60,6 +60,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     katalog: null,
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,
+    privat: false,
     ...ueberschreibung,
   }
 }
@@ -127,6 +128,7 @@ function aufgabendaten(
     weiseZu: vi.fn().mockResolvedValue(undefined),
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
+    gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
     ...rest,
   }
 }
@@ -165,7 +167,7 @@ describe('Alle', () => {
     await userEvent.type(feld, 'Konten kündigen')
     await userEvent.click(screen.getByRole('button', { name: 'Aufgabe hinzufügen' }))
 
-    await waitFor(() => expect(legeAn).toHaveBeenCalledWith('Konten kündigen'))
+    await waitFor(() => expect(legeAn).toHaveBeenCalledWith('Konten kündigen', null, false))
     expect(feld).toHaveValue('')
   })
 
@@ -934,5 +936,127 @@ describe('Zuweisung', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Bert Müller hat diese Aufgabe übernommen: „Konto kündigen“',
     )
+  })
+})
+
+/**
+ * Der Schalter "Nur für mich" und die eine Aktion daneben (DESIGN.md §3.7, §7).
+ *
+ * "In der einfachen Ansicht so knapp wie möglich: ein Schalter 'Nur für mich'
+ * auf der Aufgabe und genau eine Aktion 'Für alle sichtbar machen'."
+ */
+describe('Private Aufgaben (§3.7)', () => {
+  it('legt die Aufgabe unter K_p ab, wenn der Schalter gesetzt ist', async () => {
+    const legeAn = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(aufgabendaten({ legeAn }))
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.type(screen.getByLabelText('Neue Aufgabe'), 'Erbausschlagung erwägen')
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Nur für mich' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe hinzufügen' }))
+
+    await waitFor(() =>
+      expect(legeAn).toHaveBeenCalledWith('Erbausschlagung erwägen', null, true),
+    )
+  })
+
+  it('setzt den Schalter nach dem Anlegen zurück', async () => {
+    /*
+     * Er ist eine Angabe zu dieser einen Aufgabe und keine Einstellung. Bliebe
+     * er stehen, wäre die nächste Aufgabe unbemerkt ebenfalls privat, und
+     * niemand sähe sie: die eine Verwechslung, die §3.7 teuer bezahlt.
+     */
+    useAufgaben.mockReturnValue(aufgabendaten({ legeAn: vi.fn().mockResolvedValue(undefined) }))
+
+    rendereMitProvidern(<Alle />)
+
+    const schalter = screen.getByRole('checkbox', { name: 'Nur für mich' })
+
+    await userEvent.type(screen.getByLabelText('Neue Aufgabe'), 'Erbausschlagung erwägen')
+    await userEvent.click(schalter)
+    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe hinzufügen' }))
+
+    await waitFor(() => expect(schalter).not.toBeChecked())
+  })
+
+  it('sagt, wer die Aufgabe sehen wird', async () => {
+    useAufgaben.mockReturnValue(aufgabendaten())
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByText(/sehen alle Mitglieder des Falls/)).toBeVisible()
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Nur für mich' }))
+
+    expect(screen.getByText(/sehen nur Sie, auf Ihren eigenen Geräten/)).toBeVisible()
+  })
+
+  it('kennzeichnet eine private Aufgabe in der Liste', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [aufgabe({ titel: 'Erbausschlagung erwägen', privat: true })],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    // Der Hinweis steht im Titel und nicht bei den Schaltflächen: Wer nicht
+    // sieht, dass die Geschwister sie nicht sehen, schreibt dort etwas hinein,
+    // das er für geteilt hält.
+    expect(within(screen.getByRole('listitem')).getByText('Nur für mich')).toBeVisible()
+  })
+
+  it('zeigt "Für alle sichtbar machen" nur bei privaten Aufgaben', () => {
+    useAufgaben.mockReturnValue(aufgabendaten())
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.queryByRole('button', { name: /Für alle sichtbar machen/ })).toBeNull()
+  })
+
+  it('fragt vor der Freigabe und gibt danach frei', async () => {
+    /*
+     * Freigeben wrappt den DEK von `K_p` auf `K_c` (§3.7). Einen Weg zurück
+     * gibt es nicht: Der Fallschlüssel liegt bei allen, und was einmal darunter
+     * lag, hat jedes Mitglied beim nächsten Delta gesehen.
+     */
+    const meine = aufgabe({ titel: 'Erbausschlagung erwägen', privat: true })
+    const daten = aufgabendaten({
+      zustand: { status: 'bereit', aufgaben: [meine], uebersprungen: 0, ...NETZ },
+    })
+    useAufgaben.mockReturnValue(daten)
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Für alle sichtbar machen/ }))
+
+    expect(screen.getByText(/Zurücknehmen lässt sich das nicht/)).toBeVisible()
+    expect(daten.gibFuerAlleFrei).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Für alle sichtbar machen' }))
+
+    expect(daten.gibFuerAlleFrei).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }))
+  })
+
+  it('nimmt die Freigabe zurück, wenn jemand abbricht', async () => {
+    const meine = aufgabe({ titel: 'Erbausschlagung erwägen', privat: true })
+    const daten = aufgabendaten({
+      zustand: { status: 'bereit', aufgaben: [meine], uebersprungen: 0, ...NETZ },
+    })
+    useAufgaben.mockReturnValue(daten)
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Für alle sichtbar machen/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
+
+    expect(daten.gibFuerAlleFrei).not.toHaveBeenCalled()
+    expect(screen.getByText('Erbausschlagung erwägen')).toBeVisible()
   })
 })

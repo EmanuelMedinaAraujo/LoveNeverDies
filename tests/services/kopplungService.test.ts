@@ -21,6 +21,10 @@ import type {
   GeraeteschluesselZeile,
 } from '../../src/core/db/geraeteschluessel'
 import type { Einloesung, KopplungTabelle, Kopplungszweck } from '../../src/core/db/kopplung'
+import type {
+  PersoenlicheSchluesselTabelle,
+  PersoenlicherSchluesselwrapZeile,
+} from '../../src/core/db/persoenlicheschluessel'
 import type { TresorTabelle, VaultKeyWrapZeile, VaultShareZeile } from '../../src/core/db/tresor'
 import {
   ladeFaelle,
@@ -38,6 +42,10 @@ import {
   normalisiereKopplungscode,
   schalteGeraetFrei,
 } from '../../src/services/kopplungService'
+import {
+  ladePersoenlichenSchluessel,
+  stellePersoenlichenSchluesselBereit,
+} from '../../src/services/privatService'
 import { entpackeEigenenAnteil } from '../../src/services/todesfallService'
 
 /**
@@ -101,6 +109,7 @@ function server() {
   const codes = new Map<string, Codezeile>()
 
   const vaultShareZeilen: VaultShareZeile[] = []
+  const persoenlicheZeilen: PersoenlicherSchluesselwrapZeile[] = []
   let naechsterCode = 0
 
   function meldeGeraetAn(id: string, eigene: Geraeteidentitaet, userId: string) {
@@ -249,7 +258,8 @@ function server() {
       nachId: (id) => Promise.resolve(geraeteZeilen.find((zeile) => zeile.id === id) ?? null),
       finde: () => Promise.reject(new Error('nicht gebraucht')),
       legeAn: () => Promise.reject(new Error('nicht gebraucht')),
-      fuerBenutzer: () => Promise.reject(new Error('nicht gebraucht')),
+      fuerBenutzer: (wessen) =>
+        Promise.resolve(geraeteZeilen.filter((zeile) => zeile.userId === wessen)),
       benenneUm: () => Promise.reject(new Error('nicht gebraucht')),
     }
 
@@ -321,6 +331,45 @@ function server() {
       freigabenFuerFall: () => Promise.resolve([]),
       sendeFreigabe: () => Promise.reject(new Error('nicht gebraucht')),
       oeffneTresor: () => Promise.reject(new Error('nicht gebraucht')),
+    }
+
+    /*
+     * `personal_key_wraps`, mit derselben Sperre wie die Policy (§3.7, §4):
+     * Gelesen und geschrieben wird ausschliesslich im eigenen Namen. Ohne die
+     * Einschraenkung bewiese der Test nichts: Er liefe auch dann durch, wenn
+     * `K_p` fuer alle sichtbar waere.
+     */
+    const persoenlich: PersoenlicheSchluesselTabelle = {
+      fuerGeraet: (fallId, geraeteId) =>
+        Promise.resolve(
+          persoenlicheZeilen.filter(
+            (zeile) =>
+              zeile.fallId === fallId &&
+              zeile.geraeteId === geraeteId &&
+              zeile.userId === userId,
+          ),
+        ),
+
+      schreibeWraps(neue) {
+        for (const wrap of neue) {
+          if (wrap.userId !== userId) {
+            return Promise.reject(new Error('Fremde persoenliche Schluessel sind gesperrt.'))
+          }
+
+          const schonDa = persoenlicheZeilen.some(
+            (zeile) =>
+              zeile.fallId === wrap.fallId &&
+              zeile.kid === wrap.kid &&
+              zeile.geraeteId === wrap.geraeteId,
+          )
+
+          if (!schonDa) {
+            persoenlicheZeilen.push(wrap)
+          }
+        }
+
+        return Promise.resolve()
+      },
     }
 
     const kopplung: KopplungTabelle = {
@@ -402,7 +451,7 @@ function server() {
       },
     }
 
-    return { faelle, inhalte, wraps, geraete, kopplung, tresor }
+    return { faelle, inhalte, wraps, geraete, kopplung, tresor, persoenlich }
   }
 
   return {
@@ -412,6 +461,7 @@ function server() {
     wrapZeilen,
     vaultWrapZeilen,
     vaultShareZeilen,
+    persoenlicheZeilen,
     mitglieder,
     faelleZeilen,
   }
@@ -591,10 +641,12 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
       await schalteGeraetFrei(
         lage.bernd.kopplung,
         lage.bernd.tresor,
+        lage.bernd.persoenlich,
         anfrage,
         faelle,
         lage.berndsIdentitaet,
         BERNDS_GERAET,
+        BERND,
       ),
     ).toEqual({ freigeschaltet: 2, gesamt: 2 })
 
@@ -647,10 +699,12 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     await schalteGeraetFrei(
       lage.bernd.kopplung,
       lage.bernd.tresor,
+      lage.bernd.persoenlich,
       anfrage,
       faelle,
       lage.berndsIdentitaet,
       BERNDS_GERAET,
+      BERND,
     )
 
     const aufDemNeugeraet = await ladeFaelle(
@@ -667,6 +721,61 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     expect(derVorsorgefall?.zustand).toBe('lesbar')
     // Und es ist derselbe K_v, nicht bloß irgendeiner.
     expect(derVorsorgefall?.zustand === 'lesbar' ? derVorsorgefall.kv : null).toEqual(vorsorge.kv)
+  })
+
+  it('reicht den persönlichen Schlüssel an das zweite Gerät weiter (§3.7)', async () => {
+    /*
+     * Ohne diesen Schritt läse das zweite Gerät alles ausser den eigenen
+     * privaten Aufgaben: Sie sähen von dort aus aus wie die einer fremden
+     * Person und würden still verworfen (§3.7).
+     */
+    const lage = await ausgangslage()
+
+    const schluessel = await stellePersoenlichenSchluesselBereit(
+      lage.bernd.persoenlich,
+      lage.bernd.geraete,
+      lage.fall.id,
+      BERND,
+      BERNDS_GERAET,
+      lage.berndsIdentitaet,
+    )
+
+    const zweitesGeraet = identitaet()
+    lage.s.meldeGeraetAn(BERNDS_ZWEITES, zweitesGeraet, BERND)
+
+    const { code } = await lage.bernd.kopplung.erzeugeCode(BERNDS_ZWEITES, 'device')
+    const anfrage = await loeseKopplungscodeEin(lage.bernd.kopplung, code)
+
+    const faelle = await ladeFaelle(
+      lage.bernd.faelle,
+      lage.bernd.wraps,
+      lage.bernd.geraete,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+    )
+
+    await schalteGeraetFrei(
+      lage.bernd.kopplung,
+      lage.bernd.tresor,
+      lage.bernd.persoenlich,
+      anfrage,
+      faelle,
+      lage.berndsIdentitaet,
+      BERNDS_GERAET,
+      BERND,
+    )
+
+    const amZweiten = await ladePersoenlichenSchluessel(
+      lage.bernd.persoenlich,
+      lage.fall.id,
+      BERNDS_ZWEITES,
+      zweitesGeraet,
+    )
+
+    // Derselbe Schlüssel, nicht bloss irgendeiner: Sonst blieben die eigenen
+    // privaten Aufgaben auch nach der Kopplung unlesbar.
+    expect(amZweiten?.kid).toBe(schluessel.kid)
+    expect(amZweiten?.kp).toEqual(schluessel.kp)
   })
 
   it('lässt einen Trauerfall ohne Tresor unangetastet', async () => {
@@ -689,10 +798,12 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     await schalteGeraetFrei(
       lage.bernd.kopplung,
       lage.bernd.tresor,
+      lage.bernd.persoenlich,
       anfrage,
       faelle,
       lage.berndsIdentitaet,
       BERNDS_GERAET,
+      BERND,
     )
 
     expect(lage.s.vaultWrapZeilen).toHaveLength(0)
@@ -735,10 +846,12 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
     const freischaltung = await schalteGeraetFrei(
       lage.bernd.kopplung,
       lage.bernd.tresor,
+      lage.bernd.persoenlich,
       anfrage,
       faelle,
       lage.berndsIdentitaet,
       BERNDS_GERAET,
+      BERND,
     )
 
     expect(freischaltung).toEqual({ freigeschaltet: 1, gesamt: 2 })
@@ -765,10 +878,12 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
       schalteGeraetFrei(
         lage.bernd.kopplung,
         lage.bernd.tresor,
+        lage.bernd.persoenlich,
         anfrage,
         nurGesperrt,
         lage.berndsIdentitaet,
         BERNDS_GERAET,
+        BERND,
       ),
     ).rejects.toThrow(/keinen Fall lesen/)
 
@@ -785,10 +900,12 @@ describe('Ein zweites Gerät freigeben (§6, purpose = device)', () => {
       schalteGeraetFrei(
         lage.bernd.kopplung,
         lage.bernd.tresor,
+        lage.bernd.persoenlich,
         anfrage,
         [],
         lage.berndsIdentitaet,
         BERNDS_GERAET,
+        BERND,
       ),
     ).rejects.toThrow(KopplungFehler)
   })
@@ -877,10 +994,12 @@ describe('Gerätewechsel eines Angehörigen vor dem Öffnen (§3.5, §6)', () =>
     await schalteGeraetFrei(
       lage.bernd.kopplung,
       lage.bernd.tresor,
+      lage.bernd.persoenlich,
       anfrage,
       faelle,
       lage.berndsIdentitaet,
       BERNDS_GERAET,
+      BERND,
     )
 
     const neuer = lage.s.vaultShareZeilen.find((zeile) => zeile.geraeteId === BERNDS_ZWEITES)

@@ -27,12 +27,49 @@ const mutationAnlegen = vi.fn()
 const mutationAendern = vi.fn()
 const mutationLoeschen = vi.fn()
 
+class AufgabenFehler extends Error {}
+
 vi.mock('../../src/services/aufgabenService.ts', () => ({
+  AufgabenFehler,
   aufgabenAusZeilen: (...a: unknown[]) => aufgabenAusZeilen(...a),
   beschreibeAbgelehnte: (...a: unknown[]) => beschreibeAbgelehnte(...a),
   mutationAnlegen: (...a: unknown[]) => mutationAnlegen(...a),
   mutationAendern: (...a: unknown[]) => mutationAendern(...a),
   mutationLoeschen: (...a: unknown[]) => mutationLoeschen(...a),
+}))
+
+/*
+ * Der persönliche Schlüssel (§3.7). Was `privatService` wirklich tut, prüft
+ * `tests/services/privatService.test.ts`; hier zählt, dass dieser Hook ihn
+ * holt, ihn beim Entschlüsseln weiterreicht und die eine Strukturregel
+ * durchsetzt, die vor jedem Schreibvorgang steht.
+ */
+const ladePersoenlichenSchluessel = vi.fn()
+const stellePersoenlichenSchluesselBereit = vi.fn()
+const mutationPrivatAnlegen = vi.fn()
+const gibFuerAlleFreiDienst = vi.fn()
+const pruefeAbhaengigkeiten = vi.fn()
+
+vi.mock('../../src/services/privatService.ts', () => ({
+  ladePersoenlichenSchluessel: (...a: unknown[]) => ladePersoenlichenSchluessel(...a),
+  stellePersoenlichenSchluesselBereit: (...a: unknown[]) =>
+    stellePersoenlichenSchluesselBereit(...a),
+  mutationPrivatAnlegen: (...a: unknown[]) => mutationPrivatAnlegen(...a),
+  gibFuerAlleFrei: (...a: unknown[]) => gibFuerAlleFreiDienst(...a),
+  pruefeAbhaengigkeiten: (...a: unknown[]) => pruefeAbhaengigkeiten(...a),
+}))
+
+/** Das angemeldete Gerät. Ohne eines gibt es weder `K_p` noch ein Ziel dafür. */
+const GERAET = 'a0000000-0000-4000-8000-000000000001'
+const IDENTITAET = { kem: {}, signatur: {} }
+
+vi.mock('../../src/hooks/useGeraete.ts', () => ({
+  useGeraeteanmeldung: () => ({
+    status: 'bereit',
+    identitaet: IDENTITAET,
+    geraet: { id: GERAET },
+    benutzer: { id: ICH.userId, anzeigename: ICH.name },
+  }),
 }))
 
 const useSync = vi.fn<(fallId: string) => Syncdaten>()
@@ -58,6 +95,9 @@ vi.mock('../../src/services/katalogService.ts', () => ({
 }))
 
 const { useAufgaben } = await import('../../src/hooks/useAufgaben.ts')
+
+/** Der persönliche Schlüssel dieser Person in diesem Fall (§3.7). */
+const PRIVAT = { kid: 'a'.repeat(64), kp: new Uint8Array([7]) }
 
 const FALL: Aufgabenfall = {
   id: 'fall-1',
@@ -97,6 +137,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     katalog: null,
     dek: new Uint8Array([9]),
     kid: FALL.kid,
+    privat: false,
     ...ueberschreibung,
   }
 }
@@ -127,6 +168,11 @@ beforeEach(() => {
   mutiere.mockResolvedValue(undefined)
   aufgabenAusZeilen.mockResolvedValue({ aufgaben: [], uebersprungeneIds: [] })
   beschreibeAbgelehnte.mockResolvedValue([])
+  ladePersoenlichenSchluessel.mockResolvedValue(null)
+  stellePersoenlichenSchluesselBereit.mockResolvedValue(PRIVAT)
+  mutationPrivatAnlegen.mockResolvedValue({ op: 'anlegen' })
+  gibFuerAlleFreiDienst.mockResolvedValue(undefined)
+  pruefeAbhaengigkeiten.mockReturnValue(undefined)
   instanziiereKatalog.mockResolvedValue(0)
   useSync.mockReturnValue(syncdaten())
 })
@@ -213,7 +259,7 @@ describe('useAufgaben', () => {
     )
 
     // Nur die neue Zeile ging noch einmal durch die Entschlüsselung.
-    expect(aufgabenAusZeilen).toHaveBeenLastCalledWith([zweite], FALL)
+    expect(aufgabenAusZeilen).toHaveBeenLastCalledWith([zweite], FALL, null)
 
     // Und die unveränderte behält ihre Objektidentität. Daran erkennt React,
     // dass ihre Zeile nicht neu zu rendern ist.
@@ -243,7 +289,7 @@ describe('useAufgaben', () => {
 
     await waitFor(() => expect(result.current.zustand).toMatchObject({ laedtNetz: true }))
     expect(result.current.zustand).toMatchObject({ uebersprungen: 1 })
-    expect(aufgabenAusZeilen).toHaveBeenLastCalledWith([], FALL)
+    expect(aufgabenAusZeilen).toHaveBeenLastCalledWith([], FALL, null)
   })
 
   it('haengt jede Mutation an die Queue, statt selbst zu schreiben', async () => {
@@ -319,7 +365,7 @@ describe('useAufgaben', () => {
     const { result } = renderHook(() => useAufgaben(FALL))
 
     await waitFor(() => expect(result.current.abgelehnt).toEqual(beschrieben))
-    expect(beschreibeAbgelehnte).toHaveBeenCalledWith(verworfen, [eine], FALL)
+    expect(beschreibeAbgelehnte).toHaveBeenCalledWith(verworfen, [eine], FALL, null)
   })
 
   it('raeumt die Mitteilung erst weg, wenn jemand sie zur Kenntnis nimmt', async () => {
@@ -702,5 +748,195 @@ describe('Zuweisung', () => {
 
     await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
     expect(result.current.uebernahmen).toEqual([])
+  })
+})
+
+describe('Private Aufgaben (§3.7)', () => {
+  it('holt den persönlichen Schlüssel und reicht ihn beim Entschlüsseln weiter', async () => {
+    ladePersoenlichenSchluessel.mockResolvedValue(PRIVAT)
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
+
+    renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() =>
+      expect(aufgabenAusZeilen).toHaveBeenLastCalledWith([zeile('item-1')], FALL, PRIVAT),
+    )
+  })
+
+  it('entschlüsselt den Bestand erneut, sobald K_p nachträglich hereinkommt', async () => {
+    /*
+     * `K_p` kostet einen eigenen Rundlauf. Käme er erst nach dem ersten
+     * Entschlüsseln, stünden die eigenen privaten Zeilen längst als verworfen
+     * in der WeakMap und blieben es für den Rest der Sitzung: Die private
+     * Aufgabe wäre für ihre Besitzerin unsichtbar, bis sie neu lädt.
+     */
+    let loese: (schluessel: unknown) => void = () => undefined
+    ladePersoenlichenSchluessel.mockReturnValue(
+      new Promise((aufloesen) => {
+        loese = aufloesen
+      }),
+    )
+
+    const eine = zeile('item-1')
+    useSync.mockReturnValue(syncdaten({ zeilen: [eine] }))
+
+    renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(aufgabenAusZeilen).toHaveBeenLastCalledWith([eine], FALL, null))
+
+    await act(async () => {
+      loese(PRIVAT)
+    })
+
+    await waitFor(() => expect(aufgabenAusZeilen).toHaveBeenLastCalledWith([eine], FALL, PRIVAT))
+  })
+
+  it('legt eine private Aufgabe unter K_p an und trägt die anlegende Person ein', async () => {
+    const mutation = { op: 'anlegen', itemId: 'item-privat' }
+    mutationPrivatAnlegen.mockResolvedValue(mutation)
+    useSync.mockReturnValue(syncdaten())
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await act(async () => {
+      await result.current.legeAn('Erbausschlagung erwägen', null, true)
+    })
+
+    expect(stellePersoenlichenSchluesselBereit).toHaveBeenCalled()
+    expect(mutationPrivatAnlegen).toHaveBeenCalledWith(
+      FALL,
+      PRIVAT,
+      'Erbausschlagung erwägen',
+      ICH,
+    )
+    expect(mutationAnlegen).not.toHaveBeenCalled()
+    expect(mutiere).toHaveBeenCalledWith(mutation)
+  })
+
+  it('legt ohne den Schalter weiterhin eine geteilte Aufgabe an', async () => {
+    mutationAnlegen.mockResolvedValue({ op: 'anlegen', itemId: 'item-1' })
+    useSync.mockReturnValue(syncdaten())
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await act(async () => {
+      await result.current.legeAn('Sterbeurkunde beantragen')
+    })
+
+    expect(mutationAnlegen).toHaveBeenCalled()
+    expect(stellePersoenlichenSchluesselBereit).not.toHaveBeenCalled()
+    expect(mutationPrivatAnlegen).not.toHaveBeenCalled()
+  })
+
+  it('legt keine private Unteraufgabe an', async () => {
+    /*
+     * §3.7: Private Aufgaben sind immer Wurzelaufgaben. Sonst hätte dieselbe
+     * Elternaufgabe für ihre Besitzerin drei Kinder und für alle anderen zwei.
+     */
+    useSync.mockReturnValue(syncdaten())
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await expect(result.current.legeAn('Nur für mich', 'item-1', true)).rejects.toThrow(
+      /Unteraufgabe/,
+    )
+
+    expect(stellePersoenlichenSchluesselBereit).not.toHaveBeenCalled()
+    expect(mutiere).not.toHaveBeenCalled()
+  })
+
+  it('prüft die Abhängigkeiten, bevor eine Änderung in die Queue geht', async () => {
+    const eine = aufgabe()
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], uebersprungeneIds: [] })
+    mutationAendern.mockResolvedValue({ op: 'aendern', itemId: eine.id })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.schreibe(eine, { dependsOn: ['item-2'] })
+    })
+
+    expect(pruefeAbhaengigkeiten).toHaveBeenCalledWith(eine, ['item-2'], [eine])
+  })
+
+  it('hängt nichts an, wenn die Abhängigkeit auf eine private Aufgabe zeigt', async () => {
+    const eine = aufgabe()
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], uebersprungeneIds: [] })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
+
+    pruefeAbhaengigkeiten.mockImplementation(() => {
+      throw new AufgabenFehler('Von einer privaten Aufgabe kann nichts abhängen.')
+    })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await expect(result.current.schreibe(eine, { dependsOn: ['privat'] })).rejects.toThrow(
+      /privaten Aufgabe/,
+    )
+
+    expect(mutiere).not.toHaveBeenCalled()
+  })
+
+  it('gibt eine private Aufgabe für alle frei und stösst eine Sync-Runde an', async () => {
+    /*
+     * Umwrappen ist keine der drei Operationen, die die Queue kennt (§5). Ohne
+     * das `aktualisiere()` danach stünde die Aufgabe bis zur nächsten
+     * Türklingel weiter als privat da.
+     */
+    ladePersoenlichenSchluessel.mockResolvedValue(PRIVAT)
+    const meine = aufgabe({ kid: PRIVAT.kid, privat: true })
+    useSync.mockReturnValue(syncdaten())
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(ladePersoenlichenSchluessel).toHaveBeenCalled())
+
+    await act(async () => {
+      await result.current.gibFuerAlleFrei(meine)
+    })
+
+    expect(gibFuerAlleFreiDienst).toHaveBeenCalledWith(
+      expect.anything(),
+      FALL,
+      PRIVAT,
+      meine,
+    )
+    expect(aktualisiere).toHaveBeenCalled()
+  })
+
+  it('gibt nichts frei, solange kein persönlicher Schlüssel da ist', async () => {
+    useSync.mockReturnValue(syncdaten())
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await expect(result.current.gibFuerAlleFrei(aufgabe())).rejects.toThrow(
+      /persönlicher Schlüssel/,
+    )
+
+    expect(gibFuerAlleFreiDienst).not.toHaveBeenCalled()
+  })
+
+  it('lässt die Aufgabenliste stehen, wenn K_p nicht abrufbar ist', async () => {
+    /*
+     * §3.7: Ohne `K_p` sieht dieses Gerät die eigenen privaten Aufgaben nicht,
+     * und das ist genau der Zustand, den jedes andere Mitglied ohnehin hat.
+     * Die geteilten Aufgaben stehen davon unberührt da.
+     */
+    ladePersoenlichenSchluessel.mockRejectedValue(new Error('Kein Netz.'))
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], uebersprungeneIds: [] })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    expect(
+      result.current.zustand.status === 'bereit' ? result.current.zustand.aufgaben : [],
+    ).toEqual([aufgabe()])
   })
 })
