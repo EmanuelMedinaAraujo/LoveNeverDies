@@ -27,6 +27,7 @@ import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.
 import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
 import { supabaseProfil } from '../core/db/supabaseProfil.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
+import { freigabeklingel } from '../core/sync/realtime.ts'
 import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { alsNachricht } from '../core/fehler.ts'
 import { useAuth } from '../core/auth/authProvider.ts'
@@ -128,6 +129,7 @@ export function useTodesfall(fall: LesbarerFall, aktualisiereFall: () => void): 
 
   const aktualisiere = useCallback(() => setzeRunde((vorher) => vorher + 1), [])
 
+
   // Der Freigabestand. Er hängt nicht am Delta: `vault_releases` und
   // `vault_shares` stehen neben `items` und kommen nicht mit dem Sync-Stream
   // (§5, `useTresor.ts`).
@@ -185,6 +187,28 @@ export function useTodesfall(fall: LesbarerFall, aktualisiereFall: () => void): 
       aktuell = false
     }
   }, [abfragbar, fall.id, geraeteId, runde, userId, zugang])
+
+  /*
+   * §3.5: Bestätigt eine andere Person auf ihrem Telefon, soll der Zähler hier
+   * nachziehen — ohne dass jemand den Tab verlässt und zurückkommt.
+   *
+   * Eine eigene Klingel und nicht die aus `useCase`: Eine Freigabe schreibt
+   * `vault_releases`, und das hebt `cases.version` nicht. Der Delta-Sync und
+   * mit ihm die Türklingel bekommen davon nichts mit (§5). Der Fallback ist
+   * derselbe wie dort: Fokus und alle 30 Sekunden, aber nur, wenn die
+   * Subscription nicht trägt.
+   *
+   * Nur im Vorsorgefall. Danach gibt es keine Freigaben mehr entgegenzunehmen,
+   * und ein offener Kanal hörte für den Rest der Sitzung auf eine Tabelle, in
+   * die niemand mehr schreibt.
+   */
+  useEffect(() => {
+    if (!abfragbar) {
+      return
+    }
+
+    return freigabeklingel(zugang(), fall.id, aktualisiere)
+  }, [abfragbar, aktualisiere, fall.id, zugang])
 
   const bestaetigeTodesfall = useCallback(async () => {
     setzeLaeuft(true)

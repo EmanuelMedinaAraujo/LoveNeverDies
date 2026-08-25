@@ -20,6 +20,7 @@ import { findeNachlassgericht } from '../../../services/gerichtService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Gerichtskarte } from '../../../ui/Gerichtskarte/Gerichtskarte.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import stile from './Fragebaum.module.css'
@@ -566,7 +567,6 @@ function Ergebnisseite({
 }
 
 function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
-  const navigate = useNavigate()
   const location = useLocation()
   const pfad = (location.state as Pfadstatus)?.pfad
   const knoten = knotenMit(knotenId)
@@ -597,11 +597,13 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
 
   return (
     <main className={stile.seite}>
-      {pfad.length > 1 ? (
-        <Button variante="text" className={stile.zurueck} onClick={() => navigate(-1)}>
-          Zurück
-        </Button>
-      ) : null}
+      {/*
+        Auch auf der ersten Frage: Dort gibt es keine vorige, und dann führt
+        der Knopf zurück in den Tab Erbe. Vorher stand auf der ersten Frage
+        gar keiner, und der Screen liegt nicht im `Rahmen` -- wer hier landete,
+        kam nur mit dem Browser wieder heraus.
+      */}
+      <Zurueck ziel="/erbe" />
 
       {knoten.art === 'frage' ? (
         <Frageseite knoten={knoten} fall={fall} pfad={pfad} />

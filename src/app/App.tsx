@@ -16,6 +16,7 @@ import { Beitreten } from '../screens/shared/Beitreten/Beitreten.tsx'
 import { Erbe } from '../screens/shared/Erbe/Erbe.tsx'
 import { Fragebaum } from '../screens/shared/Fragebaum/Fragebaum.tsx'
 import { Koppeln } from '../screens/shared/Koppeln/Koppeln.tsx'
+import { Nachlass } from '../screens/shared/Nachlass/Nachlass.tsx'
 import { Ansichtswahl } from '../screens/shared/Onboarding/Ansichtswahl.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
 import { Todesfall } from '../screens/shared/Todesfall/Todesfall.tsx'
@@ -177,6 +178,13 @@ export function App() {
         Zwei Pfade auf denselben Screen: `/erbe/fragebaum` ist der Einstieg und
         leitet auf die erste Frage weiter.
       */}
+      {/*
+        §3.5: Der geöffnete Nachlass-Tresor, ganzseitig und ohne Leiste wie
+        das Aufgabendetail. Er hängt unter `/erbe`, weil er dorthin gehört und
+        von dort kommt; der Screen selbst schickt zurück, solange der Fall noch
+        in der Vorsorge steht.
+      */}
+      <Route path="/erbe/tresor" element={<Nachlass />} />
       <Route path="/erbe/fragebaum" element={<Fragebaum />} />
       <Route path="/erbe/fragebaum/:knotenId" element={<Fragebaum />} />
       <Route path="/todesfall" element={<Todesfall />} />

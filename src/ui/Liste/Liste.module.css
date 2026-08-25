@@ -153,3 +153,23 @@
   font-size: var(--dichte-schrift-klein);
   line-height: 1.4;
 }
+
+/*
+ * Die ganze Zeile fuehrt ins Detail: Der Winkel legt sein `::after` ueber sie.
+ * `.zeile` ist dafuer schon `position: relative`.
+ */
+.detail::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/*
+ * Was in der Zeile selbst etwas tut, liegt darueber und faengt den Tipp
+ * vorher ab: das Haekchen und die Textaktionen. Der Winkel steht bewusst
+ * nicht in dieser Liste -- er *ist* die Flaeche.
+ */
+.zeile :is(input, button, textarea, select) {
+  position: relative;
+  z-index: 1;
+}

@@ -131,6 +131,22 @@
 }
 
 /*
+ * Eine Karte, die woandershin fuehrt (§3.5: der geoeffnete Nachlass-Tresor).
+ * Der Link umschliesst die Karte, statt in ihr zu stehen: Die ganze Flaeche
+ * ist anzutippen, und die Karte weiss davon nichts.
+ */
+.karte {
+  display: block;
+  border-radius: var(--dichte-radius);
+  color: inherit;
+  text-decoration: none;
+}
+
+.karte:hover .abschnitt {
+  text-decoration: underline;
+}
+
+/*
  * Der Status "Erbe" als Schaltflaeche (ERBE_DESIGN.md §10).
  *
  * Die Pille bleibt, was sie ist; der Knopf liegt darum. Seine Hoehe ist das

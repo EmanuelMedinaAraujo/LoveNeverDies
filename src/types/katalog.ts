@@ -37,15 +37,12 @@ export type Katalogaufgabe = {
   /** Tage, oder `null`, wenn es keine gesetzliche Frist gibt. Nie geraten (§8). */
   fristTage: number | null
   fristAb: Fristanker | null
-  /** Ohne sie gibt es keine Frist: Der Import weist das ab (§8). */
-  rechtsgrundlage: string
   zustaendigeStelle: string
   benoetigteDokumente: string[]
   unteraufgaben: string[]
   /** IDs anderer Katalogaufgaben, die vorher erledigt sein sollten. */
   haengtAbVon: string[]
   hinweis: string
-  quelleUrl: string
   kategorie: string
   /** Die Reihenfolge, in der die Juristinnen die Aufgaben sehen wollen. */
   reihenfolge: number

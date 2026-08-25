@@ -12,10 +12,25 @@ import stile from './Checkbox.module.css'
  * Die Beschriftung ist Pflicht und umschliesst das Feld. Damit trifft auch ein
  * ungenauer Fingertipp. Die Trefferflaeche ist die ganze Zeile, nicht das
  * Kaestchen.
+ *
+ * `nurKaestchen` dreht genau das um, und zwar fuer die Aufgabenlisten: Dort
+ * fuehrt die ganze Zeile in das Aufgabendetail, und ein Tipp auf den Titel
+ * soll dorthin fuehren und nicht die Aufgabe abhaken. Abgehakt wird dann nur
+ * ueber das Kaestchen selbst. Umgesetzt mit `pointer-events` und nicht mit
+ * einem `<label for>` neben dem Feld: Die Beschriftung bleibt so im Element
+ * stehen, der zugaengliche Name aendert sich nicht, und Tastatur und
+ * Bildschirmleser merken von der Umstellung nichts.
+ *
+ * `abhaken` ist die zweite Auskunft und eine andere: Sie sagt, dass dieses
+ * Kaestchen etwas *erledigt* und die Beschriftung deshalb durchgestrichen
+ * gehoert. Beides trifft in einer Aufgabenliste zusammen und schliesst sich
+ * nicht aus.
  */
 
 type CheckboxProps = Omit<ComponentPropsWithoutRef<'input'>, 'type' | 'children'> & {
   label: ReactNode
+  /** Nur das Kaestchen ist anzutippen, nicht die Beschriftung. */
+  nurKaestchen?: boolean
   /**
    * Haekt das Kaestchen etwas ab, das damit erledigt ist? Dann wird die
    * Beschriftung im angehakten Zustand durchgestrichen.
@@ -28,10 +43,21 @@ type CheckboxProps = Omit<ComponentPropsWithoutRef<'input'>, 'type' | 'children'
   abhaken?: boolean
 }
 
-export function Checkbox({ label, className, abhaken = false, ...rest }: CheckboxProps) {
+export function Checkbox({
+  label,
+  className,
+  nurKaestchen = false,
+  abhaken = false,
+  ...rest
+}: CheckboxProps) {
   return (
     <label
-      className={[stile.zeile, abhaken ? stile.abhaken : null, className]
+      className={[
+        stile.zeile,
+        nurKaestchen ? stile.nurKaestchen : null,
+        abhaken ? stile.abhaken : null,
+        className,
+      ]
         .filter(Boolean)
         .join(' ')}
     >

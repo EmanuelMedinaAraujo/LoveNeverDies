@@ -22,13 +22,16 @@ import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Gruppe } from '../../../ui/Liste/Liste.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import {
   GerichtNachschlagen,
   istGerichtStelle,
 } from '../../shared/Gericht/GerichtNachschlagen.tsx'
 import {
   benenne,
+  darfAbhaken,
   darfBearbeiten,
+  istFrei,
   type Zugewiesene,
   type Zuweisung,
 } from '../../../services/zuweisung.ts'
@@ -41,12 +44,12 @@ import stile from './Aufgabe.module.css'
 /**
  * Das ganzseitige Aufgabendetail (DESIGN.md §7, §8).
  *
- * Der Screen, an dem die juristische Arbeit sichtbar wird: Rechtsgrundlage und
- * Quelle, die Frist, die zuständige Stelle, die benötigten Dokumente, Notizen,
- * Unteraufgaben und wovon die Aufgabe abhängt. Alles davon steht im Item selbst,
- * beim Instanziieren aus dem Katalog kopiert (§8) und seither mit der Aufgabe
- * gealtert. Was hier zu lesen ist, ist der Rechtsstand, nach dem jemand
- * gehandelt hat, und nicht der von heute.
+ * Der Screen mit allem, was an einer Aufgabe hängt: die Frist, die zuständige
+ * Stelle, die benötigten Dokumente, Notizen, Unteraufgaben und wovon die
+ * Aufgabe abhängt. Alles davon steht im Item selbst, beim Instanziieren aus
+ * dem Katalog kopiert (§8) und seither mit der Aufgabe gealtert. Was hier zu
+ * lesen ist, ist der Stand, nach dem jemand gehandelt hat, und nicht der von
+ * heute.
  *
  * Das Fristende steht nirgends gespeichert: Es wird bei jedem Rendern aus
  * `{fristTage, fristAb}` und dem Sterbedatum gerechnet (§8, `fristen.ts`).
@@ -57,7 +60,7 @@ import stile from './Aufgabe.module.css'
  *
  * Die erweiterte Fassung dieses Screens (§7). Die einfache steht daneben in
  * `screens/einfach/Aufgabe`; sie zeigt dieselbe Aufgabe mit weniger darauf —
- * ohne Quelle, ohne Namensliste in der Zuweisung und ohne den Weg von jeder
+ * ohne Namensliste in der Zuweisung und ohne den Weg von jeder
  * Unteraufgabe in ihr eigenes Detail, denn genau das ist die verschachtelte
  * Navigation, auf die §7 dort verzichtet. Die Dokumente teilen sich beide
  * (`screens/shared/Dokumente`): Ein Foto wird vor dem Hochladen verschlüsselt,
@@ -110,14 +113,17 @@ function ZumFragebaum() {
 }
 
 /**
- * Frist, Rechtsgrundlage, Quelle, zuständige Stelle, Dokumente, Hinweis.
+ * Frist, zuständige Stelle, Dokumente, Hinweis.
  *
- * Fehlt eine Angabe, steht sie nicht da. Eine leere Zeile "Rechtsgrundlage: -"
- * sähe aus wie eine Lücke im Gesetz, und ein "keine Frist" wäre eine Aussage,
+ * Fehlt eine Angabe, steht sie nicht da. Ein "keine Frist" wäre eine Aussage,
  * die der Katalog nicht trifft: Fehlt eine gesetzliche Frist, bleibt das Feld
  * leer, erfunden wird nichts (§8).
+ *
+ * Kein Paragraph und kein Quelllink (ADR-0003): Eine Zeile "§ 1944 BGB" und ein
+ * Link auf die Gesetzesseite lesen sich wie eine Rechtsberatung, und die gibt
+ * diese App nicht. Deshalb heißt der Abschnitt auch nicht mehr "Rechtliches".
  */
-function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
+function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
   const katalog = aufgabe.katalog
 
   if (katalog === null) {
@@ -127,7 +133,7 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
   const dokumente = katalog.benoetigteDokumente.filter((eintrag) => eintrag.trim() !== '')
 
   return (
-    <Gruppe titel="Rechtliches">
+    <Gruppe titel="Das gilt dafür">
       <Card>
 
       <dl className={stile.angaben}>
@@ -151,10 +157,6 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
           </Angabe>
         ) : null}
 
-        {katalog.rechtsgrundlage === '' ? null : (
-          <Angabe was="Rechtsgrundlage">{katalog.rechtsgrundlage}</Angabe>
-        )}
-
         {katalog.zustaendigeStelle === '' ? null : (
           <Angabe was="Zuständige Stelle">
             <div>
@@ -175,19 +177,6 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
         )}
 
         {katalog.hinweis === '' ? null : <Angabe was="Hinweis">{katalog.hinweis}</Angabe>}
-
-        {katalog.quelleUrl === '' ? null : (
-          <Angabe was="Quelle">
-            {/*
-              `rel="noreferrer"` und ein neues Fenster: Die Quelle ist eine
-              fremde Seite, und wer sie öffnet, soll die Aufgabe nicht
-              verlieren.
-            */}
-            <a href={katalog.quelleUrl} target="_blank" rel="noreferrer">
-              {katalog.quelleUrl}
-            </a>
-          </Angabe>
-        )}
       </dl>
       </Card>
     </Gruppe>
@@ -258,13 +247,14 @@ function Unteraufgabenzeile({
    * eingetragen ist, hakt hier nichts ab.
    */
   const darfAendern = darfBearbeiten(unteraufgabe.assignee, ichUserId)
+  const darfHaken = darfAbhaken(unteraufgabe.assignee, ichUserId)
 
   return (
     <li className={stile.zeile}>
       <Checkbox
         abhaken
         checked={erledigt}
-        disabled={gesperrt || !darfAendern}
+        disabled={gesperrt || !darfHaken}
         onChange={(ereignis) => void haken(ereignis.target.checked)}
         label={unteraufgabe.titel}
       />
@@ -479,6 +469,7 @@ function Detail({
    * Mauer vor einer Aufgabe, die vielleicht gerade dringend ist.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ich.userId)
+  const darfHaken = darfAbhaken(aufgabe.assignee, ich.userId)
 
   return (
     <>
@@ -506,9 +497,6 @@ function Detail({
           </p>
         )}
 
-        <p className={stile.hinweis}>
-          <Link to="/alle">Zurück zu allen Aufgaben</Link>
-        </p>
 
         {/*
           Ob die Aufgabe erledigt ist, ist das Erste, was jemand hier wissen
@@ -532,7 +520,7 @@ function Detail({
           <Checkbox
             abhaken
             checked={eigenesHaken}
-            disabled={aktionen.gesperrt || !darfAendern}
+            disabled={aktionen.gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label="Diese Aufgabe ist erledigt"
           />
@@ -568,7 +556,7 @@ function Detail({
       */}
       {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
 
-      <Rechtliches aufgabe={aufgabe} lage={lage} />
+      <Angaben aufgabe={aufgabe} lage={lage} />
 
       {/*
         §8: Nur bei den Fristen, die an der eigenen Kenntnis hängen. Bei allen
@@ -653,7 +641,12 @@ function Detail({
           aufSetzen={aktionen.weiseZu}
         />
 
-        {darfAendern ? null : (
+        {darfAendern ? null : istFrei(aufgabe.assignee) ? (
+          <p className={stile.hinweis}>
+            Diese Aufgabe ist niemandem zugewiesen. Haken Sie sie ab, tragen Sie sich damit
+            ein. Zum Ändern übernehmen Sie sie.
+          </p>
+        ) : (
           <p className={stile.hinweis}>
             Diese Aufgabe ist Ihnen nicht zugewiesen. Sie können sie lesen; zum Ändern
             übernehmen Sie sie.
@@ -847,14 +840,9 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     return zustand.laedtNetz ? (
       <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
     ) : (
-      <>
-        <p className={stile.hinweis} role="alert">
-          Diese Aufgabe gibt es nicht mehr. Gelöschte Aufgaben kommen nicht zurück.
-        </p>
-        <p className={stile.hinweis}>
-          <Link to="/alle">Zurück zu allen Aufgaben</Link>
-        </p>
-      </>
+      <p className={stile.hinweis} role="alert">
+        Diese Aufgabe gibt es nicht mehr. Gelöschte Aufgaben kommen nicht zurück.
+      </p>
     )
   }
 
@@ -915,6 +903,7 @@ export function Aufgabe() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
+        <Zurueck ziel="/alle" />
         <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
@@ -927,6 +916,8 @@ export function Aufgabe() {
 
   return (
     <main className={stile.seite}>
+      <Zurueck ziel="/alle" />
+
       {zustand.status === 'fehler' ? (
         <p className={stile.hinweis} role="alert">
           Ihre Aufgaben sind gerade nicht abrufbar. {zustand.nachricht}
