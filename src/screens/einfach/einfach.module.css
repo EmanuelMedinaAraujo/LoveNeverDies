@@ -71,10 +71,27 @@
  * beim Tippen verwechseln kann.
  */
 .eintrag {
+  /*
+   * Fuer die Trefferflaeche von `.weiter`: Der Link legt sein `::after` ueber
+   * die ganze Zeile, damit ein Tipp irgendwo auf der Aufgabe in ihr Detail
+   * fuehrt. Ohne `relative` bezoege sich das `inset: 0` auf den Bildschirm.
+   */
+  position: relative;
+
   display: flex;
   flex-direction: column;
   gap: var(--raster-2);
   padding-block: var(--dichte-abstand);
+}
+
+/*
+ * Was in der Zeile selbst etwas tut, liegt ueber der Trefferflaeche und faengt
+ * den Tipp vorher ab: hier genau das Haekchen. Der Titel gehoert nicht dazu --
+ * er fuehrt ins Detail (siehe `nurKaestchen` an der Checkbox).
+ */
+.eintrag :is(input, button) {
+  position: relative;
+  z-index: 1;
 }
 
 .eintrag + .eintrag {
@@ -113,6 +130,18 @@
 }
 
 /* Der eine Weg aus einer Zeile hinaus, mit Verb (§7). */
+/*
+ * "Aufgabe oeffnen" bleibt sichtbar stehen und ist zugleich die
+ * Trefferflaeche der ganzen Zeile. Sichtbar bleiben muss es: Wer diese
+ * Ansicht gewaehlt hat, weiss nicht, dass Karten anzutippen sind, und eine
+ * unsichtbare Bedienung ist keine.
+ */
+.weiter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
 .weiter {
   display: inline-flex;
   align-items: center;

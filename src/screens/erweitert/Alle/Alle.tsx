@@ -308,6 +308,7 @@ function Aufgabenzeile({
             disabled={gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label={aufgabe.titel}
+            nurKaestchen
           />
         ) : (
           <p

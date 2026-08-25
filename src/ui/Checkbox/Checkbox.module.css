@@ -40,3 +40,19 @@
   color: var(--farbe-text-sekundaer);
   text-decoration: line-through;
 }
+
+/*
+ * `nurKaestchen`: In den Aufgabenlisten fuehrt die ganze Zeile in das Detail,
+ * und ein Tipp auf den Titel soll dorthin fuehren statt abzuhaken. Die
+ * Beschriftung laesst Zeigereignisse deshalb durch; das Kaestchen faengt sie
+ * wieder. Am zugaenglichen Namen und an der Tastaturbedienung aendert das
+ * nichts -- `pointer-events` betrifft ausschliesslich Maus und Finger.
+ */
+.nurKaestchen {
+  pointer-events: none;
+  cursor: default;
+}
+
+.nurKaestchen .feld {
+  pointer-events: auto;
+}
