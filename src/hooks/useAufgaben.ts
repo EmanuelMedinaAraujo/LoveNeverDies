@@ -32,16 +32,21 @@ import {
   AufgabenFehler,
   aufgabenAusZeilen,
   beschreibeAbgelehnte,
+  istKonfiguration,
   mutationAendern,
   mutationAnlegen,
   mutationLoeschen,
   type AbgelehnteAenderung,
   type Aufgabe,
   type Aufgabenaenderung,
+  type Konfiguration,
 } from '../services/aufgabenService.ts'
+import type { Fristbezug } from '../services/fristen.ts'
 import {
   gibFuerAlleFrei as gibFuerAlleFreiDienst,
   ladePersoenlichenSchluessel,
+  mutationKenntnisAendern,
+  mutationKenntnisAnlegen,
   mutationPrivatAnlegen,
   pruefeAbhaengigkeiten,
   stellePersoenlichenSchluesselBereit,
@@ -163,9 +168,34 @@ export type Aufgabendaten = {
    * dieselbe ID, derselbe Payload. Danach ist es eine gewöhnliche Aufgabe.
    */
   gibFuerAlleFrei: (aufgabe: Aufgabe) => Promise<void>
+  /**
+   * Woran die Fristen dieses Falls für diese Person hängen (§8, #12).
+   *
+   * Das Sterbedatum steht im Fall und gilt für alle; das Kenntnisdatum liegt
+   * privat unter `K_p` und gilt für eine einzige Person. Deshalb kommt der
+   * Bezug aus diesem Hook und nicht aus `useCase`: Er sieht für jedes Mitglied
+   * anders aus, obwohl die Aufgaben dieselben sind.
+   */
+  fristbezug: Fristbezug
+  /**
+   * Trägt das eigene Kenntnisdatum ein oder ändert es (§8, #12).
+   *
+   * `null` leert es wieder; danach ist die Aufgabe wieder fristenlos und sagt
+   * das auch. Geschrieben wird ein privates Konfigurations-Item unter `K_p`,
+   * keine Zeile einer Aufgabe: `seq` und `cases.version` der geteilten
+   * Aufgaben bleiben unberührt.
+   *
+   * @throws {AufgabenFehler} bei einem Datum, das keiner ist oder in der
+   * Zukunft liegt, und ohne angemeldetes Gerät.
+   */
+  setzeKenntnisAm: (kenntnisAm: string | null) => Promise<void>
 }
 
-const LEER = { aufgaben: [] as Aufgabe[], uebersprungen: 0 }
+const LEER = {
+  aufgaben: [] as Aufgabe[],
+  konfiguration: null as Konfiguration | null,
+  uebersprungen: 0,
+}
 
 /** Eine Zeile, die sich nicht entschlüsseln liess (§3.7). */
 const VERWORFEN = Symbol('verworfen')
@@ -237,7 +267,9 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * ein Stapel ohne neue Zeilen brächte sonst eine 0 mit und löschte damit,
    * was die Stapel davor gefunden haben.
    */
-  const entschluesselt = useRef(new WeakMap<InhaltZeile, Aufgabe | typeof VERWORFEN>())
+  const entschluesselt = useRef(
+    new WeakMap<InhaltZeile, Aufgabe | Konfiguration | typeof VERWORFEN>(),
+  )
 
   /**
    * Der eigene `K_p`, sobald er da ist (§3.7).
@@ -309,15 +341,19 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     void (async () => {
       const bekannt = entschluesselt.current
       const neue = sync.zeilen.filter((zeile) => !bekannt.has(zeile))
-      const { aufgaben, uebersprungeneIds } = await aufgabenAusZeilen(neue, fall, privat)
+      const { aufgaben, konfigurationen, uebersprungeneIds } = await aufgabenAusZeilen(
+        neue,
+        fall,
+        privat,
+      )
 
       const nachId = new Map(neue.map((zeile) => [zeile.id, zeile]))
 
-      for (const aufgabe of aufgaben) {
-        const zeile = nachId.get(aufgabe.id)
+      for (const eintrag of [...aufgaben, ...konfigurationen]) {
+        const zeile = nachId.get(eintrag.id)
 
         if (zeile !== undefined) {
-          bekannt.set(zeile, aufgabe)
+          bekannt.set(zeile, eintrag)
         }
       }
 
@@ -337,10 +373,34 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       // Anlagereihenfolge (§4). Ein Häkchen verschiebt nichts.
       const eintraege = sync.zeilen.map((zeile) => bekannt.get(zeile))
 
+      const gelesen = eintraege.filter(
+        (eintrag): eintrag is Aufgabe | Konfiguration =>
+          eintrag !== undefined && eintrag !== VERWORFEN,
+      )
+
+      /*
+       * Das Konfigurations-Item steht nicht im Aufgabenbaum (§3.7): Es wird
+       * hier aussortiert und nicht erst beim Rendern, sonst stünde das eigene
+       * Kenntnisdatum als Aufgabe ohne Titel in "Alle" und auf Start.
+       *
+       * Sind es mehrere, gewinnt die größte `id`. Sie ist eine UUIDv7 (§5),
+       * also die zuletzt angelegte: Zwei Geräte derselben Person, die offline
+       * je eines angelegt haben, einigen sich damit ohne Zutun, und beide
+       * einigen sich auf dasselbe.
+       */
+      const konfiguration = gelesen
+        .filter(istKonfiguration)
+        .reduce<Konfiguration | null>(
+          (juengste, kandidat) =>
+            juengste === null || kandidat.id > juengste.id ? kandidat : juengste,
+          null,
+        )
+
       setzeListe({
-        aufgaben: eintraege
-          .filter((eintrag): eintrag is Aufgabe => eintrag !== undefined && eintrag !== VERWORFEN)
+        aufgaben: gelesen
+          .filter((eintrag): eintrag is Aufgabe => !istKonfiguration(eintrag))
           .sort(nachReihenfolge),
+        konfiguration,
         uebersprungen: eintraege.filter((eintrag) => eintrag === VERWORFEN).length,
       })
     })()
@@ -426,6 +486,39 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * Zweck. Unzugewiesen kommen die Aufgaben der Juristinnen in den Fall (§8),
    * bei ihnen hat noch niemand etwas gesagt.
    */
+  /**
+   * Der eigene `K_p`, notfalls frisch erzeugt (§3.7).
+   *
+   * Der Schlüssel entsteht hier und nicht beim Laden des Falls: Die meisten
+   * Menschen legen nie etwas Privates an, und ein `K_p` auf Vorrat wäre für
+   * sie eine Zeile in `personal_key_wraps`, die dem Server sagt, sie hätten
+   * etwas zu verbergen, ohne dass es das gäbe (§3.3, §11.6).
+   *
+   * Beide Wege dorthin gehen hier durch: die private Aufgabe und das
+   * Kenntnisdatum (§8). Zwei Stellen wären zwei Gelegenheiten, den Schlüssel
+   * an verschieden viele eigene Geräte zu wrappen.
+   */
+  const holePersoenlichenSchluessel = useCallback(async (): Promise<PersoenlicherSchluessel> => {
+    if (identitaet === null || geraeteId === null || ich.userId === '') {
+      throw new AufgabenFehler('Ohne angemeldetes Gerät geht das nicht.')
+    }
+
+    const client = zugang()
+
+    const schluessel = await stellePersoenlichenSchluesselBereit(
+      supabasePersoenlicheSchluessel(client),
+      supabaseGeraeteschluessel(client),
+      fall.id,
+      ich.userId,
+      geraeteId,
+      identitaet,
+    )
+
+    setzePrivat(schluessel)
+
+    return schluessel
+  }, [fall.id, geraeteId, ich.userId, identitaet, zugang])
+
   const legeAn = useCallback(
     async (titel: string, parentId: string | null = null, nurFuerMich = false) => {
       if (!nurFuerMich) {
@@ -445,33 +538,32 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
         )
       }
 
-      if (identitaet === null || geraeteId === null || ich.userId === '') {
-        throw new AufgabenFehler(
-          'Ohne angemeldetes Gerät lässt sich keine private Aufgabe anlegen.',
-        )
+      mutiere(await mutationPrivatAnlegen(fall, await holePersoenlichenSchluessel(), titel, ich))
+    },
+    [fall, holePersoenlichenSchluessel, ich, mutiere],
+  )
+
+  /**
+   * Das eigene Kenntnisdatum eintragen, ändern oder wieder leeren (§8, #12).
+   *
+   * Es steht in einem privaten Konfigurations-Item unter `K_p` und in keiner
+   * Aufgabe: Zwei Geschwister sehen auf derselben geteilten Aufgabe zwei
+   * Fristenden, ohne dass sich an ihr eine Zeile ändert. Gerechnet wird das
+   * Ende ohnehin bei jedem Rendern und nie gespeichert (`fristen.ts`).
+   *
+   * Gibt es das Item schon, wird es geändert und kein zweites angelegt:
+   * derselbe DEK, ein neuer Payload (§3.1).
+   */
+  const setzeKenntnisAm = useCallback(
+    async (kenntnisAm: string | null) => {
+      if (liste.konfiguration !== null) {
+        mutiere(await mutationKenntnisAendern(liste.konfiguration, kenntnisAm))
+        return
       }
 
-      const client = zugang()
-
-      /*
-       * Der Schlüssel entsteht hier und nicht beim Laden des Falls: Die meisten
-       * Menschen legen nie etwas Privates an, und ein `K_p` auf Vorrat wäre für
-       * sie eine Zeile in `personal_key_wraps`, die dem Server sagt, sie hätten
-       * etwas zu verbergen, ohne dass es das gäbe (§3.3, §11.6).
-       */
-      const schluessel = await stellePersoenlichenSchluesselBereit(
-        supabasePersoenlicheSchluessel(client),
-        supabaseGeraeteschluessel(client),
-        fall.id,
-        ich.userId,
-        geraeteId,
-        identitaet,
-      )
-
-      setzePrivat(schluessel)
-      mutiere(await mutationPrivatAnlegen(fall, schluessel, titel, ich))
+      mutiere(await mutationKenntnisAnlegen(fall, await holePersoenlichenSchluessel(), kenntnisAm))
     },
-    [fall, geraeteId, ich, identitaet, mutiere, zugang],
+    [fall, holePersoenlichenSchluessel, liste.konfiguration, mutiere],
   )
 
   const schreibe = useCallback(
@@ -630,7 +722,19 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * Delta ein neuer, also plant der Hook darunter von selbst neu. Es gibt
    * keinen zweiten Auslöser, den jemand vergessen könnte.
    */
-  const erinnerungen = useErinnerungen(baum, fall.sterbedatum)
+  /*
+   * Das Sterbedatum kommt aus dem Fall und gilt für alle, das Kenntnisdatum
+   * aus dem eigenen Konfigurations-Item und gilt für eine Person (§8, #12).
+   */
+  const fristbezug = useMemo<Fristbezug>(
+    () => ({
+      sterbedatum: fall.sterbedatum,
+      kenntnisAm: liste.konfiguration?.kenntnisAm ?? null,
+    }),
+    [fall.sterbedatum, liste.konfiguration],
+  )
+
+  const erinnerungen = useErinnerungen(baum, fristbezug)
 
   const zustand = useMemo<AufgabenZustand>(
     () =>
@@ -667,6 +771,8 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       uebernahmen,
       bestaetigeUebernahmen,
       gibFuerAlleFrei,
+      fristbezug,
+      setzeKenntnisAm,
     }),
     [
       zustand,
@@ -687,6 +793,8 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       uebernahmen,
       bestaetigeUebernahmen,
       gibFuerAlleFrei,
+      fristbezug,
+      setzeKenntnisAm,
     ],
   )
 }
