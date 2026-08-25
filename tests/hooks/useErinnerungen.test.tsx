@@ -29,13 +29,11 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     version: '2026-08+testtest',
     fristTage: 3,
     fristAb: 'sterbedatum',
-    rechtsgrundlage: '§ 28 PStG',
     zustaendigeStelle: '',
     benoetigteDokumente: [],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: '',
-    quelleUrl: '',
     kategorie: '',
     reihenfolge: 10,
   }

@@ -4,10 +4,12 @@ import { KatalogQuelleFehler, SPALTEN, leseQuelltabelle } from '../../build/kata
 /**
  * Der Import der Quelltabelle (DESIGN.md §8).
  *
- * Die Regel, um die es hier vor allem geht, steht in §8 als einziger harter
- * Importfehler: Eine Frist ohne Rechtsgrundlage kommt nicht durch. Alles andere
- * hier prueft, dass die Tabelle ueberhaupt als Tabelle gelesen wird: Kommas in
- * Hinweisen, Listenfelder, Zeilennummern in den Meldungen.
+ * Die Regel, um die es hier vor allem geht, steht in §8: Eine Frist muss
+ * rechenbar sein, also eine Zahl und einen Anker tragen. Eine Rechtsgrundlage
+ * verlangt der Import seit ADR-0003 nicht mehr, und die Spalte gibt es nicht
+ * mehr. Alles andere hier prueft, dass die Tabelle ueberhaupt als Tabelle
+ * gelesen wird: Kommas in Hinweisen, Listenfelder, Zeilennummern in den
+ * Meldungen.
  */
 
 const KOPF = SPALTEN.join(',')
@@ -20,13 +22,11 @@ function zeile(aenderungen: Partial<Record<(typeof SPALTEN)[number], string>> = 
     kurzbeschreibung: 'Wer erbt, haftet auch fuer die Schulden.',
     frist_tage: '42',
     frist_ab: 'kenntnis',
-    rechtsgrundlage: '§ 1944 BGB',
     zustaendige_stelle: 'Nachlassgericht',
     benoetigte_dokumente: 'Sterbeurkunde;Personalausweis',
     subtasks: '',
     depends_on: '',
     hinweis: '',
-    quelle_url: 'https://www.gesetze-im-internet.de/bgb/__1944.html',
     kategorie: 'Erbe',
     reihenfolge: '50',
     ...aenderungen,
@@ -66,35 +66,27 @@ describe('leseQuelltabelle (§8)', () => {
         kurzbeschreibung: 'Wer erbt, haftet auch fuer die Schulden.',
         fristTage: 42,
         fristAb: 'kenntnis',
-        rechtsgrundlage: '§ 1944 BGB',
         zustaendigeStelle: 'Nachlassgericht',
         benoetigteDokumente: ['Sterbeurkunde', 'Personalausweis'],
         unteraufgaben: [],
         haengtAbVon: [],
         hinweis: '',
-        quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__1944.html',
         kategorie: 'Erbe',
         reihenfolge: 50,
       },
     ])
   })
 
-  it('weist eine Frist ohne Rechtsgrundlage ab, mit Zeile und Grund', () => {
-    const maengel = maengelVon(tabelle(zeile({ rechtsgrundlage: '' })))
-
-    expect(maengel).toHaveLength(1)
-    expect(maengel[0]).toContain('Zeile 3')
-    expect(maengel[0]).toContain('rechtsgrundlage ist leer')
+  it('kennt weder eine Spalte rechtsgrundlage noch quelle_url (ADR-0003)', () => {
+    expect(SPALTEN).not.toContain('rechtsgrundlage')
+    expect(SPALTEN).not.toContain('quelle_url')
   })
 
-  it('laesst eine Rechtsgrundlage ohne Frist zu — fehlt die Frist, bleibt das Feld leer', () => {
-    const katalog = leseQuelltabelle(
-      tabelle(zeile({ frist_tage: '', frist_ab: '', rechtsgrundlage: '§ 2259 BGB' })),
-    )
+  it('laesst eine Aufgabe ohne Frist zu — dann bleiben beide Felder leer', () => {
+    const katalog = leseQuelltabelle(tabelle(zeile({ frist_tage: '', frist_ab: '' })))
 
     expect(katalog.aufgaben[0]?.fristTage).toBeNull()
     expect(katalog.aufgaben[0]?.fristAb).toBeNull()
-    expect(katalog.aufgaben[0]?.rechtsgrundlage).toBe('§ 2259 BGB')
   })
 
   it('weist eine Frist ohne Anker und einen Anker ohne Frist ab', () => {

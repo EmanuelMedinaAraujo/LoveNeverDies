@@ -78,8 +78,10 @@ export type Privatschluessel = PersoenlicherSchluessel | null
  * Kopiert und nicht verknüpft: `catalog_version` ist eine Herkunftsangabe
  * ("aufgesetzt aus Katalogstand 2031-03"), keine lebende Verbindung: Ein
  * späterer Import ändert an einer bereits instanziierten Aufgabe nichts. Wer
- * Rechtsgrundlage und Quelle im Aufgabendetail liest (§7), liest den Stand von
+ * Frist und zuständige Stelle im Aufgabendetail liest (§7), liest den Stand von
  * damals, und genau den soll er lesen, denn danach hat jemand gehandelt.
+ *
+ * Paragraph und Quelllink stehen seit ADR-0003 nicht mehr darin.
  *
  * Alles ausser Titel und Kurzbeschreibung steht hier: Die beiden sind der
  * Aufgabe selbst geworden und dort änderbar.
@@ -337,13 +339,11 @@ function herkunftAus(wert: unknown): Katalogherkunft | null {
     fristTage: typeof felder.fristTage === 'number' ? felder.fristTage : null,
     fristAb:
       felder.fristAb === 'sterbedatum' || felder.fristAb === 'kenntnis' ? felder.fristAb : null,
-    rechtsgrundlage: alsText(felder.rechtsgrundlage),
     zustaendigeStelle: alsText(felder.zustaendigeStelle),
     benoetigteDokumente: alsListe(felder.benoetigteDokumente),
     unteraufgaben: alsListe(felder.unteraufgaben),
     haengtAbVon: alsListe(felder.haengtAbVon),
     hinweis: alsText(felder.hinweis),
-    quelleUrl: alsText(felder.quelleUrl),
     kategorie: alsText(felder.kategorie),
     reihenfolge: typeof felder.reihenfolge === 'number' ? felder.reihenfolge : 0,
   }
@@ -660,7 +660,7 @@ export async function mutationAendern(
     assignee: aenderung.assignee ?? aufgabe.assignee,
     // Die Herkunft schreibt jede Änderung unverändert mit. Sie ist kein Feld,
     // das jemand bearbeitet. Sie fiele sonst beim ersten Häkchen aus dem
-    // Payload, und mit ihr Rechtsgrundlage und Quelle (§8).
+    // Payload, und mit ihr Frist und zuständige Stelle (§8).
     katalog: aufgabe.katalog,
   }
 

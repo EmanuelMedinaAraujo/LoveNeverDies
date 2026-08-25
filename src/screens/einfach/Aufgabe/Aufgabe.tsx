@@ -44,9 +44,6 @@ import type { InhaltZeile } from '../../../core/db/inhalte.ts'
  *   und darüber ein Satz, wer eingetragen ist. Die Namensliste mit Häkchen aus
  *   der erweiterten Ansicht verteilt Arbeit in einer Familie; wer hier sitzt,
  *   nimmt sich eine Aufgabe oder gibt sie ab.
- * - **Keine Quelle.** Die Rechtsgrundlage steht da, der Link auf die
- *   Gesetzesseite nicht: Er führt aus der App heraus in ein Dokument, das
- *   niemand ohne Vorkenntnis liest.
  * - **Unteraufgaben ohne eigene Wege.** Sie werden hier abgehakt und hier
  *   gelöscht; die erweiterte Ansicht verlinkt von jeder in ihr eigenes Detail,
  *   und das ist genau die verschachtelte Navigation, auf die §7 hier
@@ -106,12 +103,15 @@ function ZumFragebaum() {
 /**
  * Was für diese Aufgabe gilt (§8).
  *
- * Fehlt eine Angabe, steht sie nicht da. Eine leere Zeile "Rechtsgrundlage: —"
- * sähe aus wie eine Lücke im Gesetz, und ein "keine Frist" wäre eine Aussage,
+ * Fehlt eine Angabe, steht sie nicht da. Ein "keine Frist" wäre eine Aussage,
  * die der Katalog nicht trifft: Fehlt eine gesetzliche Frist, bleibt das Feld
  * leer, erfunden wird nichts.
+ *
+ * Kein Paragraph und kein Quelllink (ADR-0003): Eine Zeile "§ 1944 BGB" liest
+ * sich wie eine Rechtsberatung, und die gibt diese App nicht. Was bleibt, ist
+ * das, wonach jemand handelt — Frist, Stelle, Dokumente, Hinweis.
  */
-function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
+function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
   const katalog = aufgabe.katalog
 
   if (katalog === null) {
@@ -138,10 +138,6 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
             dem Sie davon erfahren haben. Tragen Sie ihn unten ein.
           </Angabe>
         ) : null}
-
-        {katalog.rechtsgrundlage === '' ? null : (
-          <Angabe was="Rechtsgrundlage">{katalog.rechtsgrundlage}</Angabe>
-        )}
 
         {katalog.zustaendigeStelle === '' ? null : (
           <Angabe was="Dorthin geht es">{katalog.zustaendigeStelle}</Angabe>
@@ -499,7 +495,7 @@ function Detail({
       */}
       {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
 
-      <Rechtliches aufgabe={aufgabe} lage={lage} />
+      <Angaben aufgabe={aufgabe} lage={lage} />
 
       {/*
         §8: Nur bei den Fristen, die an der eigenen Kenntnis hängen. Bei allen

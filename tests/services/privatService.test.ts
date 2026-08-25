@@ -675,13 +675,11 @@ describe('Kenntnisdatum als privates Konfigurations-Item (§8, #12)', () => {
     version: '2026-08+testtest',
     fristTage: 42,
     fristAb: 'kenntnis' as const,
-    rechtsgrundlage: '§ 1944 BGB',
     zustaendigeStelle: 'Nachlassgericht',
     benoetigteDokumente: [],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: '',
-    quelleUrl: '',
     kategorie: 'Frist',
     reihenfolge: 20,
   }

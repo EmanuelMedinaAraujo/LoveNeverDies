@@ -37,12 +37,12 @@ import stile from './Aufgabe.module.css'
 /**
  * Das ganzseitige Aufgabendetail (DESIGN.md §7, §8).
  *
- * Der Screen, an dem die juristische Arbeit sichtbar wird: Rechtsgrundlage und
- * Quelle, die Frist, die zuständige Stelle, die benötigten Dokumente, Notizen,
- * Unteraufgaben und wovon die Aufgabe abhängt. Alles davon steht im Item selbst,
- * beim Instanziieren aus dem Katalog kopiert (§8) und seither mit der Aufgabe
- * gealtert. Was hier zu lesen ist, ist der Rechtsstand, nach dem jemand
- * gehandelt hat, und nicht der von heute.
+ * Der Screen mit allem, was an einer Aufgabe hängt: die Frist, die zuständige
+ * Stelle, die benötigten Dokumente, Notizen, Unteraufgaben und wovon die
+ * Aufgabe abhängt. Alles davon steht im Item selbst, beim Instanziieren aus
+ * dem Katalog kopiert (§8) und seither mit der Aufgabe gealtert. Was hier zu
+ * lesen ist, ist der Stand, nach dem jemand gehandelt hat, und nicht der von
+ * heute.
  *
  * Das Fristende steht nirgends gespeichert: Es wird bei jedem Rendern aus
  * `{fristTage, fristAb}` und dem Sterbedatum gerechnet (§8, `fristen.ts`).
@@ -53,7 +53,7 @@ import stile from './Aufgabe.module.css'
  *
  * Die erweiterte Fassung dieses Screens (§7). Die einfache steht daneben in
  * `screens/einfach/Aufgabe`; sie zeigt dieselbe Aufgabe mit weniger darauf —
- * ohne Quelle, ohne Namensliste in der Zuweisung und ohne den Weg von jeder
+ * ohne Namensliste in der Zuweisung und ohne den Weg von jeder
  * Unteraufgabe in ihr eigenes Detail, denn genau das ist die verschachtelte
  * Navigation, auf die §7 dort verzichtet. Die Dokumente teilen sich beide
  * (`screens/shared/Dokumente`): Ein Foto wird vor dem Hochladen verschlüsselt,
@@ -106,14 +106,17 @@ function ZumFragebaum() {
 }
 
 /**
- * Frist, Rechtsgrundlage, Quelle, zuständige Stelle, Dokumente, Hinweis.
+ * Frist, zuständige Stelle, Dokumente, Hinweis.
  *
- * Fehlt eine Angabe, steht sie nicht da. Eine leere Zeile "Rechtsgrundlage: -"
- * sähe aus wie eine Lücke im Gesetz, und ein "keine Frist" wäre eine Aussage,
+ * Fehlt eine Angabe, steht sie nicht da. Ein "keine Frist" wäre eine Aussage,
  * die der Katalog nicht trifft: Fehlt eine gesetzliche Frist, bleibt das Feld
  * leer, erfunden wird nichts (§8).
+ *
+ * Kein Paragraph und kein Quelllink (ADR-0003): Eine Zeile "§ 1944 BGB" und ein
+ * Link auf die Gesetzesseite lesen sich wie eine Rechtsberatung, und die gibt
+ * diese App nicht. Deshalb heißt der Abschnitt auch nicht mehr "Rechtliches".
  */
-function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
+function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
   const katalog = aufgabe.katalog
 
   if (katalog === null) {
@@ -123,7 +126,7 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
   const dokumente = katalog.benoetigteDokumente.filter((eintrag) => eintrag.trim() !== '')
 
   return (
-    <Gruppe titel="Rechtliches">
+    <Gruppe titel="Das gilt dafür">
       <Card>
 
       <dl className={stile.angaben}>
@@ -147,10 +150,6 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
           </Angabe>
         ) : null}
 
-        {katalog.rechtsgrundlage === '' ? null : (
-          <Angabe was="Rechtsgrundlage">{katalog.rechtsgrundlage}</Angabe>
-        )}
-
         {katalog.zustaendigeStelle === '' ? null : (
           <Angabe was="Zuständige Stelle">{katalog.zustaendigeStelle}</Angabe>
         )}
@@ -166,19 +165,6 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
         )}
 
         {katalog.hinweis === '' ? null : <Angabe was="Hinweis">{katalog.hinweis}</Angabe>}
-
-        {katalog.quelleUrl === '' ? null : (
-          <Angabe was="Quelle">
-            {/*
-              `rel="noreferrer"` und ein neues Fenster: Die Quelle ist eine
-              fremde Seite, und wer sie öffnet, soll die Aufgabe nicht
-              verlieren.
-            */}
-            <a href={katalog.quelleUrl} target="_blank" rel="noreferrer">
-              {katalog.quelleUrl}
-            </a>
-          </Angabe>
-        )}
       </dl>
       </Card>
     </Gruppe>
@@ -557,7 +543,7 @@ function Detail({
       */}
       {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
 
-      <Rechtliches aufgabe={aufgabe} lage={lage} />
+      <Angaben aufgabe={aufgabe} lage={lage} />
 
       {/*
         §8: Nur bei den Fristen, die an der eigenen Kenntnis hängen. Bei allen
