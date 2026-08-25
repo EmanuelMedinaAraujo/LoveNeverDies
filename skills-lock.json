@@ -37,6 +37,30 @@
       "skillPath": "skills/durable-objects/SKILL.md",
       "computedHash": "afa5e9dfcbbe3b70107d9f263a1c183ef89afbb5eb97f42be01cad7bd942958f"
     },
+    "clerk": {
+      "source": "clerk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/core/clerk/SKILL.md",
+      "computedHash": "31dde2e1c88bfc2af5a1c783eec6d64aaf554ed3bc71ad463b812f6b58c9de41"
+    },
+    "clerk-cli": {
+      "source": "clerk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/core/clerk-cli/SKILL.md",
+      "computedHash": "bdcd357135e1539c156527ed62dfc5a5471972b1b94717cecfb8464ab6f6afcf"
+    },
+    "clerk-react-patterns": {
+      "source": "clerk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frameworks/clerk-react-patterns/SKILL.md",
+      "computedHash": "e6b7e52013ca836db3a8d901b3c116370da83970398b6f9d7d1e1138ba442be8"
+    },
+    "clerk-react-router-patterns": {
+      "source": "clerk/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frameworks/clerk-react-router-patterns/SKILL.md",
+      "computedHash": "767a21fd76f6cf186293cf027c7f7815c7bee8544ed788ef66cb23841b263948"
+    },
     "implement": {
       "source": "mattpocock/skills",
       "sourceType": "github",
