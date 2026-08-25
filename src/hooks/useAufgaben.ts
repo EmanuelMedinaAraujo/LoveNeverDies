@@ -66,6 +66,7 @@ import {
 import { instanziiereKatalog, type Katalogfall } from '../services/katalogService.ts'
 import {
   NIEMAND,
+  istFrei,
   istZugewiesen,
   mitPerson,
   uebernommenVon,
@@ -151,6 +152,14 @@ export type Aufgabendaten = {
    */
   legeAn: (titel: string, parentId?: string | null, nurFuerMich?: boolean) => Promise<void>
   schreibe: (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => Promise<void>
+  /**
+   * Das Haekchen setzen oder wegnehmen (§7).
+   *
+   * Eine *freie* Aufgabe traegt die angemeldete Person dabei gleich ein: In
+   * einem Payload, mit einer `seq`, nicht als zwei Schritte, die halb
+   * ankommen koennen. Nur beim Setzen -- ein Haekchen wegzunehmen ist keine
+   * Ansage, etwas erledigt zu haben.
+   */
   hakeAb: (aufgabe: Aufgabe, erledigt: boolean) => Promise<void>
   loesche: (aufgabe: Aufgabe) => Promise<void>
   /**
@@ -722,11 +731,6 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     [liste.aufgaben, mutiere],
   )
 
-  const hakeAb = useCallback(
-    (aufgabe: Aufgabe, erledigt: boolean) => schreibe(aufgabe, { erledigt }),
-    [schreibe],
-  )
-
   const loesche = useCallback(
     (aufgabe: Aufgabe) => mutiere(mutationLoeschen(aufgabe)),
     [mutiere],
@@ -812,19 +816,62 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * die Aufgabe weitergibt, hat nichts verloren, sonst meldete die eigene
    * Handlung sich gleich als fremde zurück.
    */
-  const weiseZu = useCallback(
-    (aufgabe: Aufgabe, zuweisung: Zuweisung) => {
+  const merkeVersuch = useCallback(
+    (aufgabeId: string, zuweisung: Zuweisung) => {
       setzeVersuchte((vorher) => {
         if (!istZugewiesen(zuweisung, ich.userId)) {
-          return vorher.filter((id) => id !== aufgabe.id)
+          return vorher.filter((id) => id !== aufgabeId)
         }
 
-        return vorher.includes(aufgabe.id) ? vorher : [...vorher, aufgabe.id]
+        return vorher.includes(aufgabeId) ? vorher : [...vorher, aufgabeId]
       })
+    },
+    [ich.userId],
+  )
+
+  const weiseZu = useCallback(
+    (aufgabe: Aufgabe, zuweisung: Zuweisung) => {
+      merkeVersuch(aufgabe.id, zuweisung)
 
       return schreibe(aufgabe, { assignee: zuweisung })
     },
-    [ich.userId, schreibe],
+    [merkeVersuch, schreibe],
+  )
+
+  /**
+   * Das Haekchen -- und bei einer freien Aufgabe die Uebernahme gleich mit (§7).
+   *
+   * Eine freie Aufgabe abzuhaken *ist* die Ansage "ich habe das gemacht". Wer
+   * sie erst uebernehmen muesste, um sie abhaken zu duerfen, macht zwei
+   * Handgriffe fuer eine Auskunft, und die Bearbeitungssperre soll niemanden
+   * von seiner eigenen Arbeit fernhalten -- sie soll verhindern, dass zwei
+   * Menschen dieselbe Behoerde anrufen. Eine Aufgabe, die *jemand anderem*
+   * gehoert, bleibt deshalb gesperrt.
+   *
+   * **Ein Payload, nicht zwei.** Zuweisung und Haekchen liegen im selben
+   * verschluesselten Payload (§3.3), und `mutationAendern` schreibt ihn ganz.
+   * Zwei Mutationen koennten halb ankommen: Der Fall "abgehakt, aber niemand
+   * war es" ist genau der, den diese Aenderung abschaffen soll.
+   *
+   * Der Versuch wird gemerkt wie ein "Übernehmen": Tippen zwei Menschen im
+   * selben Moment, gewinnt die hoehere `seq`, und die unterlegene Person soll
+   * lesen, wer schneller war (§7), statt still zu verlieren.
+   *
+   * Nur beim Setzen. Ein Haekchen wegzunehmen sagt "doch nicht erledigt" und
+   * ist keine Ansage, etwas getan zu haben.
+   */
+  const hakeAb = useCallback(
+    (aufgabe: Aufgabe, erledigt: boolean) => {
+      if (!erledigt || !istFrei(aufgabe.assignee)) {
+        return schreibe(aufgabe, { erledigt })
+      }
+
+      const assignee = mitPerson(aufgabe.assignee, ich)
+      merkeVersuch(aufgabe.id, assignee)
+
+      return schreibe(aufgabe, { erledigt, assignee })
+    },
+    [ich, merkeVersuch, schreibe],
   )
 
   /**

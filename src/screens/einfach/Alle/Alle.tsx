@@ -6,7 +6,12 @@ import { useCase } from '../../../hooks/useCase.ts'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
 import { fristlage, heuteIso } from '../../../services/fristen.ts'
-import { darfBearbeiten, istFrei, zuweisungText } from '../../../services/zuweisung.ts'
+import {
+  darfAbhaken,
+  darfBearbeiten,
+  istFrei,
+  zuweisungText,
+} from '../../../services/zuweisung.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
@@ -284,7 +289,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
                     knoten={knoten}
                     lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute)}
                     gesperrt={laeuft}
-                    darfHaken={darfAendern}
+                    darfHaken={darfAbhaken(knoten.aufgabe.assignee, ich.userId)}
                     /*
                      * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Steht
                      * jemand anders darunter oder niemand, sagt die Zeile das,

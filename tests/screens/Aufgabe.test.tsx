@@ -673,6 +673,20 @@ describe('Zuständigkeit (§7)', () => {
     ).toBeVisible()
   })
 
+  it('lässt eine freie Aufgabe abhaken und sagt, was das bedeutet', () => {
+    // §7: Wer sie erst übernehmen müsste, um sagen zu dürfen, dass er sie
+    // schon erledigt hat, macht zwei Handgriffe für eine Auskunft.
+    mitAufgabe({ assignee: NIEMAND })
+
+    zeigeDetail()
+
+    expect(screen.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeEnabled()
+    expect(screen.getByText(/Diese Aufgabe ist niemandem zugewiesen/)).toBeVisible()
+
+    // Die übrige Sperre bleibt: Ändern setzt weiterhin eine Zuweisung voraus.
+    expect(screen.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toBeDisabled()
+  })
+
   it('sagt es, wenn die Mitglieder nicht abrufbar sind', () => {
     useMitgliederfehler = 'Kein Netz.'
     mitAufgabe({ assignee: NIEMAND })

@@ -17,6 +17,7 @@ import {
 import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import {
   NIEMAND,
+  darfAbhaken,
   darfBearbeiten,
   istFrei,
   istZugewiesen,
@@ -291,6 +292,7 @@ function Unteraufgabenzeile({
   }
 
   const darfAendern = darfBearbeiten(unteraufgabe.assignee, ichUserId)
+  const darfHaken = darfAbhaken(unteraufgabe.assignee, ichUserId)
 
   if (fragt) {
     return (
@@ -319,7 +321,7 @@ function Unteraufgabenzeile({
     <li className={stile.eintrag}>
       <Checkbox
         checked={erledigt}
-        disabled={gesperrt || !darfAendern}
+        disabled={gesperrt || !darfHaken}
         onChange={(ereignis) => void haken(ereignis.target.checked)}
         label={unteraufgabe.titel}
       />
@@ -420,6 +422,7 @@ function Detail({
    * und nicht die Zuständigkeit selbst.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ich.userId)
+  const darfHaken = darfAbhaken(aufgabe.assignee, ich.userId)
 
   return (
     <>
@@ -457,7 +460,7 @@ function Detail({
         ) : istBlatt ? (
           <Checkbox
             checked={eigenesHaken}
-            disabled={aktionen.gesperrt || !darfAendern}
+            disabled={aktionen.gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label="Diese Aufgabe ist erledigt"
           />
@@ -475,7 +478,12 @@ function Detail({
           </p>
         )}
 
-        {darfAendern ? null : (
+        {darfAendern ? null : istFrei(aufgabe.assignee) ? (
+          <p className={stile.hinweis}>
+            Diese Aufgabe ist niemandem zugewiesen. Haken Sie sie ab, tragen Sie sich damit
+            ein. Zum Ändern übernehmen Sie sie weiter unten.
+          </p>
+        ) : (
           <p className={stile.hinweis}>
             Diese Aufgabe ist Ihnen nicht zugewiesen. Lesen können Sie alles; zum Ändern
             übernehmen Sie sie weiter unten.

@@ -151,6 +151,24 @@ export function darfBearbeiten(zuweisung: Zuweisung, userId: string): boolean {
 }
 
 /**
+ * Ob diese Person das Haekchen setzen darf (§7).
+ *
+ * Weiter als {@link darfBearbeiten}, und genau um einen Fall: die freie
+ * Aufgabe. Sie abzuhaken heisst "ich habe das gemacht", und das ist dieselbe
+ * Ansage wie "Übernehmen" -- nur nachtraeglich. Wer sie erst uebernehmen
+ * muesste, um sagen zu duerfen, dass er sie schon erledigt hat, macht zwei
+ * Handgriffe fuer eine Auskunft. Das Haken traegt die Uebernahme deshalb mit
+ * (siehe `useAufgaben.hakeAb`).
+ *
+ * Eine Aufgabe, die *jemand anderem* gehoert, bleibt gesperrt. Die Sperre ist
+ * dazu da, dass nicht zwei Menschen dieselbe Behoerde anrufen; sie beilaeufig
+ * zu uebergehen hiesse, sie abzuschaffen.
+ */
+export function darfAbhaken(zuweisung: Zuweisung, userId: string): boolean {
+  return istFrei(zuweisung) || darfBearbeiten(zuweisung, userId)
+}
+
+/**
  * Dieselbe Zuweisung mit einer Person mehr.
  *
  * Bei "Alle" bleibt alles, wie es ist: Dort sind bereits alle gemeint, und eine
