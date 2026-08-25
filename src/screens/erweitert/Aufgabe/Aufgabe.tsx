@@ -23,6 +23,10 @@ import { Card } from '../../../ui/Card/Card.tsx'
 import { Gruppe } from '../../../ui/Liste/Liste.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import {
+  GerichtNachschlagen,
+  istGerichtStelle,
+} from '../../shared/Gericht/GerichtNachschlagen.tsx'
+import {
   benenne,
   darfBearbeiten,
   type Zugewiesene,
@@ -152,7 +156,12 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
         )}
 
         {katalog.zustaendigeStelle === '' ? null : (
-          <Angabe was="Zuständige Stelle">{katalog.zustaendigeStelle}</Angabe>
+          <Angabe was="Zuständige Stelle">
+            <div>
+              <span>{katalog.zustaendigeStelle}</span>
+              {istGerichtStelle(katalog.zustaendigeStelle) ? <GerichtNachschlagen /> : null}
+            </div>
+          </Angabe>
         )}
 
         {dokumente.length === 0 ? null : (

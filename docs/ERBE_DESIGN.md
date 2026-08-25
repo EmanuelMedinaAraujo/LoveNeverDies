@@ -237,13 +237,15 @@ Drei Seiten brauchen das zuständige Nachlassgericht. Sie zeigen eine aufklappba
 **"Zuständige Stelle ermitteln"** mit der Frage nach dem letzten Wohnort und einem
 Eingabefeld für die Postleitzahl.
 
-**Die Suche ist noch keine.** Sie antwortet immer "Nachlassgericht München", und das steht
-sichtbar dabei. Ein Gerichtsname, der für jemanden in Hamburg schlicht falsch ist und
-unkommentiert dasteht, ist etwas, wonach jemand handelt.
+**Echte Suche nach deutscher 5-stelliger PLZ.** Die Suche greift auf den normalisierten
+Datensatz (`src/content/gerichte.json`, 611 Amts-/Nachlassgerichte für 10.813 PLZs) zu
+und liefert Name, Anschrift, Telefon, Fax, E-Mail und Website.
 
-Eingegebene Postleitzahl und Antwort wandern in die Notizen der erzeugten Aufgabe, damit
-die Eingabe nicht verloren ist, wenn die echte Suche nachkommt. Die echte Suche ist ein
-eigener Vorgang und als Issue #22 erfasst.
+Bei mehrdeutigen PLZs wird ein Hinweis mit Verweis auf die Ortsteile und das Justizportal
+angezeigt; bei Sonder-/Großempfänger-PLZs der Hinweis auf eine Wohnort-PLZ.
+
+Eingegebene Postleitzahl und die vollständigen Kontaktdaten des ermittelten Gerichts wandern
+in die Notizen der erzeugten Aufgabe (`K_p`), damit Angehörige die Stelle sofort zur Hand haben.
 
 ---
 

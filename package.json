@@ -23,6 +23,7 @@
     "test:e2e": "supabase db reset && node --env-file=.env.test node_modules/@playwright/test/cli.js test",
     "test:e2e:ui": "supabase db reset && node --env-file=.env.test node_modules/@playwright/test/cli.js test --ui",
     "icons": "node scripts/generate-icons.mjs",
+    "build:gerichte": "python scripts/build-gerichte.py",
     "import:content": "node build/import-content.ts"
   },
   "dependencies": {
