@@ -495,9 +495,9 @@ describe('Aufgaben aus dem Baum (§7)', () => {
 describe('Infoknoten (§5)', () => {
   it('klappt die Erläuterung an Ort und Stelle auf', async () => {
     const nutzer = userEvent.setup()
-    zeige('/erbe/fragebaum/n1', { pfad: ['n0', 'n1'] })
+    zeige('/erbe/fragebaum/n59', { pfad: ['n0', 'n50', 'n57', 'n58', 'n59'] })
 
-    const knopf = screen.getByRole('button', { name: /Was ist das Nachlassgericht/ })
+    const knopf = screen.getByRole('button', { name: /Was ist ein Erbschein/ })
 
     expect(knopf).toHaveAttribute('aria-expanded', 'false')
 
@@ -505,6 +505,12 @@ describe('Infoknoten (§5)', () => {
 
     expect(knopf).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText(/ergänzt/)).toBeInTheDocument()
+  })
+
+  it('zeigt auf Frage n1 kein Was ist das Nachlassgericht', () => {
+    zeige('/erbe/fragebaum/n1', { pfad: ['n0', 'n1'] })
+
+    expect(screen.queryByRole('button', { name: /Was ist das Nachlassgericht/ })).not.toBeInTheDocument()
   })
 })
 
