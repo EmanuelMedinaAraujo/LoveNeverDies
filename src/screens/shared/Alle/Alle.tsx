@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { useState, type FormEvent, type ReactNode } from 'react'
+import { Navigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -10,6 +10,7 @@ import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
 import { darfBearbeiten, istFrei, zuweisungText } from '../../../services/zuweisung.ts'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
@@ -152,7 +153,7 @@ function Aufgabenzeile({
 
   if (modus === 'aendern') {
     return (
-      <li className={stile.zeile}>
+      <Zeile className={stile.formularzeile}>
         <form className={stile.formular} onSubmit={(ereignis) => void speichern(ereignis)}>
           <div className={stile.feld}>
             <label htmlFor={`titel-${aufgabe.id}`}>Titel</label>
@@ -193,13 +194,13 @@ function Aufgabenzeile({
             </Button>
           </div>
         </form>
-      </li>
+      </Zeile>
     )
   }
 
   if (modus === 'freigeben') {
     return (
-      <li className={stile.zeile}>
+      <Zeile className={stile.formularzeile}>
         {/*
           §3.7: Freigeben wrappt den DEK von `K_p` auf `K_c`. Einen Weg zurück
           gibt es nicht: Der Fallschlüssel liegt bei allen, und was einmal
@@ -224,13 +225,13 @@ function Aufgabenzeile({
             Abbrechen
           </Button>
         </div>
-      </li>
+      </Zeile>
     )
   }
 
   if (modus === 'loeschen') {
     return (
-      <li className={stile.zeile}>
+      <Zeile className={stile.formularzeile}>
         {/*
           §5: Löschen gewinnt endgültig, die Datenbank weist eine Auferstehung
           ab. Das gehört vor die Aktion gesagt und nicht danach.
@@ -252,7 +253,7 @@ function Aufgabenzeile({
             Abbrechen
           </Button>
         </div>
-      </li>
+      </Zeile>
     )
   }
 
@@ -260,15 +261,42 @@ function Aufgabenzeile({
   const blockiert = blockiertVon.length > 0
 
   /*
-   * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Wer nicht darunter
-   * steht, sieht die Aufgabe vollständig (Titel, Frist, Stand) und findet
-   * statt der Schaltflächen den einen Weg, der ihm offensteht: sie übernehmen.
+   * "Bearbeiten darf nur, wem sie zugewiesen ist." Wer nicht darunter steht,
+   * sieht die Aufgabe vollständig und findet statt der Schaltflächen den einen
+   * Weg, der ihm offensteht: sie übernehmen.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ichUserId)
 
+  /*
+   * Was früher als vier eigene Absätze unter dem Titel stand, steht jetzt in
+   * einer Zeile nebeneinander. Die Beschreibung ist dabei ganz aus der Liste
+   * verschwunden: Sie ist ein ganzer Absatz Fließtext, sie steht im Detail,
+   * und in einer Liste von zwanzig Aufgaben macht sie aus jeder Zeile einen
+   * Block, durch den man scrollt, statt ihn zu lesen.
+   */
+  const meta: ReactNode[] = []
+
+  if (!istBlatt) {
+    meta.push(
+      <span key="stand">
+        {unteraufgaben.filter((eins) => eins.erledigt).length}/{unteraufgaben.length} erledigt
+      </span>,
+    )
+  }
+
+  meta.push(<span key="wer">{zuweisungText(aufgabe.assignee, ichUserId)}</span>)
+
+  if (blockiert) {
+    meta.push(
+      <span key="zuerst" className={stile.zuerst}>
+        Zuerst: {blockiertVon.map((offen) => offen.titel).join(', ')}
+      </span>,
+    )
+  }
+
   return (
-    <li className={[stile.zeile, blockiert ? stile.blockiert : null].filter(Boolean).join(' ')}>
-      <div className={stile.titelzeile}>
+    <Zeile className={blockiert ? stile.wartet : undefined}>
+      <div className={stile.spalte}>
         {istBlatt ? (
           <Checkbox
             checked={erledigt}
@@ -277,134 +305,105 @@ function Aufgabenzeile({
             label={aufgabe.titel}
           />
         ) : (
-          /*
-           * §7: Eine Aufgabe mit Unteraufgaben hat kein eigenes Häkchen. Statt
-           * eines Kästchens, das nichts speichert, steht hier der Stand ihrer
-           * Kinder, und abgehakt wird im Aufgabendetail, Kind für Kind.
-           */
-          <p className={stile.titel}>{aufgabe.titel}</p>
+          <p
+            className={[stile.titelohne, giltAlsErledigt ? stile.fertig : null]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            {aufgabe.titel}
+          </p>
         )}
 
-        {/*
-          §3.7: Eine private Aufgabe sieht sonst aus wie jede andere, und genau
-          das ist die Gefahr: Wer nicht sieht, dass die Geschwister sie nicht
-          sehen, schreibt dort etwas hinein, das er für geteilt hält, oder
-          umgekehrt. Der Hinweis steht deshalb im Titel und nicht bei den
-          Schaltflächen.
-        */}
-        {aufgabe.privat ? <Badge lage="hinweis">Nur für mich</Badge> : null}
+        <p className={stile.meta}>
+          {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
 
-        {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
-      </div>
+          {/*
+            §3.7: Eine private Aufgabe sieht sonst aus wie jede andere, und
+            genau das ist die Gefahr: Wer nicht sieht, dass die Geschwister sie
+            nicht sehen, schreibt dort etwas hinein, das er für geteilt hält.
+          */}
+          {aufgabe.privat ? <Badge lage="hinweis">Nur für mich</Badge> : null}
 
-      {istBlatt ? null : (
-        <p className={stile.beschreibung}>
-          {giltAlsErledigt
-            ? `Erledigt: alle ${unteraufgaben.length} Unteraufgaben sind abgehakt.`
-            : `${unteraufgaben.filter((unter) => unter.erledigt).length} von ${unteraufgaben.length} Unteraufgaben erledigt`}
+          {meta}
         </p>
-      )}
-
-      {/*
-        §7: "Blockierte Aufgaben erscheinen ausgegraut mit 'Zuerst: …'."
-        Ausgegraut ist die Zeile, gesperrt ist sie nicht: Die Abhängigkeit kommt
-        aus dem Katalog und ist ein Rat, kein Gesetz. Wer die Sache erledigt
-        hat, muss das eintragen können, ohne erst eine andere Aufgabe abhaken
-        zu müssen, die er gar nicht erledigt hat.
-      */}
-      {blockiert ? (
-        <p className={stile.hinweis}>
-          Zuerst: {blockiertVon.map((offen) => offen.titel).join(', ')}
-        </p>
-      ) : null}
-
-      {aufgabe.beschreibung === '' ? null : (
-        <p className={stile.beschreibung}>{aufgabe.beschreibung}</p>
-      )}
-
-      <p className={stile.hinweis}>Zuständig: {zuweisungText(aufgabe.assignee, ichUserId)}</p>
-
-      <div className={stile.aktionen}>
-        {/*
-          Der Weg ins ganzseitige Detail (§7). Der Titel geht zum Vorlesen mit,
-          aus demselben Grund wie bei den Schaltflächen daneben.
-        */}
-        <Link className={stile.detaillink} to={`/aufgabe/${aufgabe.id}`}>
-          Details
-          <span className="nur-vorlesen">: „{aufgabe.titel}"</span>
-        </Link>
 
         {/*
-          Jede Schaltfläche trägt den Titel zum Vorlesen mit. Ohne ihn hörte
-          eine blinde Person in einer Liste von zwanzig Aufgaben zwanzigmal
-          "Ändern" und wüsste nie, welche gemeint ist (§7).
+          Die Aktionen als Text und nicht als vier umrandete Kästen: In einer
+          Liste ist die Aufgabe die Sache, und die Schaltflächen sind das, was
+          man mit ihr tun kann. Jede trägt den Titel zum Vorlesen mit — ohne
+          ihn hörte eine blinde Person in einer Liste von zwanzig Aufgaben
+          zwanzigmal "Ändern" und wüsste nie, welche gemeint ist.
 
           Das Trennzeichen ist ein Doppelpunkt und kein Leerzeichen: Die
-          Berechnung des zugänglichen Namens schneidet den Rand jedes Textknotens
-          ab, ein führendes Leerzeichen fiele also weg und beide Teile klebten
-          aneinander.
+          Berechnung des zugänglichen Namens schneidet den Rand jedes
+          Textknotens ab, ein führendes Leerzeichen fiele also weg und beide
+          Teile klebten aneinander.
         */}
-        {darfAendern ? (
-          <>
+        <div className={stile.aktionen}>
+          {darfAendern ? (
+            <>
+              <Button
+                variante="text"
+                className={stile.leise}
+                onClick={beginneAendern}
+                vorleseText={`: „${aufgabe.titel}"`}
+              >
+                Ändern
+              </Button>
+              <Button
+                variante="text"
+                className={stile.leise}
+                onClick={() => setzeModus('loeschen')}
+                vorleseText={`: „${aufgabe.titel}"`}
+              >
+                Löschen
+              </Button>
+            </>
+          ) : (
             <Button
-              variante="sekundaer"
-              onClick={beginneAendern}
+              variante="text"
+              disabled={gesperrt}
+              onClick={aufUebernehmen}
               vorleseText={`: „${aufgabe.titel}"`}
             >
-              Ändern
+              Übernehmen
             </Button>
+          )}
+
+          {/*
+            §7: "Eine Reservierung ist von jedem wieder lösbar, nicht nur von
+            der reservierenden Person." In einer Familie fällt jemand aus, und
+            eine Aufgabe, die niemand mehr freigeben kann, blockiert eine
+            gesetzliche Frist.
+          */}
+          {istFrei(aufgabe.assignee) ? null : (
             <Button
-              variante="sekundaer"
-              onClick={() => setzeModus('loeschen')}
+              variante="text"
+              className={stile.leise}
+              disabled={gesperrt}
+              onClick={aufFreigeben}
               vorleseText={`: „${aufgabe.titel}"`}
             >
-              Löschen
+              Freigeben
             </Button>
-          </>
-        ) : (
-          <Button
-            disabled={gesperrt}
-            onClick={aufUebernehmen}
-            vorleseText={`: „${aufgabe.titel}"`}
-          >
-            Übernehmen
-          </Button>
-        )}
+          )}
 
-        {/*
-          §7: "Eine Reservierung ist von jedem wieder lösbar, nicht nur von der
-          reservierenden Person." In einer Familie fällt jemand aus, und eine
-          Aufgabe, die niemand mehr freigeben kann, blockiert eine gesetzliche
-          Frist.
-        */}
-        {istFrei(aufgabe.assignee) ? null : (
-          <Button
-            variante="sekundaer"
-            disabled={gesperrt}
-            onClick={aufFreigeben}
-            vorleseText={`: „${aufgabe.titel}"`}
-          >
-            Freigeben
-          </Button>
-        )}
-
-        {/*
-          §7: "genau eine Aktion 'Für alle sichtbar machen'". Sie steht bei der
-          Aufgabe und nicht in einem Menü darüber: Der Anlass ist eine einzelne
-          Aufgabe, die so weit gediehen ist, dass die anderen sie sehen dürfen.
-        */}
-        {aufgabe.privat ? (
-          <Button
-            variante="sekundaer"
-            disabled={gesperrt}
-            onClick={() => setzeModus('freigeben')}
-            vorleseText={`: „${aufgabe.titel}"`}
-          >
-            Für alle sichtbar machen
-          </Button>
-        ) : null}
+          {/* §3.7: "genau eine Aktion 'Für alle sichtbar machen'". */}
+          {aufgabe.privat ? (
+            <Button
+              variante="text"
+              disabled={gesperrt}
+              onClick={() => setzeModus('freigeben')}
+              vorleseText={`: „${aufgabe.titel}"`}
+            >
+              Für alle sichtbar machen
+            </Button>
+          ) : null}
+        </div>
       </div>
-    </li>
+
+      <Detailziel ziel={`/aufgabe/${aufgabe.id}`} titel={aufgabe.titel} />
+    </Zeile>
   )
 }
 
@@ -632,7 +631,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
                 </select>
               </div>
 
-              <ul className={stile.liste}>
+              <Liste>
                 {(sortierung === 'frist'
                   ? sortiereNachFrist(zustand.baum, fristbezug, heute)
                   : zustand.baum
@@ -655,7 +654,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
                     }
                   />
                 ))}
-              </ul>
+              </Liste>
             </>
           )}
 
@@ -698,10 +697,6 @@ export function Alle() {
     <main className={stile.seite}>
       <div className={stile.kopf}>
         <h1>Alle Aufgaben</h1>
-        <p className={stile.hinweis}>
-          <Link to="/">Zurück</Link> · <Link to="/erbe">Erbe & Tresor</Link> ·{' '}
-          <Link to="/profil">Profil</Link>
-        </p>
       </div>
 
       {zustand.status === 'fehler' ? (

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import stile from './KeinFall.module.css'
@@ -36,10 +36,6 @@ export function KeinFall() {
           </Button>
         </div>
       </Card>
-
-      <p className={stile.hinweis}>
-        <Link to="/profil">Profil und Geräte</Link>
-      </p>
     </main>
   )
 }

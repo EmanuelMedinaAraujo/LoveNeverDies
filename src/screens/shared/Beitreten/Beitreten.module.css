@@ -19,9 +19,12 @@
   color: var(--farbe-text-sekundaer);
 }
 
+/*
+ * Kartenueberschrift. Groesse aus der Skala (`h2`), Abstand aus dem Gap der
+ * Karte: Ein eigener `margin-bottom` addierte sich dazu.
+ */
 .abschnitt {
-  font-size: var(--dichte-schrift-gross);
-  margin-bottom: var(--dichte-abstand-klein);
+  margin: 0;
 }
 
 /*

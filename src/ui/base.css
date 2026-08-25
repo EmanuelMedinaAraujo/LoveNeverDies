@@ -26,12 +26,7 @@ body {
   min-height: 100svh;
   background: var(--farbe-hintergrund);
   color: var(--farbe-text);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  font-family: var(--typo-familie);
   font-size: var(--dichte-schrift);
   line-height: var(--dichte-zeilenhoehe);
   -webkit-font-smoothing: antialiased;
@@ -47,12 +42,26 @@ h1,
 h2,
 h3 {
   margin: 0;
-  line-height: 1.25;
+  line-height: var(--typo-zeile-titel);
+  letter-spacing: var(--typo-laufweite-titel);
   text-wrap: balance;
 }
 
 h1 {
   font-size: var(--dichte-schrift-gross);
+  font-weight: var(--typo-gewicht-titel);
+}
+
+h2 {
+  font-size: var(--dichte-schrift-mittel);
+  font-weight: var(--typo-gewicht-betont);
+  letter-spacing: 0;
+}
+
+h3 {
+  font-size: var(--dichte-schrift);
+  font-weight: var(--typo-gewicht-betont);
+  letter-spacing: 0;
 }
 
 p {
@@ -64,11 +73,34 @@ button {
   color: inherit;
 }
 
+/*
+ * Links tragen die Akzentfarbe, nicht das Browserblau. Das Standardblau ist
+ * die einzige Farbe auf diesen Screens, die zu nichts sonst gehoert, und §12
+ * kennt sie nicht (§7: nichts Dekoratives ohne Job — und nichts Farbiges ohne
+ * Herkunft).
+ */
+a {
+  color: var(--farbe-akzent);
+  text-underline-offset: 0.2em;
+}
+
 /* Sichtbarer Fokus, auch fuer Zeigergeraete. Ein unsichtbarer Fokus ist bei
    dieser Zielgruppe eine Sackgasse. */
 :focus-visible {
   outline: 0.1875rem solid var(--farbe-akzent);
   outline-offset: 0.125rem;
+}
+
+/*
+ * §7: Formularelemente uebernehmen Schrift und Radius aus den Tokens. Ohne das
+ * setzt jedes Betriebssystem seine eigene Schriftgroesse, und die
+ * Textskalierung des Browsers zieht sie nicht mit.
+ */
+input,
+select,
+textarea {
+  font-family: var(--typo-familie);
+  font-size: var(--dichte-schrift);
 }
 
 /*

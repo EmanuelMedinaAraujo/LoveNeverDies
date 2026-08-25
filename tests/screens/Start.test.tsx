@@ -161,14 +161,19 @@ describe('Start', () => {
     expect(screen.getByText('Hans Weber · Trauerfall seit 15. März 2024')).toBeVisible()
   })
 
-  it('führt zu allen Aufgaben und zum Profil', () => {
+  it('trägt keine eigene Navigationsreihe mehr (§7)', () => {
+    /*
+     * Navigation hat einen Ort, und das ist die untere Leiste. Vorher stand
+     * hier eine Reihe Textlinks, in Erbe eine zweite mit anderer Reihenfolge
+     * und in Alle eine dritte mit anderen Wörtern. Was die Leiste kann, prüft
+     * `tests/ui/Leiste.test.tsx`; hier steht, dass dieser Screen es nicht mehr
+     * zusätzlich tut.
+     */
     rendereMitProvidern(<Start />)
 
-    expect(screen.getByRole('link', { name: 'Alle Aufgaben' })).toHaveAttribute('href', '/alle')
-    expect(screen.getByRole('link', { name: 'Profil und Geräte' })).toHaveAttribute(
-      'href',
-      '/profil',
-    )
+    for (const name of ['Alle Aufgaben', 'Erbe & Tresor', 'Profil und Geräte', 'Profil']) {
+      expect(screen.queryByRole('link', { name })).toBeNull()
+    }
   })
 
   it('zeigt ausschließlich die eigenen Aufgaben (§7)', () => {
@@ -196,7 +201,7 @@ describe('Start', () => {
     rendereMitProvidern(<Start />)
 
     expect(screen.getByText('Trauerfeier planen')).toBeVisible()
-    expect(screen.getByText('Zuständig: Alle')).toBeVisible()
+    expect(screen.getByText('Alle')).toBeVisible()
   })
 
   it('zeigt auch eine Aufgabe, die neben anderen mir gehört', () => {
@@ -205,7 +210,7 @@ describe('Start', () => {
     rendereMitProvidern(<Start />)
 
     expect(screen.getByText('Konto kündigen')).toBeVisible()
-    expect(screen.getByText(`Zuständig: Bert Müller und Sie`)).toBeVisible()
+    expect(screen.getByText('Bert Müller und Sie')).toBeVisible()
   })
 
   it('zeigt eine mir zugewiesene Unteraufgabe mit ihrer Elternaufgabe', () => {
@@ -224,7 +229,7 @@ describe('Start', () => {
     rendereMitProvidern(<Start />)
 
     expect(screen.getByText('Urkunden bestellen')).toBeVisible()
-    expect(screen.getByText('Unteraufgabe von „Sterbefall anzeigen“')).toBeVisible()
+    expect(screen.getByText('Teil von „Sterbefall anzeigen“')).toBeVisible()
   })
 
   it('sagt es, wenn gerade nichts zugewiesen ist', () => {
@@ -332,25 +337,18 @@ describe('Fallsperre (§7)', () => {
     )
   })
 
-  it('zeigt den Freigabe-Hinweis, sobald ein Fall gesperrt ist', () => {
+  it('zeigt den Freigabe-Hinweis nicht mehr selbst (§3.6)', () => {
     /*
-     * §3.6 verlangt den Badge in der unteren Leiste. Die gibt es noch nicht;
-     * er steht deshalb am Profil-Weg, der ihren Platz hält. Ablesbar ist er
-     * nur auf dem wartenden Gerät: Die Wraps fremder Geräte verbirgt die
-     * RLS (§4). Der aktive Fall ist hier lesbar: Der Hinweis hängt an der
-     * Liste, nicht daran, welchen Fall man gerade ansieht.
+     * §3.6 verlangt den Badge in der unteren Leiste, und dort steht er jetzt:
+     * am Profil-Tab, wo die Freigabe geschieht. Zwei Orte für dieselbe
+     * Auskunft wären zwei Orte, an denen sie auseinanderlaufen kann. Dass er
+     * dort erscheint, prüft `tests/app/Rahmen.test.tsx`.
      */
     const gesperrt = { zustand: 'gesperrt' as const, id: 'fall-2', grund: 'Kein Schlüssel.' }
     useCase.mockReturnValue(
       falldaten({ zustand: { status: 'bereit', faelle: [LESBAR, gesperrt], aktiver: LESBAR } }),
     )
 
-    rendereMitProvidern(<Start />)
-
-    expect(screen.getByText('Freigabe nötig')).toBeVisible()
-  })
-
-  it('zeigt keinen Freigabe-Hinweis, solange jeder Fall lesbar ist', () => {
     rendereMitProvidern(<Start />)
 
     expect(screen.queryByText('Freigabe nötig')).toBeNull()

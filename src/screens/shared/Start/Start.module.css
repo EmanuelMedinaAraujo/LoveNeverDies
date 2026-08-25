@@ -15,56 +15,77 @@
   gap: var(--dichte-abstand-klein);
 }
 
-.liste {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dichte-abstand-klein);
+/*
+ * Die Textspalte einer Aufgabenzeile: Titel, darunter die eine Metazeile.
+ * Frueher standen dort bis zu vier Absaetze untereinander, und drei Aufgaben
+ * fuellten einen Bildschirm.
+ */
+.spalte {
+  /* Kaestchenbreite plus Abstand: die Kante, an der jeder Titel beginnt. */
+  --einzug: calc(var(--dichte-schrift-gross) + var(--dichte-abstand-klein));
 
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
 }
 
-.zeile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dichte-abstand-klein);
-
-  padding: var(--dichte-abstand);
-  border: 1px solid var(--farbe-kartenrand);
-  border-radius: var(--dichte-radius);
-  background: var(--farbe-karte);
+/*
+ * Der Titel einer Aufgabe mit Unteraufgaben. Sie hat kein eigenes Haekchen,
+ * ruecht aber genauso weit ein wie die Titel mit: Sonst stuenden in einer
+ * Liste zwei Textkanten uebereinander, und sie saehe aus wie zwei Listen.
+ */
+.titelohne {
+  padding-block: var(--raster-1);
+  padding-inline-start: var(--einzug);
+  font-size: var(--dichte-schrift);
+  line-height: var(--dichte-zeilenhoehe);
 }
 
-/* Titel und Fristbadge nebeneinander, mit Umbruch bei grosser Schrift (§7). */
-.titelzeile {
+/*
+ * Sind alle Unteraufgaben abgehakt, gilt die Elternaufgabe als erledigt
+ * (§7). Sie hat kein Kaestchen, das das zeigen koennte, also zeigt es der
+ * Titel — genauso wie bei den Blaettern daneben.
+ */
+.fertig {
+  color: var(--farbe-text-sekundaer);
+  text-decoration: line-through;
+}
+
+/*
+ * Eine Aufgabe, die auf eine andere wartet. Nur die Textfarbe wird gedaempft:
+ * eine eigene Flaeche zerschnitte die Liste in Streifen, und `opacity` zoege
+ * den Kontrast unter AA. Gesperrt ist sie nicht — die Abhaengigkeit kommt aus
+ * dem Katalog und ist ein Rat, kein Gesetz (§7).
+ */
+.wartet :global(label) span,
+.wartet .titelohne {
+  color: var(--farbe-text-sekundaer);
+}
+
+.meta {
+  padding-inline-start: var(--einzug);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--dichte-abstand-klein);
+  gap: var(--raster-1) var(--raster-2);
+
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  line-height: 1.4;
 }
 
-/* Der Titel einer Aufgabe mit Unteraufgaben: kein eigenes Haekchen (§7). */
-.titel {
-  font-weight: 600;
+/*
+ * Der Grund, warum eine Aufgabe wartet. Er traegt einen Aufgabentitel in sich
+ * und wird dadurch lang; abgeschnitten stuende dort aber die halbe Auskunft,
+ * und gerade die Haelfte, die den Titel unterscheidet. Also umbrechen.
+ */
+.zuerst {
+  flex-basis: 100%;
 }
 
 .hinweis {
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
-}
-
-/*
- * §7: Blockierte Aufgaben erscheinen ausgegraut. Nur die Farbe wird gedaempft,
- * keine `opacity`, denn die zoege den Kontrast des Textes unter AA (§7).
- */
-.blockiert {
-  background: var(--farbe-hintergrund);
-  color: var(--farbe-text-sekundaer);
-}
-
-.detaillink {
-  align-self: flex-start;
-  color: var(--farbe-akzent);
 }
