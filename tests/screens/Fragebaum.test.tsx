@@ -215,6 +215,20 @@ describe('Einstieg und Navigation (§3)', () => {
     expect(screen.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeInTheDocument()
   })
 
+  it('schreibt bei der gesetzlichen Erbfolge das s ohne Leerzeichen direkt an den Namen des Verstorbenen', async () => {
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum')
+
+    // n0: Sind Sie Erbe? -> "Ich weiß es nicht" (n57)
+    await nutzer.click(screen.getByRole('button', { name: 'Ich weiß es nicht' }))
+    // n57: Gibt es ein Testament? -> "Nein" (n65)
+    await nutzer.click(screen.getByRole('button', { name: 'Nein' }))
+
+    expect(
+      screen.getByRole('heading', { name: 'Ich bin Hans Webers …' }),
+    ).toBeInTheDocument()
+  })
+
   it('beginnt von vorn bei einem Knoten, den es nicht gibt', () => {
     zeige('/erbe/fragebaum/gibt-es-nicht', { pfad: ['gibt-es-nicht'] })
 
