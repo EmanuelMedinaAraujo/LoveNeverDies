@@ -618,7 +618,7 @@ describe('Zuständigkeit (§7)', () => {
 
     zeigeDetail()
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Alle' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Allen' }))
 
     expect(daten.weiseZu).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), ALLE)
   })
@@ -633,7 +633,7 @@ describe('Zuständigkeit (§7)', () => {
 
     zeigeDetail()
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Sie' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Ihnen' }))
 
     expect(daten.weiseZu).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'item-1' }),
@@ -646,8 +646,8 @@ describe('Zuständigkeit (§7)', () => {
 
     zeigeDetail()
 
-    expect(screen.getByRole('checkbox', { name: 'Alle' })).toBeChecked()
-    expect(screen.getByRole('checkbox', { name: 'Sie' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Allen' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Ihnen' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Weiteres Mitglied' })).toBeChecked()
   })
 

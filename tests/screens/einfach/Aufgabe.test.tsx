@@ -133,7 +133,7 @@ describe('Aufgabe (einfach)', () => {
     // eine Aufgabe oder gibt sie ab.
     mitDetail([aufgabe({ katalog: herkunft() })])
 
-    expect(screen.queryByRole('checkbox', { name: 'Alle' })).toBeNull()
+    expect(screen.queryByRole('checkbox', { name: 'Allen' })).toBeNull()
     expect(screen.queryByRole('checkbox', { name: 'Bert Müller' })).toBeNull()
   })
 
