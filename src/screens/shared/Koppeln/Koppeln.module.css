@@ -19,9 +19,12 @@
   color: var(--farbe-text-sekundaer);
 }
 
+/*
+ * Kartenueberschrift. Groesse aus der Skala (`h2`), Abstand aus dem Gap der
+ * Karte: Ein eigener `margin-bottom` addierte sich dazu.
+ */
 .abschnitt {
-  font-size: var(--dichte-schrift-gross);
-  margin-bottom: var(--dichte-abstand-klein);
+  margin: 0;
 }
 
 .formular {
@@ -39,7 +42,7 @@
 .eingabe {
   width: 100%;
   padding: var(--dichte-abstand-klein);
-  border: 1px solid var(--farbe-kartenrand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
   background: var(--farbe-hintergrund);
   color: var(--farbe-text);

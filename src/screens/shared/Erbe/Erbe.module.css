@@ -26,8 +26,11 @@
   gap: var(--dichte-abstand);
 }
 
+/*
+ * Kartenueberschrift. Groesse aus der Skala (`h2`), Abstand aus dem Gap der
+ * Karte: Ein eigener `margin-bottom` addierte sich dazu.
+ */
 .abschnitt {
-  font-size: var(--dichte-schrift-gross);
   margin: 0;
 }
 
@@ -39,7 +42,7 @@
 .warnung {
   color: #8a1c13;
   font-size: var(--dichte-schrift-klein);
-  font-weight: 500;
+  font-weight: var(--typo-gewicht-betont);
 }
 
 .liste {
@@ -53,7 +56,7 @@
 
 .item {
   padding: var(--dichte-abstand-klein);
-  border: 1px solid var(--farbe-kartenrand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
   background: var(--farbe-hintergrund);
   display: flex;
@@ -68,7 +71,7 @@
 }
 
 .itemTitel {
-  font-weight: 600;
+  font-weight: var(--typo-gewicht-betont);
   margin: 0;
 }
 
@@ -95,7 +98,7 @@
 .eingabe {
   width: 100%;
   padding: var(--dichte-abstand-klein);
-  border: 1px solid var(--farbe-kartenrand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
   background: var(--farbe-hintergrund);
   color: var(--farbe-text);
@@ -107,7 +110,7 @@
   width: 100%;
   min-height: 5rem;
   padding: var(--dichte-abstand-klein);
-  border: 1px solid var(--farbe-kartenrand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
   background: var(--farbe-hintergrund);
   color: var(--farbe-text);

@@ -1,11 +1,10 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/authProvider.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
-import { Card } from '../../../ui/Card/Card.tsx'
+import { Gruppe, Liste, Navizeile, Zeile } from '../../../ui/Liste/Liste.tsx'
 import { Geraeteliste } from './Geraeteliste.tsx'
 import stile from './Profil.module.css'
 
@@ -14,8 +13,14 @@ import stile from './Profil.module.css'
  *
  * Der Tab trägt laut §7 Name, Angehörige, Fallwechsel, Geräte, Textgröße,
  * Darstellung und "Fall verlassen". In diesem Stand gibt es davon Name, Geräte
- * und die beiden Kopplungswege aus §6. Alles Weitere setzt Screens voraus, die
- * es noch nicht gibt.
+ * und die beiden Kopplungswege aus §6.
+ *
+ * Der Screen ist eine Einstellungsliste und sieht auch so aus: Abschnitte mit
+ * kleiner Überschrift, darin Zeilen, darunter höchstens ein Satz. Vorher war
+ * jeder Abschnitt eine eigene weiße Karte mit einem Absatz Fließtext darin,
+ * und der Screen war eine Kolonne aus fünf Kästen, in der die eigentlichen
+ * Wege — einladen, freischalten, umbenennen — zwischen den Erklärungen
+ * untergingen.
  *
  * Profil liegt in `screens/shared`, nicht doppelt in `senior` und `advanced`:
  * Hier stehen die unumkehrbaren Abläufe, und ein zweiter Bestätigungsdialog,
@@ -37,45 +42,52 @@ export function Profil() {
   const gesperrte = faelle.filter((eintrag) => eintrag.zustand === 'gesperrt').length
   const kannTeilen = faelle.some((eintrag) => eintrag.zustand === 'lesbar')
 
-  const istVersiegelterVorsorgePreparer =
+  const istVorsorge =
     fall.status === 'bereit' &&
     fall.aktiver.zustand === 'lesbar' &&
-    fall.aktiver.status === 'vorsorge' &&
+    fall.aktiver.status === 'vorsorge'
+
+  const istVersiegelterVorsorgePreparer =
+    istVorsorge &&
+    fall.status === 'bereit' &&
+    fall.aktiver.zustand === 'lesbar' &&
     fall.aktiver.vaultCommitment !== null &&
     benutzer !== null &&
     fall.aktiver.preparerId === benutzer.id
 
   return (
     <main className={stile.seite}>
-      <div className={stile.kopf}>
-        <h1>Profil</h1>
-        <Link className={stile.zurueck} to="/">
-          Zurück
-        </Link>
-      </div>
+      <h1>Profil</h1>
 
       {benutzer === null ? null : (
-        <Card>
-          <h2 className={stile.abschnitt}>Sie</h2>
-          <p className={stile.name}>{benutzer.anzeigename}</p>
-          {benutzer.email === null ? null : (
-            <p className={stile.hinweis}>{benutzer.email}</p>
-          )}
-        </Card>
+        <Gruppe titel="Sie">
+          <Liste>
+            <Zeile>
+              {/*
+                Name und E-Mail sind bei einer Anmeldung ohne Profilnamen
+                dasselbe. Dann steht die Zeile einmal da und nicht zweimal.
+              */}
+              <div className={stile.wert}>
+                <span>{benutzer.anzeigename}</span>
+                {benutzer.email === null || benutzer.email === benutzer.anzeigename ? null : (
+                  <span className={stile.meta}>{benutzer.email}</span>
+                )}
+              </div>
+            </Zeile>
+          </Liste>
+        </Gruppe>
       )}
 
       {fuerWen === null ? null : (
-        <Card>
-          <h2 className={stile.abschnitt}>Für wen?</h2>
-          <p className={stile.name}>{fuerWen}</p>
-          {fall.status === 'bereit' &&
-          fall.aktiver.zustand === 'lesbar' &&
-          fall.aktiver.status === 'vorsorge' ? (
-            <p className={stile.hinweis}>
-              Dies ist ein Vorsorgefall. <Link to="/erbe">Zum Nachlass-Tresor</Link>
-            </p>
-          ) : null}
-        </Card>
+        <Gruppe titel="Fall">
+          <Liste>
+            <Zeile>
+              <span className={stile.etikett}>Für wen?</span>
+              <span className={stile.rechts}>{fuerWen}</span>
+            </Zeile>
+            {istVorsorge ? <Navizeile titel="Nachlass-Tresor" ziel="/erbe" /> : null}
+          </Liste>
+        </Gruppe>
       )}
 
       {/*
@@ -84,110 +96,107 @@ export function Profil() {
         Die einzige Bedingung ist, dass dieses Gerät den Fall überhaupt lesen
         kann: Man kann nur weitergeben, was man selbst hat (§3.6).
       */}
-      <Card>
-        <h2 className={stile.abschnitt}>Angehörige</h2>
-        <p className={stile.hinweis}>
-          Wer dazukommt, meldet sich zuerst selbst an und nennt Ihnen einen Kopplungscode. Sie geben
-          ihn hier ein, sehen den Namen und einen Prüfcode — und vergleichen ihn am Telefon, bevor
-          Sie bestätigen.
-        </p>
-        {kannTeilen ? (
-          <p className={stile.hinweis}>
-            <Link to="/koppeln">Angehörige einladen</Link>
-          </p>
-        ) : (
-          <p className={stile.hinweis}>
-            Solange dieses Gerät keinen Fall lesen kann, lässt sich niemand hinzufügen.
-          </p>
-        )}
-      </Card>
+      <Gruppe
+        titel="Angehörige"
+        fussnote={
+          kannTeilen
+            ? 'Wer dazukommt, nennt Ihnen einen Kopplungscode. Den Prüfcode vergleichen Sie am Telefon, bevor Sie bestätigen.'
+            : 'Solange dieses Gerät keinen Fall lesen kann, lässt sich niemand hinzufügen.'
+        }
+      >
+        <Liste>
+          {kannTeilen ? (
+            <Navizeile titel="Angehörige einladen" ziel="/koppeln" />
+          ) : (
+            <Zeile>
+              <span className={stile.aus}>Angehörige einladen</span>
+            </Zeile>
+          )}
+        </Liste>
+      </Gruppe>
 
-      <Card>
-        <div className={stile.geraetKopf}>
-          <h2 className={stile.abschnitt}>Geräte</h2>
-          {gesperrte > 0 ? <Badge lage="hinweis">Freigabe nötig</Badge> : null}
-        </div>
-        <p className={stile.hinweis}>
-          Jedes Gerät hat einen eigenen Schlüssel. Der Prüfcode gehört dazu; Sie vergleichen ihn,
-          wenn Sie ein weiteres Gerät oder eine weitere Person freigeben.
-        </p>
+      <Gruppe
+        titel="Geräte"
+        neben={gesperrte > 0 ? <Badge lage="hinweis">Freigabe nötig</Badge> : null}
+        fussnote="Jedes Gerät hat einen eigenen Schlüssel. Den Prüfcode vergleichen Sie beim Freigeben."
+      >
+        <Liste>
+          <Geraeteliste />
 
-        {/*
-          Beide Richtungen stehen nebeneinander, weil dasselbe Gerät je nach
-          Lage in beiden Rollen steckt: Es gibt ein anderes frei, oder es wartet
-          selbst auf seine Freigabe (§3.6).
-        */}
-        <p className={stile.hinweis}>
-          <Link to="/geraet-freischalten">Dieses Gerät freischalten lassen</Link>
-        </p>
-        {kannTeilen ? (
-          <p className={stile.hinweis}>
-            <Link to="/koppeln">Ein weiteres Gerät freigeben</Link>
-          </p>
-        ) : null}
-
-        <Geraeteliste />
-      </Card>
+          {/*
+            Beide Richtungen stehen nebeneinander, weil dasselbe Gerät je nach
+            Lage in beiden Rollen steckt: Es gibt ein anderes frei, oder es
+            wartet selbst auf seine Freigabe (§3.6).
+          */}
+          <Navizeile titel="Dieses Gerät freischalten lassen" ziel="/geraet-freischalten" />
+          {kannTeilen ? (
+            <Navizeile titel="Ein weiteres Gerät freigeben" ziel="/koppeln" />
+          ) : null}
+        </Liste>
+      </Gruppe>
 
       {fall.status === 'bereit' && fall.aktiver.zustand === 'lesbar' ? (
-        <Card>
-          <h2 className={stile.abschnitt}>Fall verlassen</h2>
-          {istVersiegelterVorsorgePreparer ? (
-            <p className={stile.hinweis}>
-              Als Ersteller dieses versiegelten Vorsorgefalls können Sie die Mitgliedschaft nicht
-              verlassen. Sie können stattdessen den gesamten Vorsorgefall im Tab Erbe löschen.
-            </p>
-          ) : bestaetigung ? (
-            <div className={stile.umbenennen}>
-              <p className={stile.hinweis}>
-                Möchten Sie den Fall für „{fuerWen}“ wirklich verlassen? Sie können danach nicht
-                mehr auf die Aufgaben und Daten dieses Falls zugreifen.
-              </p>
-              {fehler !== null ? (
-                <p className={stile.hinweis} role="alert">
-                  {fehler}
-                </p>
-              ) : null}
-              <div className={stile.knoepfe}>
-                <Button
-                  variante="primaer"
-                  disabled={wirdVerlassen}
-                  onClick={async () => {
-                    try {
-                      setzeWirdVerlassen(true)
-                      setzeFehler(null)
-                      await verlasseFall(fall.aktiver.id)
+        <Gruppe
+          fussnote={
+            istVersiegelterVorsorgePreparer
+              ? 'Als Ersteller dieses versiegelten Vorsorgefalls können Sie ihn nicht verlassen. Löschen können Sie ihn im Tab Erbe.'
+              : 'Danach haben Sie keinen Zugriff mehr auf die Aufgaben und Daten dieses Falls.'
+          }
+        >
+          <Liste>
+            {istVersiegelterVorsorgePreparer ? (
+              <Zeile>
+                <span className={stile.aus}>Fall verlassen</span>
+              </Zeile>
+            ) : bestaetigung ? (
+              <Zeile className={stile.frage}>
+                <p>Den Fall für „{fuerWen}“ wirklich verlassen?</p>
+                {fehler === null ? null : (
+                  <p className={stile.meta} role="alert">
+                    {fehler}
+                  </p>
+                )}
+                <div className={stile.knoepfe}>
+                  <Button
+                    variante="primaer"
+                    disabled={wirdVerlassen}
+                    onClick={async () => {
+                      try {
+                        setzeWirdVerlassen(true)
+                        setzeFehler(null)
+                        await verlasseFall(fall.aktiver.id)
+                        setzeBestaetigung(false)
+                      } catch (err) {
+                        setzeFehler(alsNachricht(err))
+                      } finally {
+                        setzeWirdVerlassen(false)
+                      }
+                    }}
+                  >
+                    {wirdVerlassen ? 'Wird verlassen…' : 'Ja, Fall verlassen'}
+                  </Button>
+                  <Button
+                    variante="sekundaer"
+                    disabled={wirdVerlassen}
+                    onClick={() => {
                       setzeBestaetigung(false)
-                    } catch (err) {
-                      setzeFehler(alsNachricht(err))
-                    } finally {
-                      setzeWirdVerlassen(false)
-                    }
-                  }}
-                >
-                  {wirdVerlassen ? 'Wird verlassen…' : 'Ja, Fall verlassen'}
-                </Button>
+                      setzeFehler(null)
+                    }}
+                  >
+                    Abbrechen
+                  </Button>
+                </div>
+              </Zeile>
+            ) : (
+              <Zeile>
+                {/*
+                  Die einzige Aktion in dieser App, die etwas wegnimmt. Sie
+                  sieht deshalb anders aus als die Wege daneben — nicht lauter,
+                  aber unverwechselbar.
+                */}
                 <Button
-                  variante="sekundaer"
-                  disabled={wirdVerlassen}
-                  onClick={() => {
-                    setzeBestaetigung(false)
-                    setzeFehler(null)
-                  }}
-                >
-                  Abbrechen
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className={stile.hinweis}>
-                Wenn Sie diesen Fall verlassen, verlieren Sie den Zugriff auf alle Aufgaben und
-                Daten dieses Falls.
-              </p>
-              <div className={stile.knoepfe}>
-                <Button
-                  variante="sekundaer"
+                  variante="text"
+                  className={stile.gefahr}
                   onClick={() => {
                     setzeBestaetigung(true)
                     setzeFehler(null)
@@ -195,10 +204,10 @@ export function Profil() {
                 >
                   Fall verlassen
                 </Button>
-              </div>
-            </>
-          )}
-        </Card>
+              </Zeile>
+            )}
+          </Liste>
+        </Gruppe>
       ) : null}
     </main>
   )

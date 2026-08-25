@@ -1,0 +1,162 @@
+/*
+ * Untere Leiste (DESIGN.md §7). Alle Masse aus den Tokens.
+ *
+ * Die Leiste ist eine iOS-Tableiste: Milchglas ueber dem laufenden Inhalt,
+ * grosses Symbol ueber kleinem Wort, und der aktive Tab wechselt nur die Farbe
+ * — keine Flaeche, keine Pille, keine Marke. Das ist die eine Bewegung, die
+ * iOS macht, und mehr braucht eine Leiste mit vier Plaetzen nicht.
+ */
+
+.leiste {
+  position: fixed;
+  inset: auto 0 0 0;
+  z-index: 20;
+
+  /*
+   * Der Inhalt laeuft sichtbar unter der Leiste durch. Genau das ist der
+   * Effekt: Die Leiste sagt, dass die Liste weitergeht.
+   */
+  background: color-mix(in srgb, var(--farbe-karte) 72%, transparent);
+
+  /*
+   * Die Saettigung ist der Teil, der aus Unschaerfe Milchglas macht. Ohne sie
+   * bleibt von einer gruenen Schaltflaeche unter der Leiste nur ein Grau, und
+   * die Leiste sieht aus wie eine gewoehnliche Flaeche, die zufaellig etwas
+   * durchscheinen laesst.
+   *
+   * Der Wert steht als eigene Eigenschaft da, und das ist kein Geschmack:
+   * Lightning CSS nimmt beim Minifizieren die Leerstelle zwischen zwei
+   * Filterfunktionen heraus. Aus `saturate(180%) blur(20px)` wird
+   * `saturate(180%)blur(20px)`, das ist ungueltig, und die Regel faellt
+   * lautlos weg. In einer Custom Property bleibt die Leerstelle stehen; sie
+   * wird erst im Browser aufgeloest.
+   *
+   * Kein `-webkit-`-Zwilling von Hand: Steht er da, gibt der Minifier nur noch
+   * ihn aus, und Chrome kennt den Alias nicht. Ohne ihn setzt er beide Formen
+   * selbst.
+   */
+  --glas: saturate(180%) blur(20px);
+  backdrop-filter: var(--glas);
+
+  /* Eine halbe Haarlinie. Sie trennt, ohne einen Rahmen zu behaupten. */
+  border-top: 0.03125rem solid color-mix(in srgb, var(--farbe-text) 20%, transparent);
+
+  /* §7: Die Leiste sitzt auch ueber dem Home-Indicator richtig. */
+  padding-bottom: env(safe-area-inset-bottom, 0rem);
+}
+
+.tabs {
+  display: flex;
+  margin: 0 auto;
+  padding: 0;
+  max-width: 32rem;
+  list-style: none;
+}
+
+.zelle {
+  display: flex;
+  flex: 1 1 0;
+  /* Vier gleich breite Zellen, auch wenn „Profil" laenger ist als „Erbe". */
+  min-width: 0;
+}
+
+.tab {
+  position: relative;
+
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+
+  /* §7: Touch-Ziele ab 44 × 44 px. Die ganze Zelle ist die Trefferflaeche. */
+  min-height: max(var(--ziel-mindestmass), var(--dichte-leiste-hoehe));
+  padding: var(--raster-1);
+
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-etikett);
+  font-weight: var(--typo-gewicht-text);
+  line-height: 1.2;
+  text-decoration: none;
+
+  transition: color 120ms ease-out;
+}
+
+/* Der Fokusring gehoert nach innen, sonst schneidet ihn die Kante der Leiste ab. */
+.tab:focus-visible {
+  outline-offset: -0.25rem;
+  border-radius: var(--radius-1);
+}
+
+.symbol {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* Grosses Symbol, kleines Wort: die Gewichtung, die iOS seit je setzt. */
+  font-size: calc(var(--dichte-schrift) * 1.15);
+
+  color: var(--farbe-icon-inaktiv);
+}
+
+.beschriftung {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.aktiv {
+  color: var(--farbe-akzent);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.aktiv .symbol {
+  color: var(--farbe-akzent);
+}
+
+/*
+ * Der aktive Tab bekommt keine Flaeche, sondern ein gefuelltes und etwas
+ * kraeftigeres Symbol. Gefuellt und verstaerkt wird die vorhandene Kontur,
+ * damit daraus kein zweiter Satz Pfade wird. Die Strichstaerke schlaegt dabei
+ * das Attribut am `svg`.
+ */
+.aktiv .symbol svg {
+  fill: currentColor;
+  fill-opacity: 0.18;
+  stroke-width: 2.25;
+}
+
+/*
+ * §3.6: Wartet ein Geraet auf seine Freigabe, traegt der Profil-Tab den
+ * Hinweis. Ein Punkt und kein Wort: In eine Zelle von 98 px passt „Freigabe
+ * noetig" nicht, und abgeschnitten stuende dort etwas anderes. Vorgelesen wird
+ * der ganze Satz, der Punkt ist die Abkuerzung fuer das Auge.
+ */
+.punkt {
+  position: absolute;
+  top: 0.375rem;
+  left: 50%;
+  translate: 0.5rem 0;
+
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: var(--radius-voll);
+  background: var(--farbe-akzent);
+  box-shadow: 0 0 0 0.125rem var(--farbe-karte);
+}
+
+/*
+ * Ohne Fall fuehren „Erbe" und „Alle" nirgendwohin (§7). Gedaempft statt
+ * entfernt: Die Leiste behaelt ihre vier Plaetze, damit niemand am Telefon eine
+ * andere Leiste beschreibt als die, vor der er sitzt.
+ */
+.stumm {
+  color: color-mix(in srgb, var(--farbe-icon-inaktiv) 55%, var(--farbe-karte));
+  cursor: default;
+}
+
+.stumm .symbol {
+  color: inherit;
+}

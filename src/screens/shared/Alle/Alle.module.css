@@ -30,7 +30,7 @@
 .eingabe {
   width: 100%;
   padding: var(--dichte-abstand-klein);
-  border: 1px solid var(--farbe-kartenrand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
   background: var(--farbe-hintergrund);
   color: var(--farbe-text);
@@ -38,75 +38,140 @@
   font-size: var(--dichte-schrift);
 }
 
-.liste {
-  display: flex;
+/*
+ * Eine Zeile, die gerade ein Formular oder eine Rueckfrage traegt, steht
+ * untereinander statt nebeneinander und bekommt wieder Luft: Sie ist in diesem
+ * Moment kein Listeneintrag mehr, sondern das, worauf man antwortet.
+ */
+.formularzeile {
   flex-direction: column;
+  align-items: stretch;
   gap: var(--dichte-abstand-klein);
-
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  padding-block: var(--dichte-abstand);
 }
 
-.zeile {
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+.feld {
   display: flex;
   flex-direction: column;
   gap: var(--dichte-abstand-klein);
+}
 
-  padding: var(--dichte-abstand);
-  border: 1px solid var(--farbe-kartenrand);
+.eingabe {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
-  background: var(--farbe-karte);
-}
-
-.beschreibung {
-  color: var(--farbe-text-sekundaer);
-  font-size: var(--dichte-schrift-klein);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
 }
 
 /*
- * Die Schaltflaechen einer Zeile stehen nebeneinander, brechen aber um, statt
- * bei grosser Textskalierung aus der Karte zu laufen (§7).
+ * Die Textspalte einer Aufgabenzeile: Titel, eine Metazeile, die Aktionen.
  */
-.aktionen {
+.spalte {
+  /* Kaestchenbreite plus Abstand: die Kante, an der jeder Titel beginnt. */
+  --einzug: calc(var(--dichte-schrift-gross) + var(--dichte-abstand-klein));
+
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
+}
+
+/*
+ * Der Titel einer Aufgabe mit Unteraufgaben. Sie hat kein eigenes Haekchen
+ * (§7), ruecht aber genauso weit ein wie die Titel mit: Sonst stuenden in
+ * einer Liste zwei Textkanten uebereinander.
+ */
+.titelohne {
+  padding-block: var(--raster-1);
+  padding-inline-start: var(--einzug);
+  font-size: var(--dichte-schrift);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/*
+ * Sind alle Unteraufgaben abgehakt, gilt die Elternaufgabe als erledigt (§7).
+ * Sie hat kein Kaestchen, das das zeigen koennte, also zeigt es der Titel.
+ */
+.fertig {
+  color: var(--farbe-text-sekundaer);
+  text-decoration: line-through;
+}
+
+/*
+ * Eine Aufgabe, die auf eine andere wartet. Nur die Textfarbe wird gedaempft:
+ * eine eigene Flaeche zerschnitte die Liste in Streifen, und `opacity` zoege
+ * den Kontrast unter AA. Gesperrt ist sie nicht — die Abhaengigkeit kommt aus
+ * dem Katalog und ist ein Rat, kein Gesetz (§7).
+ */
+.wartet :global(label) span,
+.wartet .titelohne {
+  color: var(--farbe-text-sekundaer);
+}
+
+.meta {
+  padding-inline-start: var(--einzug);
   display: flex;
   flex-wrap: wrap;
-  gap: var(--dichte-abstand-klein);
+  align-items: center;
+  gap: var(--raster-1) var(--raster-2);
+
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  line-height: 1.4;
+}
+
+/*
+ * Der Grund, warum eine Aufgabe wartet. Er traegt einen Aufgabentitel in sich
+ * und wird dadurch lang; abgeschnitten stuende dort die Haelfte, die den Titel
+ * unterscheidet. Also eine eigene Zeile.
+ */
+/*
+ * Der Grund, warum eine Aufgabe wartet. Eine Zeile, notfalls abgeschnitten:
+ * In einer Liste von zwanzig Aufgaben zeigen zehn auf dieselben zwei
+ * Vorgaenger, und zweizeilig stehen dieselben Woerter zehnmal untereinander.
+ * Vollstaendig steht der Grund im Detail, einen Fingertipp weiter.
+ */
+.zuerst {
+  flex-basis: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/*
+ * Uebernehmen ist die Aktion, wegen der man diese Liste ueberhaupt aufmacht.
+ * Aendern, Loeschen und Freigeben sind daneben Verwaltung; sie stehen in der
+ * Sekundaerfarbe, damit die eine Aktion, die weiterbringt, in einer langen
+ * Liste noch auffaellt. AA halten beide (§7).
+ */
+.leise {
+  color: var(--farbe-text-sekundaer);
+}
+
+/*
+ * Die Aktionen einer Zeile stehen nebeneinander, brechen aber um, statt bei
+ * grosser Textskalierung aus der Flaeche zu laufen (§7).
+ */
+.aktionen {
+  padding-inline-start: var(--einzug);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--dichte-abstand);
 }
 
 .hinweis {
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
-}
-
-/* Titel und Fristbadge nebeneinander, mit Umbruch bei grosser Schrift (§7). */
-.titelzeile {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--dichte-abstand-klein);
-}
-
-/*
- * Der Titel einer Aufgabe mit Unteraufgaben. Sie hat kein eigenes Haekchen
- * (§7), steht aber trotzdem so gross da wie eine mit.
- */
-.titel {
-  font-weight: 600;
-}
-
-/*
- * §7: Blockierte Aufgaben erscheinen ausgegraut. Nur die Farbe wird gedaempft,
- * keine `opacity`, denn die zöge den Kontrast des Textes unter AA (§7), und die
- * Zeile bleibt bedienbar.
- */
-.blockiert {
-  background: var(--farbe-hintergrund);
-  color: var(--farbe-text-sekundaer);
-}
-
-.detaillink {
-  align-self: center;
-  color: var(--farbe-akzent);
 }

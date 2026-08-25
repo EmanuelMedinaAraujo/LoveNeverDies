@@ -6,10 +6,18 @@ import stile from './Button.module.css'
  *
  * Zusage ist hier eingebaut statt in jedem Screen wiederholt:
  * der Text zum Vorlesen.
+ *
+ * Drei Varianten. `primaer` und `sekundaer` sind die Schaltflaechen, die einen
+ * Ablauf tragen; sie stehen in Formularen und unter Bestaetigungsfragen.
+ * `text` ist die dritte, und sie gibt es, weil eine Listenzeile vier davon
+ * nebeneinander stellen kann. Vier umrandete Kaesten in einer Zeile machen aus
+ * einer Liste eine Werkzeugleiste; als Text stehen dieselben vier Aktionen da,
+ * ohne die Zeile zu uebertoenen. Die Trefferflaeche bleibt in allen drei
+ * Varianten dieselbe.
  */
 
 type ButtonProps = ComponentPropsWithoutRef<'button'> & {
-  variante?: 'primaer' | 'sekundaer'
+  variante?: 'primaer' | 'sekundaer' | 'text'
   volleBreite?: boolean
   /**
    * Zusaetzlicher Text zum Vorlesen (§7). Pflicht, sobald die Schaltflaeche

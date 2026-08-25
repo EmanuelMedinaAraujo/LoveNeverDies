@@ -1,6 +1,17 @@
+/*
+ * Eine Karte steht auf dem Hintergrund, sie schwebt nicht: Rand statt Schatten
+ * (`--schatten-keiner`). Schatten gibt es in dieser App nur dort, wo etwas
+ * ueber etwas anderem liegt, und das ist die untere Leiste (DESIGN.md §7).
+ */
 .card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+
+  padding: var(--dichte-abstand);
+
   background: var(--farbe-karte);
   border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
-  padding: var(--dichte-abstand);
+  box-shadow: var(--schatten-keiner);
 }

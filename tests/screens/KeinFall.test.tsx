@@ -52,12 +52,14 @@ describe('KeinFall', () => {
     expect(navigiere).toHaveBeenCalledWith('/beitreten')
   })
 
-  it('verlinkt Profil und Geräte', () => {
+  it('trägt keinen eigenen Weg zu Profil mehr (§7)', () => {
+    /*
+     * Auch der gesperrte Zustand navigiert über die untere Leiste. Sie steht
+     * unter diesem Screen und hält den Profil-Tab offen, während „Erbe" und
+     * „Alle" stillstehen, solange es keinen Fall gibt.
+     */
     rendereMitProvidern(<KeinFall />)
 
-    expect(screen.getByRole('link', { name: 'Profil und Geräte' })).toHaveAttribute(
-      'href',
-      '/profil',
-    )
+    expect(screen.queryByRole('link', { name: 'Profil und Geräte' })).toBeNull()
   })
 })

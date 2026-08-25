@@ -65,8 +65,8 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Ich wurde eingeladen' })).toBeEnabled()
   })
 
-  await test.step('Profil und Geräte ist von dort erreichbar', async () => {
-    await page.getByRole('link', { name: 'Profil und Geräte' }).click()
+  await test.step('Profil ist über die untere Leiste erreichbar (§7)', async () => {
+    await page.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Profil' }).click()
 
     await expect(page).toHaveURL(/\/profil$/)
     await expect(page.getByRole('heading', { name: 'Profil' })).toBeVisible()
@@ -83,7 +83,7 @@ test('Trauerfall anlegen', async ({ page }) => {
      */
     await expect(page.getByRole('listitem').filter({ hasText: 'Dieses Gerät' })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Zurück' }).click()
+    await page.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Start' }).click()
     await expect(page).toHaveURL(/\/$/)
   })
 
@@ -186,7 +186,7 @@ test('Trauerfall anlegen', async ({ page }) => {
   await test.step('der neue Fall bringt die Aufgaben der Juristinnen mit', async () => {
     // §8: "Ein neu angelegter Trauerfall ist nicht mehr leer." Instanziiert hat
     // ihn die Fallanlage, verschlüsselt wie jedes andere Item.
-    await page.getByRole('link', { name: 'Alle Aufgaben' }).click()
+    await page.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Alle' }).click()
 
     await expect(page).toHaveURL(/\/alle$/)
     await expect(page.getByRole('heading', { name: 'Alle Aufgaben' })).toBeVisible()

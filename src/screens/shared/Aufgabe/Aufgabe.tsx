@@ -19,6 +19,7 @@ import {
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
+import { Gruppe } from '../../../ui/Liste/Liste.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import {
   benenne,
@@ -103,8 +104,8 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
   const dokumente = katalog.benoetigteDokumente.filter((eintrag) => eintrag.trim() !== '')
 
   return (
-    <Card className={stile.abschnitt}>
-      <h2>Rechtliches</h2>
+    <Gruppe titel="Rechtliches">
+      <Card>
 
       <dl className={stile.angaben}>
         {lage.art === 'datum' ? (
@@ -160,7 +161,8 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
           </Angabe>
         )}
       </dl>
-    </Card>
+      </Card>
+    </Gruppe>
   )
 }
 
@@ -301,8 +303,8 @@ function Kenntnisdatum({
   }
 
   return (
-    <Card className={stile.abschnitt}>
-      <h2>Ihr Kenntnisdatum</h2>
+    <Gruppe titel="Ihr Kenntnisdatum">
+      <Card>
 
       <p>
         An welchem Tag haben Sie erfahren, dass Sie Erbe sind? Ab diesem Tag laufen
@@ -350,7 +352,8 @@ function Kenntnisdatum({
           Datum entfernen
         </Button>
       )}
-    </Card>
+      </Card>
+    </Gruppe>
   )
 }
 
@@ -477,12 +480,43 @@ function Detail({
         <p className={stile.hinweis}>
           <Link to="/alle">Zurück zu allen Aufgaben</Link>
         </p>
+
+        {/*
+          Ob die Aufgabe erledigt ist, ist das Erste, was jemand hier wissen
+          will, und das Erste, was er tun will. Vorher stand das Häkchen in
+          einem eigenen Kasten mit der Überschrift "Erledigt?", drei Abschnitte
+          tiefer und hinter dem Rechtlichen. Jetzt steht es beim Titel.
+        */}
+        {istBlatt ? (
+          <Checkbox
+            checked={eigenesHaken}
+            disabled={aktionen.gesperrt || !darfAendern}
+            onChange={(ereignis) => void haken(ereignis.target.checked)}
+            label="Diese Aufgabe ist erledigt"
+          />
+        ) : (
+          /*
+           * §7: Eine Aufgabe mit Unteraufgaben hat kein eigenes Häkchen. Sie
+           * gilt genau dann als erledigt, wenn alle Kinder es sind, und dann
+           * zwingend. Fehlt inhaltlich noch etwas, kommt eine Unteraufgabe
+           * dazu; das ist ehrlicher als eine Aufgabe, die trotz erledigter
+           * Kinder offen aussieht.
+           */
+          <p className={stile.hinweis} role="status">
+            {erledigt
+              ? `Erledigt: alle ${unteraufgaben.length} Unteraufgaben sind abgehakt.`
+              : `Offen: ${fertigeKinder} von ${unteraufgaben.length} Unteraufgaben erledigt.`}
+          </p>
+        )}
       </div>
 
+      {/*
+        Der erste Satz zur Sache. Er steht als Text da und nicht in einem
+        Kasten: Ein Kasten sagt "hier fängt ein Abschnitt an", und das tut er
+        hier nicht — er gehört zu dem Titel darüber.
+      */}
       {aufgabe.beschreibung === '' ? null : (
-        <Card className={stile.abschnitt}>
-          <p>{aufgabe.beschreibung}</p>
-        </Card>
+        <p className={stile.anriss}>{aufgabe.beschreibung}</p>
       )}
 
       <Rechtliches aufgabe={aufgabe} lage={lage} />
@@ -502,40 +536,14 @@ function Detail({
         />
       ) : null}
 
-      <Card className={stile.abschnitt}>
-        <h2>Erledigt?</h2>
-
-        {istBlatt ? (
-          <Checkbox
-            checked={eigenesHaken}
-            disabled={aktionen.gesperrt || !darfAendern}
-            onChange={(ereignis) => void haken(ereignis.target.checked)}
-            label="Diese Aufgabe ist erledigt"
-          />
-        ) : (
-          /*
-           * §7: Eine Aufgabe mit Unteraufgaben hat kein eigenes Häkchen. Sie
-           * gilt genau dann als erledigt, wenn alle Kinder es sind, und dann
-           * zwingend. Fehlt inhaltlich noch etwas, kommt eine Unteraufgabe
-           * dazu; das ist ehrlicher als eine Aufgabe, die trotz erledigter
-           * Kinder offen aussieht.
-           */
-          <p role="status">
-            {erledigt
-              ? `Erledigt: alle ${unteraufgaben.length} Unteraufgaben sind abgehakt.`
-              : `Offen: ${fertigeKinder} von ${unteraufgaben.length} Unteraufgaben erledigt.`}
-          </p>
-        )}
-      </Card>
-
       {/*
         §3.7: "genau eine Aktion 'Für alle sichtbar machen'". Der Abschnitt
         steht nur bei privaten Aufgaben: Bei allen anderen gäbe es nichts zu
         entscheiden und nichts zu erklären.
       */}
       {aufgabe.privat ? (
-        <Card className={stile.abschnitt}>
-          <h2>Sichtbarkeit</h2>
+        <Gruppe titel="Sichtbarkeit">
+          <Card>
 
           <p>
             Diese Aufgabe sehen nur Sie, auf Ihren eigenen Geräten. Die anderen Mitglieder des
@@ -575,7 +583,8 @@ function Detail({
               Für alle sichtbar machen
             </Button>
           )}
-        </Card>
+          </Card>
+        </Gruppe>
       ) : null}
 
       {/*
@@ -584,8 +593,8 @@ function Detail({
         §11). Sie steht deshalb offen für jede:n: übernehmen, freigeben,
         jemanden eintragen.
       */}
-      <Card className={stile.abschnitt}>
-        <h2>Zuständigkeit</h2>
+      <Gruppe titel="Zuständigkeit">
+        <Card>
 
         <Zuweisungsfeld
           zuweisung={aufgabe.assignee}
@@ -612,10 +621,11 @@ function Detail({
             Die Mitglieder dieses Falls sind gerade nicht abrufbar. {mitgliederfehler}
           </p>
         )}
-      </Card>
+        </Card>
+      </Gruppe>
 
-      <Card className={stile.abschnitt}>
-        <h2>Unteraufgaben</h2>
+      <Gruppe titel="Unteraufgaben">
+        <Card>
 
         {unteraufgaben.length === 0 ? (
           <p className={stile.hinweis}>Noch keine. Eine Unteraufgabe teilt die Arbeit auf.</p>
@@ -677,7 +687,8 @@ function Detail({
             Diese Aufgabe ist selbst eine Unteraufgabe. Tiefer gliedert die App nicht.
           </p>
         )}
-      </Card>
+        </Card>
+      </Gruppe>
 
       {/*
         §7: "Dokument einfach abfotografieren": Die Sterbeurkunde gehört an die
@@ -692,8 +703,8 @@ function Detail({
         darfAendern={darfAendern}
       />
 
-      <Card className={stile.abschnitt}>
-        <h2>Notizen</h2>
+      <Gruppe titel="Notizen">
+        <Card>
 
         <form className={stile.formular} onSubmit={(ereignis) => void speichereNotizen(ereignis)}>
           <div className={stile.feld}>
@@ -715,7 +726,8 @@ function Detail({
             Notizen speichern
           </Button>
         </form>
-      </Card>
+        </Card>
+      </Gruppe>
     </>
   )
 }
