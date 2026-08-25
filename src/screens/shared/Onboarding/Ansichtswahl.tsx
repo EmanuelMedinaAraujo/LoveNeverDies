@@ -50,10 +50,7 @@ export function Ansichtswahl() {
     <main className={stile.seite}>
       <div className={stile.kopf}>
         <h1>Wie möchten Sie die App nutzen?</h1>
-        <p className={stile.hinweis}>
-          Beide Ansichten zeigen dieselben Aufgaben und haben unten dieselbe Leiste. Sie können
-          jederzeit in Profil wechseln.
-        </p>
+        <p className={stile.hinweis}>Sie können jederzeit in Profil wechseln.</p>
       </div>
 
       <fieldset className={stile.auswahl}>
