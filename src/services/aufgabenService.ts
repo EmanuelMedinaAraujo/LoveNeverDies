@@ -36,6 +36,7 @@ import type { InhaltZeile, NeuerInhalt } from '../core/db/inhalte'
 import type { AbgelehnteMutation, Mutation } from '../core/sync/queue'
 import { uuidv7 } from '../core/uuidv7'
 import type { Katalogaufgabe } from '../types/katalog'
+import { istKalendertag } from './fristen'
 import type { PersoenlicherSchluessel } from './privatService'
 import { NIEMAND, personen, zuweisungAus, type Zugewiesene, type Zuweisung } from './zuweisung'
 
@@ -92,10 +93,11 @@ export type Katalogherkunft = Omit<Katalogaufgabe, 'id' | 'titel' | 'kurzbeschre
 /**
  * Der verschlüsselte Inhalt einer Aufgabe (§3.3).
  *
- * `typ` ist heute einwertig und steht trotzdem da: Er ist die Unterscheidung,
- * an der ein späterer Leser ein Konfigurations-Item (`kenntnisAm`, §8) von
- * einer Aufgabe trennt, ohne raten zu müssen. Ein Feld nachträglich zum
- * Unterscheidungsmerkmal zu erklären ginge nicht, da alte Payloads es nicht trügen.
+ * `typ` ist die Unterscheidung, an der ein Leser das Konfigurations-Item
+ * (`kenntnisAm`, §8) von einer Aufgabe trennt, ohne raten zu müssen. Er stand
+ * hier, bevor es das zweite Payload gab: Ein Feld nachträglich zum
+ * Unterscheidungsmerkmal zu erklären ginge nicht, da alte Payloads es nicht
+ * trügen.
  *
  * `erledigt` gilt nur für Blätter. Eine Aufgabe mit Unteraufgaben trägt das
  * Feld zwar weiter mit (schreiben lässt sich kein Payload ohne), aber
@@ -140,6 +142,41 @@ export type Aufgabenpayload = {
   katalog: Katalogherkunft | null
 }
 
+/**
+ * Der verschlüsselte Inhalt eines privaten Konfigurations-Items (§3.7, §8).
+ *
+ * Die zweite Sorte privater Items, und die einzige, die nicht im Aufgabenbaum
+ * steht: Sie hat weder Eltern noch Kinder noch Abhängigkeiten und kann den
+ * Baum deshalb nicht verletzen. Die beiden Strukturregeln aus §3.7 gelten für
+ * sie ausdrücklich nicht.
+ *
+ * Bislang trägt sie genau ein Feld. Ein eigener `typ` steht trotzdem darüber:
+ * Er ist die Unterscheidung, an der ein Leser dieses Item von einer Aufgabe
+ * trennt, ohne aus dem Fehlen eines Titels auf einen Defekt zu schließen.
+ */
+export type Konfigurationspayload = {
+  typ: 'konfiguration'
+  /**
+   * Der Tag, an dem diese Person von Anfall und Berufungsgrund erfahren hat
+   * (§ 1944 BGB, §8), als ISO `YYYY-MM-DD`.
+   *
+   * `null` heißt: noch nicht eingetragen. Kein Ersatzwert, keine Vermutung und
+   * ausdrücklich nicht das Sterbedatum: Aufgaben mit `fristAb = kenntnis`
+   * bleiben dann fristenlos.
+   */
+  kenntnisAm: string | null
+}
+
+/** Ein gelesenes Konfigurations-Item mit allem, was ein Edit daran braucht. */
+export type Konfiguration = {
+  id: string
+  kenntnisAm: string | null
+  /** Der DEK dieser Zeile, entpackt: Ein neues Datum schreibt darunter weiter. */
+  dek: Uint8Array
+  /** Immer der eigene `K_p` (§3.7); anders wäre die Zeile nicht zu lesen. */
+  kid: string
+}
+
 export type Aufgabe = {
   id: string
   titel: string
@@ -176,6 +213,16 @@ export type Aufgabe = {
 
 export type Aufgabenliste = {
   aufgaben: Aufgabe[]
+  /**
+   * Die privaten Konfigurations-Items, die dieses Gerät lesen konnte (§3.7,
+   * §8): heute genau eines, das eigene `kenntnisAm` (#12).
+   *
+   * Eine Liste und kein einzelner Wert: Zwei Geräte derselben Person können
+   * offline je eines angelegt haben, und daran soll das Lesen nicht scheitern.
+   * Welches davon gilt, entscheidet der Aufrufer, und zwar über die `id`: Sie
+   * ist eine UUIDv7 (§5), also ist die größere die jüngere.
+   */
+  konfigurationen: Konfiguration[]
   /**
    * Die Zeilen, die still verworfen wurden (§3.7), bei ihrer ID. Sichtbar
    * ausschließlich im Dev-Modus: In Produktion gibt es diesen Zähler nirgends
@@ -270,22 +317,35 @@ function herkunftAus(wert: unknown): Katalogherkunft | null {
   }
 }
 
+/** Ein Kalendertag aus einem Payload, oder `null`, wenn dort keiner steht. */
+function alsDatum(wert: unknown): string | null {
+  return typeof wert === 'string' && istKalendertag(wert) ? wert : null
+}
+
 /**
- * Liest, was in einem entschlüsselten Payload steht.
+ * Liest, was in einem entschlüsselten Payload steht: eine Aufgabe oder ein
+ * privates Konfigurations-Item (§3.7, §8).
  *
- * @throws wenn es kein Aufgabenpayload ist. Der Aufrufer macht daraus eine
- * übersprungene Zeile: Von aussen ist ein Defekt nicht von dem privaten Item
- * einer anderen Person zu unterscheiden (§11.8).
+ * Unterschieden wird am `typ` und nicht daran, ob ein Titel fehlt. Ein
+ * Konfigurations-Item hat keinen, und aus seinem Fehlen auf einen Defekt zu
+ * schließen hieße, das eigene `kenntnisAm` als übersprungene Zeile zu zählen.
+ *
+ * @throws wenn es weder das eine noch das andere ist. Der Aufrufer macht
+ * daraus eine übersprungene Zeile: Von aussen ist ein Defekt nicht von dem
+ * privaten Item einer anderen Person zu unterscheiden (§11.8).
  */
-function lesePayload(klartext: Uint8Array): Aufgabenpayload {
+function lesePayload(klartext: Uint8Array): Aufgabenpayload | Konfigurationspayload {
   const roh: unknown = JSON.parse(bytesText(klartext))
 
-  if (
-    typeof roh !== 'object' ||
-    roh === null ||
-    !('titel' in roh) ||
-    typeof roh.titel !== 'string'
-  ) {
+  if (typeof roh !== 'object' || roh === null) {
+    throw new AufgabenFehler('Dieser Payload ist keine Aufgabe.')
+  }
+
+  if ('typ' in roh && roh.typ === 'konfiguration') {
+    return { typ: 'konfiguration', kenntnisAm: alsDatum((roh as Partial<Konfigurationspayload>).kenntnisAm) }
+  }
+
+  if (!('titel' in roh) || typeof roh.titel !== 'string') {
     throw new AufgabenFehler('Dieser Payload ist keine Aufgabe.')
   }
 
@@ -321,14 +381,30 @@ function schluesselFuer(zeile: InhaltZeile, fall: Fallschluessel, privat: Privat
   return privat !== null && zeile.kid === privat.kid ? privat.kp : fall.kc
 }
 
+/**
+ * Ob dieser Eintrag ein Konfigurations-Item ist und keine Aufgabe (§3.7, §8).
+ *
+ * Am Feld und nicht an einem Marker: Eine Aufgabe hat kein `kenntnisAm`, ein
+ * Konfigurations-Item keinen Titel. Wer die beiden auseinanderhält, braucht
+ * dafür nichts, was in der Zeile stünde.
+ */
+export function istKonfiguration(eintrag: Aufgabe | Konfiguration): eintrag is Konfiguration {
+  return 'kenntnisAm' in eintrag
+}
+
 async function leseZeile(
   zeile: InhaltZeile,
   fall: Fallschluessel,
   privat: Privatschluessel,
-): Promise<Aufgabe> {
+): Promise<Aufgabe | Konfiguration> {
   const dek = await entpackeDek(schluesselFuer(zeile, fall, privat), zeile.wrappedDek)
-  const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, assignee, katalog } =
-    lesePayload(await entschluessele(dek, zeile.payload))
+  const inhalt = lesePayload(await entschluessele(dek, zeile.payload))
+
+  if (inhalt.typ === 'konfiguration') {
+    return { id: zeile.id, kenntnisAm: inhalt.kenntnisAm, dek, kid: zeile.kid }
+  }
+
+  const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, assignee, katalog } = inhalt
 
   return {
     id: zeile.id,
@@ -368,6 +444,7 @@ export async function aufgabenAusZeilen(
   privat: Privatschluessel = null,
 ): Promise<Aufgabenliste> {
   const aufgaben: Aufgabe[] = []
+  const konfigurationen: Konfiguration[] = []
   const uebersprungeneIds: string[] = []
 
   for (const zeile of zeilen) {
@@ -384,13 +461,19 @@ export async function aufgabenAusZeilen(
     }
 
     try {
-      aufgaben.push(await leseZeile(zeile, fall, privat))
+      const eintrag = await leseZeile(zeile, fall, privat)
+
+      if (istKonfiguration(eintrag)) {
+        konfigurationen.push(eintrag)
+      } else {
+        aufgaben.push(eintrag)
+      }
     } catch {
       uebersprungeneIds.push(zeile.id)
     }
   }
 
-  return { aufgaben, uebersprungeneIds }
+  return { aufgaben, konfigurationen, uebersprungeneIds }
 }
 
 /**
@@ -452,7 +535,7 @@ export async function mutationAnlegen(
 export async function verschluesselterInhalt(
   fall: Fallschluessel,
   id: string,
-  payload: Aufgabenpayload,
+  payload: Aufgabenpayload | Konfigurationspayload,
 ): Promise<NeuerInhalt> {
   const dek = erzeugeDek()
 
@@ -561,7 +644,12 @@ async function titelAus(
   }
 
   try {
-    return lesePayload(await entschluessele(dek, payload)).titel
+    const inhalt = lesePayload(await entschluessele(dek, payload))
+
+    // Ein Konfigurations-Item hat keinen Titel und braucht in der Mitteilung
+    // trotzdem einen Namen: "eine Änderung konnte nicht gespeichert werden"
+    // sagt niemandem, dass sein Kenntnisdatum nicht angekommen ist (§5).
+    return inhalt.typ === 'konfiguration' ? 'Ihr Kenntnisdatum' : inhalt.titel
   } catch {
     return ''
   }

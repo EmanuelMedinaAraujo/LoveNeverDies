@@ -263,6 +263,45 @@ test('Trauerfall anlegen', async ({ page }) => {
     ).toBeVisible()
   })
 
+  await test.step('das eigene Kenntnisdatum macht aus der Frist ein Datum (§8, #12)', async () => {
+    /*
+     * Die Ausschlagungsfrist nach § 1944 BGB knüpft an die Kenntnis des
+     * jeweiligen Erben von Anfall und Berufungsgrund an. Bis jemand seinen Tag
+     * einträgt, rechnet die App nichts: Eine falsch berechnete
+     * Ausschlagungsfrist kostet den ganzen Nachlass.
+     */
+    await gotoVerlaesslich(page, '/alle')
+    await page.getByRole('link', { name: /^Details.*Ausschlagung der Erbschaft prüfen/ }).click()
+
+    await expect(page.getByText(/Diese Frist läuft ab/)).toBeVisible()
+    await expect(page.getByText(/Ihre Frist endet am/)).toHaveCount(0)
+
+    /*
+     * Das Datum geht als privates Konfigurations-Item unter `K_p` hinaus
+     * (§3.7): eine eigene Zeile, kein Edit an der geteilten Aufgabe.
+     */
+    const eingetragen = gespeichert(page, 'POST')
+    await page.getByLabel('Tag Ihrer Kenntnis').fill('2024-03-15')
+    await page.getByRole('button', { name: 'Kenntnisdatum speichern' }).click()
+    await eingetragen
+
+    // 15. März 2024 plus die 42 Tage aus § 1944 BGB, gerechnet und nirgends
+    // gespeichert (§8).
+    await expect(page.getByText(/Ihre Frist endet am 26. April 2024/)).toBeVisible()
+
+    /*
+     * Und es bleibt Konfiguration: Im Aufgabenbaum taucht es nicht auf, weder
+     * als Zeile noch als Aufgabe ohne Titel (§3.7).
+     */
+    await gotoVerlaesslich(page, '/alle')
+    await expect(page.getByRole('listitem')).toHaveCount(katalogZeilen)
+
+    await page.getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ }).click()
+    await expect(
+      page.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen' }),
+    ).toBeVisible()
+  })
+
   await test.step('eine unzugewiesene Aufgabe lässt sich übernehmen (§7)', async () => {
     /*
      * Bis hierher gehört diese Aufgabe niemandem: Sie kommt aus dem Katalog,

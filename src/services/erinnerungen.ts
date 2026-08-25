@@ -14,7 +14,7 @@
  */
 
 import type { Aufgabenknoten } from './aufgabenbaum'
-import { fristlage, heuteIso } from './fristen'
+import { fristlage, heuteIso, type Fristbezug } from './fristen'
 
 /**
  * Wie viele Tage vor dem Fristende erinnert wird.
@@ -78,8 +78,11 @@ function text(titel: string, vorlauf: number): string {
  *
  * Übergangen wird, was keine Erinnerung verdient: erledigte Aufgaben (auch die
  * abgeleitet erledigten, §7), Aufgaben ohne gesetzliche Frist, Fristen ab
- * Kenntnis ohne Kenntnisdatum (§8, #12) und alles, was in der Vergangenheit
- * liegt.
+ * Kenntnis ohne eingetragenes Kenntnisdatum (§8, #12) und alles, was in der
+ * Vergangenheit liegt.
+ *
+ * Wer sein Kenntnisdatum einträgt, bekommt die Termine dazu: Die Aufgabe hat
+ * von da an ein Fristende, und der Plan entsteht bei jedem neuen Baum neu.
  *
  * Blockierte Aufgaben bleiben ausdrücklich drin. Eine Frist läuft weiter,
  * gleich ob eine andere Aufgabe noch aussteht: Das ist eher ein Grund für die
@@ -90,7 +93,7 @@ function text(titel: string, vorlauf: number): string {
  */
 export function planeErinnerungen(
   baum: Aufgabenknoten[],
-  sterbedatum: string | null,
+  bezug: Fristbezug,
   jetzt: Date,
 ): Erinnerung[] {
   const ab = jetzt.getTime()
@@ -105,7 +108,7 @@ export function planeErinnerungen(
       continue
     }
 
-    const lage = fristlage(knoten.aufgabe.katalog, sterbedatum, heute)
+    const lage = fristlage(knoten.aufgabe.katalog, bezug, heute)
 
     if (lage.art !== 'datum') {
       continue

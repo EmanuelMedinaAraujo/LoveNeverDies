@@ -124,6 +124,8 @@ function aufgabendaten(
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
     gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
+    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null },
+    setzeKenntnisAm: vi.fn().mockResolvedValue(undefined),
     ...rest,
   }
 }

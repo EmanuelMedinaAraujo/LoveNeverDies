@@ -17,6 +17,9 @@ import { NIEMAND } from '../../src/services/zuweisung.ts'
 
 const STERBEDATUM = '2026-05-12'
 
+/** Woran die Fristen hängen: das Sterbedatum, kein eigenes Kenntnisdatum (§8). */
+const BEZUG = { sterbedatum: STERBEDATUM, kenntnisAm: null }
+
 /** Der 12. Mai 2026, morgens um sechs: lokale Zeit, wie ein Gerät sie sieht. */
 const JETZT = new Date(2026, 4, 12, 6)
 
@@ -95,7 +98,7 @@ describe('useErinnerungen (§7)', () => {
     vi.stubGlobal('Notification', benachrichtigung('granted'))
 
     const baum = baueBaum([aufgabe()])
-    renderHook(() => useErinnerungen(baum, STERBEDATUM))
+    renderHook(() => useErinnerungen(baum, BEZUG))
 
     // Fristende ist der 15. Mai; erinnert wird zuletzt an diesem Morgen.
     act(() => {
@@ -108,7 +111,7 @@ describe('useErinnerungen (§7)', () => {
   it('plant nichts, solange niemand gefragt wurde', () => {
     vi.stubGlobal('Notification', benachrichtigung('default'))
 
-    const { result } = renderHook(() => useErinnerungen(baueBaum([aufgabe()]), STERBEDATUM))
+    const { result } = renderHook(() => useErinnerungen(baueBaum([aufgabe()]), BEZUG))
 
     act(() => {
       vi.advanceTimersByTime(4 * 86_400_000)
@@ -121,7 +124,7 @@ describe('useErinnerungen (§7)', () => {
   it('zählt die Termine auch ohne Erlaubnis, damit die Oberfläche etwas anzubieten hat', () => {
     vi.stubGlobal('Notification', benachrichtigung('default'))
 
-    const { result } = renderHook(() => useErinnerungen(baueBaum([aufgabe()]), STERBEDATUM))
+    const { result } = renderHook(() => useErinnerungen(baueBaum([aufgabe()]), BEZUG))
 
     expect(result.current.geplant).toBeGreaterThan(0)
   })
@@ -129,7 +132,7 @@ describe('useErinnerungen (§7)', () => {
   it('kommt ohne Benachrichtigungen im Browser zurecht', () => {
     vi.stubGlobal('Notification', undefined)
 
-    const { result } = renderHook(() => useErinnerungen(baueBaum([aufgabe()]), STERBEDATUM))
+    const { result } = renderHook(() => useErinnerungen(baueBaum([aufgabe()]), BEZUG))
 
     expect(result.current.erlaubnis).toBe('nicht-verfuegbar')
 
@@ -144,7 +147,7 @@ describe('useErinnerungen (§7)', () => {
     const Attrappe = benachrichtigung('default')
     vi.stubGlobal('Notification', Attrappe)
 
-    const { result } = renderHook(() => useErinnerungen(baueBaum([aufgabe()]), STERBEDATUM))
+    const { result } = renderHook(() => useErinnerungen(baueBaum([aufgabe()]), BEZUG))
 
     await act(async () => {
       await result.current.frage()
@@ -163,7 +166,7 @@ describe('useErinnerungen (§7)', () => {
     vi.stubGlobal('Notification', benachrichtigung('granted'))
 
     const { rerender } = renderHook(
-      ({ baum }: { baum: ReturnType<typeof baueBaum> }) => useErinnerungen(baum, STERBEDATUM),
+      ({ baum }: { baum: ReturnType<typeof baueBaum> }) => useErinnerungen(baum, BEZUG),
       { initialProps: { baum: baueBaum([aufgabe()]) } },
     )
 
@@ -181,7 +184,7 @@ describe('useErinnerungen (§7)', () => {
     vi.stubGlobal('Notification', benachrichtigung('granted'))
 
     const { rerender } = renderHook(
-      ({ baum }: { baum: ReturnType<typeof baueBaum> }) => useErinnerungen(baum, STERBEDATUM),
+      ({ baum }: { baum: ReturnType<typeof baueBaum> }) => useErinnerungen(baum, BEZUG),
       { initialProps: { baum: baueBaum([aufgabe()]) } },
     )
 

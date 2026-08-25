@@ -129,6 +129,8 @@ function aufgabendaten(
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
     gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
+    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null },
+    setzeKenntnisAm: vi.fn().mockResolvedValue(undefined),
     ...rest,
   }
 }
@@ -737,6 +739,10 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
     useAufgaben.mockReturnValue(
       aufgabendaten({
         zustand: { status: 'bereit', aufgaben, uebersprungen: 0, ...NETZ },
+        // Derselbe frische Fall, nur so, wie die Fristen ihn sehen (§8): Das
+        // Sterbedatum kommt aus dem Fall, das Kenntnisdatum aus dem privaten
+        // Konfigurations-Item, und hier hat niemand eines eingetragen (#12).
+        fristbezug: { sterbedatum: heute(), kenntnisAm: null },
         ...ueberschreibung,
       }),
     )
