@@ -1,10 +1,16 @@
 /*
- * Farb- und Dichtetokens.
+ * Design-Tokens: Farbe, Typografie, Raster, Radien, Schatten, Dichte.
  *
  * Die Farbwerte stehen in DESIGN.md §12. Sie stehen ein zweites Mal in
  * `src/ui/farben.ts`, weil Clerks `appearance` ein JavaScript-Objekt erwartet
  * und keine CSS-Variablen aufloest. Aendert sich hier ein Wert, aendert er sich
  * dort mit.
+ *
+ * Alles unterhalb der Farben ist neu und hat einen Zweck: Bis hierher stand
+ * jedes Mass in dem Modul-CSS, das es gerade brauchte. Ein Radius war mal
+ * `0.75rem` und mal `--dichte-radius`, ein Rand mal `1px` und mal `0.0625rem`.
+ * Die Primitiven in `src/ui/` lesen jetzt ausschliesslich aus dieser Datei,
+ * und die Dichte (§7) waehlt darin aus, statt eigene Werte mitzubringen.
  */
 
 :root {
@@ -59,35 +65,104 @@
 }
 
 /*
+ * Raster.
+ *
+ * Ein Schritt sind 0.25rem. Abstaende in der App kommen aus dieser Leiter und
+ * nirgendwo sonst; die Zahl im Namen ist die Anzahl Schritte, damit man beim
+ * Lesen sieht, ob zwei Abstaende zueinander passen.
+ */
+:root {
+  --raster-1: 0.25rem;
+  --raster-2: 0.5rem;
+  --raster-3: 0.75rem;
+  --raster-4: 1rem;
+  --raster-5: 1.25rem;
+  --raster-6: 1.5rem;
+  --raster-8: 2rem;
+  --raster-10: 2.5rem;
+  --raster-12: 3rem;
+
+  /*
+   * Typografie.
+   *
+   * Eine Skala, vier Stufen, dazu Gewichte und Zeilenhoehen. Keine Groesse in
+   * `px`: Die Textskalierung des Browsers setzt die Wurzelgroesse, und alles
+   * hier rechnet in `rem` (§7).
+   */
+  --typo-familie:
+    system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --typo-gewicht-text: 400;
+  --typo-gewicht-betont: 600;
+  --typo-gewicht-titel: 700;
+  --typo-zeile-titel: 1.25;
+  --typo-zeile-text: 1.5;
+  --typo-laufweite-titel: -0.01em;
+
+  /* Radien. */
+  --radius-1: 0.5rem;
+  --radius-2: 0.75rem;
+  --radius-3: 1rem;
+  --radius-4: 1.25rem;
+  --radius-voll: 62.4375rem;
+
+  /*
+   * Schatten.
+   *
+   * Es gibt keinen. Eine Karte steht auf dem Hintergrund und traegt dafuer
+   * einen Rand; sie schwebt nicht. Die untere Leiste liegt zwar ueber Inhalt,
+   * der unter ihr durchlaeuft, aber sie sagt das mit Milchglas statt mit einem
+   * Schlagschatten. Der Token bleibt trotzdem stehen: Er macht an den drei
+   * Stellen, die ihn lesen, aus einer Auslassung eine Entscheidung.
+   */
+  --schatten-keiner: none;
+
+  /* Ein Touch-Ziel wird nicht kleiner als das hier (§7, 44 × 44 px). */
+  --ziel-mindestmass: 2.75rem;
+}
+
+/*
  * Dichte (DESIGN.md §7).
  *
  * Die einfache Ansicht ist nicht bloss groesser gesetzt, aber sie ist auch
- * groesser gesetzt. Alle Masse in `rem`, damit die Textskalierung des Browsers
- * die ganze Oberflaeche mitzieht statt nur die Buchstaben.
+ * groesser gesetzt. `erweitert` ist die Grundlage; `einfach` ueberschreibt nur,
+ * was sich aendert.
  *
- * `erweitert` ist die Grundlage; `einfach` ueberschreibt nur, was sich aendert.
- * Die Primitiven in `src/ui/` lesen ausschliesslich diese Variablen. Deshalb
- * kostet der Umschalter spaeter keine Neuverkabelung.
+ * Die Dichte bringt keine eigenen Werte mit, sie waehlt aus den Leitern oben
+ * aus. Deshalb kann eine Ansicht nicht versehentlich aus dem Raster fallen.
  */
 :root,
-:root[data-dichte="erweitert"] {
-  --dichte-abstand-klein: 0.5rem;
-  --dichte-abstand: 1rem;
-  --dichte-abstand-gross: 1.5rem;
-  --dichte-radius: 0.75rem;
+:root[data-dichte='erweitert'] {
+  --dichte-abstand-klein: var(--raster-2);
+  --dichte-abstand: var(--raster-4);
+  --dichte-abstand-gross: var(--raster-6);
+  --dichte-radius: var(--radius-3);
+  /*
+   * Fuenf Stufen, und jede hat eine Aufgabe: Etikett (Tabs, Eyebrows), klein
+   * (Nebentext), normal (Fliesstext und Bedienelemente), mittel (Karten-
+   * ueberschriften) und gross (die H1 des Screens). Vorher trug eine
+   * Kartenueberschrift dieselbe Groesse wie der Seitentitel, und ein Screen
+   * hatte damit zwei erste Zeilen.
+   */
   --dichte-schrift: 1rem;
+  --dichte-schrift-etikett: 0.6875rem;
   --dichte-schrift-klein: 0.875rem;
+  --dichte-schrift-mittel: 1.125rem;
   --dichte-schrift-gross: 1.375rem;
-  --dichte-zeilenhoehe: 1.5;
+  --dichte-zeilenhoehe: var(--typo-zeile-text);
+  /* 49 pt, das Mass einer iOS-Tableiste. */
+  --dichte-leiste-hoehe: 3.0625rem;
 }
 
-:root[data-dichte="einfach"] {
-  --dichte-abstand-klein: 0.75rem;
-  --dichte-abstand: 1.25rem;
-  --dichte-abstand-gross: 2rem;
-  --dichte-radius: 1rem;
+:root[data-dichte='einfach'] {
+  --dichte-abstand-klein: var(--raster-3);
+  --dichte-abstand: var(--raster-5);
+  --dichte-abstand-gross: var(--raster-8);
+  --dichte-radius: var(--radius-3);
   --dichte-schrift: 1.25rem;
+  --dichte-schrift-etikett: 0.9375rem;
   --dichte-schrift-klein: 1.0625rem;
+  --dichte-schrift-mittel: 1.4375rem;
   --dichte-schrift-gross: 1.75rem;
   --dichte-zeilenhoehe: 1.6;
+  --dichte-leiste-hoehe: 4.5rem;
 }

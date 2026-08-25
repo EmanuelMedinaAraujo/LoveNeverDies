@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -548,10 +548,6 @@ export function Erbe() {
         <p className={stile.hinweis}>
           {fall.personName} {fall.status === 'vorsorge' ? '· Vorsorge' : '· Trauerfall'}
         </p>
-        <p className={stile.hinweis}>
-          <Link to="/">Meine Aufgaben</Link> · <Link to="/alle">Alle Aufgaben</Link> ·{' '}
-          <Link to="/profil">Profil und Geräte</Link>
-        </p>
       </div>
 
       {fall.status === 'vorsorge' ? (
@@ -567,7 +563,7 @@ export function Erbe() {
             <Badge lage="ruhig">Trauerfall</Badge>
           </div>
           <p className={stile.hinweis}>
-            Der Fall ist ein Trauerfall. Die Aufgaben und Dokumente stehen im Tab "Alle"
+            Der Fall ist ein Trauerfall. Die Aufgaben und Dokumente stehen im Tab „Alle"
             bereit.
           </p>
         </Card>

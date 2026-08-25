@@ -1,5 +1,5 @@
 /*
- * Alle Masse aus den Dichtetokens: Die einfache Ansicht bekommt ein groesseres
+ * Alle Masse aus den Tokens: Die einfache Ansicht bekommt ein groesseres
  * Kaestchen, ohne dass diese Datei davon weiss (DESIGN.md §7).
  */
 
@@ -8,7 +8,13 @@
   align-items: flex-start;
   gap: var(--dichte-abstand-klein);
 
+  /* Die ganze Zeile ist die Trefferflaeche, nicht das Kaestchen. Das Polster
+     macht sie ein Stueck groesser, ohne einzeiligen Titeln Leerraum unter sich
+     zu geben. */
+  padding-block: var(--raster-1);
+
   cursor: pointer;
+  font-family: var(--typo-familie);
   font-size: var(--dichte-schrift);
   line-height: var(--dichte-zeilenhoehe);
 }

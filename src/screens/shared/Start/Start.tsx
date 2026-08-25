@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
@@ -10,6 +10,7 @@ import { fristlage, fristText, heuteIso, type Fristlage } from '../../../service
 import { istZugewiesen, zuweisungText } from '../../../services/zuweisung.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../Meldungen/Meldungen.tsx'
@@ -137,10 +138,46 @@ function Startzeile({
   }
 
   const badge = fristText(lage)
+  const blockiert = blockiertVon.length > 0
+
+  /*
+   * Alles, was frueher als eigener Absatz unter dem Titel stand, steht jetzt
+   * in einer Zeile nebeneinander. Auf Start faellt die Zustaendigkeit dabei
+   * meistens weg: Dieser Screen zeigt, was mir zugewiesen ist, und "Sie" unter
+   * jeder einzelnen Zeile ist eine Auskunft, die niemand gesucht hat. Steht
+   * jemand anders mit darunter, sagt sie wieder etwas, und dann steht sie da.
+   */
+  const zustaendig = zuweisungText(aufgabe.assignee, ichUserId)
+
+  const meta: ReactNode[] = []
+
+  if (unter !== null) {
+    meta.push(<span key="unter">Teil von „{unter}“</span>)
+  }
+
+  if (!istBlatt) {
+    meta.push(
+      <span key="stand">
+        {unteraufgaben.filter((eins) => eins.erledigt).length}/{unteraufgaben.length} erledigt
+      </span>,
+    )
+  }
+
+  if (blockiert) {
+    meta.push(
+      <span key="zuerst" className={stile.zuerst}>
+        Zuerst: {blockiertVon.map((offen) => offen.titel).join(', ')}
+      </span>,
+    )
+  }
+
+  if (zustaendig !== 'Sie') {
+    meta.push(<span key="wer">{zustaendig}</span>)
+  }
 
   return (
-    <li className={[stile.zeile, blockiertVon.length > 0 ? stile.blockiert : null].filter(Boolean).join(' ')}>
-      <div className={stile.titelzeile}>
+    <Zeile className={blockiert ? stile.wartet : undefined}>
+      <div className={stile.spalte}>
         {istBlatt ? (
           <Checkbox
             checked={erledigt}
@@ -149,43 +186,31 @@ function Startzeile({
             label={aufgabe.titel}
           />
         ) : (
-          <p className={stile.titel}>{aufgabe.titel}</p>
+          /*
+           * Eine Aufgabe mit Unteraufgaben hat kein eigenes Haekchen; abgehakt
+           * wird im Detail, Kind fuer Kind. Ohne Kaestchen davor bekaeme ihr
+           * Titel eine andere Einrueckung als die der Blaetter, und die Liste
+           * saehe aus, als waeren zwei Listen ineinandergeschoben.
+           */
+          <p
+            className={[stile.titelohne, giltAlsErledigt ? stile.fertig : null]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            {aufgabe.titel}
+          </p>
         )}
 
-        {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
+        {meta.length === 0 && badge === null ? null : (
+          <p className={stile.meta}>
+            {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
+            {meta}
+          </p>
+        )}
       </div>
 
-      {unter === null ? null : (
-        <p className={stile.hinweis}>Unteraufgabe von „{unter}“</p>
-      )}
-
-      {istBlatt ? null : (
-        <p className={stile.hinweis}>
-          {giltAlsErledigt
-            ? `Erledigt: alle ${unteraufgaben.length} Unteraufgaben sind abgehakt.`
-            : `${unteraufgaben.filter((unter) => unter.erledigt).length} von ${unteraufgaben.length} Unteraufgaben erledigt`}
-        </p>
-      )}
-
-      {/* §7: Blockierte Aufgaben erscheinen ausgegraut mit „Zuerst: …". */}
-      {blockiertVon.length === 0 ? null : (
-        <p className={stile.hinweis}>
-          Zuerst: {blockiertVon.map((offen) => offen.titel).join(', ')}
-        </p>
-      )}
-
-      {/*
-        Auch auf dem eigenen Start-Screen steht dabei, wem die Aufgabe gehört:
-        Bei „Alle" und bei geteilten Aufgaben ist das der Unterschied zwischen
-        „ich mache das" und „das macht schon jemand".
-      */}
-      <p className={stile.hinweis}>Zuständig: {zuweisungText(aufgabe.assignee, ichUserId)}</p>
-
-      <Link className={stile.detaillink} to={`/aufgabe/${aufgabe.id}`}>
-        Details
-        <span className="nur-vorlesen">: „{aufgabe.titel}"</span>
-      </Link>
-    </li>
+      <Detailziel ziel={`/aufgabe/${aufgabe.id}`} titel={aufgabe.titel} />
+    </Zeile>
   )
 }
 
@@ -266,7 +291,7 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
           </p>
         )
       ) : (
-        <ul className={stile.liste}>
+        <Liste>
           {eintraege.map((eintrag) => (
             <Startzeile
               key={eintrag.knoten.aufgabe.id}
@@ -279,14 +304,21 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
               }
             />
           ))}
-        </ul>
+        </Liste>
       )}
     </>
   )
 }
 
-/** Der Kopf: die H1 aus §7 und darunter, um wessen Fall es geht (§2). */
-function Kopf({ fall, freigabeNoetig }: { fall: Fall | null; freigabeNoetig: boolean }) {
+/**
+ * Der Kopf: die H1 aus §7 und darunter, um wessen Fall es geht (§2).
+ *
+ * Ohne Navigationsreihe. Die Wege nach Erbe, Alle und Profil stehen jetzt in
+ * der unteren Leiste (§7), und der Freigabe-Hinweis aus §3.6 sitzt dort am
+ * Profil-Tab. Zwei Orte für dieselbe Auskunft wären zwei Orte, an denen sie
+ * auseinanderlaufen kann.
+ */
+function Kopf({ fall }: { fall: Fall | null }) {
   return (
     <div className={stile.kopf}>
       <h1>Meine Aufgaben</h1>
@@ -299,24 +331,6 @@ function Kopf({ fall, freigabeNoetig }: { fall: Fall | null; freigabeNoetig: boo
         </p>
       )}
 
-      {/*
-        Die untere Leiste aus §7 mit Start, Erbe, Alle und Profil kommt mit den
-        Screens, die sie verbindet. Zwei davon gibt es, und die beiden Wege
-        stehen so lange hier.
-      */}
-      <p className={stile.hinweis}>
-        <Link to="/erbe">Erbe & Tresor</Link> · <Link to="/alle">Alle Aufgaben</Link>
-      </p>
-      {/*
-        §3.6 verlangt das Badge in der unteren Leiste, sobald ein Gerät auf
-        seine Freigabe wartet. Die Leiste gibt es noch nicht (§7); bis dahin
-        steht es an dem einen Link, der nach Profil führt. Dort geschieht die
-        Freigabe. Der Hinweis muss dort stehen, wo ohnehin hingesehen wird.
-      */}
-      <p className={stile.hinweis}>
-        <Link to="/profil">Profil und Geräte</Link>{' '}
-        {freigabeNoetig ? <Badge lage="hinweis">Freigabe nötig</Badge> : null}
-      </p>
     </div>
   )
 }
@@ -337,20 +351,9 @@ export function Start() {
     return <KeinFall />
   }
 
-  /*
-   * Ein gesperrter Fall in der Liste heißt: Dieses Gerät wartet auf eine
-   * Freigabe (§3.6). Das ist lokal ablesbar: Die Wraps fremder Geräte sind es
-   * nicht (§4), also kann nur das wartende Gerät selbst den Hinweis zeigen.
-   */
-  const freigabeNoetig =
-    zustand.status === 'bereit' && zustand.faelle.some((eintrag) => eintrag.zustand === 'gesperrt')
-
   return (
     <main className={stile.seite}>
-      <Kopf
-        fall={zustand.status === 'fehler' ? null : zustand.aktiver}
-        freigabeNoetig={freigabeNoetig}
-      />
+      <Kopf fall={zustand.status === 'fehler' ? null : zustand.aktiver} />
 
       {zustand.status === 'fehler' ? (
         <p className={stile.hinweis} role="alert">

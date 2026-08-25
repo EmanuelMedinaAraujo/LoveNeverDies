@@ -23,10 +23,14 @@
   gap: var(--dichte-abstand-klein);
 }
 
-.abschnitt {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dichte-abstand-klein);
+/*
+ * Der erste Satz zur Sache, direkt unter dem Titel. Kein Kasten: Ein Kasten
+ * sagt "hier faengt ein Abschnitt an", und dieser Satz gehoert zum Titel.
+ */
+.anriss {
+  color: var(--farbe-text);
+  font-size: var(--dichte-schrift);
+  line-height: var(--dichte-zeilenhoehe);
 }
 
 /*
@@ -76,7 +80,7 @@
   gap: var(--dichte-abstand-klein);
 
   padding: var(--dichte-abstand-klein);
-  border: 1px solid var(--farbe-kartenrand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
   background: var(--farbe-karte);
 }
@@ -96,7 +100,7 @@
 .eingabe {
   width: 100%;
   padding: var(--dichte-abstand-klein);
-  border: 1px solid var(--farbe-kartenrand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
   background: var(--farbe-hintergrund);
   color: var(--farbe-text);

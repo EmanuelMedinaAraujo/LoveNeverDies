@@ -2,104 +2,71 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: var(--dichte-abstand);
+  gap: var(--dichte-abstand-gross);
   padding: var(--dichte-abstand-gross) var(--dichte-abstand);
   max-width: 32rem;
   width: 100%;
   margin: 0 auto;
 }
 
-.kopf {
+/* Wert links, mit einer Metazeile darunter. */
+.wert {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--dichte-abstand);
-}
-
-.zurueck {
-  color: var(--farbe-akzent);
-}
-
-.abschnitt {
-  font-size: var(--dichte-schrift-gross);
-  margin-bottom: var(--dichte-abstand-klein);
-}
-
-.name {
+  flex: 1;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
   font-size: var(--dichte-schrift);
 }
 
-.hinweis {
+.etikett {
+  flex: 1;
+  font-size: var(--dichte-schrift);
+}
+
+/* Der Wert am Zeilenende, wie in jeder Einstellungsliste. */
+.rechts {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift);
+  text-align: end;
+}
+
+.meta {
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
+  line-height: 1.4;
+  /*
+   * Der Pruefcode wird abgelesen und verglichen, Ziffer fuer Ziffer. Eine
+   * Tabellenschrift haelt die Ziffernbreiten gleich, damit sich die beiden
+   * Dreiergruppen nicht bei jedem Geraet anders verschieben.
+   */
+  font-variant-numeric: tabular-nums;
 }
 
-.geraete {
-  list-style: none;
-  /* Der Reset in `ui/base.css` laesst die Einrueckung von <ul> stehen. */
-  padding-inline-start: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--dichte-abstand);
-  margin-top: var(--dichte-abstand);
-}
-
-.geraet {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dichte-abstand-klein);
-  align-items: flex-start;
-  padding-top: var(--dichte-abstand);
-  border-top: 1px solid var(--farbe-kartenrand);
-}
-
-.geraet:first-child {
-  padding-top: 0;
-  border-top: none;
-}
-
-.geraetKopf {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--dichte-abstand-klein);
-}
-
-.badge {
-  background: var(--farbe-akzent);
-  color: var(--farbe-auf-akzent);
-  border-radius: var(--dichte-radius);
-  padding: 0.125rem var(--dichte-abstand-klein);
-  font-size: var(--dichte-schrift-klein);
-}
-
-.label {
+/* Ein Weg, den es gerade nicht gibt. Er bleibt sichtbar, damit die Liste
+   nicht bei jedem Fallwechsel eine andere Laenge hat. */
+.aus {
+  flex: 1;
+  color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift);
 }
 
 /*
- * Der Pruefcode wird abgelesen und verglichen, Ziffer fuer Ziffer. Eine
- * Tabellenschrift haelt die Ziffernbreiten gleich, damit sich die beiden
- * Dreiergruppen nicht bei jedem Geraet anders verschieben.
+ * Eine Zeile, die gerade eine Rueckfrage oder ein Feld traegt: untereinander
+ * statt nebeneinander, und mit Luft. Sie ist in diesem Moment kein
+ * Listeneintrag mehr, sondern das, worauf man antwortet.
  */
-.pruefcode {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.08em;
-  color: var(--farbe-text-sekundaer);
-  font-size: var(--dichte-schrift-klein);
-}
-
-.umbenennen {
-  display: flex;
+.frage {
   flex-direction: column;
+  align-items: stretch;
   gap: var(--dichte-abstand-klein);
-  width: 100%;
+  padding-block: var(--dichte-abstand);
 }
 
 .eingabe {
   width: 100%;
   padding: var(--dichte-abstand-klein);
-  border: 1px solid var(--farbe-kartenrand);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
   background: var(--farbe-hintergrund);
   color: var(--farbe-text);
@@ -111,4 +78,14 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Die einzige Aktion in dieser App, die etwas wegnimmt. Die Fristenpalette aus
+ * §12 traegt dafuer schon eine Farbe, die auf beiden Untergruenden AA erfuellt;
+ * eine neunte Farbe nur fuer diesen einen Knopf waere eine, die bei der
+ * naechsten Palettenaenderung vergessen wird.
+ */
+.gefahr {
+  color: var(--farbe-frist-abgelaufen-text);
 }

@@ -158,7 +158,7 @@ test('Angehörige einladen: beide Seiten sehen denselben Prüfcode', async ({ br
     await test.step('Anna legt einen Fall mit einer Aufgabe an', async () => {
       await trauerfallAnlegen(anna, 'Margarete Vogt', '2024-06-02')
 
-      await anna.getByRole('link', { name: 'Alle Aufgaben' }).click()
+      await anna.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Alle' }).click()
       await anna.getByLabel('Neue Aufgabe').fill('Grabstein aussuchen')
       await anna.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
 
@@ -214,7 +214,7 @@ test('Angehörige einladen: beide Seiten sehen denselben Prüfcode', async ({ br
        * den Fallschlüssel stünde hier "Für dieses Gerät liegt noch kein
        * Schlüssel zu diesem Fall vor".
        */
-      await bernd.getByRole('link', { name: 'Alle Aufgaben' }).click()
+      await bernd.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Alle' }).click()
 
       await expect(bernd.getByRole('checkbox', { name: 'Grabstein aussuchen' })).toBeVisible()
     })

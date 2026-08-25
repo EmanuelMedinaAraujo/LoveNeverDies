@@ -47,6 +47,23 @@ vi.mock('../../src/screens/shared/Koppeln/Koppeln.tsx', () => ({
   Koppeln: () => <p>Codeeingabe</p>,
 }))
 
+/*
+ * Die untere Leiste steht unter den vier Hauptscreens (§7). Was sie zeigt,
+ * hängt am Fallzustand, und den holt sie sich über `useCase`. Hier ist er
+ * ersetzt: Welche Route zu welchem Screen führt, hat mit Fällen nichts zu tun.
+ * Was der Rahmen aus dem Zustand liest, steht in `Rahmen.test.tsx`.
+ */
+vi.mock('../../src/hooks/useCase.ts', () => ({
+  useCase: () => ({
+    zustand: { status: 'laedt' },
+    legeTrauerfallAn: vi.fn(),
+    legeVorsorgefallAn: vi.fn(),
+    loescheVorsorgefall: vi.fn(),
+    verlasseFall: vi.fn(),
+    aktualisiere: vi.fn(),
+  }),
+}))
+
 const { App } = await import('../../src/app/App.tsx')
 
 function rendere(zustand: AuthZustand, pfad = '/') {
