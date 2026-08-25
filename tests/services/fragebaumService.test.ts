@@ -102,6 +102,35 @@ describe('Bauplaene (§7)', () => {
     expect(BAUPLAENE.testament.katalog.rechtsgrundlage).toBe('§ 2259 BGB')
   })
 
+  it('schreibt den ganzen Erbschein-Text in die Aufgabe (§10)', () => {
+    // Wer "Ja" getippt hat, hat den Text eine Sekunde vorher gelesen und soll
+    // ihn in der Aufgabe wiederfinden — samt dem Weg dorthin, der auf der
+    // Seite selbst nicht steht.
+    const beschreibung = BAUPLAENE.erbschein.beschreibung
+
+    expect(beschreibung).toContain('Eine amtliche Urkunde')
+    expect(beschreibung).toContain('Wie beantragen Sie einen Erbschein?')
+    expect(beschreibung).toContain('Beim Notar oder beim Nachlassgericht')
+  })
+
+  it('setzt in der Aufgabenbeschreibung gefuellte Punkte', () => {
+    // Die Beschreibung ist ein String und traegt keine Liste. Dann steht der
+    // Punkt im Text, und zwar ueberall derselbe: Der Export der Juristinnen
+    // mischt "*" und "-".
+    const punktzeilen = BAUPLAENE.erbschein.beschreibung
+      .split('\n')
+      .filter((zeile) => zeile.startsWith('•'))
+
+    expect(punktzeilen.length).toBeGreaterThan(0)
+    expect(BAUPLAENE.erbschein.beschreibung).not.toMatch(/^[*-] /m)
+  })
+
+  it('rechnet dem Erbschein keine Frist an', () => {
+    // Das Gesetz nennt fuer den Antrag keine. §8 rechnet lieber gar nicht.
+    expect(BAUPLAENE.erbschein.katalog.fristTage).toBeNull()
+    expect(BAUPLAENE.erbschein.katalog.fristAb).toBeNull()
+  })
+
   it('gibt jeder Vorlage eine eigene Herkunft', () => {
     const ids = Object.values(BAUPLAENE).map((bauplan) => bauplan.katalog.aufgabeId)
 
