@@ -25,8 +25,17 @@ export type Erbstatus =
   | 'kein-erbe'
   | 'noch-erbe'
 
-/** Die drei Aufgaben, die aus dem Baum entstehen können (ERBE_DESIGN.md §7). */
-export type Aufgabenvorlage = 'testament' | 'ausschlagung' | 'anfechtung'
+/**
+ * Die Aufgaben, die aus dem Baum und aus dem Erbstatus entstehen können
+ * (ERBE_DESIGN.md §7).
+ *
+ * Drei hängen an einem Ergebnisknoten. `erbschein` hängt an keinem: Sie
+ * entsteht auf der Erbe-Seite, hinter dem Status "Erbe" (§10). Trotzdem
+ * dieselbe Aufzählung und derselbe Bauplan — es ist dieselbe Sorte Aufgabe,
+ * privat und auf die anlegende Person zugewiesen, und "höchstens eine je
+ * Person und Art" soll für sie genauso gelten.
+ */
+export type Aufgabenvorlage = 'testament' | 'ausschlagung' | 'anfechtung' | 'erbschein'
 
 /**
  * Das Thema eines Infoknotens.

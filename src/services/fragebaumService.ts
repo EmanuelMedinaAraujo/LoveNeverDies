@@ -12,6 +12,7 @@
  * Juristinnen (DESIGN.md §8).
  */
 
+import { ERBSCHEIN, ERBSCHEIN_ANTRAG, alsText } from '../content/erbstatus.ts'
 import { FRAGEBAUM, WURZEL } from '../content/fragebaum.ts'
 import type {
   Aufgabenvorlage,
@@ -122,7 +123,7 @@ export type Aufgabenbauplan = {
 }
 
 /**
- * Die drei Aufgaben, die der Baum anlegen kann (ERBE_DESIGN.md §7).
+ * Die Aufgaben, die aus dem Baum und aus dem Erbstatus entstehen (§7, §10).
  *
  * Ihre Rechtsangaben stehen hier und nicht mehr im Katalog (ADR-0001). Sie
  * müssen mit: Ohne `{fristTage, fristAb}` rechnet `fristen.ts` keine Frist,
@@ -177,6 +178,37 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
       quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__1944.html',
       kategorie: 'Erbe',
       reihenfolge: 50,
+    },
+  },
+  /*
+   * Der Erbschein hängt an keinem Ergebnisknoten, sondern am Status "Erbe"
+   * auf der Erbe-Seite (§10). Seine Beschreibung ist der ganze Erklärtext:
+   * Wer "Ja" getippt hat, hat ihn eine Sekunde vorher gelesen und soll ihn in
+   * der Aufgabe wiederfinden, ohne den Weg dorthin noch einmal zu gehen.
+   *
+   * Ohne rechenbare Frist. Das Gesetz nennt für den Antrag keine, und §8
+   * rechnet lieber gar nicht als falsch — eine erfundene Frist auf einer
+   * Aufgabe, die keine hat, triebe jemanden zu einem Termin, den er nicht
+   * braucht.
+   */
+  erbschein: {
+    titel: 'Erbschein beantragen',
+    beschreibung: alsText(ERBSCHEIN, ERBSCHEIN_ANTRAG),
+    katalog: {
+      aufgabeId: 'fragebaum-erbschein',
+      version: FRAGEBAUM_STAND,
+      fristTage: null,
+      fristAb: null,
+      rechtsgrundlage: '§ 2353 BGB',
+      zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
+      benoetigteDokumente: [],
+      unteraufgaben: [],
+      haengtAbVon: [],
+      hinweis:
+        'Der Erbschein kostet Geld; der Betrag hängt vom Nachlass ab. Beim Notariat bekommen Sie schneller einen Termin, beim Nachlassgericht fallen keine zusätzlichen Kosten an.',
+      quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__2353.html',
+      kategorie: 'Erbe',
+      reihenfolge: 55,
     },
   },
   anfechtung: {

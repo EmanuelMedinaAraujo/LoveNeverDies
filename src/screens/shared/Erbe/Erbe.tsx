@@ -1,20 +1,28 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
+import {
+  ALLEINERBE,
+  ERBENGEMEINSCHAFT,
+  ERBSCHEIN,
+  ERBSCHEIN_FRAGE,
+} from '../../../content/erbstatus.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { useTodesfall } from '../../../hooks/useTodesfall.ts'
 import { useTresor } from '../../../hooks/useTresor.ts'
-import type { Fragebaumergebnis } from '../../../services/aufgabenService.ts'
+import type { Aufgabe, Fragebaumergebnis } from '../../../services/aufgabenService.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
-import { knoten, statusText } from '../../../services/fragebaumService.ts'
+import { BAUPLAENE, knoten, statusText } from '../../../services/fragebaumService.ts'
 import type { TresorItem } from '../../../services/tresorService.ts'
+import type { Infotext } from '../../../types/infotext.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import stile from './Erbe.module.css'
+import { SymbolPerson, SymbolPersonen, SymbolPfeil, SymbolUrkunde } from './Symbole.tsx'
 
 function Ladeanzeige({ text }: { text: string }) {
   return (
@@ -508,6 +516,243 @@ function VorsorgeTresor({
 }
 
 /**
+ * Was hinter dem Status "Erbe" aufgeht (ERBE_DESIGN.md §10).
+ *
+ * Wer erbt, hat das Ergebnis des Fragebaums und danach zwei Fragen, die der
+ * Baum nicht mehr stellt: Brauche ich einen Erbschein, und erbe ich allein
+ * oder mit anderen? Sie stehen deshalb hinter dem Wort "Erbe" und nicht als
+ * zwei weitere Karten auf der Seite: Wer sie nicht hat, soll sie nicht
+ * wegblättern müssen.
+ *
+ * Eine Ansicht nach der anderen, mit einem Weg zurück aus jeder. Keine eigene
+ * Adresse und kein Dialog — dieselbe Überlegung wie beim Fragebaum: Der
+ * Zurück-Knopf des Browsers soll die Seite verlassen und nicht eine
+ * Erläuterung schließen.
+ */
+type Erbeansicht =
+  | 'zu'
+  | 'wahl'
+  | 'erbschein'
+  | 'stellung'
+  | 'erbengemeinschaft'
+  | 'alleinerbe'
+
+/** Der Weg zurück, eine Ansicht nach oben. */
+function Zurueck({ auf }: { auf: () => void }) {
+  return (
+    <Button variante="text" className={stile.zurueck} onClick={auf}>
+      <span aria-hidden="true">←</span> Zurück
+    </Button>
+  )
+}
+
+/**
+ * Ein gegliederter Erklärtext (§8).
+ *
+ * Die Aufzählung ist eine `ul` und trägt damit gefüllte Punkte, in beiden
+ * Ansichten und auch dann, wenn jemand den Text vorgelesen bekommt: Eine
+ * Vorlesestimme sagt "Liste mit fünf Einträgen". Punkte, die als Zeichen im
+ * Text stünden, sagte sie mit vor.
+ */
+function Infoblock({ text }: { text: Infotext }) {
+  return (
+    <div className={stile.info}>
+      <h3 className={stile.infoTitel}>{text.titel}</h3>
+
+      {text.abschnitte.map((abschnitt) =>
+        abschnitt.art === 'punkte' ? (
+          <ul key={abschnitt.punkte.join('|')} className={stile.punkte}>
+            {abschnitt.punkte.map((punkt) => (
+              <li key={punkt}>{punkt}</li>
+            ))}
+          </ul>
+        ) : (
+          <p
+            key={abschnitt.text}
+            className={
+              abschnitt.art === 'zwischentitel' ? stile.infoZwischentitel : stile.infoAbsatz
+            }
+          >
+            {abschnitt.text}
+          </p>
+        ),
+      )}
+    </div>
+  )
+}
+
+/** Der Erbschein-Text mit der Frage darunter (§10). */
+function Erbschein({
+  vorhandene,
+  onAnlegen,
+  onZurueck,
+}: {
+  vorhandene: Aufgabe | null
+  onAnlegen: () => Promise<void>
+  onZurueck: () => void
+}) {
+  const navigate = useNavigate()
+  const [laeuft, setzeLaeuft] = useState(false)
+  const [fehler, setzeFehler] = useState<string | null>(null)
+
+  async function anlegen() {
+    setzeLaeuft(true)
+    setzeFehler(null)
+
+    try {
+      await onAnlegen()
+    } catch (ursache) {
+      setzeFehler(alsNachricht(ursache))
+    } finally {
+      setzeLaeuft(false)
+    }
+  }
+
+  return (
+    <div className={stile.wege}>
+      <Zurueck auf={onZurueck} />
+      <Infoblock text={ERBSCHEIN} />
+
+      {fehler === null ? null : (
+        <p className={stile.warnung} role="alert">
+          {fehler}
+        </p>
+      )}
+
+      {/*
+        Höchstens eine je Person und Art (§7): Ein zweites "Ja" legt nichts
+        Neues an, sondern führt zu der Aufgabe, die schon da ist.
+      */}
+      {vorhandene === null ? (
+        <>
+          <p className={stile.frage}>{ERBSCHEIN_FRAGE}</p>
+          <div className={stile.jaNein}>
+            <Button disabled={laeuft} onClick={() => void anlegen()}>
+              Ja
+            </Button>
+            <Button variante="sekundaer" disabled={laeuft} onClick={onZurueck}>
+              Nein
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className={stile.hinweis}>
+            Die Aufgabe „{BAUPLAENE.erbschein.titel}“ ist angelegt. Sie steht in Ihren Aufgaben
+            und ist nur für Sie sichtbar.
+          </p>
+          <Button volleBreite onClick={() => navigate(`/aufgabe/${vorhandene.id}`)}>
+            Aufgabe öffnen
+          </Button>
+        </>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Alles, was hinter dem Wort "Erbe" steht.
+ *
+ * Der Zustand liegt hier und nicht in der Adresse: Er ist nichts, was jemand
+ * teilt, und nichts, was einen Fall betrifft.
+ */
+function Erbewege({
+  ansicht,
+  setzeAnsicht,
+  vorhandene,
+  onAnlegen,
+}: {
+  ansicht: Erbeansicht
+  setzeAnsicht: (ansicht: Erbeansicht) => void
+  vorhandene: Aufgabe | null
+  onAnlegen: () => Promise<void>
+}) {
+  if (ansicht === 'zu') {
+    return null
+  }
+
+  if (ansicht === 'wahl') {
+    return (
+      <div className={stile.wege}>
+        <Button variante="sekundaer" volleBreite onClick={() => setzeAnsicht('erbschein')}>
+          <SymbolUrkunde />
+          Erbschein
+        </Button>
+        <Button variante="sekundaer" volleBreite onClick={() => setzeAnsicht('stellung')}>
+          <SymbolPersonen />
+          Erbengemeinschaft bzw. Alleinerbe
+        </Button>
+      </div>
+    )
+  }
+
+  if (ansicht === 'erbschein') {
+    return (
+      <Erbschein
+        vorhandene={vorhandene}
+        onAnlegen={onAnlegen}
+        onZurueck={() => setzeAnsicht('wahl')}
+      />
+    )
+  }
+
+  if (ansicht === 'stellung') {
+    return (
+      <div className={stile.wege}>
+        <Zurueck auf={() => setzeAnsicht('wahl')} />
+        <h3 className={stile.infoTitel}>Was trifft auf Sie zu?</h3>
+        <p className={stile.hinweis}>Das Nachlassgericht informiert Sie darüber.</p>
+        <Button variante="sekundaer" volleBreite onClick={() => setzeAnsicht('erbengemeinschaft')}>
+          <SymbolPersonen />
+          Erbengemeinschaft
+        </Button>
+        <Button variante="sekundaer" volleBreite onClick={() => setzeAnsicht('alleinerbe')}>
+          <SymbolPerson />
+          Alleinerbe
+        </Button>
+      </div>
+    )
+  }
+
+  return (
+    <div className={stile.wege}>
+      <Zurueck auf={() => setzeAnsicht('stellung')} />
+      <Infoblock text={ansicht === 'erbengemeinschaft' ? ERBENGEMEINSCHAFT : ALLEINERBE} />
+    </div>
+  )
+}
+
+/**
+ * Der Status als Schaltfläche (§10).
+ *
+ * Das Wort "Erbe" ist der Knopf, und der Pfeil daneben sagt, dass es einer
+ * ist: Eine Pille, die sich nur beim Antippen als Knopf herausstellt, findet
+ * niemand, der sie nicht sucht. Die Trefferfläche ist die aus §7 und nicht die
+ * Höhe der Pille.
+ */
+function Erbeschalter({ offen, onSchalten }: { offen: boolean; onSchalten: () => void }) {
+  return (
+    <button
+      type="button"
+      className={stile.statusKnopf}
+      aria-expanded={offen}
+      onClick={onSchalten}
+    >
+      {/*
+        Der Name der Schaltfläche ist genau das sichtbare Wort. Ein Zusatz zum
+        Vorlesen ("mehr dazu") stünde neben dem, was `aria-expanded` ohnehin
+        ansagt — "Erbe, Schaltfläche, reduziert" —, und WCAG 2.5.3 will den
+        sichtbaren Text im Namen und nicht bloss darin enthalten.
+      */}
+      <Badge lage="hinweis">{statusText('erbe')}</Badge>
+      <span className={offen ? stile.pfeilOffen : stile.pfeil}>
+        <SymbolPfeil />
+      </span>
+    </button>
+  )
+}
+
+/**
  * Der Erbstatus dieser Person und der Weg in den Fragebaum
  * (ERBE_DESIGN.md §10).
  *
@@ -517,8 +762,10 @@ function VorsorgeTresor({
  * wie das Kenntnisdatum, mit dem es sich die Zeile teilt (§8).
  */
 function Erbstatus({ fall }: { fall: LesbarerFall }) {
-  const { zustand, fragebaum, fragebaumGeladen } = useAufgaben(fall)
+  const { zustand, fragebaum, fragebaumGeladen, fragebaumAufgabe, legeFragebaumAufgabeAn } =
+    useAufgaben(fall)
   const navigate = useNavigate()
+  const [ansicht, setzeAnsicht] = useState<Erbeansicht>('zu')
 
   /*
    * Gewartet wird auf `fragebaumGeladen` und nicht bloss auf den Bestand.
@@ -534,11 +781,24 @@ function Erbstatus({ fall }: { fall: LesbarerFall }) {
     return <Ladeanzeige text="Ihr Ergebnis wird geladen..." />
   }
 
+  /*
+   * Nur "Erbe" trägt die beiden Wege (§10). "Wahrscheinlich Erbe" trägt sie
+   * nicht: Wer noch nicht weiß, ob er erbt, soll keinen Erbschein beantragen,
+   * und "Noch Erbe" ist die Ausschlagung — dort ist der Erbschein das
+   * Gegenteil dessen, was ansteht.
+   */
+  const istErbe = fragebaum !== null && fragebaum.status === 'erbe'
+
   return (
     <Card>
       <div className={stile.statusKopf}>
         <h2 className={stile.abschnitt}>Ihr Erbstatus</h2>
-        {fragebaum === null || fragebaum.status === null ? null : (
+        {fragebaum === null || fragebaum.status === null ? null : istErbe ? (
+          <Erbeschalter
+            offen={ansicht !== 'zu'}
+            onSchalten={() => setzeAnsicht(ansicht === 'zu' ? 'wahl' : 'zu')}
+          />
+        ) : (
           <Badge lage="hinweis">{statusText(fragebaum.status)}</Badge>
         )}
       </div>
@@ -563,6 +823,15 @@ function Erbstatus({ fall }: { fall: LesbarerFall }) {
               : `Ermittelt am ${new Date(fragebaum.am).toLocaleDateString('de-DE')}.`}{' '}
             Nur für Sie sichtbar.
           </p>
+
+          {istErbe ? (
+            <Erbewege
+              ansicht={ansicht}
+              setzeAnsicht={setzeAnsicht}
+              vorhandene={fragebaumAufgabe('erbschein')}
+              onAnlegen={() => legeFragebaumAufgabeAn('erbschein')}
+            />
+          ) : null}
         </>
       )}
     </Card>
