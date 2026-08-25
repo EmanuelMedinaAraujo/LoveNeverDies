@@ -16,7 +16,27 @@
       content="Begleitet Angehörige nach einem Todesfall durch die rechtlichen und organisatorischen Aufgaben."
     />
 
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!--
+      Zwei Favicons, eines je Farbschema. Der Browser waehlt über `media`; wer
+      damit nichts anfangen kann, nimmt das erste. Das Manifest kann das nicht
+      (es kennt nur einen Satz Icons), deshalb steht dort und auf dem
+      Startbildschirm die dunkle Kachel — sie hält ihre Kante auf jedem
+      Hintergrund, während die helle auf einem hellen verschwindet.
+    -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="64x64"
+      media="(prefers-color-scheme: light)"
+      href="/favicon-hell-64.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="64x64"
+      media="(prefers-color-scheme: dark)"
+      href="/favicon-dunkel-64.png"
+    />
     <link rel="apple-touch-icon" href="/apple-touch-icon-180.png" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
