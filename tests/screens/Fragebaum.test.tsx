@@ -182,13 +182,12 @@ describe('Einstieg und Navigation (§3)', () => {
     expect(screen.queryByRole('button', { name: 'Zurück' })).not.toBeInTheDocument()
   })
 
-  it('zeigt ab der zweiten Frage ein "Zurück"', async () => {
-    const nutzer = userEvent.setup()
+  it('zeigt schon auf der ersten Frage ein "Zurück"', () => {
+    // Der Screen liegt nicht im `Rahmen`: Ohne diesen Knopf käme man von der
+    // ersten Frage nur mit dem Browser wieder heraus.
     zeige('/erbe/fragebaum')
 
-    await nutzer.click(screen.getByRole('button', { name: 'Ja' }))
-
-    expect(screen.getByRole('button', { name: 'Zurück' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/erbe')
   })
 
   it('führt "Zurück" zur vorigen Frage', async () => {
@@ -196,7 +195,7 @@ describe('Einstieg und Navigation (§3)', () => {
     zeige('/erbe/fragebaum')
 
     await nutzer.click(screen.getByRole('button', { name: 'Ja' }))
-    await nutzer.click(screen.getByRole('button', { name: 'Zurück' }))
+    await nutzer.click(screen.getByRole('link', { name: 'Zurück' }))
 
     expect(screen.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeInTheDocument()
   })

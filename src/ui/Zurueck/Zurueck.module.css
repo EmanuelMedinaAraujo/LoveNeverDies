@@ -1,0 +1,44 @@
+/*
+ * Der Weg zurueck, oben links (DESIGN.md §7). Alle Masse aus den Tokens.
+ *
+ * Er sitzt buendig am linken Rand seines Screens und nicht eingerueckt: Die
+ * Screens setzen ihr eigenes Seitenpolster, und ein zweites davor schoebe den
+ * Knopf aus der Ecke, in der ein Daumen ihn sucht.
+ */
+
+.zurueck {
+  /*
+   * `align-self: start`, weil die Screens Flex-Spalten sind: Ohne das zoege
+   * der Link sich ueber die volle Breite, und die Trefferflaeche laege dann
+   * auch rechts neben dem Wort, wo niemand sie vermutet.
+   */
+  align-self: start;
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--raster-1);
+
+  /*
+   * §7: mindestens 44 x 44 px. Das Wort allein ist niedriger, deshalb steht
+   * die Hoehe hier und wird nicht dem Text ueberlassen. Das negative
+   * Aussenpolster nimmt das Innenpolster wieder heraus, damit der Text
+   * buendig zur Ueberschrift darunter steht und der Knopf trotzdem gross ist.
+   */
+  min-height: var(--ziel-mindestmass);
+  padding: var(--raster-2) var(--raster-2) var(--raster-2) 0;
+
+  color: var(--farbe-akzent);
+  font-size: var(--dichte-schrift);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.zurueck:hover {
+  text-decoration: underline;
+}
+
+.winkel {
+  width: 1.25em;
+  height: 1.25em;
+  flex: none;
+}

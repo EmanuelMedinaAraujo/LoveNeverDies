@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { useEinloesung } from '../../../hooks/useKopplung.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import stile from './Koppeln.module.css'
 
 /**
@@ -33,6 +33,8 @@ export function Koppeln() {
   if (zustand.status === 'fertig') {
     return (
       <main className={stile.seite}>
+        <Zurueck ziel="/profil" />
+
         <div className={stile.kopf}>
           <h1>Fertig</h1>
         </div>
@@ -42,10 +44,6 @@ export function Koppeln() {
             {zustand.nachricht}
           </p>
         </Card>
-
-        <p className={stile.hinweis}>
-          <Link to="/profil">Zurück zu Profil</Link>
-        </p>
       </main>
     )
   }
@@ -56,6 +54,8 @@ export function Koppeln() {
 
     return (
       <main className={stile.seite}>
+        <Zurueck ziel="/profil" />
+
         <div className={stile.kopf}>
           <h1>{angebot.zweck === 'join' ? 'Zum Fall hinzufügen?' : 'Gerät freischalten?'}</h1>
           <p className={stile.einleitung}>
@@ -148,6 +148,8 @@ export function Koppeln() {
 
   return (
     <main className={stile.seite}>
+      <Zurueck ziel="/profil" />
+
       <div className={stile.kopf}>
         <h1>Kopplungscode eingeben</h1>
         <p className={stile.einleitung}>
@@ -184,10 +186,6 @@ export function Koppeln() {
           ) : null}
         </form>
       </Card>
-
-      <p className={stile.hinweis}>
-        <Link to="/profil">Zurück zu Profil</Link>
-      </p>
     </main>
   )
 }

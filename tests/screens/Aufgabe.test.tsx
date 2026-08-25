@@ -531,7 +531,7 @@ describe('Aufgabendetail (§7, §8)', () => {
   it('führt zurück zu allen Aufgaben', async () => {
     zeigeDetail()
 
-    await userEvent.click(screen.getByRole('link', { name: 'Zurück zu allen Aufgaben' }))
+    await userEvent.click(screen.getByRole('link', { name: 'Zurück' }))
 
     await waitFor(() => expect(screen.getByText('Alle Aufgaben')).toBeVisible())
   })

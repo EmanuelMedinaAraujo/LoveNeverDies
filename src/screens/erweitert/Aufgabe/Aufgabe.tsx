@@ -22,6 +22,7 @@ import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Gruppe } from '../../../ui/Liste/Liste.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import {
   benenne,
   darfBearbeiten,
@@ -482,9 +483,6 @@ function Detail({
           </p>
         )}
 
-        <p className={stile.hinweis}>
-          <Link to="/alle">Zurück zu allen Aufgaben</Link>
-        </p>
 
         {/*
           Ob die Aufgabe erledigt ist, ist das Erste, was jemand hier wissen
@@ -822,14 +820,9 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     return zustand.laedtNetz ? (
       <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
     ) : (
-      <>
-        <p className={stile.hinweis} role="alert">
-          Diese Aufgabe gibt es nicht mehr. Gelöschte Aufgaben kommen nicht zurück.
-        </p>
-        <p className={stile.hinweis}>
-          <Link to="/alle">Zurück zu allen Aufgaben</Link>
-        </p>
-      </>
+      <p className={stile.hinweis} role="alert">
+        Diese Aufgabe gibt es nicht mehr. Gelöschte Aufgaben kommen nicht zurück.
+      </p>
     )
   }
 
@@ -890,6 +883,7 @@ export function Aufgabe() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
+        <Zurueck ziel="/alle" />
         <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
@@ -902,6 +896,8 @@ export function Aufgabe() {
 
   return (
     <main className={stile.seite}>
+      <Zurueck ziel="/alle" />
+
       {zustand.status === 'fehler' ? (
         <p className={stile.hinweis} role="alert">
           Ihre Aufgaben sind gerade nicht abrufbar. {zustand.nachricht}
