@@ -196,6 +196,19 @@ export function nameVon(person: Zugewiesene, userId: string): string {
 }
 
 /**
+ * Derselbe Name, aber im Dativ: als Antwort auf "Wem ist sie zugewiesen?".
+ *
+ * Nur das Pronomen beugt sich. Ein Eigenname steht im Deutschen im Dativ wie
+ * im Nominativ, und "Weiteres Mitglied" ist als Beschriftung eines Kaestchens
+ * gemeint und nicht als Satzteil. Uebrig bleibt also genau der eine Fall, den
+ * eine Liste aus "Alle / Sie / Bert Mueller" unter einer Dativfrage falsch
+ * schreibt.
+ */
+export function nameImDativ(person: Zugewiesene, userId: string): string {
+  return person.userId === userId ? 'Ihnen' : nameVon(person, userId)
+}
+
+/**
  * Die Mitglieder eines Falls mit den Namen, die dieses Gerät kennt (§7).
  *
  * Drei Quellen, in dieser Reihenfolge: die angemeldete Person kennt sich selbst,

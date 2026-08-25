@@ -7,6 +7,7 @@ import {
   istFrei,
   istZugewiesen,
   mitPerson,
+  nameImDativ,
   nameVon,
   ohnePerson,
   personen,
@@ -216,5 +217,21 @@ describe('nameVon', () => {
 
   it('behilft sich ohne Namen', () => {
     expect(nameVon({ userId: 'user_carla', name: '' }, ICH.userId)).toBe('Weiteres Mitglied')
+  })
+})
+
+describe('nameImDativ', () => {
+  it('sagt "Ihnen" zur angemeldeten Person', () => {
+    // Die Kaestchen antworten auf "Wem ist sie zugewiesen?". "Sie" waere dort
+    // der falsche Fall.
+    expect(nameImDativ(ICH, ICH.userId)).toBe('Ihnen')
+  })
+
+  it('laesst einen Eigennamen, wie er ist', () => {
+    expect(nameImDativ(BERT, ICH.userId)).toBe('Bert Müller')
+  })
+
+  it('behilft sich ohne Namen wie nameVon', () => {
+    expect(nameImDativ({ userId: 'user_carla', name: '' }, ICH.userId)).toBe('Weiteres Mitglied')
   })
 })
