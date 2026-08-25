@@ -517,10 +517,20 @@ function VorsorgeTresor({
  * wie das Kenntnisdatum, mit dem es sich die Zeile teilt (§8).
  */
 function Erbstatus({ fall }: { fall: LesbarerFall }) {
-  const { zustand, fragebaum } = useAufgaben(fall)
+  const { zustand, fragebaum, fragebaumGeladen } = useAufgaben(fall)
   const navigate = useNavigate()
 
-  if (zustand.status === 'laedt') {
+  /*
+   * Gewartet wird auf `fragebaumGeladen` und nicht bloss auf den Bestand.
+   *
+   * `fragebaum` ist `null`, solange `K_p` unterwegs ist — auch dann, wenn ein
+   * Ergebnis längst gespeichert ist: Das Item liegt da, nur unlesbar. Wer das
+   * für „noch nicht durchlaufen" hält, lädt jemanden zu einem Fragebaum ein,
+   * den er schon hinter sich hat, und der zweite Durchlauf endet dann bei
+   * „Ihr gespeichertes Ergebnis bleibt". Eine Sekunde Ladetext ist billiger
+   * als diese Verwechslung (ERBE_DESIGN.md §6).
+   */
+  if (zustand.status === 'laedt' || !fragebaumGeladen) {
     return <Ladeanzeige text="Ihr Ergebnis wird geladen..." />
   }
 

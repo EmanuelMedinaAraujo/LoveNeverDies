@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAnsichtsmodus } from '../../../hooks/useAnsichtsmodus.ts'
-import { useAufgaben } from '../../../hooks/useAufgaben.ts'
+import { useAufgaben, type Aufgabendaten } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import type { Fragebaumergebnis } from '../../../services/aufgabenService.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
@@ -215,14 +215,34 @@ function Frageseite({
   )
 }
 
+/**
+ * Die Wartezeiten zwischen den Versuchen, ein Ergebnis abzulegen — in
+ * Millisekunden, ein Eintrag je Wiederholung (ERBE_DESIGN.md §6).
+ *
+ * Ein Durchlauf, der bis zum Ergebnis gegangen ist, ist die einzige Aussage
+ * über den eigenen Erbstatus, die es gibt; sie am ersten Fehlschlag zu
+ * verlieren, wäre der schlechteste aller Ausgänge. Der erste Versuch scheitert
+ * am ehesten daran, dass gerade noch etwas unterwegs ist — die Geräteanmeldung,
+ * der Sitzungstoken, das Netz —, und dagegen hilft nichts als warten und es
+ * noch einmal tun.
+ *
+ * Endlich und nicht endlos: Sechs Versuche über gut sieben Sekunden decken das
+ * Warten ab. Was danach noch scheitert, scheitert an etwas, das von selbst
+ * nicht vergeht, und dann steht die Meldung auf der Seite, statt dass im
+ * Hintergrund weiter jemand klopft.
+ */
+const WIEDERHOLUNGEN = [200, 500, 1000, 2000, 4000]
+
 function Ergebnisseite({
   knoten,
   fall,
   pfad,
+  aufgaben,
 }: {
   knoten: Fragebaumknoten
   fall: LesbarerFall
   pfad: string[]
+  aufgaben: Aufgabendaten
 }) {
   const navigate = useNavigate()
   const {
@@ -233,7 +253,7 @@ function Ergebnisseite({
     legeFragebaumAufgabeAn,
     setzeKenntnisAm,
     fristbezug,
-  } = useAufgaben(fall)
+  } = aufgaben
 
   /*
    * Was gespeichert war, bevor dieser Durchlauf etwas schrieb — festgehalten in
@@ -252,6 +272,17 @@ function Ergebnisseite({
   )
   /** Ob dieser Durchlauf sein Ergebnis schon abgelegt hat. */
   const geschrieben = useRef(false)
+  /**
+   * Der wievielte Versuch gerade dran ist (§6).
+   *
+   * Er steht im Zustand und nicht in einem Ref, weil genau das den Effekt
+   * erneut anstösst: Ein Wiederholungsversuch darf nicht davon abhängen, dass
+   * zufällig `speichereFragebaum` seine Identität wechselt, solange die Seite
+   * noch offen ist. Tut er es doch, ist das Ergebnis weg, sobald jemand
+   * „Zurück zur Übersicht" klickt.
+   */
+  const [versuch, setzeVersuch] = useState(0)
+  const zeitgeber = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [fehler, setzeFehler] = useState<string | null>(null)
   const [plz, setzePlz] = useState('')
   const [stelle, setzeStelle] = useState('')
@@ -273,11 +304,11 @@ function Ergebnisseite({
   /*
    * Der erste Durchlauf schreibt sich selbst, ein späterer nicht (§6).
    *
-   * Der Effekt läuft erneut, wenn `speichereFragebaum` seine Identität wechselt
-   * — und das tut es genau dann, wenn die Geräteanmeldung durch ist. Ohne
-   * angemeldetes Gerät gibt es keinen `K_p`, und der erste Versuch fällt beim
-   * Aufbau der Seite regelmässig in diese Lücke. `geschrieben` sorgt dafür,
-   * dass am Ende trotzdem genau einmal geschrieben wird.
+   * Losgehen darf es erst, wenn `fragebaumGeladen` steht — also Bestand, `K_p`
+   * und Anmeldung. Scheitert es trotzdem, zählt `versuch` hoch und der Effekt
+   * läuft von selbst erneut; er wartet nicht darauf, dass `speichereFragebaum`
+   * seine Identität wechselt. `geschrieben` sorgt dafür, dass am Ende trotzdem
+   * genau einmal geschrieben wird.
    */
   useEffect(() => {
     if (entschieden === null || entschieden.vorher !== null || geschrieben.current) {
@@ -310,8 +341,16 @@ function Ergebnisseite({
         // noch läuft, und dann soll der nächste Lauf es erneut versuchen.
         geschrieben.current = false
 
-        if (aktuell) {
-          setzeFehler(alsNachricht(ursache))
+        if (!aktuell) {
+          return
+        }
+
+        setzeFehler(alsNachricht(ursache))
+
+        const warten = WIEDERHOLUNGEN[versuch]
+
+        if (warten !== undefined) {
+          zeitgeber.current = setTimeout(() => setzeVersuch(versuch + 1), warten)
         }
       }
     })()
@@ -319,7 +358,23 @@ function Ergebnisseite({
     return () => {
       aktuell = false
     }
-  }, [entschieden, pfad, speichereFragebaum])
+  }, [entschieden, pfad, speichereFragebaum, versuch])
+
+  /*
+   * Der ausstehende Wiederholungsversuch stirbt mit der Seite.
+   *
+   * Eigener Effekt ohne Abhängigkeiten: Der Zeitgeber überlebt absichtlich
+   * jeden erneuten Lauf des Effekts darüber — abgeräumt wird er erst, wenn es
+   * niemanden mehr gibt, dem das Ergebnis gehört.
+   */
+  useEffect(
+    () => () => {
+      if (zeitgeber.current !== null) {
+        clearTimeout(zeitgeber.current)
+      }
+    },
+    [],
+  )
 
   /*
    * Das gespeicherte Ergebnis, aber nur, wenn es ein anderes ist als dieses
@@ -472,6 +527,21 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
   const knoten = knotenMit(knotenId)
 
   /*
+   * Der Sync-Stream hängt hier und nicht an der Ergebnisseite (§6).
+   *
+   * Diese Komponente überlebt den ganzen Durchlauf: Die Fragen wechseln nur
+   * den `:knotenId`, und React Router lässt sie dabei stehen. Die
+   * Ergebnisseite dagegen entsteht erst mit der letzten Antwort — dort
+   * beginnend, müsste sie in dem Moment, in dem das Ergebnis abzulegen ist,
+   * erst den Bestand aus der lokalen Ablage lesen und `K_p` vom Server holen.
+   * Wer dann sofort auf „Zurück zur Übersicht" tippt, nimmt der Seite den
+   * Boden weg, bevor sie schreiben durfte, und der Durchlauf ist verloren,
+   * ohne dass irgendwo etwas steht. Von der ersten Frage an mitzulaufen kostet
+   * denselben einen Stream und ist bis zur letzten Antwort längst warm.
+   */
+  const aufgaben = useAufgaben(fall)
+
+  /*
    * Ohne Pfad im `state` gibt es keinen Durchlauf, zu dem diese Seite gehört:
    * ein geteilter Link, ein Lesezeichen, ein neuer Tab. Dann fängt der Baum von
    * vorn an, statt aus der Mitte heraus so zu tun, als wäre etwas beantwortet.
@@ -491,7 +561,7 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
       {knoten.art === 'frage' ? (
         <Frageseite knoten={knoten} fall={fall} pfad={pfad} />
       ) : (
-        <Ergebnisseite knoten={knoten} fall={fall} pfad={pfad} />
+        <Ergebnisseite knoten={knoten} fall={fall} pfad={pfad} aufgaben={aufgaben} />
       )}
     </main>
   )

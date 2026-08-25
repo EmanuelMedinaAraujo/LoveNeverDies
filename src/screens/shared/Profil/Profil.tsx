@@ -71,9 +71,15 @@ import stile from './Profil.module.css'
  * Erbe (§10).
  */
 function Erbstatuszeile({ fall }: { fall: LesbarerFall }) {
-  const { fragebaum } = useAufgaben(fall)
+  const { fragebaum, fragebaumGeladen } = useAufgaben(fall)
 
-  if (fragebaum === null || fragebaum.status === null) {
+  /*
+   * `fragebaumGeladen` steht mit in der Bedingung, obwohl beide Wege dieselbe
+   * leere Zeile ergeben: Ohne ihn hiesse die Bedingung „es gibt kein
+   * Ergebnis", und das stimmt nicht — solange `K_p` unterwegs ist, heisst sie
+   * „es ist noch keins zu sehen" (§3.7, ERBE_DESIGN.md §6).
+   */
+  if (!fragebaumGeladen || fragebaum === null || fragebaum.status === null) {
     return null
   }
 

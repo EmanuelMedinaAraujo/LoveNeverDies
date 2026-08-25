@@ -362,9 +362,20 @@ test('Trauerfall anlegen', async ({ page }) => {
       page.getByRole('link', { name: 'https://www.gesetze-im-internet.de/bgb/__1944.html' }),
     ).toBeVisible()
 
-    // 15. März 2024 plus die 42 Tage aus § 1944 BGB, gerechnet und nirgends
-    // gespeichert (§8).
-    await expect(page.getByText(/26. April 2024/)).toBeVisible()
+    /*
+     * 15. März 2024 plus die 42 Tage aus § 1944 BGB, gerechnet und nirgends
+     * gespeichert (§8).
+     *
+     * Gesucht wird die Angabe unter „Rechtliches" und nicht das Datum
+     * irgendwo: Sobald ein Kenntnisdatum eingetragen ist — und genau das hat
+     * der Fragebaum eben getan —, bestätigt der Abschnitt „Ihr Kenntnisdatum"
+     * dasselbe Ende noch einmal als Satz. Beides gehört dahin, wo es steht,
+     * und ein Muster, das auf beide passt, prüft deshalb nichts, sondern
+     * scheitert am zweiten Treffer.
+     */
+    await expect(
+      page.getByRole('definition').filter({ hasText: /endet am 26. April 2024/ }),
+    ).toBeVisible()
 
     // §3.7: privat. Sie steht in "Alle" nur für diese Person — geprüft wird
     // hier, dass sie überhaupt dort auftaucht; dass niemand sonst sie sieht,
@@ -547,9 +558,22 @@ test('Trauerfall anlegen', async ({ page }) => {
   await test.step('legt im Tab "Alle" eine Aufgabe an', async () => {
     /*
      * Der Stand vor diesem Schritt, gezählt statt gerechnet: Was bis hierher
-     * entstanden ist — die Katalogaufgabe, die Elternaufgabe, ihre
-     * Unteraufgabe — soll dieser Schritt nicht nachrechnen müssen.
+     * entstanden ist — die Katalogaufgabe, die Ausschlagung aus dem Fragebaum,
+     * die Elternaufgabe mit ihrer Unteraufgabe — soll dieser Schritt nicht
+     * nachrechnen müssen.
+     *
+     * Gezählt wird aber erst, wenn die drei dastehen. Der Schritt davor endet
+     * auf der Adresse `/alle`, und die ist vor den Zeilen da: Der Bestand
+     * kommt aus der lokalen Ablage, und die private Ausschlagung sogar erst,
+     * wenn `K_p` da ist (§3.7). `count()` wartet auf nichts — sofort gerufen
+     * zählt es null, und der Schritt prüfte danach die falsche Zahl.
      */
+    await expect(zeilen(page).filter({ hasText: 'Klären ob Sie Erbe sind' })).toBeVisible()
+    await expect(zeilen(page).filter({ hasText: 'Erbe ausschlagen' })).toBeVisible()
+    await expect(
+      zeilen(page).filter({ hasText: 'Sterbefall beim Standesamt anzeigen' }),
+    ).toBeVisible()
+
     grundZeilen = await zeilen(page).count()
 
     await page.getByLabel('Neue Aufgabe').fill('Sterbeurkunde beantragen')

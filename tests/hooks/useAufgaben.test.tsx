@@ -89,10 +89,17 @@ vi.mock('../../src/hooks/useSync.ts', () => ({ useSync: (fallId: string) => useS
 /** Die angemeldete Person. Sie ist das, was in eine Zuweisung geschrieben wird (§7). */
 const ICH = { userId: 'user_anna', name: 'Anna Müller' }
 
+/**
+ * Der Anmeldezustand — veränderlich, weil er hier eine eigene Frage ist.
+ *
+ * `useGeraeteanmeldung` und `useAuth` sind zwei Quellen, und die eine kann
+ * durch sein, während die andere noch lädt. Genau in dieser Lücke ging das
+ * Fragebaum-Ergebnis verloren (ERBE_DESIGN.md §6).
+ */
+let mockAuth: { status: 'laedt' } | { status: 'abgemeldet' } | { status: 'angemeldet'; benutzer: { id: string; anzeigename: string } }
+
 vi.mock('../../src/core/auth/authProvider.ts', () => ({
-  useAuth: () => ({
-    zustand: { status: 'angemeldet', benutzer: { id: ICH.userId, anzeigename: ICH.name } },
-  }),
+  useAuth: () => ({ zustand: mockAuth }),
 }))
 
 /** Der Zugang zum Server. Angefasst wird er nicht, da der Katalog ersetzt ist. */
@@ -175,6 +182,7 @@ function syncdaten(zustand: Partial<SyncZustand> = {}): Syncdaten {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  mockAuth = { status: 'angemeldet', benutzer: { id: ICH.userId, anzeigename: ICH.name } }
   mutiere.mockResolvedValue(undefined)
   aufgabenAusZeilen.mockResolvedValue({ aufgaben: [], konfigurationen: [], uebersprungeneIds: [] })
   beschreibeAbgelehnte.mockResolvedValue([])
@@ -1077,5 +1085,67 @@ describe('Kenntnisdatum (§8, #12)', () => {
     await waitFor(() => {
       expect(result.current.fristbezug.kenntnisAm).toBe('2026-06-02')
     })
+  })
+})
+
+/**
+ * Wann ein Fragebaum-Ergebnis abgelegt werden darf (ERBE_DESIGN.md §6).
+ *
+ * Der Riegel, der das Schreiben freigibt, muss dasselbe abfragen wie der, der
+ * es verbietet. Fragt er weniger ab, gibt es ein Zeitfenster, in dem der
+ * Fragebaum schreiben darf und `holePersoenlichenSchluessel` wirft — und dann
+ * ist ein vollständiger Durchlauf verloren, bevor irgendein Netzaufruf
+ * passiert.
+ */
+describe('fragebaumGeladen (ERBE_DESIGN.md §6)', () => {
+  it('steht erst, wenn Bestand, K_p und Anmeldung durch sind', async () => {
+    useSync.mockReturnValue(syncdaten())
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(result.current.fragebaumGeladen).toBe(true))
+  })
+
+  it('steht nicht, solange der Bestand noch nicht gecacht ist', async () => {
+    useSync.mockReturnValue(syncdaten({ gecacht: false }))
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(ladePersoenlichenSchluessel).toHaveBeenCalled())
+
+    expect(result.current.fragebaumGeladen).toBe(false)
+  })
+
+  it('steht nicht, solange die Anmeldung noch lädt', async () => {
+    /*
+     * Der Fehler, den dieser Test festhält: Die Geräteanmeldung ist durch,
+     * `K_p` ist geprüft — und `useAuth` liefert trotzdem noch keine `userId`.
+     * Gäbe der Riegel hier frei, schriebe der Fragebaum in genau dem Moment,
+     * in dem {@link holePersoenlichenSchluessel} „Ohne angemeldetes Gerät geht
+     * das nicht." wirft.
+     */
+    mockAuth = { status: 'laedt' }
+    useSync.mockReturnValue(syncdaten())
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(ladePersoenlichenSchluessel).toHaveBeenCalled())
+
+    expect(result.current.fragebaumGeladen).toBe(false)
+  })
+
+  it('gibt frei, sobald die Anmeldung nachkommt', async () => {
+    mockAuth = { status: 'laedt' }
+    useSync.mockReturnValue(syncdaten())
+
+    const { result, rerender } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => expect(ladePersoenlichenSchluessel).toHaveBeenCalled())
+    expect(result.current.fragebaumGeladen).toBe(false)
+
+    mockAuth = { status: 'angemeldet', benutzer: { id: ICH.userId, anzeigename: ICH.name } }
+    rerender()
+
+    await waitFor(() => expect(result.current.fragebaumGeladen).toBe(true))
   })
 })

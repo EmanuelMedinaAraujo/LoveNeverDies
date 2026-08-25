@@ -641,10 +641,20 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   const fragebaum = liste.konfiguration?.fragebaum ?? null
 
   /*
-   * Gelesen heisst: Der Bestand steht *und* der Versuch, `K_p` zu beschaffen,
-   * ist durch. Beides zusammen, denn ein privates Item braucht beides.
+   * Gelesen heisst: Der Bestand steht, der Versuch, `K_p` zu beschaffen, ist
+   * durch, *und* die Anmeldung steht. Alle drei zusammen, denn ein privates
+   * Item braucht alle drei.
+   *
+   * `ich.userId` steht mit in der Reihe, weil {@link holePersoenlichenSchluessel}
+   * genau danach fragt, bevor es wirft. Fragte der Riegel, der das Schreiben
+   * freigibt, weniger ab als der, der es verbietet, gäbe es ein Zeitfenster,
+   * in dem der Fragebaum schreiben darf und der Schlüssel es verweigert: Die
+   * Geräteanmeldung kommt aus `useGeraeteanmeldung`, `ich` aus `useAuth`, und
+   * die eine kann durch sein, während die andere noch leer ist. Das Ergebnis
+   * eines vollen Durchlaufs ginge dann verloren, bevor irgendein Netzaufruf
+   * passiert.
    */
-  const fragebaumGeladen = sync.gecacht && privatGeprueft
+  const fragebaumGeladen = sync.gecacht && privatGeprueft && ich.userId !== ''
 
   /**
    * Das Ergebnis eines Durchlaufs ablegen (ERBE_DESIGN.md §6).

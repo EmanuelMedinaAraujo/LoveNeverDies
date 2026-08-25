@@ -20,9 +20,11 @@ vi.mock('../../src/screens/shared/Profil/Geraeteliste.tsx', () => ({
  * das Beiwerk: Er prüft Profil und nicht die Synchronisation.
  */
 const mockFragebaum = vi.fn<() => Fragebaumergebnis | null>(() => null)
+/** Ob Bestand, `K_p` und Anmeldung durch sind (ERBE_DESIGN.md §6). */
+const mockGeladen = vi.fn<() => boolean>(() => true)
 
 vi.mock('../../src/hooks/useAufgaben.ts', () => ({
-  useAufgaben: () => ({ fragebaum: mockFragebaum() }),
+  useAufgaben: () => ({ fragebaum: mockFragebaum(), fragebaumGeladen: mockGeladen() }),
 }))
 
 const { Profil } = await import('../../src/screens/shared/Profil/Profil.tsx')
@@ -68,6 +70,7 @@ const LESBAR: LesbarerFall = {
 beforeEach(() => {
   useCase.mockReturnValue(falldaten())
   mockFragebaum.mockReturnValue(null)
+  mockGeladen.mockReturnValue(true)
   localStorage.clear()
   ansichtZuruecksetzen()
 })
@@ -325,6 +328,22 @@ describe('Erbstatus im Profil (ERBE_DESIGN.md §6)', () => {
 
     expect(screen.getByText('Erbstatus')).toBeInTheDocument()
     expect(screen.getByText('Erbe')).toBeInTheDocument()
+  })
+
+  it('zeigt keine Zeile, solange K_p noch unterwegs ist', () => {
+    // `fragebaum` ist bis dahin `null`, weil das Item unlesbar ist, und nicht,
+    // weil es keins gäbe (§3.7). Die Zeile kommt, wenn sie stimmt.
+    mockGeladen.mockReturnValue(false)
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n6',
+      pfad: ['n0', 'n1', 'n2', 'n3', 'n4', 'n6'],
+      status: 'erbe',
+      am: '2026-08-25T10:00:00.000Z',
+    })
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.queryByText('Erbstatus')).not.toBeInTheDocument()
   })
 
   it('zeigt keine Zeile, solange kein Ergebnis vorliegt', () => {
