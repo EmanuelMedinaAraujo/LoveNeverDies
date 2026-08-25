@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright'
 import { kopplungsperson, type Kopplungsrolle } from './nutzer.ts'
-import { ansichtErweitert, gotoVerlaesslich, zeilen } from './helpers.ts'
+import { ansichtErweitert, fuelleDatum, gotoVerlaesslich, zeilen } from './helpers.ts'
 import {
   HANDY,
   einloesenUndBestaetigen,
@@ -77,7 +77,7 @@ async function trauerfallAnlegen(seite: Page, name: string, datum: string): Prom
   await gotoVerlaesslich(seite, '/todesfall')
 
   await seite.getByLabel('Name der verstorbenen Person').fill(name)
-  await seite.getByLabel('Sterbedatum').fill(datum)
+  await fuelleDatum(seite.getByLabel('Sterbedatum'), datum)
   await seite.getByRole('button', { name: 'Fall anlegen' }).click()
 
   await expect(seite).toHaveURL(/\/$/)

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { gotoVerlaesslich, zeilen } from './helpers.ts'
+import { fuelleDatum, gotoVerlaesslich, zeilen } from './helpers.ts'
 
 /**
  * Wartet darauf, dass eine Änderung den Server erreicht hat (DESIGN.md §5).
@@ -151,7 +151,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(page).toHaveURL(/\/todesfall$/)
 
     await page.getByLabel('Name der verstorbenen Person').fill('Hans Weber')
-    await page.getByLabel('Sterbedatum').fill('2024-03-15')
+    await fuelleDatum(page.getByLabel('Sterbedatum'), '2024-03-15')
     await page.getByRole('button', { name: 'Fall anlegen' }).click()
 
     await expect(page).toHaveURL(/\/$/)
@@ -321,7 +321,7 @@ test('Trauerfall anlegen', async ({ page }) => {
 
   await test.step('die Ausschlagungs-Aufgabe entsteht privat und trägt ihre Frist (§7)', async () => {
     /*
-     * Der Weg, an dem §8 seit ADR-0001 hängt: Die Rechtsangaben stehen nicht
+     * Der Weg, an dem §8 seit ADR-0001 hängt: Die Fristangaben stehen nicht
      * mehr im Katalog, sondern am Bauplan der Aufgabe, die der Baum erzeugt.
      * Ohne `{fristTage, fristAb}` rechnete die Ausschlagungsfrist nicht — die
      * eine Frist in dieser App, deren Versäumnis den ganzen Nachlass kostet.
@@ -356,17 +356,23 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     await expect(page.getByRole('heading', { name: 'Erbe ausschlagen' })).toBeVisible()
 
-    // §8: Rechtsgrundlage, zuständige Stelle und Quelle stehen im Item.
-    await expect(page.getByText('§ 1944 BGB', { exact: true })).toBeVisible()
-    await expect(
-      page.getByRole('link', { name: 'https://www.gesetze-im-internet.de/bgb/__1944.html' }),
-    ).toBeVisible()
+    // §8: Die zuständige Stelle steht im Item und ist das, wonach jemand
+    // handelt.
+    await expect(page.getByText(/Nachlassgericht/).first()).toBeVisible()
 
     /*
-     * 15. März 2024 plus die 42 Tage aus § 1944 BGB, gerechnet und nirgends
-     * gespeichert (§8).
+     * ADR-0003: kein Paragraph und kein Link auf die Gesetzesseite. Beides
+     * zusammen unter einer Handlung ist der Form nach eine Rechtsauskunft, und
+     * die gibt diese App nicht.
+     */
+    await expect(page.getByText('§')).toHaveCount(0)
+    await expect(page.getByRole('link', { name: /gesetze-im-internet/ })).toHaveCount(0)
+
+    /*
+     * 15. März 2024 plus die 42 Tage der Ausschlagungsfrist, gerechnet und
+     * nirgends gespeichert (§8).
      *
-     * Gesucht wird die Angabe unter „Rechtliches" und nicht das Datum
+     * Gesucht wird die Angabe unter „Das gilt dafür" und nicht das Datum
      * irgendwo: Sobald ein Kenntnisdatum eingetragen ist — und genau das hat
      * der Fragebaum eben getan —, bestätigt der Abschnitt „Ihr Kenntnisdatum"
      * dasselbe Ende noch einmal als Satz. Beides gehört dahin, wo es steht,
@@ -411,7 +417,7 @@ test('Trauerfall anlegen', async ({ page }) => {
      *
      * Die Rechtsangaben aus §8 prüft der Fragebaum-Schritt weiter oben an der
      * Ausschlagungs-Aufgabe: Sie ist seit ADR-0001 die Aufgabe, die
-     * `{fristTage, fristAb}`, Rechtsgrundlage und Quelle trägt.
+     * `{fristTage, fristAb}` und die zuständige Stelle trägt.
      */
     await gotoVerlaesslich(page, '/alle')
 
@@ -454,6 +460,62 @@ test('Trauerfall anlegen', async ({ page }) => {
     await expect(page.getByText('Zuständig: Sie')).toBeVisible()
   })
 
+  await test.step('ein Tipp auf die Zeile führt ins Detail, das Kästchen hakt ab', async () => {
+    /*
+     * §7: In der Liste ist die Aufgabe die Sache. Vorher hakte ein Tipp auf
+     * den Titel sie ab — die häufigste Stelle der Zeile für die seltenere der
+     * beiden Absichten —, und ins Detail kam nur, wer den Winkel am Rand traf.
+     *
+     * Das steht als E2E und nicht als Screentest, weil es eine Zusage der CSS
+     * ist: Der Winkel legt seine Trefferfläche über die Zeile, das Kästchen
+     * liegt darüber. jsdom rechnet kein Layout und sähe davon nichts.
+     *
+     * Nach der Übernahme und nicht davor: Ein Häkchen auf einer freien Aufgabe
+     * trüge die Übernahme mit (siehe unten), und dieser Schritt will die
+     * Zuständigkeit nicht nebenbei ändern.
+     */
+    await gotoVerlaesslich(page, '/alle')
+
+    // Das Kästchen fängt seinen Tipp ab: Es hakt ab und navigiert nicht.
+    const kaestchen = page.getByRole('checkbox', { name: 'Sterbefall beim Standesamt anzeigen' })
+    const gehakt = gespeichert(page, 'PATCH')
+    await kaestchen.check()
+    await gehakt
+
+    await expect(page).toHaveURL(/\/alle$/)
+    await expect(kaestchen).toBeChecked()
+
+    const zurueckgenommen = gespeichert(page, 'PATCH')
+    await kaestchen.uncheck()
+    await zurueckgenommen
+
+    const titel = page
+      .getByRole('main')
+      .getByText('Sterbefall beim Standesamt anzeigen', { exact: true })
+
+    /*
+     * Getippt wird mit der Maus auf die Stelle, an der der Titel steht, und
+     * nicht mit `titel.click()`: Playwright weigert sich dort, weil der Titel
+     * nicht das oberste Element an dieser Stelle ist — darüber liegt die
+     * ausgedehnte Trefferfläche des Winkels. Genau das ist die Zusage. Ein
+     * Finger auf dem Glas fragt nicht, welches Element gemeint war.
+     *
+     * `block: 'center'` vorher, weil die untere Leiste fixiert ist (§7): Eine
+     * Zeile am Ende der Liste liegt sonst darunter, und dann fängt die Leiste
+     * den Tipp ab.
+     */
+    await titel.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+
+    const kasten = await titel.boundingBox()
+    expect(kasten).not.toBeNull()
+    await page.mouse.click(kasten!.x + kasten!.width / 2, kasten!.y + kasten!.height / 2)
+
+    await expect(
+      page.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen', level: 1 }),
+    ).toBeVisible()
+    await expect(page).toHaveURL(/\/aufgabe\//)
+  })
+
   await test.step('Unteraufgaben sind eigene Zeilen und tragen den Abschluss (§7)', async () => {
     const angelegteUnteraufgabe = gespeichert(page, 'POST')
     await page.getByLabel('Neue Unteraufgabe').fill('Sterbeurkunden in ausreichender Zahl bestellen')
@@ -485,18 +547,57 @@ test('Trauerfall anlegen', async ({ page }) => {
       .getByRole('link', { name: /^Zuständigkeit ändern.*Sterbeurkunden in ausreichender Zahl/ })
       .click()
 
+    /*
+     * Erst warten, dann klicken: Der Wechsel ist eine Navigation im Client,
+     * und bis sie durch ist, steht das Detail der *Elternaufgabe* noch da —
+     * mit einem eigenen "Freigeben", das genauso anklickbar ist. Ohne diese
+     * Zeile traf der nächste Klick die falsche Aufgabe, und der Test merkte es
+     * nicht, weil er danach gleich wieder übernahm.
+     */
+    await expect(
+      page.getByRole('heading', {
+        name: 'Sterbeurkunden in ausreichender Zahl bestellen',
+        level: 1,
+      }),
+    ).toBeVisible()
+
     const unteraufgabeFrei = gespeichert(page, 'PATCH')
     await page.getByRole('button', { name: 'Freigeben' }).click()
     await unteraufgabeFrei
 
-    const unteraufgabeUebernommen = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: 'Übernehmen' }).click()
-    await unteraufgabeUebernommen
+    /*
+     * §7: Eine freie Aufgabe abzuhaken *ist* die Ansage "ich habe das
+     * gemacht" — das Häkchen trägt die Übernahme im selben Payload mit. Wer
+     * sie erst übernehmen müsste, um sie abhaken zu dürfen, machte zwei
+     * Handgriffe für eine Auskunft.
+     */
+    await expect(page.getByText('Zuständig: Niemand')).toBeVisible()
+    await expect(page.getByText(/Diese Aufgabe ist niemandem zugewiesen/)).toBeVisible()
 
-    await page.getByRole('link', { name: 'Zurück zu allen Aufgaben' }).click()
-    await page
-      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
-      .click()
+    const ausGehakt = gespeichert(page, 'PATCH')
+    await page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' }).check()
+    await ausGehakt
+
+    // Eine Mutation, nicht zwei: Nach dem Häkchen steht die eigene Person da.
+    await expect(page.getByText('Zuständig: Sie')).toBeVisible()
+    await expect(page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeChecked()
+
+    // Und wieder zurück, damit der nächste Schritt sie offen vorfindet.
+    const zurueck = gespeichert(page, 'PATCH')
+    await page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' }).uncheck()
+    await zurueck
+
+    /*
+     * §7: "Zurück" oben links geht in der Historie zurück und nicht auf einen
+     * festen Pfad. Hier ist das die Elternaufgabe, aus der die
+     * Zuständigkeit dieser Unteraufgabe aufgerufen wurde — und genau dorthin
+     * will, wer sich verlaufen hat.
+     */
+    await page.getByRole('link', { name: 'Zurück' }).click()
+
+    await expect(
+      page.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen', level: 1 }),
+    ).toBeVisible()
 
     const abgehakt = gespeichert(page, 'PATCH')
     await page.getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' }).check()
@@ -551,7 +652,7 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     await expect(page.getByLabel(/Notizen/)).toHaveValue('Termin am Montag um 9 Uhr')
 
-    await page.getByRole('link', { name: 'Zurück zu allen Aufgaben' }).click()
+    await page.getByRole('link', { name: 'Zurück' }).click()
     await expect(page).toHaveURL(/\/alle$/)
   })
 
@@ -672,7 +773,7 @@ test('Trauerfall anlegen', async ({ page }) => {
      */
     await page.getByRole('link', { name: /^Details.*Sterbeurkunde abholen/ }).click()
     await expect(page.getByText('Sechs Ausfertigungen, Standesamt Freiburg')).toBeVisible()
-    await page.getByRole('link', { name: 'Zurück zu allen Aufgaben' }).click()
+    await page.getByRole('link', { name: 'Zurück' }).click()
 
     // Das Häkchen überlebt das Umbenennen: Geändert wird der Payload, und der
     // trägt beides.

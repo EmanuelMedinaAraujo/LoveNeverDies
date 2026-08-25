@@ -1,4 +1,4 @@
-import type { BrowserContext, Locator, Page } from '@playwright/test'
+import { expect, type BrowserContext, type Locator, type Page } from '@playwright/test'
 
 /**
  * Die Ansichtswahl aus §7 vorwegnehmen: erweitert.
@@ -79,4 +79,25 @@ export async function gotoVerlaesslich(page: Page, pfad: string): Promise<void> 
  */
 export function zeilen(seite: Page): Locator {
   return seite.getByRole('main').getByRole('listitem')
+}
+
+/**
+ * Ein Datumsfeld fuellen und nachsehen, ob der Wert stehen blieb.
+ *
+ * Playwrights WebKit laesst einen frisch getippten Wert in einem
+ * `input[type=date]` gelegentlich wieder fallen -- auf dem Handy-Projekt in
+ * etwa jedem dritten Lauf, waehrend Chromium ihn haelt. Es ist keine Zusage
+ * dieser App, sondern eine Kante der Engine, und ein Test, der daran
+ * scheitert, meldet einen Fehler, den es nicht gibt.
+ *
+ * Deshalb wird gefuellt und geprueft, und noch einmal, wenn der Wert weg ist.
+ * Die Pruefung ist der eigentliche Gewinn: Ohne sie faellt der Verlust erst
+ * beim Absenden auf, und die Meldung heisst dann "die Seite hat nicht
+ * gewechselt".
+ */
+export async function fuelleDatum(feld: Locator, wert: string): Promise<void> {
+  await expect(async () => {
+    await feld.fill(wert)
+    await expect(feld).toHaveValue(wert, { timeout: 2000 })
+  }).toPass({ timeout: 30_000 })
 }
