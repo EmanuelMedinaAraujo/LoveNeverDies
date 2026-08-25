@@ -369,6 +369,20 @@ describe('Erbstatus im Trauerfall (ERBE_DESIGN.md §10)', () => {
     mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
   }
 
+  it('führt vom Nachlass-Tresor in den geöffneten Tresor (§3.5)', () => {
+    /*
+     * Vorher stand hier ein Satz, der auf den Tab "Alle" verwies. Was die
+     * vorsorgende Person hinterlegt hat, war damit nirgends zu sehen.
+     */
+    trauerfall()
+
+    rendereMitProvidern(<Erbe />)
+
+    const karte = screen.getByRole('link', { name: /Nachlass-Tresor/ })
+
+    expect(karte).toHaveAttribute('href', '/erbe/tresor')
+  })
+
   it('lädt in den Fragebaum ein, solange kein Ergebnis vorliegt', () => {
     trauerfall()
 

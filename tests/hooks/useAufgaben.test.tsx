@@ -38,6 +38,7 @@ vi.mock('../../src/services/aufgabenService.ts', () => ({
    * davon prüfte nur, ob der Test dieselbe Regel noch einmal aufschreibt.
    */
   istKonfiguration: (eintrag: object) => 'kenntnisAm' in eintrag,
+  istNachlass: (eintrag: object) => 'inhalt' in eintrag,
   beschreibeAbgelehnte: (...a: unknown[]) => beschreibeAbgelehnte(...a),
   mutationAnlegen: (...a: unknown[]) => mutationAnlegen(...a),
   mutationAendern: (...a: unknown[]) => mutationAendern(...a),
@@ -184,7 +185,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockAuth = { status: 'angemeldet', benutzer: { id: ICH.userId, anzeigename: ICH.name } }
   mutiere.mockResolvedValue(undefined)
-  aufgabenAusZeilen.mockResolvedValue({ aufgaben: [], konfigurationen: [], uebersprungeneIds: [] })
+  aufgabenAusZeilen.mockResolvedValue({ aufgaben: [], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
   beschreibeAbgelehnte.mockResolvedValue([])
   ladePersoenlichenSchluessel.mockResolvedValue(null)
   stellePersoenlichenSchluesselBereit.mockResolvedValue(PRIVAT)
@@ -210,7 +211,7 @@ describe('useAufgaben', () => {
     // §5: "Gecachte Inhalte werden sofort gerendert." Die Ladeanzeige gehört
     // dem Fetch, nicht dem Entschlüsseln.
     const eine = zeile('item-1')
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [eine], laedtNetz: true }))
 
     const { result } = renderHook(() => useAufgaben(FALL))
@@ -230,7 +231,7 @@ describe('useAufgaben', () => {
   it('laesst die Liste stehen, wenn der Abruf scheitert', async () => {
     // Ein Server, der nicht antwortet, darf nicht als "keine Aufgaben"
     // durchgehen. Sonst sieht jemand einen leeren Fall und legt alles neu an.
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(
       syncdaten({ zeilen: [zeile('item-1')], netzfehler: 'Kein Netz.' }),
     )
@@ -257,7 +258,7 @@ describe('useAufgaben', () => {
     const erste = zeile('item-1')
     const zweite = zeile('item-2')
 
-    aufgabenAusZeilen.mockResolvedValueOnce({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValueOnce({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [erste] }))
 
     const { result, rerender } = renderHook(() => useAufgaben(FALL))
@@ -268,6 +269,7 @@ describe('useAufgaben', () => {
     aufgabenAusZeilen.mockResolvedValueOnce({
       aufgaben: [aufgabe({ id: 'item-2', titel: 'Konten kündigen' })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [erste, zweite] }))
@@ -298,6 +300,7 @@ describe('useAufgaben', () => {
     aufgabenAusZeilen.mockResolvedValueOnce({
       aufgaben: [],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: ['fremdes-item'],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [fremd] }))
@@ -420,6 +423,7 @@ describe('useAufgaben', () => {
         aufgabe({ id: 'item-1' }),
       ],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [erste, zweite] }))
@@ -503,6 +507,7 @@ describe('useAufgaben', () => {
           aufgabe({ id: 'katalog-10', titel: 'Erste', katalog: katalog(10) }),
         ],
         konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
       })
 
@@ -548,7 +553,7 @@ describe('useAufgaben', () => {
       // Kein Wurf und keine Mitteilung: Was hier scheitert, ist das Netz oder
       // ein fremder Katalogstand: Beides kann niemand hier beheben.
       instanziiereKatalog.mockRejectedValue(new Error('kein Netz'))
-      aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+      aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
       useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
 
       const { result } = renderHook(() => useAufgaben(FALL))
@@ -576,7 +581,7 @@ describe('Zuweisung', () => {
   function mitAufgabe(zuweisung = NIEMAND, ueberschreibung: Partial<Aufgabe> = {}) {
     const eine = aufgabe({ assignee: zuweisung, ...ueberschreibung })
 
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile(eine.id)] }))
 
     return eine
@@ -658,6 +663,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -741,6 +747,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -771,6 +778,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -802,6 +810,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -834,6 +843,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([ICH, BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -857,6 +867,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: NIEMAND })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -963,7 +974,7 @@ describe('Private Aufgaben (§3.7)', () => {
 
   it('prüft die Abhängigkeiten, bevor eine Änderung in die Queue geht', async () => {
     const eine = aufgabe()
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     mutationAendern.mockResolvedValue({ op: 'aendern', itemId: eine.id })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
 
@@ -989,7 +1000,7 @@ describe('Private Aufgaben (§3.7)', () => {
 
   it('hängt nichts an, wenn die Abhängigkeit auf eine private Aufgabe zeigt', async () => {
     const eine = aufgabe()
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
 
     pruefeAbhaengigkeiten.mockImplementation(() => {
@@ -1060,7 +1071,7 @@ describe('Private Aufgaben (§3.7)', () => {
      * Die geteilten Aufgaben stehen davon unberührt da.
      */
     ladePersoenlichenSchluessel.mockRejectedValue(new Error('Kein Netz.'))
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
 
     const { result } = renderHook(() => useAufgaben(FALL))
@@ -1093,6 +1104,7 @@ describe('Kenntnisdatum (§8, #12)', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe()],
       konfigurationen: [konfiguration('kenntnis-1', '2026-05-12')],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1'), zeile('kenntnis-1')] }))
@@ -1136,6 +1148,7 @@ describe('Kenntnisdatum (§8, #12)', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [],
       konfigurationen: [vorhanden],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('kenntnis-1')] }))
@@ -1163,6 +1176,7 @@ describe('Kenntnisdatum (§8, #12)', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [],
       konfigurationen: [konfiguration('kenntnis-1', '2026-05-12'), konfiguration('kenntnis-2', '2026-06-02')],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('kenntnis-1'), zeile('kenntnis-2')] }))

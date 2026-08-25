@@ -33,6 +33,7 @@ import {
   aufgabenAusZeilen,
   beschreibeAbgelehnte,
   istKonfiguration,
+  istNachlass,
   mutationAendern,
   mutationAnlegen,
   mutationLoeschen,
@@ -41,6 +42,7 @@ import {
   type Aufgabenaenderung,
   type Fragebaumergebnis,
   type Konfiguration,
+  type Nachlasseintrag,
 } from '../services/aufgabenService.ts'
 import type { Fristbezug } from '../services/fristen.ts'
 import type { Aufgabenvorlage } from '../types/fragebaum.ts'
@@ -197,6 +199,17 @@ export type Aufgabendaten = {
    */
   fristbezug: Fristbezug
   /**
+   * Die Einträge aus dem geöffneten Nachlass-Tresor (§3.5), älteste zuerst.
+   *
+   * Sie kommen aus demselben Sync-Stream wie die Aufgaben und werden im selben
+   * Durchgang entschlüsselt: Nach dem Öffnen sind es gewöhnliche Items unter
+   * `K_c`. Getrennt geführt werden sie trotzdem — eine Notiz ist keine
+   * Aufgabe, die jemand abhakt.
+   *
+   * In einem Vorsorgefall leer: Dort liegen sie unter `K_v`.
+   */
+  nachlass: Nachlasseintrag[]
+  /**
    * Trägt das eigene Kenntnisdatum ein oder ändert es (§8, #12).
    *
    * `null` leert es wieder; danach ist die Aufgabe wieder fristenlos und sagt
@@ -258,6 +271,7 @@ export type Aufgabendaten = {
 const LEER = {
   aufgaben: [] as Aufgabe[],
   konfiguration: null as Konfiguration | null,
+  nachlass: [] as Nachlasseintrag[],
   uebersprungen: 0,
 }
 
@@ -332,7 +346,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * was die Stapel davor gefunden haben.
    */
   const entschluesselt = useRef(
-    new WeakMap<InhaltZeile, Aufgabe | Konfiguration | typeof VERWORFEN>(),
+    new WeakMap<InhaltZeile, Aufgabe | Konfiguration | Nachlasseintrag | typeof VERWORFEN>(),
   )
 
   /**
@@ -422,7 +436,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     void (async () => {
       const bekannt = entschluesselt.current
       const neue = sync.zeilen.filter((zeile) => !bekannt.has(zeile))
-      const { aufgaben, konfigurationen, uebersprungeneIds } = await aufgabenAusZeilen(
+      const { aufgaben, konfigurationen, nachlass, uebersprungeneIds } = await aufgabenAusZeilen(
         neue,
         fall,
         privat,
@@ -430,7 +444,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
 
       const nachId = new Map(neue.map((zeile) => [zeile.id, zeile]))
 
-      for (const eintrag of [...aufgaben, ...konfigurationen]) {
+      for (const eintrag of [...aufgaben, ...konfigurationen, ...nachlass]) {
         const zeile = nachId.get(eintrag.id)
 
         if (zeile !== undefined) {
@@ -455,7 +469,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       const eintraege = sync.zeilen.map((zeile) => bekannt.get(zeile))
 
       const gelesen = eintraege.filter(
-        (eintrag): eintrag is Aufgabe | Konfiguration =>
+        (eintrag): eintrag is Aufgabe | Konfiguration | Nachlasseintrag =>
           eintrag !== undefined && eintrag !== VERWORFEN,
       )
 
@@ -479,9 +493,19 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
 
       setzeListe({
         aufgaben: gelesen
-          .filter((eintrag): eintrag is Aufgabe => !istKonfiguration(eintrag))
+          .filter(
+            (eintrag): eintrag is Aufgabe =>
+              !istKonfiguration(eintrag) && !istNachlass(eintrag),
+          )
           .sort(nachReihenfolge),
         konfiguration,
+        /*
+         * §3.5: Die Einträge des geöffneten Tresors. Sie stehen hier neben den
+         * Aufgaben und nicht zwischen ihnen: Nach dem Öffnen sind es
+         * gewöhnliche Items unter `K_c`, aber eine Notiz ist keine Aufgabe,
+         * die jemand abhakt.
+         */
+        nachlass: gelesen.filter(istNachlass),
         uebersprungen: eintraege.filter((eintrag) => eintrag === VERWORFEN).length,
       })
     })()
@@ -976,6 +1000,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       bestaetigeUebernahmen,
       gibFuerAlleFrei,
       fristbezug,
+      nachlass: liste.nachlass,
       setzeKenntnisAm,
       fragebaum,
       fragebaumGeladen,
@@ -1003,6 +1028,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       bestaetigeUebernahmen,
       gibFuerAlleFrei,
       fristbezug,
+      liste.nachlass,
       setzeKenntnisAm,
       fragebaum,
       fragebaumGeladen,

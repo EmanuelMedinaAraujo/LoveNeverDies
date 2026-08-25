@@ -64,6 +64,7 @@ vi.mock('../../src/hooks/useAufgaben.ts', () => ({
     legeFragebaumAufgabeAn,
     setzeKenntnisAm,
     fristbezug: { sterbedatum: null, kenntnisAm: null },
+    nachlass: [],
   }),
 }))
 

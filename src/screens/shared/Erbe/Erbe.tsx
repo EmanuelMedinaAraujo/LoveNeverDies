@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -644,16 +644,23 @@ export function Erbe() {
         <>
           <Erbstatus fall={fall} />
 
-          <Card>
-            <div className={stile.statusKopf}>
-              <h2 className={stile.abschnitt}>Nachlass-Tresor</h2>
-              <Badge lage="ruhig">Trauerfall</Badge>
-            </div>
-            <p className={stile.hinweis}>
-              Der Fall ist ein Trauerfall. Die Aufgaben und Dokumente stehen im Tab „Alle"
-              bereit.
-            </p>
-          </Card>
+          {/*
+            §3.5: Die ganze Karte führt in den geöffneten Tresor. Vorher stand
+            hier ein Satz, der auf einen anderen Tab verwies -- der Inhalt, den
+            die vorsorgende Person hinterlegt hat, war nirgends zu sehen.
+          */}
+          <Link className={stile.karte} to="/erbe/tresor">
+            <Card>
+              <div className={stile.statusKopf}>
+                <h2 className={stile.abschnitt}>Nachlass-Tresor</h2>
+                <Badge lage="ruhig">Trauerfall</Badge>
+              </div>
+              <p className={stile.hinweis}>
+                Was {fall.personName} hinterlegt hat: Zugänge, Unterlagen, persönliche
+                Nachrichten. Tippen Sie, um es zu lesen.
+              </p>
+            </Card>
+          </Link>
 
           <ErneutDurchlaufen />
         </>
