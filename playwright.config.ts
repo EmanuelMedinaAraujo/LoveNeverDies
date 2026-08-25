@@ -28,7 +28,6 @@ export default defineConfig({
    */
   retries: process.env.CI ? 2 : 1,
   reporter: 'html',
-  globalSetup: './tests/e2e/global-setup.ts',
 
   use: {
     baseURL: 'http://127.0.0.1:4173',
@@ -65,14 +64,27 @@ export default defineConfig({
    * anmeldet. Die Begruendung fuer die Trennung steht in tests/e2e/nutzer.ts.
    */
   projects: [
+    /*
+     * `clerkSetup()` gehoert in ein Projekt und nicht in ein
+     * funktionsbasiertes `globalSetup`: Das laeuft in einem eigenen Prozess,
+     * und die Variablen, die es setzt (`CLERK_FAPI`, `CLERK_TESTING_TOKEN`),
+     * kommen bei den Workern nie an. `setupClerkTestingToken()` braucht beide.
+     * So steht es in Clerks Anleitung, und tests/e2e/clerk.setup.ts sagt es
+     * ausfuehrlicher.
+     */
+    {
+      name: 'clerk',
+      testMatch: /clerk\.setup\.ts/,
+    },
     {
       name: 'setup-mobile-webkit',
       testMatch: /auth\.setup\.ts/,
       use: { ...devices['iPhone 13'] },
+      dependencies: ['clerk'],
     },
     {
       name: 'mobile-webkit',
-      testIgnore: /kopplung\.spec\.ts/,
+      testIgnore: /(kopplung|tresor-todesfall)\.spec\.ts/,
       use: { ...devices['iPhone 13'], storageState: authDatei('mobile-webkit') },
       dependencies: ['setup-mobile-webkit'],
     },
@@ -80,10 +92,11 @@ export default defineConfig({
       name: 'setup-desktop-chromium',
       testMatch: /auth\.setup\.ts/,
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['clerk'],
     },
     {
       name: 'desktop-chromium',
-      testIgnore: /kopplung\.spec\.ts/,
+      testIgnore: /(kopplung|tresor-todesfall)\.spec\.ts/,
       use: { ...devices['Desktop Chrome'], storageState: authDatei('desktop-chromium') },
       dependencies: ['setup-desktop-chromium'],
     },
@@ -104,6 +117,19 @@ export default defineConfig({
       name: 'kopplung',
       testMatch: /kopplung\.spec\.ts/,
       use: { ...devices['iPhone 13'] },
+      dependencies: ['clerk'],
+    },
+    /*
+     * Der Tresor (§3.5) aus denselben Gruenden wie die Kopplung: Er braucht
+     * zwei Personen gleichzeitig auf zwei Geraeten, weil ein Schluesselanteil
+     * an einem Geraet haengt. Seine beiden Personen legt `clerk.setup.ts` an;
+     * eingerichtet werden muss dafuer nichts.
+     */
+    {
+      name: 'tresor',
+      testMatch: /tresor-todesfall\.spec\.ts/,
+      use: { ...devices['iPhone 13'] },
+      dependencies: ['clerk'],
     },
   ],
 })

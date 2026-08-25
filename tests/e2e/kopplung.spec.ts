@@ -1,7 +1,13 @@
-import { devices, expect, test, type Browser, type Locator, type Page } from '@playwright/test'
-import { clerk } from '@clerk/testing/playwright'
+import { expect, test, type Browser, type Page } from '@playwright/test'
+import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright'
 import { kopplungsperson, type Kopplungsrolle } from './nutzer.ts'
 import { ansichtErweitert, gotoVerlaesslich, zeilen } from './helpers.ts'
+import {
+  HANDY,
+  einloesenUndBestaetigen,
+  pruefcodeVon,
+  wertUnter,
+} from './kopplungHelfer.ts'
 
 /**
  * Die Kopplung aus DESIGN.md §6, von Hand nicht sinnvoll zu prüfen: Sie
@@ -26,16 +32,6 @@ import { ansichtErweitert, gotoVerlaesslich, zeilen } from './helpers.ts'
  * Projekts nicht, deshalb steht das Gerät hier ausdrücklich.
  */
 
-/*
- * Die Kontextoptionen von `devices['iPhone 13']`, einzeln aufgezählt.
- *
- * Nicht der ganze Eintrag: Der trägt zusätzlich `defaultBrowserType`, und das
- * ist eine Angabe für den Launcher und keine Kontextoption: `newContext`
- * wiese sie zurück. Welche Engine startet, steht ohnehin im Projekt.
- */
-const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = devices['iPhone 13']
-const HANDY = { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch }
-
 /**
  * Ein frisches Gerät mit angemeldeter Person, bereit für §6.
  *
@@ -50,6 +46,7 @@ async function neuesGeraet(browser: Browser, rolle: Kopplungsrolle): Promise<Pag
 
   const seite = await kontext.newPage()
 
+  await setupClerkTestingToken({ page: seite })
   await seite.goto('/')
   await clerk.signIn({ page: seite, emailAddress: kopplungsperson(rolle) })
 
@@ -57,35 +54,6 @@ async function neuesGeraet(browser: Browser, rolle: Kopplungsrolle): Promise<Pag
   await expect(zeilen(seite).filter({ hasText: 'Dieses Gerät · Prüfcode' })).toBeVisible()
 
   return seite
-}
-
-/**
- * Der Wert unter einer Überschrift: der erste Absatz danach.
- *
- * Über die Überschrift und nicht über die CSS-Klasse: Die Klassennamen kommen
- * aus CSS-Modulen und tragen im Build einen Hash, an dem sich nichts festmachen
- * lässt. Die Überschriften stehen dagegen so im Screen, wie die Person sie
- * liest.
- */
-function wertUnter(seite: Page, ueberschrift: string): Locator {
-  return seite
-    .getByRole('heading', { name: ueberschrift, exact: true })
-    .locator('xpath=following-sibling::p[1]')
-}
-
-/**
- * Die sichtbaren Ziffern eines Prüfcodes, "537 383".
- *
- * Ausdrücklich der `aria-hidden`-Teil: Daneben steht dieselbe Zahl noch einmal
- * für Screenreader, Ziffer für Ziffer getrennt (`nur-vorlesen`). `textContent`
- * des ganzen Absatzes lieferte beides hintereinander.
- */
-async function pruefcodeVon(seite: Page, ueberschrift: string): Promise<string> {
-  const sichtbar = wertUnter(seite, ueberschrift).locator('span[aria-hidden="true"]')
-
-  await expect(sichtbar).toHaveText(/^\d{3} \d{3}$/)
-
-  return (await sichtbar.textContent()) ?? ''
 }
 
 /**
@@ -114,35 +82,6 @@ async function trauerfallAnlegen(seite: Page, name: string, datum: string): Prom
 
   await expect(seite).toHaveURL(/\/$/)
   await startscreenZeigt(seite, name)
-}
-
-/**
- * Die Einlösung von §6, Schritt 4 bis 6, auf der einladenden Seite: Code
- * eingeben, Prüfcode vergleichen, bestätigen.
- *
- * Der Vergleich ist keine Formalie, sondern der einzige Schutz gegen einen
- * Server, der beim Rendezvous fremde Schlüssel unterschiebt (§3.6). Deshalb
- * bekommt diese Funktion den Prüfcode der Gegenseite herein und prüft ihn,
- * bevor sie klickt. Genau so soll es auch am Telefon laufen.
- */
-async function einloesenUndBestaetigen(
-  seite: Page,
-  code: string,
-  erwartet: { ueberschrift: string; name: string; email: string; pruefcode: string },
-): Promise<void> {
-  await gotoVerlaesslich(seite, '/koppeln')
-
-  await seite.getByLabel('Kopplungscode').fill(code)
-  await seite.getByRole('button', { name: 'Weiter' }).click()
-
-  await expect(seite.getByRole('heading', { name: erwartet.ueberschrift })).toBeVisible()
-
-  await expect(wertUnter(seite, 'Wer da ist')).toHaveText(erwartet.name)
-  await expect(seite.getByText(erwartet.email)).toBeVisible()
-
-  expect(await pruefcodeVon(seite, 'Prüfcode')).toBe(erwartet.pruefcode)
-
-  await seite.getByRole('button', { name: 'Prüfcode stimmt überein — bestätigen' }).click()
 }
 
 test('Angehörige einladen: beide Seiten sehen denselben Prüfcode', async ({ browser }) => {
@@ -189,6 +128,7 @@ test('Angehörige einladen: beide Seiten sehen denselben Prüfcode', async ({ br
     })
 
     await test.step('Anna gibt den Code ein und sieht Bernd und denselben Prüfcode', async () => {
+      await gotoVerlaesslich(anna, '/koppeln')
       await einloesenUndBestaetigen(anna, code, {
         ueberschrift: 'Zum Fall hinzufügen?',
         name: 'Bernd Claasen',
@@ -233,6 +173,8 @@ test('Angehörige einladen: beide Seiten sehen denselben Prüfcode', async ({ br
 
         const dorisCode = (await wertUnter(doris, 'Ihr Kopplungscode').textContent()) ?? ''
         const dorisPruefcode = await pruefcodeVon(doris, 'Ihr Prüfcode')
+
+        await gotoVerlaesslich(bernd, '/koppeln')
 
         await einloesenUndBestaetigen(bernd, dorisCode, {
           ueberschrift: 'Zum Fall hinzufügen?',
@@ -302,6 +244,7 @@ test('zweites Gerät freischalten', async ({ browser }) => {
        * freischalten?" Welcher Zweck gilt, sagt der Code und nicht die
        * Person, die ihn eingibt (Koppeln.tsx).
        */
+      await gotoVerlaesslich(handy, '/koppeln')
       await einloesenUndBestaetigen(handy, code, {
         ueberschrift: 'Gerät freischalten?',
         name: 'Clara Dietrich',
