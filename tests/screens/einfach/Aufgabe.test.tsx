@@ -77,14 +77,11 @@ beforeEach(() => {
 })
 
 describe('Aufgabe (einfach)', () => {
-  it('trägt den Titel als Überschrift und den Weg zurück', () => {
+  it('trägt den Titel als Überschrift und oben links den Weg zurück', () => {
     mitDetail([aufgabe({ titel: 'Sterbefall anzeigen', katalog: herkunft() })])
 
     expect(screen.getByRole('heading', { level: 1, name: 'Sterbefall anzeigen' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Zurück zu allen Aufgaben' })).toHaveAttribute(
-      'href',
-      '/alle',
-    )
+    expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/alle')
   })
 
   it('zeigt weder Rechtsgrundlage noch Quelle (ADR-0003)', () => {

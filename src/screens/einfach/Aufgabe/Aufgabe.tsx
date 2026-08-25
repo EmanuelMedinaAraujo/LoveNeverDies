@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -27,6 +27,7 @@ import {
 } from '../../../services/zuweisung.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import { Dokumente } from '../../shared/Dokumente/Dokumente.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
@@ -423,12 +424,6 @@ function Detail({
   return (
     <>
       <div className={stile.kopf}>
-        {/* Der Weg zurück steht oben und als Verb: Wer sich verlaufen hat,
-            sucht ihn nicht am Ende einer langen Seite. */}
-        <p>
-          <Link to="/alle">Zurück zu allen Aufgaben</Link>
-        </p>
-
         <h1>{aufgabe.titel}</h1>
 
         {/* §3.7: Wer die Aufgabe öffnet, soll sofort sehen, wer sie sonst noch sieht. */}
@@ -778,14 +773,9 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     return zustand.laedtNetz ? (
       <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
     ) : (
-      <>
-        <p className={stile.warnung} role="alert">
-          Diese Aufgabe gibt es nicht mehr. Gelöschtes kommt nicht zurück.
-        </p>
-        <p>
-          <Link to="/alle">Zurück zu allen Aufgaben</Link>
-        </p>
-      </>
+      <p className={stile.warnung} role="alert">
+        Diese Aufgabe gibt es nicht mehr. Gelöschtes kommt nicht zurück.
+      </p>
     )
   }
 
@@ -858,6 +848,7 @@ export function Aufgabe() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
+        <Zurueck ziel="/alle" />
         <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
@@ -870,6 +861,8 @@ export function Aufgabe() {
 
   return (
     <main className={stile.seite}>
+      <Zurueck ziel="/alle" />
+
       {zustand.status === 'fehler' ? (
         <p className={stile.warnung} role="alert">
           Ihre Aufgaben sind gerade nicht abrufbar. {zustand.nachricht}
