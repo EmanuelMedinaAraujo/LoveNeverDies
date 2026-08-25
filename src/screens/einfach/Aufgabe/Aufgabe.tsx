@@ -449,7 +449,9 @@ function Detail({
       </div>
 
       <div className={[stile.abschnitt, stile.ohnelinie].join(' ')}>
-        {aufgabe.beschreibung === '' ? null : <p>{aufgabe.beschreibung}</p>}
+        {aufgabe.beschreibung === '' ? null : (
+          <p className={stile.beschreibung}>{aufgabe.beschreibung}</p>
+        )}
 
         {/*
           Die Seed-Aufgabe hat kein eigenes Häkchen (ERBE_DESIGN.md §9): Sie

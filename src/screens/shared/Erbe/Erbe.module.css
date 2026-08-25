@@ -129,3 +129,122 @@
   display: flex;
   gap: var(--dichte-abstand-klein);
 }
+
+/*
+ * Der Status "Erbe" als Schaltflaeche (ERBE_DESIGN.md §10).
+ *
+ * Die Pille bleibt, was sie ist; der Knopf liegt darum. Seine Hoehe ist das
+ * Touch-Ziel aus §7 und nicht die Hoehe der Pille: Auf ein 20 px hohes Wort
+ * trifft niemand, der die App mit dem Daumen bedient.
+ */
+.statusKnopf {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+
+  min-height: var(--ziel-mindestmass);
+  padding: 0;
+
+  border: none;
+  background: none;
+  color: var(--farbe-akzent);
+
+  font: inherit;
+  cursor: pointer;
+}
+
+.pfeil,
+.pfeilOffen {
+  display: inline-flex;
+  transition: transform 120ms ease-out;
+}
+
+.pfeilOffen {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pfeil,
+  .pfeilOffen {
+    transition: none;
+  }
+}
+
+/* Die aufgeklappte Ebene: Knoepfe und Texte untereinander, mit Luft nach oben. */
+.wege {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  margin-block-start: var(--dichte-abstand-klein);
+}
+
+/*
+ * Das Symbol im Knopf behaelt seine Groesse. Ohne das drueckt eine lange
+ * Beschriftung wie "Erbengemeinschaft bzw. Alleinerbe" es im Flex-Kasten
+ * zusammen, und aus dem Symbol wird ein Strich.
+ */
+.wege svg {
+  flex: none;
+}
+
+.zurueck {
+  align-self: flex-start;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.infoTitel {
+  margin: 0;
+}
+
+/*
+ * Eine Zwischenueberschrift im Erklaertext ("1. Was ist ein Erbschein?").
+ * Fett und nicht als eigene Ueberschriftsebene: Die Gliederung steht in der
+ * Nummer, und eine vierte Ebene unter h3 macht die Vorleseansicht tiefer,
+ * ohne dass etwas dazukommt.
+ */
+.infoZwischentitel {
+  margin: 0;
+  font-weight: var(--typo-gewicht-betont);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.infoAbsatz {
+  margin: 0;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/*
+ * Aufzaehlungen: gefuellte Punkte, also die Voreinstellung des Browsers
+ * (`disc`) und kein eigenes Zeichen. Ein Punkt, der als Text mitliefe, waere
+ * eine Grafik, die eine Vorlesestimme mitspricht.
+ */
+.punkte {
+  margin: 0;
+  padding-inline-start: var(--dichte-abstand-gross);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.punkte > li + li {
+  margin-block-start: var(--raster-1);
+}
+
+.frage {
+  margin: 0;
+  font-weight: var(--typo-gewicht-betont);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/* „Ja" und „Nein" nebeneinander, gleich breit. */
+.jaNein {
+  display: flex;
+  gap: var(--dichte-abstand-klein);
+}
+
+.jaNein > * {
+  flex: 1;
+}

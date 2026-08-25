@@ -27,10 +27,18 @@
  * Der erste Satz zur Sache, direkt unter dem Titel. Kein Kasten: Ein Kasten
  * sagt "hier faengt ein Abschnitt an", und dieser Satz gehoert zum Titel.
  */
+/*
+ * Die Beschreibung. `pre-wrap`, weil sie gegliedert sein darf: Die Aufgabe
+ * "Erbschein beantragen" traegt den ganzen Erklaertext mit Zwischentiteln und
+ * Aufzaehlungspunkten (ERBE_DESIGN.md §10). Ohne das stuenden seine
+ * Zeilenumbrueche zwar im Payload, aber nicht auf der Seite, und aus der
+ * Gliederung wuerde ein Absatz mit Punkten mittendrin.
+ */
 .anriss {
   color: var(--farbe-text);
   font-size: var(--dichte-schrift);
   line-height: var(--dichte-zeilenhoehe);
+  white-space: pre-wrap;
 }
 
 /*

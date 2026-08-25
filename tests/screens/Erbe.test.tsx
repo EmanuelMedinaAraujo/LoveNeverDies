@@ -27,6 +27,9 @@ let mockAufgabenZustand: { status: 'laedt' } | { status: 'bereit' }
 const mockFragebaum = vi.fn<() => Fragebaumergebnis | null>(() => null)
 /** Ob Bestand, `K_p` und Anmeldung durch sind (ERBE_DESIGN.md §6). */
 const mockGeladen = vi.fn<() => boolean>(() => true)
+/** Die Erbschein-Aufgabe, wenn sie schon angelegt ist (ERBE_DESIGN.md §10). */
+const mockErbscheinaufgabe = vi.fn<() => { id: string } | null>(() => null)
+const mockLegeFragebaumAufgabeAn = vi.fn<(vorlage: string) => Promise<void>>()
 
 vi.mock('react-router-dom', async () => {
   const echt = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -65,6 +68,8 @@ vi.mock('../../src/hooks/useAufgaben.ts', () => ({
     legeAufgabeAn: vi.fn(),
     aendereAufgabe: vi.fn(),
     loescheAufgabe: vi.fn(),
+    fragebaumAufgabe: () => mockErbscheinaufgabe(),
+    legeFragebaumAufgabeAn: mockLegeFragebaumAufgabeAn,
   }),
 }))
 
@@ -115,6 +120,9 @@ describe('Erbe Screen (§3.5, §7)', () => {
     mockAufgabenZustand = { status: 'bereit' }
     mockFragebaum.mockReturnValue(null)
     mockGeladen.mockReturnValue(true)
+    mockErbscheinaufgabe.mockReturnValue(null)
+    mockLegeFragebaumAufgabeAn.mockReset()
+    mockLegeFragebaumAufgabeAn.mockResolvedValue(undefined)
     mockTresor = {
       items: [],
       schwelle: { n: 0, k: null },
@@ -360,6 +368,9 @@ describe('Erbstatus im Trauerfall (ERBE_DESIGN.md §10)', () => {
     mockAufgabenZustand = { status: 'bereit' }
     mockFragebaum.mockReturnValue(null)
     mockGeladen.mockReturnValue(true)
+    mockErbscheinaufgabe.mockReturnValue(null)
+    mockLegeFragebaumAufgabeAn.mockReset()
+    mockLegeFragebaumAufgabeAn.mockResolvedValue(undefined)
     navigiere.mockClear()
   })
 
@@ -430,5 +441,162 @@ describe('Erbstatus im Trauerfall (ERBE_DESIGN.md §10)', () => {
     expect(
       screen.queryByRole('button', { name: 'Fragebaum erneut durchlaufen' }),
     ).not.toBeInTheDocument()
+  })
+})
+
+describe('Die Wege hinter dem Status "Erbe" (ERBE_DESIGN.md §10)', () => {
+  beforeEach(() => {
+    const fall = standardFall({ status: 'trauerfall', sterbedatum: '2026-03-15' })
+
+    mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
+    mockAufgabenZustand = { status: 'bereit' }
+    mockGeladen.mockReturnValue(true)
+    mockErbscheinaufgabe.mockReturnValue(null)
+    mockLegeFragebaumAufgabeAn.mockReset()
+    mockLegeFragebaumAufgabeAn.mockResolvedValue(undefined)
+    navigiere.mockClear()
+
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n6',
+      pfad: ['n0', 'n1', 'n2', 'n3', 'n4', 'n6'],
+      status: 'erbe',
+      am: '2026-08-25T10:00:00.000Z',
+    })
+  })
+
+  /** Tippt auf das Wort "Erbe" und danach durch die genannten Knöpfe. */
+  async function tippe(...knoepfe: string[]) {
+    const nutzer = userEvent.setup()
+
+    rendereMitProvidern(<Erbe />)
+    await nutzer.click(screen.getByRole('button', { name: 'Erbe' }))
+
+    for (const knopf of knoepfe) {
+      await nutzer.click(screen.getByRole('button', { name: knopf }))
+    }
+
+    return nutzer
+  }
+
+  it('macht aus dem Wort "Erbe" eine Schaltfläche', () => {
+    rendereMitProvidern(<Erbe />)
+
+    const schalter = screen.getByRole('button', { name: 'Erbe' })
+
+    expect(schalter).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('lässt jeden anderen Status eine Anzeige bleiben', () => {
+    // Wer noch nicht weiß, ob er erbt, soll keinen Erbschein beantragen; wer
+    // ausschlägt, erst recht nicht.
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n5',
+      pfad: ['n0', 'n5'],
+      status: 'wahrscheinlich-erbe',
+      am: '2026-08-25T10:00:00.000Z',
+    })
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByText('Wahrscheinlich Erbe')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Wahrscheinlich Erbe/ })).not.toBeInTheDocument()
+  })
+
+  it('öffnet auf das Antippen die beiden Wege', async () => {
+    await tippe()
+
+    expect(screen.getByRole('button', { name: 'Erbschein' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Erbengemeinschaft bzw. Alleinerbe' }),
+    ).toBeInTheDocument()
+  })
+
+  it('schließt sie beim zweiten Antippen wieder', async () => {
+    const nutzer = await tippe()
+
+    await nutzer.click(screen.getByRole('button', { name: 'Erbe' }))
+
+    expect(screen.queryByRole('button', { name: 'Erbschein' })).not.toBeInTheDocument()
+  })
+
+  it('zeigt unter "Erbschein" den Erklärtext und die Frage', async () => {
+    await tippe('Erbschein')
+
+    expect(screen.getByRole('heading', { name: 'Erbschein' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Eine amtliche Urkunde, die bestätigt, wer erbt und zu welchem Anteil.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Möchten Sie einen Erbschein beantragen?')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ja' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Nein' })).toBeInTheDocument()
+  })
+
+  it('setzt die Aufzählungen als Liste und nicht als Zeichen im Text', async () => {
+    // §7: Gefüllte Punkte kommen vom Browser, nicht aus dem Text. Ein "•", das
+    // im String stünde, spräche eine Vorlesestimme mit.
+    await tippe('Erbschein')
+
+    expect(screen.getByText('Handelsregister').tagName).toBe('LI')
+    expect(screen.queryByText(/•/)).not.toBeInTheDocument()
+  })
+
+  it('legt auf "Ja" sofort die Aufgabe an', async () => {
+    await tippe('Erbschein', 'Ja')
+
+    expect(mockLegeFragebaumAufgabeAn).toHaveBeenCalledWith('erbschein')
+  })
+
+  it('führt auf "Nein" zurück zur Wahl, ohne etwas anzulegen', async () => {
+    await tippe('Erbschein', 'Nein')
+
+    expect(mockLegeFragebaumAufgabeAn).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: 'Erbengemeinschaft bzw. Alleinerbe' }),
+    ).toBeInTheDocument()
+  })
+
+  it('fragt nicht noch einmal, wenn die Aufgabe schon steht (§7)', async () => {
+    mockErbscheinaufgabe.mockReturnValue({ id: 'aufgabe-1' })
+
+    const nutzer = await tippe('Erbschein')
+
+    expect(screen.queryByRole('button', { name: 'Ja' })).not.toBeInTheDocument()
+
+    await nutzer.click(screen.getByRole('button', { name: 'Aufgabe öffnen' }))
+
+    expect(navigiere).toHaveBeenCalledWith('/aufgabe/aufgabe-1')
+  })
+
+  it('fragt unter "Erbengemeinschaft bzw. Alleinerbe", was zutrifft', async () => {
+    await tippe('Erbengemeinschaft bzw. Alleinerbe')
+
+    expect(screen.getByRole('heading', { name: 'Was trifft auf Sie zu?' })).toBeInTheDocument()
+    expect(screen.getByText('Das Nachlassgericht informiert Sie darüber.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Erbengemeinschaft' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Alleinerbe' })).toBeInTheDocument()
+  })
+
+  it('erklärt die Erbengemeinschaft', async () => {
+    await tippe('Erbengemeinschaft bzw. Alleinerbe', 'Erbengemeinschaft')
+
+    expect(screen.getByRole('heading', { name: 'Erbengemeinschaft' })).toBeInTheDocument()
+    expect(screen.getByText(/bildet sich sofort mit dem Tod des Erblassers/)).toBeInTheDocument()
+  })
+
+  it('erklärt den Alleinerben', async () => {
+    await tippe('Erbengemeinschaft bzw. Alleinerbe', 'Alleinerbe')
+
+    expect(screen.getByRole('heading', { name: 'Alleinerbe' })).toBeInTheDocument()
+    expect(screen.getByText(/als auch alle Schulden gehen auf den Erben über/)).toBeInTheDocument()
+  })
+
+  it('führt aus jeder Ebene eine Ebene zurück', async () => {
+    const nutzer = await tippe('Erbengemeinschaft bzw. Alleinerbe', 'Alleinerbe')
+
+    await nutzer.click(screen.getByRole('button', { name: /Zurück/ }))
+    expect(screen.getByRole('heading', { name: 'Was trifft auf Sie zu?' })).toBeInTheDocument()
+
+    await nutzer.click(screen.getByRole('button', { name: /Zurück/ }))
+    expect(screen.getByRole('button', { name: 'Erbschein' })).toBeInTheDocument()
   })
 })
