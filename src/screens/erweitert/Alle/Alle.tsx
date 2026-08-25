@@ -13,8 +13,8 @@ import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
 import { darfBearbeiten, istFrei, zuweisungText } from '../../../services/zuweisung.ts'
-import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
-import { Abgelehnt, Uebernahmen } from '../Meldungen/Meldungen.tsx'
+import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
+import { Abgelehnt, Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
 import stile from './Alle.module.css'
 
 /**
@@ -25,13 +25,12 @@ import stile from './Alle.module.css'
  * `aufgabenService`, bevor irgendetwas den Browser verlässt; dieser Screen
  * sieht ausschließlich Klartext, den es nur hier gibt.
  *
- * Ein Screen statt zweier Bäume: §7 sieht für "Alle" getrennte Bäume unter
- * `screens/senior` und `screens/advanced` vor. Solange die beiden Fassungen
- * dieselben Elemente in derselben Reihenfolge zeigten, wären das zwei Kopien,
- * die auseinanderlaufen; die Dichtetokens tragen den Größenunterschied bereits.
- * Getrennt wird, sobald die einfache Ansicht wirklich weniger zeigt; das ist
- * der Slice #17. Was §7 für die einfache Ansicht ausdrücklich verlangt, steht
- * schon hier: Vor dem Löschen wird gefragt.
+ * Die erweiterte Fassung dieses Tabs (§7). Die einfache steht daneben in
+ * `screens/einfach/Alle`; getrennt sind sie, seit die einfache wirklich
+ * weniger zeigt und nicht bloß größer gesetzt ist. Hier steht alles, was eine
+ * Familie zum Verteilen braucht: sortieren, ändern, löschen, übernehmen,
+ * freigeben — vier Aktionen unter jeder Zeile, ohne eine einzige Aufgabe zu
+ * öffnen.
  *
  * Die Liste zeigt Wurzelaufgaben: Unteraufgaben stehen im Aufgabendetail,
  * unter der Aufgabe, zu der sie gehören (§7); hier zählt nur, wie viele davon

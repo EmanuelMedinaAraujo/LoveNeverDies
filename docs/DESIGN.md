@@ -898,8 +898,8 @@ dieser Lage tatsächlich ausführen kann.
 
 ### Zwei Ansichten
 
-Getrennte Screen-Bäume für `Start`, `Aufgabe` und `Alle` (`screens/senior`,
-`screens/advanced`), gemeinsame UI-Primitiven mit einem `density`-Token. Die einfache
+Getrennte Screen-Bäume für `Start`, `Aufgabe` und `Alle` (`screens/einfach`,
+`screens/erweitert`), gemeinsame UI-Primitiven mit einem `density`-Token. Die einfache
 Ansicht ist nicht bloß größer gesetzt. Sie zeigt weniger Elemente pro Screen, verzichtet
 auf verschachtelte Navigation, benennt Aktionen mit Verben statt Substantiven und fragt vor
 jeder destruktiven Aktion nach. Die Navigationsstruktur bleibt in beiden Modi identisch,
@@ -915,7 +915,11 @@ wäre ein Risiko ohne Gegenwert.
 
 - Systemeinstellungen werden immer automatisch übernommen: `prefers-reduced-motion`,
   Browser-Textskalierung
-- In Profil zusätzlich ein Override, der auf "Systemeinstellung folgen" steht
+- In Profil zusätzlich ein Override, der auf "Systemeinstellung folgen" steht. Er liegt
+  mit der Ansichtswahl in `localStorage` (`core/storage/ansicht.ts`): Es sind
+  Eigenschaften dieses Bildschirms, nicht des Nachlasses. Solange er auf
+  "Systemeinstellung folgen" steht, trägt die Wurzel kein `data-farbschema` — nur dann
+  zieht ein Wechsel im Betriebssystem ohne Neuladen mit
 - Durchgehend `rem`, kein `user-scalable=no`
 - WCAG AA Kontrast
 - Alle Buttons mit Text zum Vorlesen, auch wenn der Text visuell nicht sichtbar ist
@@ -1097,11 +1101,12 @@ src/
     auth/         clerkAdapter.ts  (AuthProvider-Interface)
   services/       caseService.ts  taskService.ts  vaultService.ts  documentService.ts
                   pairingService.ts  personalKeyService.ts
-  hooks/          useCase.ts  useTasks.ts  useVault.ts  useViewMode.ts  useSync.ts
+  hooks/          useCase.ts  useTasks.ts  useVault.ts  useAnsichtsmodus.ts  useSync.ts
   screens/
-    senior/       Start/  Aufgabe/  Alle/
-    advanced/     Start/  Aufgabe/  Alle/
+    einfach/      Start/  Aufgabe/  Alle/
+    erweitert/    Start/  Aufgabe/  Alle/
     shared/       Erbe/  Profil/  Onboarding/  Beitreten/  KeinFall/
+                  Dokumente/  Meldungen/  Zuweisung/
   ui/             Button/  Card/  Checkbox/  Sheet/  Badge/  ProgressRing/  (density-Token)
   content/        catalog.de.json + import-Skript
   types/

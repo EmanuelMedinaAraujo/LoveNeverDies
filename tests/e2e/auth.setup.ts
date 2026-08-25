@@ -1,5 +1,6 @@
 import { test as setup } from '@playwright/test'
 import { clerk } from '@clerk/testing/playwright'
+import { ansichtErweitert } from './helpers.ts'
 import { authDatei, testpersonAdresse, type Projektname } from './nutzer.ts'
 
 /**
@@ -20,6 +21,12 @@ import { authDatei, testpersonAdresse, type Projektname } from './nutzer.ts'
 setup('Testperson anmelden', async ({ page }, testInfo) => {
   const projekt = testInfo.project.name.replace(/^setup-/, '') as Projektname
   const email = testpersonAdresse(projekt)
+
+  /*
+   * §7: Die Ansichtswahl steht vor der Fallweiche. Sie wird hier getroffen und
+   * wandert mit dem `storageState` in jedes Spec dieses Projekts.
+   */
+  await ansichtErweitert(page.context())
 
   await page.goto('/')
   await clerk.signIn({ page, emailAddress: email })

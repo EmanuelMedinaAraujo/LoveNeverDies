@@ -2,17 +2,21 @@ import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../core/auth/authProvider.ts'
 import { speicherDauerhaftAnfordern } from '../core/storage/persist.ts'
-import { useAnsichtsmodus } from '../hooks/useAnsichtsmodus.ts'
+import { useAnsicht } from '../hooks/useAnsichtsmodus.ts'
 import { useGeraeteanmeldung } from '../hooks/useGeraete.ts'
 import { useProfilAbgleich } from '../hooks/useProfil.ts'
-import { Alle } from '../screens/shared/Alle/Alle.tsx'
+import { Alle as AlleEinfach } from '../screens/einfach/Alle/Alle.tsx'
+import { Aufgabe as AufgabeEinfach } from '../screens/einfach/Aufgabe/Aufgabe.tsx'
+import { Start as StartEinfach } from '../screens/einfach/Start/Start.tsx'
+import { Alle } from '../screens/erweitert/Alle/Alle.tsx'
+import { Aufgabe } from '../screens/erweitert/Aufgabe/Aufgabe.tsx'
+import { Start } from '../screens/erweitert/Start/Start.tsx'
 import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
 import { Beitreten } from '../screens/shared/Beitreten/Beitreten.tsx'
-import { Aufgabe } from '../screens/shared/Aufgabe/Aufgabe.tsx'
 import { Erbe } from '../screens/shared/Erbe/Erbe.tsx'
 import { Koppeln } from '../screens/shared/Koppeln/Koppeln.tsx'
+import { Ansichtswahl } from '../screens/shared/Onboarding/Ansichtswahl.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
-import { Start } from '../screens/shared/Start/Start.tsx'
 import { Todesfall } from '../screens/shared/Todesfall/Todesfall.tsx'
 import { Vorsorge } from '../screens/shared/Vorsorge/Vorsorge.tsx'
 import { Rahmen } from './Rahmen.tsx'
@@ -27,7 +31,7 @@ function Ladeanzeige({ text }: { text: string }) {
 }
 
 export function App() {
-  const ansichtsmodus = useAnsichtsmodus()
+  const { modus, textgroesse, darstellung } = useAnsicht()
   const { zustand } = useAuth()
 
   /*
@@ -45,9 +49,42 @@ export function App() {
    */
   useProfilAbgleich()
 
+  /*
+   * §7: Die Ansicht steht an der Wurzel, nicht in den Screens. `data-dichte`
+   * schaltet die Dichtetokens um (`ui/tokens.css`), und solange die Wahl noch
+   * aussteht, gilt "einfach": Der Screen, auf dem gewählt wird, soll so
+   * aussehen, wie die App danach aussieht, wenn man nichts ändert.
+   */
   useEffect(() => {
-    document.documentElement.dataset.dichte = ansichtsmodus
-  }, [ansichtsmodus])
+    document.documentElement.dataset.dichte = modus ?? 'einfach'
+  }, [modus])
+
+  /*
+   * §7: Die beiden Overrides aus Profil. Steht einer auf "Systemeinstellung
+   * folgen", steht an der Wurzel *nichts* — nicht etwa `system`. Das ist der
+   * Unterschied zwischen "der Browser entscheidet" und "die App hat sich fuer
+   * das entschieden, was der Browser gerade sagt": Nur im ersten Fall zieht ein
+   * Wechsel der Systemeinstellung mit, ohne dass jemand die App neu lädt.
+   */
+  useEffect(() => {
+    const wurzel = document.documentElement
+
+    if (darstellung === 'system') {
+      delete wurzel.dataset.farbschema
+    } else {
+      wurzel.dataset.farbschema = darstellung
+    }
+  }, [darstellung])
+
+  useEffect(() => {
+    const wurzel = document.documentElement
+
+    if (textgroesse === 'system') {
+      delete wurzel.dataset.textgroesse
+    } else {
+      wurzel.dataset.textgroesse = textgroesse
+    }
+  }, [textgroesse])
 
   useEffect(() => {
     /*
@@ -69,6 +106,28 @@ export function App() {
     return <Anmelden />
   }
 
+  /*
+   * §7: "Die Ansichtswahl kommt vor der Fallweiche, damit alle folgenden
+   * Screens bereits im gewählten Modus erscheinen." Sie steht deshalb vor den
+   * Routen und nicht als eine unter ihnen: Wer die App zum ersten Mal auf
+   * diesem Gerät öffnet, kommt an ihr nicht vorbei, gleich über welchen Link.
+   *
+   * Gefragt wird je Gerät, nicht je Person: Es ist eine Auskunft über diesen
+   * Bildschirm und diese Augen, und wer am Telefon der Tochter hilft, ändert
+   * dort nichts (§3.3).
+   */
+  if (modus === null) {
+    return <Ansichtswahl />
+  }
+
+  /*
+   * §7: Getrennte Screen-Bäume für Start, Aufgabe und Alle. `Erbe` und
+   * `Profil` gibt es genau einmal — dort liegen die unumkehrbaren Abläufe, und
+   * ein zweiter Bestätigungsdialog, der leicht anders formuliert ist, wäre ein
+   * Risiko ohne Gegenwert.
+   */
+  const einfach = modus === 'einfach'
+
   return (
     <Routes>
       {/*
@@ -87,9 +146,7 @@ export function App() {
       <Route
         path="/"
         element={
-          <Rahmen>
-            <Start />
-          </Rahmen>
+          <Rahmen>{einfach ? <StartEinfach /> : <Start />}</Rahmen>
         }
       />
       <Route
@@ -103,13 +160,11 @@ export function App() {
       <Route
         path="/alle"
         element={
-          <Rahmen>
-            <Alle />
-          </Rahmen>
+          <Rahmen>{einfach ? <AlleEinfach /> : <Alle />}</Rahmen>
         }
       />
       {/* Das ganzseitige Aufgabendetail (§7). */}
-      <Route path="/aufgabe/:id" element={<Aufgabe />} />
+      <Route path="/aufgabe/:id" element={einfach ? <AufgabeEinfach /> : <Aufgabe />} />
       <Route path="/todesfall" element={<Todesfall />} />
       <Route path="/vorsorge" element={<Vorsorge />} />
       {/*

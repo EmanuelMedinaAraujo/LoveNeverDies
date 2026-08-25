@@ -1,4 +1,27 @@
-import type { Page } from '@playwright/test'
+import type { BrowserContext, Page } from '@playwright/test'
+
+/**
+ * Die Ansichtswahl aus §7 vorwegnehmen: erweitert.
+ *
+ * Sie steht im Onboarding vor der Fallweiche, und ohne getroffene Wahl kommt
+ * niemand an ihr vorbei — auch kein Test. Gesetzt wird der Speicher direkt
+ * und nicht ueber den Screen: Ein Klick auf "Weiter" am Anfang jeder Datei
+ * pruefte die Ansichtswahl nicht besser (das tun die Screentests), waere aber
+ * in jedem dieser Tests ein zusaetzlicher Schritt, der fehlschlagen kann.
+ *
+ * "erweitert", weil die Specs die erweiterte Fassung von Start, Aufgabe und
+ * Alle bedienen: die Zeilenaktionen, das Sortierfeld, die Namensliste in der
+ * Zuweisung.
+ *
+ * `addInitScript` laeuft vor jedem Laden dieses Kontexts. Im Setup landet der
+ * Eintrag dadurch im gesicherten `storageState` und gilt fuer alle Specs des
+ * Projekts; ein Kontext, den ein Spec selbst aufmacht, bekommt ihn hier.
+ */
+export async function ansichtErweitert(kontext: BrowserContext): Promise<void> {
+  await kontext.addInitScript(() => {
+    localStorage.setItem('lnd.ansicht', JSON.stringify({ modus: 'erweitert' }))
+  })
+}
 
 /**
  * `page.goto`, robust gegen einen bekannten Uhr-Jitter: Der allererste

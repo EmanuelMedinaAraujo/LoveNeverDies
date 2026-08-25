@@ -43,6 +43,41 @@
   font-variant-numeric: tabular-nums;
 }
 
+/*
+ * Eine Zeile mit einem Auswahlfeld (§7): Etikett darueber, Feld darunter.
+ *
+ * Nebeneinander waere die Form dieser Liste, aber "Systemeinstellung folgen"
+ * neben "Darstellung" passt in der einfachen Ansicht auf kein Telefon, und ein
+ * Wert, der am Rand abgeschnitten wird, ist die eine Auskunft, die dieser
+ * Screen nicht geben darf: Die Voreinstellung heisst genau so und nicht
+ * "Systemeinstellung".
+ */
+.einstellung {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--dichte-abstand-klein);
+  padding-block: var(--dichte-abstand);
+}
+
+/*
+ * Das Feld traegt seinen Rand, wie das Umbenennen-Feld daneben. Ohne ihn saehe
+ * ein Wert unter einem Etikett aus wie Text und nicht wie eine Auswahl.
+ */
+.auswahl {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  /* Die Trefferflaeche bleibt bei 44 px, auch wenn der Text kurz ist (§7). */
+  min-height: var(--ziel-mindestmass);
+
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+  cursor: pointer;
+}
+
 /* Ein Weg, den es gerade nicht gibt. Er bleibt sichtbar, damit die Liste
    nicht bei jedem Fallwechsel eine andere Laenge hat. */
 .aus {

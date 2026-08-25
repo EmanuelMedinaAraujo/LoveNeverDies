@@ -41,6 +41,7 @@ function Dokumentzeile({
   dokument,
   gesperrt,
   darfLoeschen,
+  flach,
   aufAnsehen,
   aufLoeschen,
 }: {
@@ -53,14 +54,17 @@ function Dokumentzeile({
    * Ausgegraut sähe aus wie "geht gerade nicht" und nicht wie "nicht Ihre".
    */
   darfLoeschen: boolean
+  /** Ohne Kasten: In der einfachen Ansicht gibt es keine (§7). */
+  flach: boolean
   aufAnsehen: () => void
   aufLoeschen: () => void
 }) {
   const [fragt, setzeFragt] = useState(false)
+  const zeile = flach ? stile.flachezeile : stile.zeile
 
   if (fragt) {
     return (
-      <li className={stile.zeile}>
+      <li className={zeile}>
         <p>
           "{dokument.name}" wirklich löschen? Die Datei wird dabei entfernt und kommt nicht
           zurück.
@@ -84,7 +88,7 @@ function Dokumentzeile({
   }
 
   return (
-    <li className={stile.zeile}>
+    <li className={zeile}>
       <span className={stile.name}>{dokument.name}</span>
       <span className={stile.hinweis}>{groessentext(dokument.groesse)}</span>
 
@@ -118,6 +122,7 @@ export function Dokumente({
   zeilen,
   aktualisiere,
   darfAendern,
+  flach = false,
 }: {
   fall: Fallschluessel
   /** Die Aufgabe, an der die Dokumente hängen (§7). */
@@ -131,6 +136,14 @@ export function Dokumente({
    * darf auch die Sterbeurkunde sehen, die daran hängt.
    */
   darfAendern: boolean
+  /**
+   * §7: Die einfache Ansicht kennt keine Kästen. Der Abschnitt steht dann als
+   * blanke Fläche unter einer Haarlinie, und die Zeilen darin ebenso. Ein
+   * zweites Dokumentenmodul dafür wäre eine zweite Stelle, an der ein Foto vor
+   * dem Hochladen verschlüsselt werden muss (§7) — und eine davon vergisst es
+   * irgendwann.
+   */
+  flach?: boolean
 }) {
   const { dokumente, online, nimmAuf, oeffne, loesche } = useDokumente(fall, zeilen, aktualisiere)
 
@@ -199,90 +212,100 @@ export function Dokumente({
 
   const zu = laeuft !== null || !darfAendern || !online
 
-  return (
-    <Gruppe titel="Dokumente">
-      <Card className={stile.karte}>
-        <label className={[stile.aufnahme, zu ? stile.gesperrt : null].filter(Boolean).join(' ')}>
-          {laeuft === 'aufnehmen'
-            ? 'Wird verschlüsselt und hochgeladen…'
-            : 'Dokument einfach abfotografieren'}
-          <input
-            className={stile.feld}
-            type="file"
-            accept="image/*,application/pdf"
-            // Auf dem Telefon die Rückkamera (§7). Ein Rechner ohne Kamera
-            // ignoriert das Attribut und zeigt den Dateidialog.
-            capture="environment"
-            disabled={zu}
-            onChange={(ereignis) => void aufnehmen(ereignis)}
-          />
-        </label>
+  const inhalt = (
+    <>
+      <label className={[stile.aufnahme, zu ? stile.gesperrt : null].filter(Boolean).join(' ')}>
+        {laeuft === 'aufnehmen'
+          ? 'Wird verschlüsselt und hochgeladen…'
+          : 'Dokument einfach abfotografieren'}
+        <input
+          className={stile.feld}
+          type="file"
+          accept="image/*,application/pdf"
+          // Auf dem Telefon die Rückkamera (§7). Ein Rechner ohne Kamera
+          // ignoriert das Attribut und zeigt den Dateidialog.
+          capture="environment"
+          disabled={zu}
+          onChange={(ereignis) => void aufnehmen(ereignis)}
+        />
+      </label>
 
-        {online ? null : (
-          <p className={stile.hinweis} role="status">
-            Ohne Verbindung lässt sich kein Dokument aufnehmen. Ein Foto wartet nicht in der
-            Warteschlange: Es geht ganz hinaus oder gar nicht.
-          </p>
-        )}
+      {online ? null : (
+        <p className={stile.hinweis} role="status">
+          Ohne Verbindung lässt sich kein Dokument aufnehmen. Ein Foto wartet nicht in der
+          Warteschlange: Es geht ganz hinaus oder gar nicht.
+        </p>
+      )}
 
-        {darfAendern || !online ? null : (
-          <p className={stile.hinweis}>
-            Ansehen können Sie alles. Zum Aufnehmen und Löschen übernehmen Sie oben die
-            Zuständigkeit.
-          </p>
-        )}
+      {darfAendern || !online ? null : (
+        <p className={stile.hinweis}>
+          Ansehen können Sie alles. Zum Aufnehmen und Löschen übernehmen Sie oben die
+          Zuständigkeit.
+        </p>
+      )}
 
-        {fehler === null ? null : (
-          <p className={stile.hinweis} role="alert">
-            {fehler}
-          </p>
-        )}
+      {fehler === null ? null : (
+        <p className={stile.hinweis} role="alert">
+          {fehler}
+        </p>
+      )}
 
-        {meine.length === 0 ? (
-          <p className={stile.hinweis}>
-            Noch keine. Halten Sie das Dokument vor die Kamera; es wird auf diesem Gerät
-            verschlüsselt, bevor es hinausgeht.
-          </p>
-        ) : (
-          <ul className={stile.liste}>
-            {meine.map((dokument) => (
-              <Dokumentzeile
-                key={dokument.id}
-                dokument={dokument}
-                gesperrt={laeuft !== null}
-                darfLoeschen={darfAendern}
-                aufAnsehen={() => void ansehen(dokument)}
-                aufLoeschen={() => void fuehreAus('loeschen', () => loesche(dokument))}
-              />
-            ))}
-          </ul>
-        )}
+      {meine.length === 0 ? (
+        <p className={stile.hinweis}>
+          Noch keine. Halten Sie das Dokument vor die Kamera; es wird auf diesem Gerät
+          verschlüsselt, bevor es hinausgeht.
+        </p>
+      ) : (
+        <ul className={stile.liste}>
+          {meine.map((dokument) => (
+            <Dokumentzeile
+              key={dokument.id}
+              dokument={dokument}
+              gesperrt={laeuft !== null}
+              darfLoeschen={darfAendern}
+              flach={flach}
+              aufAnsehen={() => void ansehen(dokument)}
+              aufLoeschen={() => void fuehreAus('loeschen', () => loesche(dokument))}
+            />
+          ))}
+        </ul>
+      )}
 
-        {ansicht === null ? null : (
-          <div className={stile.zeile}>
-            <p className={stile.name}>{ansicht.dokument.name}</p>
+      {ansicht === null ? null : (
+        <div className={flach ? stile.flachezeile : stile.zeile}>
+          <p className={stile.name}>{ansicht.dokument.name}</p>
 
-            {istBild(ansicht.dokument.mimetyp) ? (
-              <img className={stile.vorschau} src={ansicht.url} alt={ansicht.dokument.name} />
-            ) : (
-              /*
-                Kein Bild, also kein Bild zeigen. Der Link speichert den
-                entschlüsselten Klartext; das ist der einzige Weg, ein PDF in
-                einer App zu öffnen, die keinen Betrachter mitbringt.
-              */
-              <a href={ansicht.url} download={ansicht.dokument.name}>
-                "{ansicht.dokument.name}" speichern
-              </a>
-            )}
+          {istBild(ansicht.dokument.mimetyp) ? (
+            <img className={stile.vorschau} src={ansicht.url} alt={ansicht.dokument.name} />
+          ) : (
+            /*
+              Kein Bild, also kein Bild zeigen. Der Link speichert den
+              entschlüsselten Klartext; das ist der einzige Weg, ein PDF in
+              einer App zu öffnen, die keinen Betrachter mitbringt.
+            */
+            <a href={ansicht.url} download={ansicht.dokument.name}>
+              "{ansicht.dokument.name}" speichern
+            </a>
+          )}
 
-            <div className={stile.aktionen}>
-              <Button variante="sekundaer" onClick={() => setzeAnsicht(null)}>
-                Schließen
-              </Button>
-            </div>
+          <div className={stile.aktionen}>
+            <Button variante="sekundaer" onClick={() => setzeAnsicht(null)}>
+              Schließen
+            </Button>
           </div>
-        )}
-      </Card>
+        </div>
+      )}
+    </>
+  )
+
+  return flach ? (
+    <section className={stile.abschnitt}>
+      <h2>Dokumente</h2>
+      {inhalt}
+    </section>
+  ) : (
+    <Gruppe titel="Dokumente">
+      <Card className={stile.karte}>{inhalt}</Card>
     </Gruppe>
   )
 }

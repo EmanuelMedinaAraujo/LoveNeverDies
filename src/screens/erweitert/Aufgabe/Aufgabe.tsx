@@ -27,10 +27,10 @@ import {
   type Zugewiesene,
   type Zuweisung,
 } from '../../../services/zuweisung.ts'
-import { Uebernahmen } from '../Meldungen/Meldungen.tsx'
-import { Dokumente } from './Dokumente.tsx'
-import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
-import { Zuweisungsfeld } from '../Zuweisung/Zuweisungsfeld.tsx'
+import { Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
+import { Dokumente } from '../../shared/Dokumente/Dokumente.tsx'
+import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
+import { Zuweisungsfeld } from '../../shared/Zuweisung/Zuweisungsfeld.tsx'
 import stile from './Aufgabe.module.css'
 
 /**
@@ -50,13 +50,13 @@ import stile from './Aufgabe.module.css'
  * Elternaufgabe hat dann kein eigenes Häkchen mehr und gilt genau dann als
  * erledigt, wenn alle Kinder es sind (§7).
  *
- * Ein Screen statt zweier Bäume: §7 sieht für `Aufgabe` getrennte Bäume
- * unter `screens/senior` und `screens/advanced` vor. Getrennt wird, sobald die
- * einfache Ansicht wirklich weniger zeigt; das ist der Slice #17, und bis
- * dahin wären zwei Kopien nur zwei Stellen, an denen eine Rechtsgrundlage
- * fehlen kann. Die Dichtetokens tragen den Größenunterschied bereits, und was
- * §7 für die einfache Ansicht ausdrücklich verlangt, steht schon hier: Vor dem
- * Löschen wird gefragt.
+ * Die erweiterte Fassung dieses Screens (§7). Die einfache steht daneben in
+ * `screens/einfach/Aufgabe`; sie zeigt dieselbe Aufgabe mit weniger darauf —
+ * ohne Quelle, ohne Namensliste in der Zuweisung und ohne den Weg von jeder
+ * Unteraufgabe in ihr eigenes Detail, denn genau das ist die verschachtelte
+ * Navigation, auf die §7 dort verzichtet. Die Dokumente teilen sich beide
+ * (`screens/shared/Dokumente`): Ein Foto wird vor dem Hochladen verschlüsselt,
+ * und eine zweite Stelle, die das tun muss, vergisst es irgendwann.
  */
 
 function Ladeanzeige({ text }: { text: string }) {

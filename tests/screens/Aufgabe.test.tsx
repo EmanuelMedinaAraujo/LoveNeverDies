@@ -48,7 +48,7 @@ vi.mock('../../src/hooks/useDokumente.ts', () => ({
   }),
 }))
 
-const { Aufgabe } = await import('../../src/screens/shared/Aufgabe/Aufgabe.tsx')
+const { Aufgabe } = await import('../../src/screens/erweitert/Aufgabe/Aufgabe.tsx')
 
 /**
  * Das ganzseitige Aufgabendetail (DESIGN.md §7, §8).

@@ -1,6 +1,12 @@
 import { useState } from 'react'
 import { useAuth } from '../../../core/auth/authProvider.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
+import {
+  useAnsicht,
+  type Ansichtsmodus,
+  type Darstellung,
+  type Textgroesse,
+} from '../../../hooks/useAnsichtsmodus.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
@@ -12,8 +18,8 @@ import stile from './Profil.module.css'
  * Profil (DESIGN.md §7).
  *
  * Der Tab trägt laut §7 Name, Angehörige, Fallwechsel, Geräte, Textgröße,
- * Darstellung und "Fall verlassen". In diesem Stand gibt es davon Name, Geräte
- * und die beiden Kopplungswege aus §6.
+ * Darstellung und "Fall verlassen". In diesem Stand gibt es davon Name, Geräte,
+ * die beiden Kopplungswege aus §6 und die drei Einstellungen zur Ansicht.
  *
  * Der Screen ist eine Einstellungsliste und sieht auch so aus: Abschnitte mit
  * kleiner Überschrift, darin Zeilen, darunter höchstens ein Satz. Vorher war
@@ -22,10 +28,89 @@ import stile from './Profil.module.css'
  * Wege — einladen, freischalten, umbenennen — zwischen den Erklärungen
  * untergingen.
  *
- * Profil liegt in `screens/shared`, nicht doppelt in `senior` und `advanced`:
+ * Profil liegt in `screens/shared`, nicht doppelt in `einfach` und `erweitert`:
  * Hier stehen die unumkehrbaren Abläufe, und ein zweiter Bestätigungsdialog,
  * der leicht anders formuliert ist, wäre ein Risiko ohne Gegenwert (§7).
  */
+
+/**
+ * Ansicht, Textgröße, Darstellung (§7).
+ *
+ * Drei Auswahlfelder, und alle drei wirken sofort: Wer hier auf "Einfach"
+ * stellt, sieht die untere Leiste im selben Augenblick größer werden und
+ * findet nach dem nächsten Tipp auf "Start" die einfache Fassung. Ein
+ * Speichern-Knopf daneben wäre ein zweiter Schritt vor einer Einstellung, die
+ * man ausprobieren will.
+ *
+ * Native `select`-Felder und keine nachgebauten. Sie bringen auf jedem Gerät
+ * die Bedienung mit, die dort gilt — das Rad auf iOS, die Liste auf dem
+ * Rechner —, und eine Vorlesestimme kennt sie ohne Zutun (§7).
+ *
+ * Beide Overrides stehen auf "Systemeinstellung folgen", und das ist mehr als
+ * ein Vorgabewert: Solange er dort steht, zieht ein Wechsel im Betriebssystem
+ * mit, ohne dass jemand hierher zurückkommen muss.
+ */
+function Ansichtseinstellungen() {
+  const { modus, textgroesse, darstellung, waehleModus, waehleTextgroesse, waehleDarstellung } =
+    useAnsicht()
+
+  return (
+    <Gruppe
+      titel="Ansicht"
+      fussnote="Die einfache Ansicht zeigt weniger auf einem Bildschirm und setzt alles größer. Die Wege durch die App sind in beiden gleich."
+    >
+      <Liste>
+        <Zeile className={stile.einstellung}>
+          <label className={stile.etikett} htmlFor="ansicht-modus">
+            Ansicht
+          </label>
+          <select
+            id="ansicht-modus"
+            className={stile.auswahl}
+            value={modus ?? 'einfach'}
+            onChange={(ereignis) => waehleModus(ereignis.target.value as Ansichtsmodus)}
+          >
+            <option value="einfach">Einfach</option>
+            <option value="erweitert">Erweitert</option>
+          </select>
+        </Zeile>
+
+        <Zeile className={stile.einstellung}>
+          <label className={stile.etikett} htmlFor="ansicht-textgroesse">
+            Textgröße
+          </label>
+          <select
+            id="ansicht-textgroesse"
+            className={stile.auswahl}
+            value={textgroesse}
+            onChange={(ereignis) => waehleTextgroesse(ereignis.target.value as Textgroesse)}
+          >
+            <option value="system">Systemeinstellung folgen</option>
+            <option value="gross">Größer</option>
+            <option value="sehr-gross">Noch größer</option>
+          </select>
+        </Zeile>
+
+        <Zeile className={stile.einstellung}>
+          <label className={stile.etikett} htmlFor="ansicht-darstellung">
+            Darstellung
+          </label>
+          <select
+            id="ansicht-darstellung"
+            className={stile.auswahl}
+            value={darstellung}
+            onChange={(ereignis) => waehleDarstellung(ereignis.target.value as Darstellung)}
+          >
+            <option value="system">Systemeinstellung folgen</option>
+            <option value="hell">Hell</option>
+            <option value="dunkel">Dunkel</option>
+          </select>
+        </Zeile>
+      </Liste>
+    </Gruppe>
+  )
+}
+
 export function Profil() {
   const { zustand } = useAuth()
   const { zustand: fall, verlasseFall } = useCase()
@@ -134,6 +219,8 @@ export function Profil() {
           ) : null}
         </Liste>
       </Gruppe>
+
+      <Ansichtseinstellungen />
 
       {fall.status === 'bereit' && fall.aktiver.zustand === 'lesbar' ? (
         <Gruppe

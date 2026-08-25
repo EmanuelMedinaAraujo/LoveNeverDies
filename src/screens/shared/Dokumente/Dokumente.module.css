@@ -103,3 +103,29 @@
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
 }
+
+/*
+ * Dieselbe Sache ohne Kasten, fuer die einfache Ansicht (§7). Die vier Masse
+ * unten stehen genauso in `screens/einfach/einfach.module.css`: Es ist die
+ * Formensprache dieser Ansicht, und beide holen sie aus denselben Tokens.
+ */
+.abschnitt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+
+  padding-block-start: var(--dichte-abstand-gross);
+  border-block-start: 0.0625rem solid var(--farbe-kartenrand);
+}
+
+.flachezeile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+
+  padding-block: var(--dichte-abstand);
+}
+
+.flachezeile + .flachezeile {
+  border-block-start: 0.0625rem solid var(--farbe-kartenrand);
+}

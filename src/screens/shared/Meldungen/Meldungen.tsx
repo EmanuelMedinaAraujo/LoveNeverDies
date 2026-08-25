@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import type { AbgelehnteAenderung } from '../../../services/aufgabenService.ts'
@@ -15,7 +16,23 @@ import stile from './Meldungen.module.css'
  * Sie stehen hier und nicht in einem Screen, weil beide auf mehreren Screens
  * auftreten können: Wer auf Start ein Häkchen setzt, muss dort erfahren, dass
  * der Server es verworfen hat, und nicht erst in "Alle".
+ *
+ * Und auf beiden Ansichten. Die einfache Ansicht kennt keine Karten (§7), also
+ * bekommt die Fläche darunter einen Schalter statt einer zweiten Fassung
+ * desselben Textes: Zwei Formulierungen für dasselbe verlorene Häkchen wären
+ * zwei Stellen, an denen §5 verletzt werden kann.
  */
+
+/** Karte oder blanke Fläche. In der einfachen Ansicht gibt es keine Kästen (§7). */
+export type Rahmenform = 'karte' | 'flach'
+
+function Flaeche({ form, children }: { form: Rahmenform; children: ReactNode }) {
+  return form === 'karte' ? (
+    <Card>{children}</Card>
+  ) : (
+    <section className={stile.flach}>{children}</section>
+  )
+}
 
 /** Wie die drei Operationen heissen, wenn eine Mitteilung von ihnen erzählt. */
 const WAS: Record<AbgelehnteAenderung['was'], string> = {
@@ -36,12 +53,14 @@ const WAS: Record<AbgelehnteAenderung['was'], string> = {
 export function Abgelehnt({
   aenderungen,
   aufBestaetigen,
+  form = 'karte',
 }: {
   aenderungen: AbgelehnteAenderung[]
   aufBestaetigen: () => void
+  form?: Rahmenform
 }) {
   return (
-    <Card>
+    <Flaeche form={form}>
       <p role="alert">
         {aenderungen.length === 1
           ? 'Eine Änderung konnte nicht gespeichert werden.'
@@ -66,7 +85,7 @@ export function Abgelehnt({
       <Button variante="sekundaer" onClick={aufBestaetigen}>
         Verstanden
       </Button>
-    </Card>
+    </Flaeche>
   )
 }
 
@@ -81,12 +100,14 @@ export function Abgelehnt({
 export function Uebernahmen({
   uebernahmen,
   aufBestaetigen,
+  form = 'karte',
 }: {
   uebernahmen: Uebernahme[]
   aufBestaetigen: () => void
+  form?: Rahmenform
 }) {
   return (
-    <Card>
+    <Flaeche form={form}>
       <ul className={stile.liste}>
         {uebernahmen.map((uebernahme) => (
           <li key={uebernahme.itemId} role="alert">
@@ -98,6 +119,6 @@ export function Uebernahmen({
       <Button variante="sekundaer" onClick={aufBestaetigen}>
         Verstanden
       </Button>
-    </Card>
+    </Flaeche>
   )
 }

@@ -12,3 +12,15 @@
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
 }
+
+/*
+ * Die Mitteilung ohne Karte, fuer die einfache Ansicht (§7). Dieselben
+ * Abstaende wie in der Karte, nur ohne Rand und Flaeche: Was hier steht, ist
+ * dringend, und ein Kasten drumherum macht es nicht dringender.
+ */
+.flach {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  align-items: flex-start;
+}

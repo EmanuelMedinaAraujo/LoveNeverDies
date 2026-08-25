@@ -1,6 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ansichtLesen, ansichtZuruecksetzen } from '../../src/core/storage/ansicht.ts'
 import type { Falldaten } from '../../src/hooks/useCase.ts'
 import { authWert, rendereMitProvidern } from './harness.tsx'
 
@@ -54,6 +55,8 @@ const LESBAR: LesbarerFall = {
 
 beforeEach(() => {
   useCase.mockReturnValue(falldaten())
+  localStorage.clear()
+  ansichtZuruecksetzen()
 })
 
 /**
@@ -248,6 +251,43 @@ describe('Profil', () => {
       screen.getByText(/Als Ersteller dieses versiegelten Vorsorgefalls können Sie ihn nicht verlassen/),
     ).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Fall verlassen' })).toBeNull()
+  })
+})
+
+/**
+ * Die drei Einstellungen zur Ansicht (§7).
+ *
+ * Sie stehen genau hier und nicht zweimal: Profil gibt es in beiden Ansichten
+ * nur einmal. Dass ein Umschalten wirklich zu den anderen Screens durchdringt,
+ * steht in `tests/app/App.test.tsx`; hier steht, dass dieser Screen es
+ * schreibt.
+ */
+describe('Ansicht, Textgröße und Darstellung', () => {
+  it('schaltet den Ansichtsmodus um', async () => {
+    rendereMitProvidern(<Profil />)
+
+    const feld = screen.getByLabelText('Ansicht')
+    expect(feld).toHaveValue('einfach')
+
+    await userEvent.selectOptions(feld, 'erweitert')
+
+    expect(ansichtLesen().modus).toBe('erweitert')
+  })
+
+  it('steht bei beiden Overrides auf "Systemeinstellung folgen" (§7)', () => {
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByLabelText('Textgröße')).toHaveValue('system')
+    expect(screen.getByLabelText('Darstellung')).toHaveValue('system')
+  })
+
+  it('überschreibt Textgröße und Darstellung', async () => {
+    rendereMitProvidern(<Profil />)
+
+    await userEvent.selectOptions(screen.getByLabelText('Textgröße'), 'sehr-gross')
+    await userEvent.selectOptions(screen.getByLabelText('Darstellung'), 'dunkel')
+
+    expect(ansichtLesen()).toMatchObject({ textgroesse: 'sehr-gross', darstellung: 'dunkel' })
   })
 })
 
