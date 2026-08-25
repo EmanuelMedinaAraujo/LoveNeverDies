@@ -24,6 +24,21 @@ export async function ansichtErweitert(kontext: BrowserContext): Promise<void> {
 }
 
 /**
+ * Dieselbe Wahl, aber "einfach".
+ *
+ * Genau ein Spec braucht sie: `tresor-todesfall.spec.ts` schickt die
+ * angehoerige Person durch die einfache Ansicht, weil §7 sie fuer die Person
+ * vorsieht, die zwei Tage nach einem Todesfall vor dem Telefon sitzt -- und
+ * weil der Tab Erbe in beiden Ansichten derselbe Screen ist, ohne dass das
+ * bisher irgendwo gepruefte war.
+ */
+export async function ansichtEinfach(kontext: BrowserContext): Promise<void> {
+  await kontext.addInitScript(() => {
+    localStorage.setItem('lnd.ansicht', JSON.stringify({ modus: 'einfach' }))
+  })
+}
+
+/**
  * `page.goto`, robust gegen einen bekannten Uhr-Jitter: Der allererste
  * Supabase-Request nach einem frisch geladenen Clerk-Token scheitert manchmal
  * mit "JWT not yet valid", weil dessen `nbf` auf dieselbe Sekunde faellt wie
