@@ -27,6 +27,10 @@ import {
 } from '../../../services/zuweisung.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import {
+  GerichtNachschlagen,
+  istGerichtStelle,
+} from '../../shared/Gericht/GerichtNachschlagen.tsx'
 import { Dokumente } from '../../shared/Dokumente/Dokumente.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
@@ -144,7 +148,12 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
         )}
 
         {katalog.zustaendigeStelle === '' ? null : (
-          <Angabe was="Dorthin geht es">{katalog.zustaendigeStelle}</Angabe>
+          <Angabe was="Dorthin geht es">
+            <div>
+              <span>{katalog.zustaendigeStelle}</span>
+              {istGerichtStelle(katalog.zustaendigeStelle) ? <GerichtNachschlagen /> : null}
+            </div>
+          </Angabe>
         )}
 
         {dokumente.length === 0 ? null : (

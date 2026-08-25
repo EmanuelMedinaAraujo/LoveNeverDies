@@ -87,5 +87,16 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('gerichte.json')) {
+              return 'gerichte-daten'
+            }
+          },
+        },
+      },
+    },
   }
 })

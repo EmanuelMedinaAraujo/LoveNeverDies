@@ -178,6 +178,24 @@ describe('infoText (§5)', () => {
 })
 
 describe('notizAus (§8)', () => {
+  it('haelt vollständige Gerichtsdaten fest', () => {
+    const gericht = {
+      id: 1,
+      name: 'Amtsgericht Heilbronn',
+      lieferanschrift: 'Knorrstr. 1, 74074 Heilbronn',
+      postanschrift: '74064 Heilbronn',
+      telefon: '07131 64-1',
+      fax: null,
+      internet: 'https://amtsgericht-heilbronn.justiz-bw.de',
+      email: 'poststelle@agheilbronn.justiz.bwl.de',
+    }
+    const notiz = notizAus({ plz: '74199', gericht })
+    expect(notiz).toContain('Zuständiges Nachlassgericht (PLZ 74199):')
+    expect(notiz).toContain('Amtsgericht Heilbronn')
+    expect(notiz).toContain('Lieferanschrift: Knorrstr. 1, 74074 Heilbronn')
+    expect(notiz).toContain('poststelle@agheilbronn.justiz.bwl.de')
+  })
+
   it('haelt Eingabe und Antwort der Suche fest', () => {
     expect(notizAus({ plz: '80331', stelle: 'Nachlassgericht München' })).toContain('80331')
     expect(notizAus({ plz: '80331', stelle: 'Nachlassgericht München' })).toContain('München')

@@ -430,23 +430,26 @@ describe('Aufgaben aus dem Baum (§7)', () => {
     zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
 
     await nutzer.click(screen.getByRole('button', { name: /Zuständige Stelle ermitteln/ }))
-    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '80331')
+    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '74199')
     await nutzer.click(screen.getByRole('button', { name: 'Gericht suchen' }))
     await nutzer.click(screen.getByRole('button', { name: 'Aufgabe erstellen' }))
 
     expect(legeFragebaumAufgabeAn).toHaveBeenCalledWith(
       'ausschlagung',
-      expect.stringContaining('80331'),
+      expect.stringContaining('Amtsgericht Heilbronn'),
     )
   })
 
-  it('sagt, dass die Suche noch keine ist (§8)', async () => {
+  it('zeigt die Kontaktdaten des ermittelten Gerichts an (§8)', async () => {
     const nutzer = userEvent.setup()
     zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
 
     await nutzer.click(screen.getByRole('button', { name: /Zuständige Stelle ermitteln/ }))
+    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '74199')
+    await nutzer.click(screen.getByRole('button', { name: 'Gericht suchen' }))
 
-    expect(screen.getByText(/Diese Suche ist noch keine/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Amtsgericht Heilbronn' })).toBeInTheDocument()
+    expect(screen.getByText(/Knorrstr\. 1, 74074 Heilbronn/)).toBeInTheDocument()
   })
 
   it('trägt das Kenntnisdatum ein, wenn eines angegeben wurde (§8)', async () => {

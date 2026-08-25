@@ -20,7 +20,9 @@ import type {
   Fragebaumknoten,
   Infothema,
 } from '../types/fragebaum.ts'
+import type { Nachlassgericht } from '../types/gericht.ts'
 import type { Fragebaumergebnis, Katalogherkunft } from './aufgabenService'
+import { formatGerichtNotiz } from './gerichtService.ts'
 
 const KNOTEN = new Map(FRAGEBAUM.map((knoten) => [knoten.id, knoten]))
 
@@ -250,13 +252,21 @@ export function istSeedAufgabe(katalog: Katalogherkunft | null): boolean {
 /**
  * Die Notiz, die eine ermittelte Stelle oder ein Anfechtungsdatum festhaelt.
  *
- * Sie wandert in `notizen` der erzeugten Aufgabe, damit eine Eingabe nicht
- * verloren ist, die heute noch nirgends sonst hinkann (ERBE_DESIGN.md §8).
+ * Sie wandert in `notizen` der erzeugten Aufgabe, damit die ermittelten
+ * Kontaktdaten des Nachlassgerichts und das Anfechtungsdatum direkt an der
+ * Aufgabe stehen (ERBE_DESIGN.md §8).
  */
-export function notizAus(teile: { plz?: string; stelle?: string; anfechtungAm?: string }): string {
+export function notizAus(teile: {
+  plz?: string
+  stelle?: string
+  gericht?: Nachlassgericht | null
+  anfechtungAm?: string
+}): string {
   const zeilen: string[] = []
 
-  if (teile.plz !== undefined && teile.plz !== '') {
+  if (teile.gericht && teile.plz) {
+    zeilen.push(formatGerichtNotiz(teile.gericht, teile.plz))
+  } else if (teile.plz !== undefined && teile.plz !== '') {
     zeilen.push(
       teile.stelle === undefined || teile.stelle === ''
         ? `Letzter Wohnort (PLZ): ${teile.plz}`
@@ -265,6 +275,9 @@ export function notizAus(teile: { plz?: string; stelle?: string; anfechtungAm?: 
   }
 
   if (teile.anfechtungAm !== undefined && teile.anfechtungAm !== '') {
+    if (zeilen.length > 0) {
+      zeilen.push('')
+    }
     zeilen.push(`Vom Anfechtungsgrund erfahren am: ${teile.anfechtungAm}`)
     zeilen.push('Die Frist beträgt ein Jahr ab diesem Tag.')
   }
