@@ -874,7 +874,7 @@ Untere Leiste: Start · Erbe · Alle · Profil
 | Start  | H1 "Meine Aufgaben", nur die dem angemeldeten Nutzer zugewiesenen Aufgaben                 |
 | Erbe   | Vorsorge / Nachlass-Tresor, Freigabestatus, "Todesfall bestätigen"                         |
 | Alle   | Alle Aufgaben des Falls                                                                    |
-| Profil | Name, Angehörige, Fallwechsel ("Für wen?"), Geräte, Textgröße, Darstellung, Fall verlassen |
+| Profil | Name, Angehörige, Fallwechsel ("Für wen?"), Geräte, Ansicht, Textgröße, Darstellung, Fall verlassen |
 
 ### Onboarding
 
