@@ -121,6 +121,26 @@ Clerk-Variablen. `playwright.config.ts` baut den Build selbst
 (`npm run build:test && npm run preview:test`) und wartet, bis
 `http://127.0.0.1:4173` antwortet.
 
+## Welche Ansicht die Specs bedienen
+
+Seit §7 zwei Ansichten kennt, steht die Ansichtswahl im Onboarding **vor** der
+Fallweiche, und ohne getroffene Wahl kommt niemand an ihr vorbei — auch kein
+Test. `ansichtErweitert()` aus `helpers.ts` setzt sie deshalb direkt in
+`localStorage` (`lnd.ansicht`, siehe `core/storage/ansicht.ts`), statt sie über
+den Screen zu klicken: Ein Klick auf "Weiter" am Anfang jeder Datei prüfte die
+Ansichtswahl nicht besser — das tun die Screentests —, wäre aber überall ein
+zusätzlicher Schritt, der fehlschlagen kann.
+
+Gewählt ist **erweitert**, weil die Specs die erweiterte Fassung von Start,
+Aufgabe und Alle bedienen: die Zeilenaktionen, das Sortierfeld, die Namensliste
+in der Zuweisung. Gesetzt wird sie einmal in `auth.setup.ts` und wandert mit dem
+`storageState` in jede Spec des Projekts; `kopplung.spec.ts` macht seine
+Kontexte selbst auf und ruft sie dort selbst.
+
+Zweite Folge der unteren Leiste: Sie gibt ihre vier Bereiche als Liste aus, und
+`getByRole('listitem')` sieht die Seite ganz. Zeilen zählt man deshalb über
+`zeilen(seite)` aus `helpers.ts` — das grenzt auf `main` ein.
+
 ## Wie die Anmeldung funktioniert
 
 `tests/e2e/global-setup.ts` holt einmal je Lauf einen Clerk-Testing-Token
