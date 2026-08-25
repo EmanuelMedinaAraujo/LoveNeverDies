@@ -1,7 +1,7 @@
 import { expect, test, type Browser, type Page } from '@playwright/test'
 import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright'
 import { TRESORPERSONEN, tresorperson, type Tresorrolle } from './nutzer.ts'
-import { ansichtEinfach, ansichtErweitert, gotoVerlaesslich, zeilen } from './helpers.ts'
+import { ansichtEinfach, ansichtErweitert, fuelleDatum, gotoVerlaesslich, zeilen } from './helpers.ts'
 import { HANDY, einloesenUndBestaetigen, pruefcodeVon, wertUnter } from './kopplungHelfer.ts'
 
 /**
@@ -243,7 +243,7 @@ test('Vorsorge, Todesfall bestätigen, Tresor öffnen, Nachlass lesen', async ({
 
     await test.step('Frank öffnet den Tresor, und der Fall wird ohne Seitenwechsel zum Trauerfall', async () => {
       await frank.getByRole('button', { name: 'Tresor öffnen' }).click()
-      await frank.getByLabel('Sterbedatum').fill('2026-03-15')
+      await fuelleDatum(frank.getByLabel('Sterbedatum'), '2026-03-15')
       await frank.getByRole('button', { name: 'Tresor jetzt öffnen' }).click()
 
       /*
