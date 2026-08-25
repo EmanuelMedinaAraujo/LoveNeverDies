@@ -39,7 +39,6 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     id: 'n1',
     art: 'frage',
     text: 'Haben Sie ein Testament gefunden?',
-    info: 'nachlassgericht',
     antworten: [
       { text: 'Ja', ziel: 'n2' },
       { text: 'Nein', ziel: 'n18' },

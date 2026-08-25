@@ -238,6 +238,16 @@
 }
 
 /*
+ * Die Beschreibung einer Aufgabe. `pre-wrap` aus demselben Grund wie drueben:
+ * Eine gegliederte Beschreibung soll gegliedert bleiben (ERBE_DESIGN.md §10).
+ */
+.beschreibung {
+  margin: 0;
+  line-height: var(--dichte-zeilenhoehe);
+  white-space: pre-wrap;
+}
+
+/*
  * Die einzige Farbe, die etwas wegnimmt. Dieselbe wie in Profil: Die
  * Fristpalette aus §12 traegt sie schon, und eine neunte Farbe nur fuer diese
  * Knoepfe waere eine, die bei der naechsten Palettenaenderung vergessen wird.

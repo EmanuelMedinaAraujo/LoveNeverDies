@@ -90,7 +90,39 @@ describe('Koppeln: Code eingeben (§6, Schritt 4)', () => {
     await userEvent.type(screen.getByLabelText('Kopplungscode'), 'k4m7-qp2x')
     await userEvent.click(screen.getByRole('button', { name: 'Weiter' }))
 
-    expect(einloesen).toHaveBeenCalledWith('k4m7-qp2x')
+    expect(einloesen).toHaveBeenCalledWith('K4M7-QP2X')
+  })
+
+  it('setzt den Bindestrich, sobald das vierte Zeichen steht', async () => {
+    rendereMitProvidern(<Koppeln />)
+
+    const feld = screen.getByLabelText('Kopplungscode')
+    await userEvent.type(feld, 'k4m7')
+
+    expect(feld).toHaveValue('K4M7-')
+  })
+
+  // Der Bindestrich gehört nicht zum Code: Wer hinter ihm löscht, meint das
+  // vierte Zeichen. Sonst käme die Trennung sofort zurück und das Zeichen
+  // ließe sich nie entfernen.
+  it('nimmt beim Löschen des Bindestrichs das vierte Zeichen mit', async () => {
+    rendereMitProvidern(<Koppeln />)
+
+    const feld = screen.getByLabelText('Kopplungscode')
+    await userEvent.type(feld, 'k4m7')
+    await userEvent.type(feld, '{backspace}')
+
+    expect(feld).toHaveValue('K4M')
+  })
+
+  it('lässt hinter der Trennung Zeichen für Zeichen löschen', async () => {
+    rendereMitProvidern(<Koppeln />)
+
+    const feld = screen.getByLabelText('Kopplungscode')
+    await userEvent.type(feld, 'k4m7qp')
+    await userEvent.type(feld, '{backspace}')
+
+    expect(feld).toHaveValue('K4M7-Q')
   })
 
   it('nennt den Grund, wenn der Code nicht durchging', () => {

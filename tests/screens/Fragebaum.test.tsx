@@ -215,6 +215,20 @@ describe('Einstieg und Navigation (§3)', () => {
     expect(screen.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeInTheDocument()
   })
 
+  it('schreibt bei der gesetzlichen Erbfolge das s ohne Leerzeichen direkt an den Namen des Verstorbenen', async () => {
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum')
+
+    // n0: Sind Sie Erbe? -> "Ich weiß es nicht" (n57)
+    await nutzer.click(screen.getByRole('button', { name: 'Ich weiß es nicht' }))
+    // n57: Gibt es ein Testament? -> "Nein" (n65)
+    await nutzer.click(screen.getByRole('button', { name: 'Nein' }))
+
+    expect(
+      screen.getByRole('heading', { name: 'Ich bin Hans Webers …' }),
+    ).toBeInTheDocument()
+  })
+
   it('beginnt von vorn bei einem Knoten, den es nicht gibt', () => {
     zeige('/erbe/fragebaum/gibt-es-nicht', { pfad: ['gibt-es-nicht'] })
 
@@ -430,23 +444,26 @@ describe('Aufgaben aus dem Baum (§7)', () => {
     zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
 
     await nutzer.click(screen.getByRole('button', { name: /Zuständige Stelle ermitteln/ }))
-    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '80331')
+    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '74199')
     await nutzer.click(screen.getByRole('button', { name: 'Gericht suchen' }))
     await nutzer.click(screen.getByRole('button', { name: 'Aufgabe erstellen' }))
 
     expect(legeFragebaumAufgabeAn).toHaveBeenCalledWith(
       'ausschlagung',
-      expect.stringContaining('80331'),
+      expect.stringContaining('Amtsgericht Heilbronn'),
     )
   })
 
-  it('sagt, dass die Suche noch keine ist (§8)', async () => {
+  it('zeigt die Kontaktdaten des ermittelten Gerichts an (§8)', async () => {
     const nutzer = userEvent.setup()
     zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
 
     await nutzer.click(screen.getByRole('button', { name: /Zuständige Stelle ermitteln/ }))
+    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '74199')
+    await nutzer.click(screen.getByRole('button', { name: 'Gericht suchen' }))
 
-    expect(screen.getByText(/Diese Suche ist noch keine/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Amtsgericht Heilbronn' })).toBeInTheDocument()
+    expect(screen.getByText(/Knorrstr\. 1, 74074 Heilbronn/)).toBeInTheDocument()
   })
 
   it('trägt das Kenntnisdatum ein, wenn eines angegeben wurde (§8)', async () => {
@@ -478,9 +495,9 @@ describe('Aufgaben aus dem Baum (§7)', () => {
 describe('Infoknoten (§5)', () => {
   it('klappt die Erläuterung an Ort und Stelle auf', async () => {
     const nutzer = userEvent.setup()
-    zeige('/erbe/fragebaum/n1', { pfad: ['n0', 'n1'] })
+    zeige('/erbe/fragebaum/n59', { pfad: ['n0', 'n50', 'n57', 'n58', 'n59'] })
 
-    const knopf = screen.getByRole('button', { name: /Was ist das Nachlassgericht/ })
+    const knopf = screen.getByRole('button', { name: /Was ist ein Erbschein/ })
 
     expect(knopf).toHaveAttribute('aria-expanded', 'false')
 
@@ -488,6 +505,12 @@ describe('Infoknoten (§5)', () => {
 
     expect(knopf).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText(/ergänzt/)).toBeInTheDocument()
+  })
+
+  it('zeigt auf Frage n1 kein Was ist das Nachlassgericht', () => {
+    zeige('/erbe/fragebaum/n1', { pfad: ['n0', 'n1'] })
+
+    expect(screen.queryByRole('button', { name: /Was ist das Nachlassgericht/ })).not.toBeInTheDocument()
   })
 })
 

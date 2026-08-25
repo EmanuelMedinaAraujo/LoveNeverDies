@@ -29,6 +29,10 @@ import {
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
+import {
+  GerichtNachschlagen,
+  istGerichtStelle,
+} from '../../shared/Gericht/GerichtNachschlagen.tsx'
 import { Dokumente } from '../../shared/Dokumente/Dokumente.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
@@ -142,7 +146,12 @@ function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlag
         ) : null}
 
         {katalog.zustaendigeStelle === '' ? null : (
-          <Angabe was="Dorthin geht es">{katalog.zustaendigeStelle}</Angabe>
+          <Angabe was="Dorthin geht es">
+            <div>
+              <span>{katalog.zustaendigeStelle}</span>
+              {istGerichtStelle(katalog.zustaendigeStelle) ? <GerichtNachschlagen /> : null}
+            </div>
+          </Angabe>
         )}
 
         {dokumente.length === 0 ? null : (
@@ -320,6 +329,7 @@ function Unteraufgabenzeile({
   return (
     <li className={stile.eintrag}>
       <Checkbox
+        abhaken
         checked={erledigt}
         disabled={gesperrt || !darfHaken}
         onChange={(ereignis) => void haken(ereignis.target.checked)}
@@ -443,7 +453,9 @@ function Detail({
       </div>
 
       <div className={[stile.abschnitt, stile.ohnelinie].join(' ')}>
-        {aufgabe.beschreibung === '' ? null : <p>{aufgabe.beschreibung}</p>}
+        {aufgabe.beschreibung === '' ? null : (
+          <p className={stile.beschreibung}>{aufgabe.beschreibung}</p>
+        )}
 
         {/*
           Die Seed-Aufgabe hat kein eigenes Häkchen (ERBE_DESIGN.md §9): Sie
@@ -459,6 +471,7 @@ function Detail({
           </p>
         ) : istBlatt ? (
           <Checkbox
+            abhaken
             checked={eigenesHaken}
             disabled={aktionen.gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}

@@ -112,6 +112,35 @@ describe('Bauplaene (§7)', () => {
     expect(BAUPLAENE.testament.katalog.hinweis).toContain('Unverzüglich')
   })
 
+  it('schreibt den ganzen Erbschein-Text in die Aufgabe (§10)', () => {
+    // Wer "Ja" getippt hat, hat den Text eine Sekunde vorher gelesen und soll
+    // ihn in der Aufgabe wiederfinden — samt dem Weg dorthin, der auf der
+    // Seite selbst nicht steht.
+    const beschreibung = BAUPLAENE.erbschein.beschreibung
+
+    expect(beschreibung).toContain('Eine amtliche Urkunde')
+    expect(beschreibung).toContain('Wie beantragen Sie einen Erbschein?')
+    expect(beschreibung).toContain('Beim Notar oder beim Nachlassgericht')
+  })
+
+  it('setzt in der Aufgabenbeschreibung gefuellte Punkte', () => {
+    // Die Beschreibung ist ein String und traegt keine Liste. Dann steht der
+    // Punkt im Text, und zwar ueberall derselbe: Der Export der Juristinnen
+    // mischt "*" und "-".
+    const punktzeilen = BAUPLAENE.erbschein.beschreibung
+      .split('\n')
+      .filter((zeile) => zeile.startsWith('•'))
+
+    expect(punktzeilen.length).toBeGreaterThan(0)
+    expect(BAUPLAENE.erbschein.beschreibung).not.toMatch(/^[*-] /m)
+  })
+
+  it('rechnet dem Erbschein keine Frist an', () => {
+    // Das Gesetz nennt fuer den Antrag keine. §8 rechnet lieber gar nicht.
+    expect(BAUPLAENE.erbschein.katalog.fristTage).toBeNull()
+    expect(BAUPLAENE.erbschein.katalog.fristAb).toBeNull()
+  })
+
   it('gibt jeder Vorlage eine eigene Herkunft', () => {
     const ids = Object.values(BAUPLAENE).map((bauplan) => bauplan.katalog.aufgabeId)
 
@@ -159,6 +188,24 @@ describe('infoText (§5)', () => {
 })
 
 describe('notizAus (§8)', () => {
+  it('haelt vollständige Gerichtsdaten fest', () => {
+    const gericht = {
+      id: 1,
+      name: 'Amtsgericht Heilbronn',
+      lieferanschrift: 'Knorrstr. 1, 74074 Heilbronn',
+      postanschrift: '74064 Heilbronn',
+      telefon: '07131 64-1',
+      fax: null,
+      internet: 'https://amtsgericht-heilbronn.justiz-bw.de',
+      email: 'poststelle@agheilbronn.justiz.bwl.de',
+    }
+    const notiz = notizAus({ plz: '74199', gericht })
+    expect(notiz).toContain('Zuständiges Nachlassgericht (PLZ 74199):')
+    expect(notiz).toContain('Amtsgericht Heilbronn')
+    expect(notiz).toContain('Lieferanschrift: Knorrstr. 1, 74074 Heilbronn')
+    expect(notiz).toContain('poststelle@agheilbronn.justiz.bwl.de')
+  })
+
   it('haelt Eingabe und Antwort der Suche fest', () => {
     expect(notizAus({ plz: '80331', stelle: 'Nachlassgericht München' })).toContain('80331')
     expect(notizAus({ plz: '80331', stelle: 'Nachlassgericht München' })).toContain('München')

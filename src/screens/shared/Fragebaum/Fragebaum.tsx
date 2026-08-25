@@ -15,8 +15,11 @@ import {
   knoten as knotenMit,
 } from '../../../services/fragebaumService.ts'
 import type { Fragebaumknoten, Infothema } from '../../../types/fragebaum.ts'
+import type { GerichtLookupErgebnis, Nachlassgericht } from '../../../types/gericht.ts'
+import { findeNachlassgericht } from '../../../services/gerichtService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
+import { Gerichtskarte } from '../../../ui/Gerichtskarte/Gerichtskarte.tsx'
 import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
@@ -110,25 +113,48 @@ function Langtext({ text }: { text: string }) {
 }
 
 /**
- * Die zuständige Stelle ermitteln (§8).
+ * Die zuständige Stelle ermitteln (ERBE_DESIGN.md §8).
  *
- * Die Suche ist noch keine und sagt das. Ein Gerichtsname, der für jemanden in
- * Hamburg schlicht falsch ist und unkommentiert dasteht, ist etwas, wonach
- * jemand handelt.
+ * Ermittelt aus der eingegebenen 5-stelligen PLZ das zuständige Nachlassgericht
+ * aus dem bundesweiten Datensatz aller 611 Gerichte.
  */
-const STELLE = 'Nachlassgericht München'
-
 function Gerichtssuche({
   plz,
   setzePlz,
-  stelle,
-  setzeStelle,
+  setzeGericht,
 }: {
   plz: string
   setzePlz: (wert: string) => void
-  stelle: string
-  setzeStelle: (wert: string) => void
+  setzeGericht: (wert: Nachlassgericht | null) => void
 }) {
+  const [ergebnis, setzeErgebnis] = useState<GerichtLookupErgebnis | null>(() => {
+    if (plz.trim().length === 5) {
+      return findeNachlassgericht(plz)
+    }
+    return null
+  })
+
+  function suche(suchPlz: string) {
+    const res = findeNachlassgericht(suchPlz)
+    setzeErgebnis(res)
+    if (res.status === 'gefunden') {
+      setzeGericht(res.gericht)
+    } else {
+      setzeGericht(null)
+    }
+  }
+
+  function handlePlzChange(neuePlz: string) {
+    setzePlz(neuePlz)
+    const trimmed = neuePlz.trim()
+    if (trimmed.length === 5) {
+      suche(trimmed)
+    } else if (trimmed.length === 0) {
+      setzeErgebnis(null)
+      setzeGericht(null)
+    }
+  }
+
   return (
     <Klapp titel="Zuständige Stelle ermitteln" offenText="Zuständige Stelle ermitteln (schließen)">
       <div className={stile.feld}>
@@ -140,19 +166,34 @@ function Gerichtssuche({
           className={stile.eingabe}
           inputMode="numeric"
           value={plz}
-          onChange={(ereignis) => setzePlz(ereignis.target.value)}
-          placeholder="z. B. 80331"
+          onChange={(ereignis) => handlePlzChange(ereignis.target.value)}
+          placeholder="z. B. 74199"
+          maxLength={5}
         />
       </div>
-      <Button variante="sekundaer" onClick={() => setzeStelle(STELLE)}>
+      <Button variante="sekundaer" onClick={() => suche(plz)}>
         Gericht suchen
       </Button>
-      {stelle === '' ? null : <p className={stile.klappInhalt}>{stelle}</p>}
-      <p className={stile.platzhalter}>
-        Diese Suche ist noch keine: Sie antwortet immer „{STELLE}“, unabhängig von Ihrer
-        Eingabe. Die richtige Stelle finden Sie bis dahin beim Amtsgericht am letzten Wohnort.
-        Ihre Eingabe wird trotzdem in die Aufgabe übernommen.
-      </p>
+
+      {ergebnis?.status === 'gefunden' ? <Gerichtskarte gericht={ergebnis.gericht} /> : null}
+
+      {ergebnis?.status === 'mehrdeutig' ? (
+        <div className={stile.gerichtHinweis}>
+          <p>{ergebnis.hinweis}</p>
+          <a
+            className={stile.gerichtLink}
+            href={ergebnis.linkUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Zuständiges Gericht im Justizportal ermitteln ↗
+          </a>
+        </div>
+      ) : null}
+
+      {ergebnis?.status === 'nicht_gefunden' || ergebnis?.status === 'ungueltig' ? (
+        <p className={stile.gerichtHinweis}>{ergebnis.hinweis}</p>
+      ) : null}
     </Klapp>
   )
 }
@@ -286,7 +327,7 @@ function Ergebnisseite({
   const zeitgeber = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [fehler, setzeFehler] = useState<string | null>(null)
   const [plz, setzePlz] = useState('')
-  const [stelle, setzeStelle] = useState('')
+  const [gericht, setzeGericht] = useState<Nachlassgericht | null>(null)
   const [anfechtungAm, setzeAnfechtungAm] = useState('')
   const [kenntnis, setzeKenntnis] = useState(fristbezug.kenntnisAm ?? '')
 
@@ -405,7 +446,7 @@ function Ergebnisseite({
     }
 
     try {
-      await legeFragebaumAufgabeAn(vorlage, notizAus({ plz, stelle, anfechtungAm }))
+      await legeFragebaumAufgabeAn(vorlage, notizAus({ plz, gericht, anfechtungAm }))
 
       if (kenntnis !== '' && knoten.kenntnisdatum === true) {
         await setzeKenntnisAm(kenntnis)
@@ -431,7 +472,11 @@ function Ergebnisseite({
       {knoten.info === undefined ? null : <Infoknopf thema={knoten.info} />}
 
       {knoten.gericht === true ? (
-        <Gerichtssuche plz={plz} setzePlz={setzePlz} stelle={stelle} setzeStelle={setzeStelle} />
+        <Gerichtssuche
+          plz={plz}
+          setzePlz={setzePlz}
+          setzeGericht={setzeGericht}
+        />
       ) : null}
 
       {knoten.kenntnisdatum === true ? (

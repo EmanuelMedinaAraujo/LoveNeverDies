@@ -33,6 +33,7 @@ import {
   type Fall,
 } from '../../src/services/fallService'
 import {
+  formatiereKopplungscodeEingabe,
   freischaltungText,
   fuegeZumFallHinzu,
   gruppierterKopplungscode,
@@ -524,6 +525,44 @@ describe('Kopplungscodes lesen und schreiben (§6)', () => {
     for (const eingabe of ['O4M7QP2X', '04M7QP2X', 'I4M7QP2X', '14M7QP2X']) {
       expect(() => normalisiereKopplungscode(eingabe)).toThrow(/kein O, keine 0, kein I/)
     }
+  })
+})
+
+describe('Die Eingabe beim Tippen (§6, Schritt 4)', () => {
+  const getippt = (eingabe: string, vorher = '') =>
+    formatiereKopplungscodeEingabe(eingabe, { geloescht: false, vorher })
+
+  const geloescht = (eingabe: string, vorher: string) =>
+    formatiereKopplungscodeEingabe(eingabe, { geloescht: true, vorher })
+
+  it('setzt den Bindestrich, sobald das vierte Zeichen steht', () => {
+    expect(getippt('K4M', 'K4')).toBe('K4M')
+    expect(getippt('K4M7', 'K4M')).toBe('K4M7-')
+    expect(getippt('K4M7-Q', 'K4M7-')).toBe('K4M7-Q')
+  })
+
+  it('macht aus dem, was jemand einfügt, dieselbe Schreibweise', () => {
+    expect(getippt('k4m7 qp2x')).toBe('K4M7-QP2X')
+    expect(getippt('K4M7-QP2X')).toBe('K4M7-QP2X')
+  })
+
+  it('nimmt nicht mehr Zeichen an, als ein Code hat', () => {
+    expect(getippt('K4M7QP2XYZ')).toBe('K4M7-QP2X')
+  })
+
+  /*
+   * Der Bindestrich ist Darstellung, kein Zeichen des Codes. Wer hinter ihm
+   * löscht, meint das vierte Zeichen; ohne diesen Griff käme die Trennung
+   * sofort zurück, und das Feld bliebe bei vier Zeichen stehen.
+   */
+  it('nimmt beim Löschen des Bindestrichs das vierte Zeichen mit', () => {
+    expect(geloescht('K4M7', 'K4M7-')).toBe('K4M')
+  })
+
+  it('löscht sonst Zeichen für Zeichen', () => {
+    expect(geloescht('K4M7-Q', 'K4M7-QP')).toBe('K4M7-Q')
+    expect(geloescht('K4M', 'K4M7')).toBe('K4M')
+    expect(geloescht('', 'K')).toBe('')
   })
 })
 

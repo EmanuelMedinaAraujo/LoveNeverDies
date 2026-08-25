@@ -1,0 +1,46 @@
+.container {
+  margin-top: var(--dichte-abstand-klein);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  width: 100%;
+}
+
+.sucheZeile {
+  display: flex;
+  gap: var(--dichte-abstand-klein);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.eingabe {
+  flex: 1;
+  min-width: 8rem;
+  max-width: 14rem;
+  padding: var(--dichte-abstand-klein);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  line-height: var(--typo-zeile-text);
+  margin: 0;
+}
+
+.link {
+  color: var(--farbe-akzent, #1a56db);
+  text-decoration: underline;
+  text-underline-offset: 0.125rem;
+  display: inline-block;
+  margin-top: 0.25rem;
+}
+
+.link:hover {
+  text-decoration: none;
+}
