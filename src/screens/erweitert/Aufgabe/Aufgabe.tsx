@@ -25,7 +25,9 @@ import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import {
   benenne,
+  darfAbhaken,
   darfBearbeiten,
+  istFrei,
   type Zugewiesene,
   type Zuweisung,
 } from '../../../services/zuweisung.ts'
@@ -236,12 +238,13 @@ function Unteraufgabenzeile({
    * eingetragen ist, hakt hier nichts ab.
    */
   const darfAendern = darfBearbeiten(unteraufgabe.assignee, ichUserId)
+  const darfHaken = darfAbhaken(unteraufgabe.assignee, ichUserId)
 
   return (
     <li className={stile.zeile}>
       <Checkbox
         checked={erledigt}
-        disabled={gesperrt || !darfAendern}
+        disabled={gesperrt || !darfHaken}
         onChange={(ereignis) => void haken(ereignis.target.checked)}
         label={unteraufgabe.titel}
       />
@@ -456,6 +459,7 @@ function Detail({
    * Mauer vor einer Aufgabe, die vielleicht gerade dringend ist.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ich.userId)
+  const darfHaken = darfAbhaken(aufgabe.assignee, ich.userId)
 
   return (
     <>
@@ -505,7 +509,7 @@ function Detail({
         ) : istBlatt ? (
           <Checkbox
             checked={eigenesHaken}
-            disabled={aktionen.gesperrt || !darfAendern}
+            disabled={aktionen.gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label="Diese Aufgabe ist erledigt"
           />
@@ -626,7 +630,12 @@ function Detail({
           aufSetzen={aktionen.weiseZu}
         />
 
-        {darfAendern ? null : (
+        {darfAendern ? null : istFrei(aufgabe.assignee) ? (
+          <p className={stile.hinweis}>
+            Diese Aufgabe ist niemandem zugewiesen. Haken Sie sie ab, tragen Sie sich damit
+            ein. Zum Ändern übernehmen Sie sie.
+          </p>
+        ) : (
           <p className={stile.hinweis}>
             Diese Aufgabe ist Ihnen nicht zugewiesen. Sie können sie lesen; zum Ändern
             übernehmen Sie sie.

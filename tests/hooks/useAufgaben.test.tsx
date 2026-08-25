@@ -340,10 +340,14 @@ describe('useAufgaben', () => {
     })
     expect(mutationAendern).toHaveBeenCalledWith(aufgabe(), { titel: 'Anders' })
 
+    // Eine Aufgabe, die schon jemandem gehoert, aendert beim Haken nur das
+    // Haekchen. Die freie traegt die Uebernahme mit; das steht weiter unten.
+    const meine = aufgabe({ assignee: personen([ICH]) })
+
     await act(async () => {
-      await result.current.hakeAb(aufgabe(), true)
+      await result.current.hakeAb(meine, true)
     })
-    expect(mutationAendern).toHaveBeenLastCalledWith(aufgabe(), { erledigt: true })
+    expect(mutationAendern).toHaveBeenLastCalledWith(meine, { erledigt: true })
 
     await act(async () => {
       await result.current.loesche(aufgabe())
@@ -577,6 +581,91 @@ describe('Zuweisung', () => {
 
     return eine
   }
+
+  it('trägt beim Abhaken einer freien Aufgabe die angemeldete Person ein', async () => {
+    /*
+     * §7: Eine freie Aufgabe abzuhaken *ist* die Ansage "ich habe das
+     * gemacht". Wer sie erst übernehmen müsste, um sie abhaken zu dürfen,
+     * macht zwei Handgriffe für eine Auskunft.
+     */
+    const freie = mitAufgabe(NIEMAND)
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.hakeAb(freie, true)
+    })
+
+    // Ein Payload, nicht zwei: Zwei Mutationen könnten halb ankommen, und
+    // "abgehakt, aber niemand war es" ist genau der Fall, den das abschafft.
+    expect(mutationAendern).toHaveBeenCalledTimes(1)
+    expect(mutationAendern).toHaveBeenCalledWith(freie, {
+      erledigt: true,
+      assignee: personen([ICH]),
+    })
+  })
+
+  it('trägt beim Wegnehmen des Häkchens niemanden ein', async () => {
+    // "Doch nicht erledigt" ist keine Ansage, etwas getan zu haben.
+    const freie = mitAufgabe(NIEMAND, { erledigt: true })
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.hakeAb(freie, false)
+    })
+
+    expect(mutationAendern).toHaveBeenCalledWith(freie, { erledigt: false })
+  })
+
+  it('lässt eine fremde Aufgabe beim Abhaken fremd', async () => {
+    /*
+     * Die Sperre ist dazu da, dass nicht zwei Menschen dieselbe Behörde
+     * anrufen. Sie beiläufig zu übergehen hieße, sie abzuschaffen. Die
+     * Oberfläche sperrt das Häkchen hier ohnehin; der Hook soll sich nicht
+     * darauf verlassen.
+     */
+    const fremde = mitAufgabe(personen([BERT]))
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.hakeAb(fremde, true)
+    })
+
+    expect(mutationAendern).toHaveBeenCalledWith(fremde, { erledigt: true })
+  })
+
+  it('meldet die verlorene Übernahme auch, wenn sie aus einem Häkchen kam', async () => {
+    // §7: Tippen zwei Menschen im selben Moment, gewinnt die höhere `seq`.
+    // Die unterlegene Person soll lesen, wer schneller war.
+    const freie = mitAufgabe(NIEMAND)
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result, rerender } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.hakeAb(freie, true)
+    })
+
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [aufgabe({ assignee: personen([BERT]) })],
+      konfigurationen: [],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
+    rerender()
+
+    await waitFor(() => expect(result.current.uebernahmen).toHaveLength(1))
+    expect(result.current.uebernahmen[0]?.name).toBe('Bert Müller')
+  })
 
   it('trägt die angemeldete Person ein, wenn sie übernimmt', async () => {
     const eine = mitAufgabe()

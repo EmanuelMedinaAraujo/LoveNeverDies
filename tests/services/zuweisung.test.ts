@@ -3,6 +3,7 @@ import {
   ALLE,
   NIEMAND,
   benenne,
+  darfAbhaken,
   darfBearbeiten,
   istFrei,
   istZugewiesen,
@@ -108,6 +109,25 @@ describe('darfBearbeiten', () => {
   it('verwehrt es auch bei einer freien Aufgabe: erst übernehmen, dann bearbeiten', () => {
     expect(darfBearbeiten(NIEMAND, ICH.userId)).toBe(false)
     expect(istFrei(NIEMAND)).toBe(true)
+  })
+})
+
+describe('darfAbhaken', () => {
+  it('erlaubt das Häkchen auf einer freien Aufgabe', () => {
+    // Sie abzuhaken *ist* die Ansage "ich habe das gemacht"; `useAufgaben`
+    // trägt die Übernahme im selben Payload mit.
+    expect(darfAbhaken(NIEMAND, ICH.userId)).toBe(true)
+  })
+
+  it('erlaubt es der zugewiesenen Person wie darfBearbeiten', () => {
+    expect(darfAbhaken(personen([ICH]), ICH.userId)).toBe(true)
+    expect(darfAbhaken(ALLE, ICH.userId)).toBe(true)
+  })
+
+  it('verwehrt es auf einer fremden Aufgabe', () => {
+    // Die Sperre soll verhindern, dass zwei Menschen dieselbe Behörde
+    // anrufen. Sie beiläufig zu übergehen hieße, sie abzuschaffen.
+    expect(darfAbhaken(personen([BERT]), ICH.userId)).toBe(false)
   })
 })
 
