@@ -69,6 +69,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     katalog: null,
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,
+    privat: false,
     ...ueberschreibung,
   }
 }
@@ -122,6 +123,7 @@ function aufgabendaten(
     weiseZu: vi.fn().mockResolvedValue(undefined),
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
+    gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
     ...rest,
   }
 }

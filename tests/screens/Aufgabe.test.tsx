@@ -121,6 +121,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabendatensatz> = {}): Aufgabendate
     katalog: herkunft(),
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,
+    privat: false,
     ...ueberschreibung,
   }
 }
@@ -162,6 +163,7 @@ function aufgabendaten(
     weiseZu: vi.fn().mockResolvedValue(undefined),
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
+    gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
     ...rest,
   }
 }
@@ -688,5 +690,76 @@ describe('Zuständigkeit (§7)', () => {
     zeigeDetail()
 
     expect(screen.getByRole('checkbox', { name: 'Urkunden bestellen' })).toBeDisabled()
+  })
+})
+
+/**
+ * Das Aufgabendetail einer privaten Aufgabe (DESIGN.md §3.7, §7).
+ *
+ * Zwei Dinge stehen hier und nirgends sonst: dass eine private Aufgabe als
+ * solche zu erkennen ist, und dass sie keine Unteraufgaben bekommt.
+ */
+describe('Private Aufgaben im Detail (§3.7)', () => {
+  function privateDaten() {
+    return aufgabendaten({
+      zustand: {
+        status: 'bereit',
+        aufgaben: [aufgabe({ titel: 'Erbausschlagung erwägen', privat: true, katalog: null })],
+        uebersprungen: 0,
+        ...NETZ,
+      },
+    })
+  }
+
+  it('sagt, wer die Aufgabe sieht', () => {
+    useAufgaben.mockReturnValue(privateDaten())
+
+    zeigeDetail()
+
+    expect(screen.getByRole('heading', { name: 'Sichtbarkeit' })).toBeVisible()
+    expect(screen.getByText(/sehen nur Sie, auf Ihren eigenen Geräten/)).toBeVisible()
+  })
+
+  it('gibt sie nach Rückfrage für alle frei', async () => {
+    const daten = privateDaten()
+    useAufgaben.mockReturnValue(daten)
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Für alle sichtbar machen' }))
+
+    expect(screen.getByText(/Zurücknehmen lässt sich das nicht/)).toBeVisible()
+    expect(daten.gibFuerAlleFrei).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Für alle sichtbar machen' }))
+
+    await waitFor(() =>
+      expect(daten.gibFuerAlleFrei).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'item-1' }),
+      ),
+    )
+  })
+
+  it('legt unter einer privaten Aufgabe keine Unteraufgabe an', () => {
+    /*
+     * §3.7: Private Aufgaben sind immer Wurzelaufgaben. Eine Unteraufgabe
+     * darunter läge unter `K_c` und stünde bei den anderen auf der Wurzelebene
+     * — und verriete nebenbei, dass es hier etwas gibt, das sie nicht sehen.
+     */
+    useAufgaben.mockReturnValue(privateDaten())
+
+    zeigeDetail()
+
+    expect(screen.queryByLabelText('Neue Unteraufgabe')).toBeNull()
+    expect(screen.getByText(/Machen Sie sie für alle sichtbar/)).toBeVisible()
+  })
+
+  it('lässt eine geteilte Aufgabe unverändert', () => {
+    useAufgaben.mockReturnValue(aufgabendaten())
+
+    zeigeDetail()
+
+    expect(screen.queryByRole('heading', { name: 'Sichtbarkeit' })).toBeNull()
+    expect(screen.getByLabelText('Neue Unteraufgabe')).toBeVisible()
   })
 })

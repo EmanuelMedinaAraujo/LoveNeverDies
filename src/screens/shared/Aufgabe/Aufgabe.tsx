@@ -271,6 +271,8 @@ function Detail({
     legeUnteraufgabeAn: (titel: string) => Promise<boolean>
     loesche: (aufgabe: Aufgabendatensatz) => void
     weiseZu: (zuweisung: Zuweisung) => void
+    /** Wrappt den DEK von `K_p` auf `K_c` (§3.7). */
+    gibFuerAlleFrei: () => void
   }
 }) {
   const { aufgabe, unteraufgaben, istBlatt, erledigt, blockiertVon } = knoten
@@ -280,6 +282,7 @@ function Detail({
   const [notizen, setzeNotizen] = useState(aufgabe.notizen)
   const [gespeicherteNotizen, setzeGespeicherteNotizen] = useState(aufgabe.notizen)
   const [neueUnteraufgabe, setzeNeueUnteraufgabe] = useState('')
+  const [fragtFreigabe, setzeFragtFreigabe] = useState(false)
 
   // Was der Bestand bringt, gewinnt, aber erst, wenn er sich wirklich
   // geändert hat. Sonst überschriebe jede Türklingel den halb getippten Satz.
@@ -333,6 +336,8 @@ function Detail({
       <div className={stile.kopf}>
         <div className={stile.titelzeile}>
           <h1>{aufgabe.titel}</h1>
+          {/* §3.7: Wer die Aufgabe öffnet, soll sofort sehen, wer sie sonst noch sieht. */}
+          {aufgabe.privat ? <Badge lage="hinweis">Nur für mich</Badge> : null}
           {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
         </div>
 
@@ -390,6 +395,56 @@ function Detail({
           </p>
         )}
       </Card>
+
+      {/*
+        §3.7: "genau eine Aktion 'Für alle sichtbar machen'". Der Abschnitt
+        steht nur bei privaten Aufgaben: Bei allen anderen gäbe es nichts zu
+        entscheiden und nichts zu erklären.
+      */}
+      {aufgabe.privat ? (
+        <Card className={stile.abschnitt}>
+          <h2>Sichtbarkeit</h2>
+
+          <p>
+            Diese Aufgabe sehen nur Sie, auf Ihren eigenen Geräten. Die anderen Mitglieder des
+            Falls laden sie zwar mit, können sie aber nicht lesen.
+          </p>
+
+          {fragtFreigabe ? (
+            <>
+              {/*
+                Freigeben wrappt den DEK von `K_p` auf `K_c` (§3.7). Einen Weg
+                zurück gibt es nicht: Der Fallschlüssel liegt bei allen.
+              */}
+              <p>
+                Wirklich für alle sichtbar machen? Zurücknehmen lässt sich das nicht.
+              </p>
+              <div className={stile.aktionen}>
+                <Button
+                  disabled={aktionen.gesperrt}
+                  onClick={() => {
+                    setzeFragtFreigabe(false)
+                    aktionen.gibFuerAlleFrei()
+                  }}
+                >
+                  Für alle sichtbar machen
+                </Button>
+                <Button variante="sekundaer" onClick={() => setzeFragtFreigabe(false)}>
+                  Abbrechen
+                </Button>
+              </div>
+            </>
+          ) : (
+            <Button
+              variante="sekundaer"
+              disabled={aktionen.gesperrt}
+              onClick={() => setzeFragtFreigabe(true)}
+            >
+              Für alle sichtbar machen
+            </Button>
+          )}
+        </Card>
+      ) : null}
 
       {/*
         §7: Die Zuweisung ist eine Bearbeitungssperre, kein Zugriffsschutz: Der
@@ -451,7 +506,20 @@ function Detail({
           Eine Ebene, keine Verschachtelung (§7): Unter einer Unteraufgabe gibt
           es nichts mehr anzulegen.
         */}
-        {aufgabe.parentId === null ? (
+        {aufgabe.privat ? (
+          /*
+           * §3.7: Private Aufgaben sind immer Wurzelaufgaben. Eine
+           * Unteraufgabe darunter läge unter `K_c` und wäre für die anderen
+           * eine Aufgabe ohne Elternaufgabe: Sie stünde bei ihnen auf der
+           * Wurzelebene und verriete nebenbei, dass es hier etwas gibt, das
+           * sie nicht sehen. Wer aufteilen will, macht die Aufgabe zuerst für
+           * alle sichtbar.
+           */
+          <p className={stile.hinweis}>
+            Eine private Aufgabe steht für sich. Machen Sie sie für alle sichtbar, wenn Sie sie
+            aufteilen möchten.
+          </p>
+        ) : aufgabe.parentId === null ? (
           <form className={stile.formular} onSubmit={(ereignis) => void legeUnteraufgabeAn(ereignis)}>
             <div className={stile.feld}>
               <label htmlFor="neue-unteraufgabe">Neue Unteraufgabe</label>
@@ -533,6 +601,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     bestaetigeUebernahmen,
     zeilen,
     aktualisiere,
+    gibFuerAlleFrei,
   } = useAufgaben(fall)
 
   const { userIds, fehler: mitgliederfehler } = useMitglieder(fall.id)
@@ -635,6 +704,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
           schreibeNotizen: (notizen) => fuehreAus(() => schreibe(knoten.aufgabe, { notizen })),
           legeUnteraufgabeAn: (titel) => fuehreAus(() => legeAn(titel, knoten.aufgabe.id)),
           loesche: (aufgabe) => void fuehreAus(() => loesche(aufgabe)),
+          gibFuerAlleFrei: () => void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe)),
         }}
       />
     </>

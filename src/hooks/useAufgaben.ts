@@ -23,10 +23,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../core/auth/authProvider.ts'
 import type { InhaltZeile } from '../core/db/inhalte.ts'
+import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
 import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
+import { supabasePersoenlicheSchluessel } from '../core/db/supabasePersoenlicheschluessel.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import type { Mutation } from '../core/sync/queue.ts'
 import {
+  AufgabenFehler,
   aufgabenAusZeilen,
   beschreibeAbgelehnte,
   mutationAendern,
@@ -36,6 +39,14 @@ import {
   type Aufgabe,
   type Aufgabenaenderung,
 } from '../services/aufgabenService.ts'
+import {
+  gibFuerAlleFrei as gibFuerAlleFreiDienst,
+  ladePersoenlichenSchluessel,
+  mutationPrivatAnlegen,
+  pruefeAbhaengigkeiten,
+  stellePersoenlichenSchluesselBereit,
+  type PersoenlicherSchluessel,
+} from '../services/privatService.ts'
 import { baueBaum, type Aufgabenknoten } from '../services/aufgabenbaum.ts'
 import { instanziiereKatalog, type Katalogfall } from '../services/katalogService.ts'
 import {
@@ -47,6 +58,7 @@ import {
   type Zuweisung,
 } from '../services/zuweisung.ts'
 import { useErinnerungen, type Erinnerungsdaten } from './useErinnerungen.ts'
+import { useGeraeteanmeldung } from './useGeraete.ts'
 import { useSync } from './useSync.ts'
 
 /**
@@ -117,8 +129,12 @@ export type Aufgabendaten = {
    */
   abgelehnt: AbgelehnteAenderung[]
   bestaetige: () => void
-  /** @param parentId gesetzt, wenn eine Unteraufgabe entsteht (§7). */
-  legeAn: (titel: string, parentId?: string | null) => Promise<void>
+  /**
+   * @param parentId gesetzt, wenn eine Unteraufgabe entsteht (§7).
+   * @param nurFuerMich legt die Aufgabe unter `K_p` ab (§3.7). Zusammen mit
+   * einer `parentId` ein Wurf: Private Aufgaben sind immer Wurzelaufgaben.
+   */
+  legeAn: (titel: string, parentId?: string | null, nurFuerMich?: boolean) => Promise<void>
   schreibe: (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => Promise<void>
   hakeAb: (aufgabe: Aufgabe, erledigt: boolean) => Promise<void>
   loesche: (aufgabe: Aufgabe) => Promise<void>
@@ -140,6 +156,13 @@ export type Aufgabendaten = {
   uebernahmen: Uebernahme[]
   /** Nimmt sie zur Kenntnis und räumt sie weg. */
   bestaetigeUebernahmen: () => void
+  /**
+   * Macht eine private Aufgabe für alle sichtbar (§3.7).
+   *
+   * Der DEK wandert von `K_p` auf `K_c`, mehr passiert nicht: dieselbe Zeile,
+   * dieselbe ID, derselbe Payload. Danach ist es eine gewöhnliche Aufgabe.
+   */
+  gibFuerAlleFrei: (aufgabe: Aufgabe) => Promise<void>
 }
 
 const LEER = { aufgaben: [] as Aufgabe[], uebersprungen: 0 }
@@ -184,6 +207,10 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   const { zustand: sync, mutiere, bestaetige, aktualisiere } = useSync(fall.id)
   const zugang = useSupabase()
   const { zustand: authZustand } = useAuth()
+  const anmeldung = useGeraeteanmeldung()
+
+  const identitaet = anmeldung.status === 'bereit' ? anmeldung.identitaet : null
+  const geraeteId = anmeldung.status === 'bereit' ? anmeldung.geraet.id : null
 
   const ich = useMemo<Zugewiesene>(
     () =>
@@ -212,13 +239,77 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    */
   const entschluesselt = useRef(new WeakMap<InhaltZeile, Aufgabe | typeof VERWORFEN>())
 
+  /**
+   * Der eigene `K_p`, sobald er da ist (§3.7).
+   *
+   * `null` heißt nicht "lädt noch", sondern "es gibt keinen": Wer nie eine
+   * private Aufgabe angelegt hat, hat auch keinen Schlüssel, und das ist der
+   * Normalfall. Der Effekt darunter legt keinen an; das tut erst
+   * {@link legeAn}, wenn jemand "Nur für mich" wirklich anhakt.
+   */
+  const [privat, setzePrivat] = useState<PersoenlicherSchluessel | null>(null)
+
+  useEffect(() => {
+    if (identitaet === null || geraeteId === null) {
+      return
+    }
+
+    let aktuell = true
+
+    void (async () => {
+      try {
+        const schluessel = await ladePersoenlichenSchluessel(
+          supabasePersoenlicheSchluessel(zugang()),
+          fall.id,
+          geraeteId,
+          identitaet,
+        )
+
+        if (aktuell && schluessel !== null) {
+          setzePrivat(schluessel)
+        }
+      } catch {
+        /*
+         * Kein Wurf und keine Meldung. Ohne `K_p` sieht dieses Gerät die
+         * eigenen privaten Aufgaben nicht, und das ist genau der Zustand, den
+         * §3.7 für jedes andere Mitglied ohnehin vorsieht: Die Zeilen werden
+         * still verworfen. Die geteilten Aufgaben stehen davon unberührt da,
+         * und eine Fehlermeldung über einen Schlüssel, den die meisten
+         * Menschen nie brauchen, wäre über der Aufgabenliste eine Zumutung.
+         */
+      }
+    })()
+
+    return () => {
+      aktuell = false
+    }
+  }, [fall.id, geraeteId, identitaet, zugang])
+
+  /**
+   * Das `kid`, mit dem der Bestand zuletzt gelesen wurde.
+   *
+   * Kommt `K_p` nach dem ersten Entschlüsseln herein (er kostet einen eigenen
+   * Rundlauf), stehen die eigenen privaten Zeilen längst als `VERWORFEN` in der
+   * WeakMap und blieben es für den Rest der Sitzung. Ein Wechsel wirft den
+   * Zwischenstand deshalb weg: Ein Fall mit vierzig Aufgaben wird dann genau
+   * einmal zusätzlich entschlüsselt, und danach greift der Reconciler wieder.
+   */
+  const gelesenMit = useRef<string | null>(null)
+
   useEffect(() => {
     let aktuell = true
+
+    const privatKid = privat?.kid ?? null
+
+    if (gelesenMit.current !== privatKid) {
+      gelesenMit.current = privatKid
+      entschluesselt.current = new WeakMap()
+    }
 
     void (async () => {
       const bekannt = entschluesselt.current
       const neue = sync.zeilen.filter((zeile) => !bekannt.has(zeile))
-      const { aufgaben, uebersprungeneIds } = await aufgabenAusZeilen(neue, fall)
+      const { aufgaben, uebersprungeneIds } = await aufgabenAusZeilen(neue, fall, privat)
 
       const nachId = new Map(neue.map((zeile) => [zeile.id, zeile]))
 
@@ -257,7 +348,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     return () => {
       aktuell = false
     }
-  }, [fall, sync.zeilen])
+  }, [fall, privat, sync.zeilen])
 
   useEffect(() => {
     let aktuell = true
@@ -269,7 +360,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       const beschrieben =
         sync.abgelehnt.length === 0
           ? KEINE
-          : await beschreibeAbgelehnte(sync.abgelehnt, sync.zeilen, fall)
+          : await beschreibeAbgelehnte(sync.abgelehnt, sync.zeilen, fall, privat)
 
       if (aktuell) {
         setzeAbgelehnt(beschrieben)
@@ -279,7 +370,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     return () => {
       aktuell = false
     }
-  }, [fall, sync.abgelehnt, sync.zeilen])
+  }, [fall, privat, sync.abgelehnt, sync.zeilen])
 
   /**
    * Der Rechtskatalog, sobald der Bestand einmal wirklich vollständig ist (§8).
@@ -336,15 +427,65 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * bei ihnen hat noch niemand etwas gesagt.
    */
   const legeAn = useCallback(
-    async (titel: string, parentId: string | null = null) =>
-      mutiere(await mutationAnlegen(fall, titel, parentId, ich.userId === '' ? null : ich)),
-    [fall, ich, mutiere],
+    async (titel: string, parentId: string | null = null, nurFuerMich = false) => {
+      if (!nurFuerMich) {
+        mutiere(await mutationAnlegen(fall, titel, parentId, ich.userId === '' ? null : ich))
+        return
+      }
+
+      /*
+       * §3.7: Private Aufgaben sind immer Wurzelaufgaben. Sonst hätte dieselbe
+       * Elternaufgabe für ihre Besitzerin drei Kinder und für alle anderen
+       * zwei, und der abgeleitete Abschluss zeigte der einen "erledigt" und
+       * der anderen "offen" (§7).
+       */
+      if (parentId !== null) {
+        throw new AufgabenFehler(
+          'Eine private Aufgabe steht immer für sich; als Unteraufgabe geht das nicht.',
+        )
+      }
+
+      if (identitaet === null || geraeteId === null || ich.userId === '') {
+        throw new AufgabenFehler(
+          'Ohne angemeldetes Gerät lässt sich keine private Aufgabe anlegen.',
+        )
+      }
+
+      const client = zugang()
+
+      /*
+       * Der Schlüssel entsteht hier und nicht beim Laden des Falls: Die meisten
+       * Menschen legen nie etwas Privates an, und ein `K_p` auf Vorrat wäre für
+       * sie eine Zeile in `personal_key_wraps`, die dem Server sagt, sie hätten
+       * etwas zu verbergen, ohne dass es das gäbe (§3.3, §11.6).
+       */
+      const schluessel = await stellePersoenlichenSchluesselBereit(
+        supabasePersoenlicheSchluessel(client),
+        supabaseGeraeteschluessel(client),
+        fall.id,
+        ich.userId,
+        geraeteId,
+        identitaet,
+      )
+
+      setzePrivat(schluessel)
+      mutiere(await mutationPrivatAnlegen(fall, schluessel, titel, ich))
+    },
+    [fall, geraeteId, ich, identitaet, mutiere, zugang],
   )
 
   const schreibe = useCallback(
-    async (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) =>
-      mutiere(await mutationAendern(aufgabe, aenderung)),
-    [mutiere],
+    async (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => {
+      // §3.7: Nichts darf von einer privaten Aufgabe abhängen. Geprüft wird,
+      // bevor irgendetwas verschlüsselt in der Queue landet: Danach stünde die
+      // Verknüpfung im Payload und wäre für die anderen eine UUID ohne Aufgabe.
+      if (aenderung.dependsOn !== undefined) {
+        pruefeAbhaengigkeiten(aufgabe, aenderung.dependsOn, liste.aufgaben)
+      }
+
+      mutiere(await mutationAendern(aufgabe, aenderung))
+    },
+    [liste.aufgaben, mutiere],
   )
 
   const hakeAb = useCallback(
@@ -355,6 +496,26 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   const loesche = useCallback(
     (aufgabe: Aufgabe) => mutiere(mutationLoeschen(aufgabe)),
     [mutiere],
+  )
+
+  /**
+   * "Für alle sichtbar machen" (§3.7).
+   *
+   * Nicht über die Queue: Umwrappen ist keine der drei Operationen, die sie
+   * kennt (§5). Danach ein `aktualisiere()`, sonst stünde die Aufgabe bis zur
+   * nächsten Türklingel weiter als privat da: Das Delta trägt die geänderte
+   * Zeile zwar mit, aber angestoßen hat den Schreibvorgang nicht der Sync.
+   */
+  const gibFuerAlleFrei = useCallback(
+    async (aufgabe: Aufgabe) => {
+      if (privat === null) {
+        throw new AufgabenFehler('Auf diesem Gerät liegt kein persönlicher Schlüssel.')
+      }
+
+      await gibFuerAlleFreiDienst(supabaseInhalte(zugang()), fall, privat, aufgabe)
+      aktualisiere()
+    },
+    [aktualisiere, fall, privat, zugang],
   )
 
   /**
@@ -505,6 +666,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       weiseZu,
       uebernahmen,
       bestaetigeUebernahmen,
+      gibFuerAlleFrei,
     }),
     [
       zustand,
@@ -524,6 +686,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       weiseZu,
       uebernahmen,
       bestaetigeUebernahmen,
+      gibFuerAlleFrei,
     ],
   )
 }

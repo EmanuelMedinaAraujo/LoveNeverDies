@@ -36,6 +36,7 @@ import type { InhaltZeile, NeuerInhalt } from '../core/db/inhalte'
 import type { AbgelehnteMutation, Mutation } from '../core/sync/queue'
 import { uuidv7 } from '../core/uuidv7'
 import type { Katalogaufgabe } from '../types/katalog'
+import type { PersoenlicherSchluessel } from './privatService'
 import { NIEMAND, personen, zuweisungAus, type Zugewiesene, type Zuweisung } from './zuweisung'
 
 /** Eine Aufgabe war nicht anzulegen oder nicht zu ändern. */
@@ -59,6 +60,15 @@ export type Fallschluessel = {
   kid: string
   kc: Uint8Array
 }
+
+/**
+ * Der persönliche Schlüssel der angemeldeten Person, oder `null` (§3.7).
+ *
+ * `null` ist der Normalfall und kein Sonderweg: `K_p` entsteht erst, wenn
+ * jemand zum ersten Mal "Nur für mich" anhakt. Ohne ihn ist keine Zeile privat,
+ * und alles läuft wie zuvor.
+ */
+export type Privatschluessel = PersoenlicherSchluessel | null
 
 /**
  * Was beim Instanziieren aus dem Katalog in das Item kopiert wird (§8).
@@ -151,6 +161,15 @@ export type Aufgabe = {
   dek: Uint8Array
   /** Der Schlüssel, unter dem der DEK auf dem Server liegt. */
   kid: string
+  /**
+   * Ob diese Aufgabe nur für die angemeldete Person da ist (§3.7).
+   *
+   * Abgeleitet und nirgends gespeichert: Eine Aufgabe ist privat, wenn ihr
+   * `kid` der eigene `K_p` ist. In der Zeile steht dazu nichts, sie trägt
+   * keinen Marker. Die privaten Aufgaben der anderen kommen hier nie an: Sie
+   * ließen sich nicht entschlüsseln und sind längst still verworfen.
+   */
+  privat: boolean
   /** Woher diese Aufgabe stammt (§8), oder `null`, wenn jemand sie selbst angelegt hat. */
   katalog: Katalogherkunft | null
 }
@@ -189,7 +208,13 @@ export type Aufgabenaenderung = {
   assignee?: Zuweisung
 }
 
-function pruefeTitel(titel: string): string {
+/**
+ * Der Titel, gekürzt, oder ein Wurf.
+ *
+ * Exportiert, weil die privaten Aufgaben (§3.7) denselben Weg nehmen. Zwei
+ * Prüfungen wären zwei Gelegenheiten, verschieden streng zu sein.
+ */
+export function pruefeTitel(titel: string): string {
   const gekuerzt = titel.trim()
 
   if (gekuerzt === '') {
@@ -283,8 +308,25 @@ function lesePayload(klartext: Uint8Array): Aufgabenpayload {
   }
 }
 
-async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufgabe> {
-  const dek = await entpackeDek(fall.kc, zeile.wrappedDek)
+/**
+ * Der Schlüssel, unter dem der DEK dieser Zeile liegt: `K_c`, oder `K_p`, wenn
+ * das `kid` der eigene persönliche Schlüssel ist (§3.7).
+ *
+ * Ein Vergleich und kein zweiter Entschlüsselungsversuch: Das `kid` sagt
+ * eindeutig, welcher Schlüssel gemeint ist, und ein Fallback "erst `K_c`, dann
+ * `K_p`" verdoppelte die Arbeit für jede fremde private Zeile, ohne je etwas
+ * anderes herauszufinden.
+ */
+function schluesselFuer(zeile: InhaltZeile, fall: Fallschluessel, privat: Privatschluessel) {
+  return privat !== null && zeile.kid === privat.kid ? privat.kp : fall.kc
+}
+
+async function leseZeile(
+  zeile: InhaltZeile,
+  fall: Fallschluessel,
+  privat: Privatschluessel,
+): Promise<Aufgabe> {
+  const dek = await entpackeDek(schluesselFuer(zeile, fall, privat), zeile.wrappedDek)
   const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, assignee, katalog } =
     lesePayload(await entschluessele(dek, zeile.payload))
 
@@ -300,6 +342,7 @@ async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufg
     katalog,
     dek,
     kid: zeile.kid,
+    privat: privat !== null && zeile.kid === privat.kid,
   }
 }
 
@@ -314,10 +357,15 @@ async function leseZeile(zeile: InhaltZeile, fall: Fallschluessel): Promise<Aufg
  *
  * Ein Fehlschlag beim Entschlüsseln einer einzelnen Zeile bringt die Liste
  * nicht zum Scheitern: Er zählt.
+ *
+ * @param privat der eigene `K_p`, sofern es einen gibt (§3.7). Die privaten
+ * Zeilen der anderen tragen keinen Marker und lassen sich hier nicht von einem
+ * Defekt unterscheiden; sie landen deshalb bei den übersprungenen.
  */
 export async function aufgabenAusZeilen(
   zeilen: InhaltZeile[],
   fall: Fallschluessel,
+  privat: Privatschluessel = null,
 ): Promise<Aufgabenliste> {
   const aufgaben: Aufgabe[] = []
   const uebersprungeneIds: string[] = []
@@ -336,7 +384,7 @@ export async function aufgabenAusZeilen(
     }
 
     try {
-      aufgaben.push(await leseZeile(zeile, fall))
+      aufgaben.push(await leseZeile(zeile, fall, privat))
     } catch {
       uebersprungeneIds.push(zeile.id)
     }
@@ -488,13 +536,17 @@ export type AbgelehnteAenderung = {
 }
 
 /** Der DEK einer Zeile, oder `null`, wenn er sich nicht entpacken lässt. */
-async function dekVon(zeile: InhaltZeile | undefined, fall: Fallschluessel) {
+async function dekVon(
+  zeile: InhaltZeile | undefined,
+  fall: Fallschluessel,
+  privat: Privatschluessel,
+) {
   if (zeile === undefined || zeile.wrappedDek.length === 0) {
     return null
   }
 
   try {
-    return await entpackeDek(fall.kc, zeile.wrappedDek)
+    return await entpackeDek(schluesselFuer(zeile, fall, privat), zeile.wrappedDek)
   } catch {
     return null
   }
@@ -521,11 +573,15 @@ async function titelAus(
  * @param zeilen der aktuelle Bestand. Für ein Edit und ein Löschen steht der
  * DEK dort: Die Mutation trägt ihn nicht mit, weil ein Edit genau eine Spalte
  * kostet (§3.1).
+ * @param privat der eigene `K_p` (§3.7). Eine abgelehnte private Aufgabe soll
+ * ihren Titel nennen wie jede andere: §5 verlangt, dass niemand raten muss,
+ * was er noch einmal tippen soll.
  */
 export function beschreibeAbgelehnte(
   abgelehnt: AbgelehnteMutation[],
   zeilen: InhaltZeile[],
   fall: Fallschluessel,
+  privat: Privatschluessel = null,
 ): Promise<AbgelehnteAenderung[]> {
   const nachId = new Map(zeilen.map((zeile) => [zeile.id, zeile]))
 
@@ -535,16 +591,19 @@ export function beschreibeAbgelehnte(
 
       if (mutation.op === 'anlegen') {
         // Die abgelehnte Anlage trägt ihren eigenen DEK mit: Auf dem Server gibt
-        // es diese Zeile nicht, und im Bestand steht sie auch nicht.
+        // es diese Zeile nicht, und im Bestand steht sie auch nicht. Das `kid`
+        // gehört dazu, sonst wäre eine abgelehnte private Aufgabe die einzige
+        // ohne Titel in der Meldung (§3.7).
         const dek = await dekVon(
-          { wrappedDek: mutation.wrappedDek } as InhaltZeile,
+          { kid: mutation.kid, wrappedDek: mutation.wrappedDek } as InhaltZeile,
           fall,
+          privat,
         )
 
         return { ...gemeinsam, titel: await titelAus(mutation.payload, dek) }
       }
 
-      const dek = await dekVon(nachId.get(mutation.itemId), fall)
+      const dek = await dekVon(nachId.get(mutation.itemId), fall, privat)
 
       return {
         ...gemeinsam,

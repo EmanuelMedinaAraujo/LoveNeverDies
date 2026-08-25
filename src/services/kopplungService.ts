@@ -38,8 +38,10 @@ import type {
   KopplungTabelle,
   Kopplungszweck,
 } from '../core/db/kopplung'
+import type { PersoenlicheSchluesselTabelle } from '../core/db/persoenlicheschluessel'
 import type { TresorTabelle } from '../core/db/tresor'
 import type { Fall, LesbarerFall } from './fallService'
+import { uebergebePersoenlichenSchluessel } from './privatService'
 import { entpackeEigenenAnteil } from './todesfallService'
 
 /** Die 32 Zeichen aus §6: kein O, keine 0, kein I, keine 1. */
@@ -323,10 +325,12 @@ export type Freischaltung = {
 export async function schalteGeraetFrei(
   kopplung: KopplungTabelle,
   tresor: TresorTabelle,
+  persoenlich: PersoenlicheSchluesselTabelle,
   anfrage: Kopplungsanfrage,
   faelle: Fall[],
   identitaet: Geraeteidentitaet,
   geraeteId: string,
+  userId: string,
 ): Promise<Freischaltung> {
   if (anfrage.angebot.zweck !== 'device') {
     throw new KopplungFehler('Dieser Code holt eine Person in einen Fall und gibt kein Gerät frei.')
@@ -358,6 +362,16 @@ export async function schalteGeraetFrei(
     await uebergebeFallschluessel(kopplung, anfrage, fall, identitaet, geraeteId)
     await uebergebeTresorschluessel(tresor, anfrage, fall)
     await uebergebeTresoranteil(tresor, anfrage, fall, identitaet, geraeteId)
+
+    /*
+     * Und `K_p`, sofern es einen gibt (§3.7). Ohne diesen Schritt läse das
+     * zweite Gerät alles außer den eigenen privaten Aufgaben: Sie sähen von
+     * dort aus aus wie die einer fremden Person und würden still verworfen.
+     */
+    await uebergebePersoenlichenSchluessel(persoenlich, fall.id, userId, geraeteId, identitaet, {
+      geraeteId: anfrage.angebot.geraeteId,
+      pkKem: anfrage.angebot.pkKem,
+    })
   }
 
   return { freigeschaltet: lesbare.length, gesamt: faelle.length }
