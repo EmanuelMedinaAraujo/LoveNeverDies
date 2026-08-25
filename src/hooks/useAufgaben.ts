@@ -39,12 +39,16 @@ import {
   type AbgelehnteAenderung,
   type Aufgabe,
   type Aufgabenaenderung,
+  type Fragebaumergebnis,
   type Konfiguration,
 } from '../services/aufgabenService.ts'
 import type { Fristbezug } from '../services/fristen.ts'
+import type { Aufgabenvorlage } from '../types/fragebaum.ts'
 import {
   gibFuerAlleFrei as gibFuerAlleFreiDienst,
   ladePersoenlichenSchluessel,
+  mutationFragebaumAendern,
+  mutationFragebaumAnlegen,
   mutationKenntnisAendern,
   mutationKenntnisAnlegen,
   mutationPrivatAnlegen,
@@ -53,6 +57,12 @@ import {
   type PersoenlicherSchluessel,
 } from '../services/privatService.ts'
 import { baueBaum, type Aufgabenknoten } from '../services/aufgabenbaum.ts'
+import {
+  BAUPLAENE,
+  ergebnisAus,
+  mitAbgeleitetemHaken,
+  stammtAus,
+} from '../services/fragebaumService.ts'
 import { instanziiereKatalog, type Katalogfall } from '../services/katalogService.ts'
 import {
   NIEMAND,
@@ -189,6 +199,51 @@ export type Aufgabendaten = {
    * Zukunft liegt, und ohne angemeldetes Gerät.
    */
   setzeKenntnisAm: (kenntnisAm: string | null) => Promise<void>
+  /**
+   * Das gespeicherte Ergebnis des Erbe-Fragebaums, oder `null`
+   * (ERBE_DESIGN.md §6).
+   *
+   * Liegt im selben privaten Konfigurations-Item wie `kenntnisAm` und kommt
+   * deshalb aus diesem Hook: Es sieht für jedes Mitglied anders aus, obwohl
+   * der Fall derselbe ist.
+   */
+  fragebaum: Fragebaumergebnis | null
+  /**
+   * Ob `fragebaum` schon etwas aussagt.
+   *
+   * Solange `K_p` noch unterwegs ist, ist jedes private Item unlesbar und
+   * `fragebaum` deshalb `null` — auch dann, wenn längst eines gespeichert ist.
+   * Wer daraus auf "noch nicht durchlaufen" schlösse, überschriebe beim
+   * nächsten Ergebnis ein vorhandenes (ERBE_DESIGN.md §6).
+   */
+  fragebaumGeladen: boolean
+  /**
+   * Schreibt das Ergebnis eines Durchlaufs (ERBE_DESIGN.md §6).
+   *
+   * Der erste Durchlauf gilt: Steht schon ein Ergebnis da, passiert ohne
+   * `ersetzen` nichts. Sonst schriebe ein neugieriges zweites Durchklicken den
+   * eigenen Rechtsstand um.
+   *
+   * @param pfad die Knoten von der Wurzel bis zum Ergebnis.
+   * @param ersetzen nur von "Gespeichertes Ergebnis ersetzen".
+   * @throws {AufgabenFehler} ohne angemeldetes Geraet.
+   */
+  speichereFragebaum: (pfad: string[], ersetzen?: boolean) => Promise<void>
+  /**
+   * Die eigene Aufgabe zu dieser Vorlage, wenn sie schon angelegt ist (§7).
+   *
+   * Erkannt an der Herkunft und nicht am Titel: Eine umbenannte Aufgabe soll
+   * keine zweite erzeugen.
+   */
+  fragebaumAufgabe: (vorlage: Aufgabenvorlage) => Aufgabe | null
+  /**
+   * Legt eine der drei Aufgaben aus dem Baum an: privat, auf die anlegende
+   * Person zugewiesen, mit ihren Rechtsangaben (ERBE_DESIGN.md §7).
+   *
+   * Gibt es sie schon, passiert nichts. Zwei gleiche Ausschlagungen mit
+   * derselben Frist sind das, was jemanden die richtige übersehen lässt.
+   */
+  legeFragebaumAufgabeAn: (vorlage: Aufgabenvorlage, notizen?: string) => Promise<void>
 }
 
 const LEER = {
@@ -281,8 +336,21 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    */
   const [privat, setzePrivat] = useState<PersoenlicherSchluessel | null>(null)
 
+  /**
+   * Ob der Versuch, `K_p` zu beschaffen, durch ist — gleich mit welchem
+   * Ergebnis (§3.7).
+   *
+   * Der Unterschied zwischen "es gibt keinen" und "er ist noch unterwegs" ist
+   * von aussen sonst nicht zu sehen, und für den Fragebaum entscheidet genau
+   * er: Wer zu früh schaut, hält ein vorhandenes Ergebnis für keines und
+   * überschriebe es (ERBE_DESIGN.md §6).
+   */
+  const [privatGeprueft, setzePrivatGeprueft] = useState(false)
+
   useEffect(() => {
     if (identitaet === null || geraeteId === null) {
+      // Noch nicht geprüft: Die Geräteanmeldung läuft, und ohne sie gibt es
+      // keinen Schlüssel zu suchen.
       return
     }
 
@@ -309,6 +377,10 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
          * und eine Fehlermeldung über einen Schlüssel, den die meisten
          * Menschen nie brauchen, wäre über der Aufgabenliste eine Zumutung.
          */
+      } finally {
+        if (aktuell) {
+          setzePrivatGeprueft(true)
+        }
       }
     })()
 
@@ -566,6 +638,66 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     [fall, holePersoenlichenSchluessel, liste.konfiguration, mutiere],
   )
 
+  const fragebaum = liste.konfiguration?.fragebaum ?? null
+
+  /*
+   * Gelesen heisst: Der Bestand steht *und* der Versuch, `K_p` zu beschaffen,
+   * ist durch. Beides zusammen, denn ein privates Item braucht beides.
+   */
+  const fragebaumGeladen = sync.gecacht && privatGeprueft
+
+  /**
+   * Das Ergebnis eines Durchlaufs ablegen (ERBE_DESIGN.md §6).
+   *
+   * Dieselbe Zeile wie das Kenntnisdatum und derselbe Grund: Beides ist eine
+   * Auskunft über genau eine Person. Eine zweite private Zeile daneben wäre
+   * ein zweiter Ort mit denselben Regeln.
+   */
+  const speichereFragebaum = useCallback(
+    async (pfad: string[], ersetzen = false) => {
+      const ergebnis = ergebnisAus(pfad)
+
+      if (liste.konfiguration !== null) {
+        // Der erste Durchlauf gilt. Ein späterer zeigt sein Ergebnis und
+        // schreibt es nicht, solange niemand ausdrücklich ersetzt.
+        if (liste.konfiguration.fragebaum !== null && !ersetzen) {
+          return
+        }
+
+        mutiere(await mutationFragebaumAendern(liste.konfiguration, ergebnis))
+        return
+      }
+
+      mutiere(await mutationFragebaumAnlegen(fall, await holePersoenlichenSchluessel(), ergebnis))
+    },
+    [fall, holePersoenlichenSchluessel, liste.konfiguration, mutiere],
+  )
+
+  const fragebaumAufgabe = useCallback(
+    (vorlage: Aufgabenvorlage) =>
+      liste.aufgaben.find((aufgabe) => stammtAus(aufgabe.katalog, vorlage)) ?? null,
+    [liste.aufgaben],
+  )
+
+  const legeFragebaumAufgabeAn = useCallback(
+    async (vorlage: Aufgabenvorlage, notizen = '') => {
+      if (fragebaumAufgabe(vorlage) !== null) {
+        return
+      }
+
+      const bauplan = BAUPLAENE[vorlage]
+
+      mutiere(
+        await mutationPrivatAnlegen(fall, await holePersoenlichenSchluessel(), bauplan.titel, ich, {
+          beschreibung: bauplan.beschreibung,
+          notizen,
+          katalog: bauplan.katalog,
+        }),
+      )
+    },
+    [fall, fragebaumAufgabe, holePersoenlichenSchluessel, ich, mutiere],
+  )
+
   const schreibe = useCallback(
     async (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => {
       // §3.7: Nichts darf von einer privaten Aufgabe abhängen. Geprüft wird,
@@ -715,7 +847,22 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * eigener Zustand daneben wäre eine zweite Wahrheit, die genau so lange
    * stimmt, bis jemand vergisst, sie mitzuziehen (§7).
    */
-  const baum = useMemo(() => baueBaum(liste.aufgaben), [liste.aufgaben])
+  /*
+   * Das "erledigt" der Seed-Aufgabe kommt aus dem eigenen, privaten
+   * Fragebaum-Ergebnis und nicht aus der Zeile (ERBE_DESIGN.md §9).
+   *
+   * Abgeleitet und nirgends gespeichert, genau wie bei einer Aufgabe mit
+   * Unteraufgaben (§7): Die Aufgabe ist geteilt, das Ergebnis ist es nicht, und
+   * ein gespeichertes Häkchen hakte sie für alle ab. Dass dieselbe geteilte
+   * Zeile jedem Mitglied etwas anderes zeigt, ohne dass etwas divergiert, ist
+   * dieselbe Konstruktion, mit der §8 die Fristen ab Kenntnis löst.
+   */
+  const aufgaben = useMemo(
+    () => mitAbgeleitetemHaken(liste.aufgaben, liste.konfiguration?.fragebaum ?? null),
+    [liste.aufgaben, liste.konfiguration],
+  )
+
+  const baum = useMemo(() => baueBaum(aufgaben), [aufgaben])
 
   /*
    * §7: "nach jeder Synchronisation neu geplant". Der Baum ist nach jedem
@@ -741,14 +888,14 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       sync.gecacht
         ? {
             status: 'bereit',
-            aufgaben: liste.aufgaben,
+            aufgaben,
             baum,
             uebersprungen: liste.uebersprungen,
             laedtNetz: sync.laedtNetz,
             netzfehler: sync.netzfehler,
           }
         : { status: 'laedt' },
-    [baum, liste, sync.gecacht, sync.laedtNetz, sync.netzfehler],
+    [aufgaben, baum, liste, sync.gecacht, sync.laedtNetz, sync.netzfehler],
   )
 
   return useMemo(
@@ -773,6 +920,11 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       gibFuerAlleFrei,
       fristbezug,
       setzeKenntnisAm,
+      fragebaum,
+      fragebaumGeladen,
+      speichereFragebaum,
+      fragebaumAufgabe,
+      legeFragebaumAufgabeAn,
     }),
     [
       zustand,
@@ -795,6 +947,11 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       gibFuerAlleFrei,
       fristbezug,
       setzeKenntnisAm,
+      fragebaum,
+      fragebaumGeladen,
+      speichereFragebaum,
+      fragebaumAufgabe,
+      legeFragebaumAufgabeAn,
     ],
   )
 }

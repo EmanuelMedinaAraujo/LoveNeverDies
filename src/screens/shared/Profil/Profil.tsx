@@ -7,7 +7,10 @@ import {
   type Darstellung,
   type Textgroesse,
 } from '../../../hooks/useAnsichtsmodus.ts'
+import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
+import type { LesbarerFall } from '../../../services/fallService.ts'
+import { statusText } from '../../../services/fragebaumService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Gruppe, Liste, Navizeile, Zeile } from '../../../ui/Liste/Liste.tsx'
@@ -50,6 +53,38 @@ import stile from './Profil.module.css'
  * ein Vorgabewert: Solange er dort steht, zieht ein Wechsel im Betriebssystem
  * mit, ohne dass jemand hierher zurückkommen muss.
  */
+/**
+ * Der eigene Erbstatus, eine Zeile (ERBE_DESIGN.md §6).
+ *
+ * Nur die angemeldete Person sieht ihn: Er liegt im privaten
+ * Konfigurations-Item unter `K_p` (§3.7), und die Clients der anderen
+ * Mitglieder verwerfen die Zeile still.
+ *
+ * Der Screen zieht dafür einen Sync-Stream auf, obwohl er ein einziges Feld
+ * braucht. Anders geht es nicht: `K_p` hängt an den Items des Falls, und einen
+ * zweiten Weg dorthin zu bauen hieße, denselben Schlüssel an zwei Stellen zu
+ * beschaffen (§3.7). Der Stream lebt, solange dieser Tab offen ist.
+ *
+ * Steht kein Ergebnis da, steht hier auch keine Zeile: Ein "Noch nicht
+ * ermittelt" in einer Einstellungsliste wäre eine Aufforderung an einer
+ * Stelle, an der man nichts erledigen kann. Der Weg in den Fragebaum steht in
+ * Erbe (§10).
+ */
+function Erbstatuszeile({ fall }: { fall: LesbarerFall }) {
+  const { fragebaum } = useAufgaben(fall)
+
+  if (fragebaum === null || fragebaum.status === null) {
+    return null
+  }
+
+  return (
+    <Zeile>
+      <span className={stile.etikett}>Erbstatus</span>
+      <span className={stile.rechts}>{statusText(fragebaum.status)}</span>
+    </Zeile>
+  )
+}
+
 function Ansichtseinstellungen() {
   const { modus, textgroesse, darstellung, waehleModus, waehleTextgroesse, waehleDarstellung } =
     useAnsicht()
@@ -127,6 +162,15 @@ export function Profil() {
   const gesperrte = faelle.filter((eintrag) => eintrag.zustand === 'gesperrt').length
   const kannTeilen = faelle.some((eintrag) => eintrag.zustand === 'lesbar')
 
+  /*
+   * Den Erbstatus gibt es nur im Trauerfall: Ein Vorsorgefall hat laut §2 keine
+   * Erben, und der Fragebaum erscheint dort gar nicht (ERBE_DESIGN.md §1).
+   */
+  const trauerfall =
+    fall.status === 'bereit' && fall.aktiver.zustand === 'lesbar' && fall.aktiver.status !== 'vorsorge'
+      ? fall.aktiver
+      : null
+
   const istVorsorge =
     fall.status === 'bereit' &&
     fall.aktiver.zustand === 'lesbar' &&
@@ -170,6 +214,7 @@ export function Profil() {
               <span className={stile.etikett}>Für wen?</span>
               <span className={stile.rechts}>{fuerWen}</span>
             </Zeile>
+            {trauerfall === null ? null : <Erbstatuszeile fall={trauerfall} />}
             {istVorsorge ? <Navizeile titel="Nachlass-Tresor" ziel="/erbe" /> : null}
           </Liste>
         </Gruppe>
