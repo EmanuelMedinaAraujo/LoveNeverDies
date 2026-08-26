@@ -1,6 +1,4 @@
-import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { useTresor } from '../../../hooks/useTresor.ts'
@@ -9,7 +7,6 @@ import { checklistenstand } from '../../../services/tresorService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
-import { NeueAufgabe } from '../../erweitert/Alle/Alle.tsx'
 import { Vorsorgeseite } from './Vorsorgeseite.tsx'
 import { SymbolAufgabe, SymbolCheckliste } from './Symbole.tsx'
 import stile from './Nachlassbereich.module.css'
@@ -28,34 +25,42 @@ import stile from './Nachlassbereich.module.css'
  * unten das Löschen des Falls. Die Fragen liegen jetzt hinter „Nachlass-Checkliste",
  * das Löschen in Profil.
  *
- * Eine neue Aufgabe entsteht über den Dialog aus §7 direkt auf Knopfdruck,
- * ohne Umweg über eine Übergangsseite.
+ * „Aufgabe erstellen" springt zur Seite „Alle Aufgaben" und öffnet dort den
+ * Anlegen-Dialog über den Query-Parameter `?neu=1`. So steht die neue Aufgabe
+ * sofort in der Liste, und wer abbricht, ist schon dort, wo er sie suchen würde.
  */
+
+/**
+ * Ein Pfeil nach rechts am Ende einer Wegkarte: zeigt an, dass man dorthin
+ * navigieren kann. In `currentColor`, eingefaerbt ueber die Akzentfarbe im
+ * CSS der uebergeordneten Karte.
+ */
+function WegPfeil() {
+  return (
+    <svg
+      className={stile.wegPfeil}
+      width="1.25em"
+      height="1.25em"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable={false}
+    >
+      <path d="M9 6l6 6-6 6" />
+    </svg>
+  )
+}
+
 function Inhalt({ fall }: { fall: LesbarerFall }) {
   const { aktualisiere } = useCase()
-  const { zustand, zeilen, mutiere, legeAn } = useAufgaben(fall)
+  const { zustand, zeilen, mutiere } = useAufgaben(fall)
   const { items, schwelle, resplitPending, resplitLaeuft, resplitFehler, verteileShares } =
     useTresor(fall, zeilen, mutiere, aktualisiere)
   const navigate = useNavigate()
-
-  const [legtAn, setzeLegtAn] = useState(false)
-  const [laeuft, setzeLaeuft] = useState(false)
-  const [fehler, setzeFehler] = useState<string | null>(null)
-
-  async function fuehreAus(arbeit: () => Promise<unknown>): Promise<boolean> {
-    setzeLaeuft(true)
-    setzeFehler(null)
-
-    try {
-      await arbeit()
-      return true
-    } catch (ursache) {
-      setzeFehler(alsNachricht(ursache))
-      return false
-    } finally {
-      setzeLaeuft(false)
-    }
-  }
 
   const stand = checklistenstand(items)
   const laedt = zustand.status === 'laedt'
@@ -66,12 +71,6 @@ function Inhalt({ fall }: { fall: LesbarerFall }) {
         <h1>Nachlass</h1>
         <p className={stile.hinweis}>{fall.personName} · Vorsorge</p>
       </div>
-
-      {fehler === null ? null : (
-        <p className={stile.warnung} role="alert">
-          {fehler}
-        </p>
-      )}
 
       <Card>
         <div className={stile.statusKopf}>
@@ -146,21 +145,18 @@ function Inhalt({ fall }: { fall: LesbarerFall }) {
       </Card>
 
       <div className={stile.wege}>
-        <button
-          type="button"
-          className={stile.weg}
-          onClick={() => setzeLegtAn(true)}
-        >
+        <Link className={stile.weg} to="/alle?neu=1">
           <Card>
             <div className={stile.wegKopf}>
               <SymbolAufgabe />
               <h2 className={stile.wegTitel}>Aufgabe erstellen</h2>
+              <WegPfeil />
             </div>
             <p className={stile.hinweis}>
               Persönliche Bitten und kleine Aufgaben, die Ihre Angehörigen später übernehmen.
             </p>
           </Card>
-        </button>
+        </Link>
 
         <Link className={stile.weg} to="/nachlass/checkliste">
           <Card>
@@ -179,6 +175,7 @@ function Inhalt({ fall }: { fall: LesbarerFall }) {
                   {stand.beantwortet} von {stand.gesamt}
                 </Badge>
               )}
+              <WegPfeil />
             </div>
             <p className={stile.hinweis}>
               Wo die Papiere liegen, welche Verträge laufen, was mit der Bestattung sein soll.
@@ -187,16 +184,6 @@ function Inhalt({ fall }: { fall: LesbarerFall }) {
           </Card>
         </Link>
       </div>
-
-      {legtAn ? (
-        <NeueAufgabe
-          gesperrt={laeuft}
-          aufSchliessen={() => setzeLegtAn(false)}
-          aufAnlegen={(titel, nurFuerMich, angaben) =>
-            fuehreAus(() => legeAn(titel, null, nurFuerMich, angaben))
-          }
-        />
-      ) : null}
     </main>
   )
 }

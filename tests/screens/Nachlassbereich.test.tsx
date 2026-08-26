@@ -189,7 +189,10 @@ describe('Der Tab „Nachlass" (§3.5, §7)', () => {
     tresordaten.items = [item()]
     rendereMitProvidern(<Nachlassbereich />)
 
-    expect(screen.getByRole('button', { name: /Aufgabe erstellen/ })).toBeVisible()
+    expect(screen.getByRole('link', { name: /Aufgabe erstellen/ })).toHaveAttribute(
+      'href',
+      '/alle?neu=1',
+    )
     expect(screen.getByRole('link', { name: /Nachlass-Checkliste/ })).toHaveAttribute(
       'href',
       '/nachlass/checkliste',
@@ -197,22 +200,13 @@ describe('Der Tab „Nachlass" (§3.5, §7)', () => {
     expect(screen.getByText(`1 von ${VORSORGEFRAGEN.length}`)).toBeVisible()
   })
 
-  it('öffnet bei Klick auf „Aufgabe erstellen“ den Dialog und legt eine Aufgabe an', async () => {
+  it('verlinkt bei „Aufgabe erstellen“ auf /alle?neu=1', () => {
     rendereMitProvidern(<Nachlassbereich />)
 
-    await userEvent.click(screen.getByRole('button', { name: /Aufgabe erstellen/ }))
-
-    expect(screen.getByRole('dialog')).toBeVisible()
-    expect(screen.getByLabelText('Was ist zu tun?')).toBeVisible()
-
-    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Kater füttern')
-    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe speichern' }))
-
-    expect(legeAn).toHaveBeenCalledWith('Kater füttern', null, false, {
-      fristAm: null,
-      beschreibung: '',
-    })
-    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.getByRole('link', { name: /Aufgabe erstellen/ })).toHaveAttribute(
+      'href',
+      '/alle?neu=1',
+    )
   })
 
   it('nennt keinen Stand, solange die Zeilen noch laden', () => {

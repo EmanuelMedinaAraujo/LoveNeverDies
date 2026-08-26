@@ -191,6 +191,13 @@ describe('Alle', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
+  it('öffnet den Dialog beim Laden der Seite direkt, wenn ?neu=1 in der URL steht', () => {
+    rendereMitProvidern(<Alle />, { pfad: '/alle?neu=1' })
+
+    expect(screen.getByRole('dialog')).toBeVisible()
+    expect(screen.getByLabelText('Was ist zu tun?')).toBeVisible()
+  })
+
   it('nimmt im Dialog mehr auf als den Titel (§7)', async () => {
     const legeAn = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(aufgabendaten({ legeAn }))

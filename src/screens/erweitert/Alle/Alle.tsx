@@ -1,5 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
-import { Navigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben, type Neuangaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -496,10 +496,25 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
    */
   const mitFristen = fall.status !== 'vorsorge'
 
-  const [legtAn, setzeLegtAn] = useState(false)
+  /*
+   * Der Query-Parameter `?neu=1` öffnet den Anlegen-Dialog beim Laden der
+   * Seite. So springt der Nachlass-Screen hierher und öffnet den Dialog in
+   * einem Schritt. Der Parameter wird sofort aus der URL entfernt, damit ein
+   * Neuladen der Seite den Dialog nicht erneut öffnet.
+   */
+  const [suchParams, setzeSuchParams] = useSearchParams()
+
+  const [legtAn, setzeLegtAn] = useState(() => suchParams.get('neu') === '1')
   const [sortierung, setzeSortierung] = useState<Sortierung>('reihenfolge')
   const [laeuft, setzeLaeuft] = useState(false)
   const [fehler, setzeFehler] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (suchParams.has('neu')) {
+      suchParams.delete('neu')
+      setzeSuchParams(suchParams, { replace: true })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * §5: Abgelehnte Änderungen werden nie stillschweigend verworfen. Deshalb

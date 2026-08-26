@@ -111,6 +111,17 @@
   min-width: 0;
 }
 
+/*
+ * Der Pfeil am rechten Rand der Wegkarte: ein Caret (›), das anzeigt, dass
+ * die Karte anklickbar ist und woandershin fuehrt. In der Akzentfarbe, damit
+ * er sich vom Text abhebt, und flex: none, damit er im Flex-Kasten nicht
+ * schrumpft.
+ */
+.wegPfeil {
+  flex: none;
+  color: var(--farbe-akzent);
+}
+
 /* ---------------------------------------------------------------- Fragen */
 
 .fragen {
