@@ -231,13 +231,22 @@ function Startzeile({
           </p>
         )}
 
-        {meta.length === 0 && badge === null ? null : (
-          <p className={stile.meta}>
-            {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
-            {meta}
-          </p>
-        )}
+        {meta.length === 0 ? null : <p className={stile.meta}>{meta}</p>}
       </div>
+
+      {/*
+        Der Fristen-Countdown steht rechts oben in der Zeile und nicht unten in
+        der Metazeile. Er ist die eine Auskunft, nach der jemand diese Seite
+        ueberfliegt: "Was ist als Naechstes faellig?" Zwischen "Teil von …" und
+        "2/5 erledigt" musste man ihn suchen, und in einer Liste aus zehn
+        Aufgaben zehnmal. Eine eigene Spalte am rechten Rand macht daraus eine
+        Kante, die man einmal von oben nach unten liest.
+      */}
+      {badge === null ? null : (
+        <Badge className={stile.frist} lage={badgelage(lage)}>
+          {badge}
+        </Badge>
+      )}
 
       {/*
         Die eine Aufgabe, die noch aus dem Katalog kommt (ADR-0001), hat keine
@@ -331,7 +340,12 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
       <Startzeile
         key={eintrag.knoten.aufgabe.id}
         eintrag={eintrag}
-        lage={fristlage(eintrag.knoten.aufgabe.katalog, fristbezug, heute)}
+        lage={fristlage(
+          eintrag.knoten.aufgabe.katalog,
+          fristbezug,
+          heute,
+          eintrag.knoten.aufgabe.fristAm,
+        )}
         gesperrt={laeuft}
         darfHaken={darfAbhaken(eintrag.knoten.aufgabe.assignee, ich.userId)}
         ichUserId={ich.userId}

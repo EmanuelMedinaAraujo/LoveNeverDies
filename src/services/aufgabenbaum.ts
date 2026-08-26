@@ -157,7 +157,7 @@ export function sortiereNachFrist(
   heute: string,
 ): Aufgabenknoten[] {
   const lagen = new Map(
-    baum.map((knoten) => [knoten.aufgabe.id, fristlage(knoten.aufgabe.katalog, bezug, heute)]),
+    baum.map((knoten) => [knoten.aufgabe.id, fristlage(knoten.aufgabe.katalog, bezug, heute, knoten.aufgabe.fristAm)]),
   )
 
   return [...baum].sort((links, rechts) =>

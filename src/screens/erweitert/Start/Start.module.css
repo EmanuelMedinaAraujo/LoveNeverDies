@@ -89,3 +89,17 @@
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
 }
+
+/*
+ * Der Fristen-Countdown, rechts oben in der Zeile.
+ *
+ * `align-self: flex-start` gegen das `align-items: center` der Zeile: Er
+ * gehoert auf die Hoehe des Titels und nicht auf die Mitte einer Zeile, die
+ * mit jeder Metaangabe waechst. `flex: none`, damit ihn eine lange
+ * Aufgabenbezeichnung nicht zusammendrueckt -- er bricht ohnehin nicht um.
+ */
+.frist {
+  flex: none;
+  align-self: flex-start;
+  margin-block-start: var(--raster-1);
+}

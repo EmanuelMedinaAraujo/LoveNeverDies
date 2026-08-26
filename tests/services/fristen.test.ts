@@ -178,6 +178,68 @@ describe('fristlage (§8)', () => {
     })
   })
 
+  describe('selbst gesetzte Frist (§7)', () => {
+    it('rechnet die eigene Frist aus, wo es keine gesetzliche gibt', () => {
+      expect(fristlage(null, bezug('2026-05-12'), '2026-05-12', '2026-05-20')).toEqual({
+        art: 'datum',
+        ende: '2026-05-20',
+        restTage: 8,
+      })
+    })
+
+    it('zeigt die frühere der beiden Fristen', () => {
+      // Gesetzlich endet sie am 15., selbst gesetzt ist der 14.
+      expect(fristlage(herkunft(), bezug('2026-05-12'), '2026-05-12', '2026-05-14')).toEqual({
+        art: 'datum',
+        ende: '2026-05-14',
+        restTage: 2,
+      })
+    })
+
+    it('lässt eine gesetzliche Frist von einem späteren eigenen Datum nicht verdecken', () => {
+      // Der eine Fehler, den §8 teuer nennt: Ein selbst eingetragener Tag im
+      // nächsten Monat darf die Ausschlagungsfrist nicht vom Bildschirm nehmen.
+      expect(fristlage(herkunft(), bezug('2026-05-12'), '2026-05-12', '2026-06-30')).toEqual({
+        art: 'datum',
+        ende: '2026-05-15',
+        restTage: 3,
+      })
+    })
+
+    it('behält "unverzüglich", gleich welches Datum daneben steht', () => {
+      const unverzueglich = herkunft({ fristTage: null, fristAb: 'unverzueglich' })
+
+      expect(fristlage(unverzueglich, bezug('2026-05-12'), '2026-05-12', '2026-05-13')).toEqual({
+        art: 'unverzueglich',
+      })
+    })
+
+    it('tritt an die Stelle einer Frist, die ohne Kenntnisdatum kein Ende hat', () => {
+      const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })
+
+      expect(fristlage(ausschlagung, bezug('2026-05-12'), '2026-05-12', '2026-05-20')).toEqual({
+        art: 'datum',
+        ende: '2026-05-20',
+        restTage: 8,
+      })
+    })
+
+    it('verschiebt das eigene Datum nicht auf den nächsten Werktag', () => {
+      // Der 17. Mai 2026 ist ein Sonntag. Die Verschiebung gilt für Fristen,
+      // die aus einem Ereignis gerechnet werden; wer sich selbst einen Tag
+      // notiert, hat sich diesen Tag notiert.
+      expect(fristlage(null, bezug('2026-05-12'), '2026-05-12', '2026-05-17')).toMatchObject({
+        ende: '2026-05-17',
+      })
+    })
+
+    it('übergeht ein Datum, das keines ist', () => {
+      expect(fristlage(null, bezug('2026-05-12'), '2026-05-12', '2026-02-31')).toEqual({
+        art: 'keine',
+      })
+    })
+  })
+
   it('rechnet ohne Sterbedatum nichts aus', () => {
     expect(fristlage(herkunft(), bezug(null), '2026-05-12')).toEqual({ art: 'keine' })
   })

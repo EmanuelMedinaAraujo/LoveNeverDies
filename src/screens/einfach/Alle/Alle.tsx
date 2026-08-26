@@ -231,7 +231,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
       <Aufgabenzeile
         key={knoten.aufgabe.id}
         knoten={knoten}
-        lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute)}
+        lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute, knoten.aufgabe.fristAm)}
         gesperrt={laeuft}
         darfHaken={darfAbhaken(knoten.aufgabe.assignee, ich.userId)}
         /*
