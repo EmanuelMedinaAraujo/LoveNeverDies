@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import type { InhaltZeile } from '../../../core/db/inhalte.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben, type Neuangaben } from '../../../hooks/useAufgaben.ts'
+import { useAutospeichern, type Speicherstand } from '../../../hooks/useAutospeichern.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import type { Aufgabe as Aufgabendatensatz } from '../../../services/aufgabenService.ts'
 import { knotenZu, type Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
@@ -251,78 +252,6 @@ function Kreuz() {
       <path d="m6 6 12 12M18 6 6 18" />
     </svg>
   )
-}
-
-/** Wo ein Feld zwischen "getippt" und "liegt auf dem Server" gerade steht. */
-type Speicherstand = 'ruht' | 'wartet' | 'gespeichert'
-
-/**
- * Speichert von selbst, kurz nachdem jemand aufgehört hat zu tippen (§5, §7).
- *
- * Ein Feld mit einer Schaltfläche daneben ist eine Zusage, die man einlösen
- * muss: Wer den Tag einträgt und weiterscrollt, hat ihn nicht eingetragen. Auf
- * einem Telefon passiert genau das, weil die Tastatur die Schaltfläche
- * verdeckt, die man danach hätte drücken sollen. Die Frist, die dann fehlt,
- * ist die eine Angabe, wegen der dieser Screen überhaupt da ist (§8).
- *
- * Genau ein Versuch je Wert, und das ist der Unterschied zwischen "speichert
- * von selbst" und einer Schleife: Weist der Server die Änderung ab, bleibt der
- * getippte Wert stehen und der gespeicherte daneben — die Bedingung "es gibt
- * etwas zu speichern" bliebe für immer wahr, und der Screen versuchte es alle
- * 800 ms erneut. Wer weiterkommen will, ändert etwas; das ist ein neuer Wert
- * und damit ein neuer Versuch.
- *
- * @param eingabe was im Feld steht.
- * @param gespeichert was im Bestand steht.
- * @param gesperrt solange eine andere Mutation läuft. Dann wird gewartet, statt
- * zwei Änderungen ineinander zu schieben.
- */
-function useAutospeichern(
-  eingabe: string,
-  gespeichert: string,
-  gesperrt: boolean,
-  speichere: () => void,
-): Speicherstand {
-  /*
-   * Die Funktion kommt bei jedem Rendern neu herein: Die Screens schreiben sie
-   * inline. Im Ref gelesen, hängt der Wecker unten nicht an ihrer Identität und
-   * fängt nicht bei jedem Tastendruck von vorn an.
-   */
-  const speichereRef = useRef(speichere)
-
-  useEffect(() => {
-    speichereRef.current = speichere
-  })
-
-  const versucht = useRef<string | null>(null)
-  const [stand, setzeStand] = useState<Speicherstand>('ruht')
-
-  useEffect(() => {
-    if (eingabe === gespeichert) {
-      // Angekommen. Ob das eigene Tippen der Grund war oder eine Änderung von
-      // einem anderen Gerät, spielt für die Meldung keine Rolle: Beides heisst,
-      // dass hier nichts mehr aussteht.
-      const gerade = versucht.current
-      versucht.current = null
-      setzeStand(gerade === null ? 'ruht' : 'gespeichert')
-      return
-    }
-
-    if (gesperrt || versucht.current === eingabe) {
-      return
-    }
-
-    setzeStand('wartet')
-
-    const wecker = setTimeout(() => {
-      versucht.current = eingabe
-      speichereRef.current()
-    }, 800)
-
-    return () => clearTimeout(wecker)
-  }, [eingabe, gespeichert, gesperrt])
-
-  return stand
 }
 
 /** Was unter einem Feld steht, das von selbst speichert. */
@@ -1077,10 +1006,15 @@ function Kenntnisdatum({
     setzeEingabe(kenntnisAm ?? '')
   }
 
-  async function speichere(ereignis: FormEvent) {
-    ereignis.preventDefault()
-    await aufSpeichern(eingabe === '' ? null : eingabe)
-  }
+  /*
+    Speichert von selbst, wie die eigene Frist darüber. Eine Schaltfläche
+    unter dem Feld war hier die schlechteste Stelle im ganzen Screen: Auf dem
+    Telefon steht sie unter der aufgeklappten Datumsauswahl, und wer den Tag
+    gewählt hat und weiterscrollt, hat seine Frist nicht eingetragen (§8).
+  */
+  const stand = useAutospeichern(eingabe, kenntnisAm ?? '', gesperrt, () => {
+    void aufSpeichern(eingabe === '' ? null : eingabe)
+  })
 
   return (
     <Card titel={titel}>
@@ -1097,9 +1031,10 @@ function Kenntnisdatum({
         </p>
       ) : null}
 
-      <form className={stile.formular} onSubmit={(ereignis) => void speichere(ereignis)}>
-        <div className={stile.feld}>
-          <label htmlFor="kenntnis-am">Tag Ihrer Kenntnis</label>
+      <div className={stile.feld}>
+        <label htmlFor="kenntnis-am">Tag Ihrer Kenntnis</label>
+
+        <div className={stile.fristzeile}>
           {/*
             `max`: Ein Kenntnisdatum in der Zukunft gibt es nicht, und ein
             vertipptes Jahr ergäbe eine Frist, die viel später endet als die
@@ -1114,22 +1049,36 @@ function Kenntnisdatum({
             max={heuteIso()}
             onChange={(ereignis) => setzeEingabe(ereignis.target.value)}
           />
+
+          {/*
+            Das Kreuz statt einer zweiten Schaltfläche darunter, aus demselben
+            Grund wie bei der eigenen Frist: Das Feld leeren geht auf jedem
+            Telefon anders und auf manchem gar nicht, und die Stelle dafür
+            gehört an dieses eine Feld.
+          */}
+          {eingabe === '' ? null : (
+            <Button
+              variante="text"
+              className={stile.entfernen}
+              disabled={gesperrt}
+              vorleseText="Datum entfernen"
+              onClick={() => {
+                setzeEingabe('')
+
+                // Nur, wenn wirklich etwas gespeichert ist: Ein halb
+                // getipptes Datum wegzunehmen ist keine Änderung.
+                if (kenntnisAm !== null) {
+                  void aufSpeichern(null)
+                }
+              }}
+            >
+              <Kreuz />
+            </Button>
+          )}
         </div>
+      </div>
 
-        <Button type="submit" volleBreite disabled={gesperrt || eingabe === (kenntnisAm ?? '')}>
-          Kenntnisdatum speichern
-        </Button>
-      </form>
-
-      {kenntnisAm === null ? null : (
-        <Button
-          variante="sekundaer"
-          disabled={gesperrt}
-          onClick={() => void aufSpeichern(null)}
-        >
-          Datum entfernen
-        </Button>
-      )}
+      <Speichermeldung stand={stand} />
     </Card>
   )
 }

@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -429,11 +429,46 @@ describe('Aufgabe (einfach)', () => {
       { fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null, anfechtungKenntnisAm: null }, setzeKenntnisAm },
     )
 
+    // Speichert von selbst: Die Schaltfläche unter dem Feld gibt es nicht mehr.
+    expect(screen.queryByRole('button', { name: 'Datum speichern' })).toBeNull()
+
     const feld = screen.getByLabelText('Tag Ihrer Kenntnis')
     await userEvent.type(feld, '2024-03-20')
-    await userEvent.click(screen.getByRole('button', { name: 'Datum speichern' }))
 
-    expect(setzeKenntnisAm).toHaveBeenCalledWith('2024-03-20')
+    await waitFor(() => expect(setzeKenntnisAm).toHaveBeenCalledWith('2024-03-20'), {
+      timeout: 3000,
+    })
+  })
+
+  it('entfernt das eigene Kenntnisdatum über das Kreuz in der Zeile (§8)', async () => {
+    const setzeKenntnisAm = vi.fn().mockResolvedValue(undefined)
+
+    mitDetail([aufgabe({ katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }) })], {
+      fristbezug: {
+        sterbedatum: LESBAR.sterbedatum,
+        kenntnisAm: '2024-03-20',
+        anfechtungKenntnisAm: null,
+      },
+      setzeKenntnisAm,
+    })
+
+    const kreuz = screen.getByRole('button', { name: 'Datum entfernen' })
+
+    // In derselben Zeile wie das Feld, nicht als eigener Kasten darunter.
+    expect(kreuz.parentElement).toContainElement(screen.getByLabelText('Tag Ihrer Kenntnis'))
+
+    await userEvent.click(kreuz)
+
+    expect(setzeKenntnisAm).toHaveBeenCalledWith(null)
+    expect(screen.getByLabelText('Tag Ihrer Kenntnis')).toHaveValue('')
+  })
+
+  it('zeigt das Kreuz erst, wenn ein Kenntnisdatum eingetragen ist (§8)', () => {
+    mitDetail([aufgabe({ katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }) })], {
+      fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null, anfechtungKenntnisAm: null },
+    })
+
+    expect(screen.queryByRole('button', { name: 'Datum entfernen' })).toBeNull()
   })
 
   it('speichert Notizen', async () => {
