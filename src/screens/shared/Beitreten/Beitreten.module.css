@@ -65,3 +65,15 @@
   gap: var(--dichte-abstand-klein);
   margin-top: var(--dichte-abstand);
 }
+
+.qrKnopf {
+  display: flex;
+  margin-top: var(--dichte-abstand-klein);
+}
+
+.qrBereich {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  margin-top: var(--dichte-abstand-klein);
+}

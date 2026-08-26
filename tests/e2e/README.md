@@ -12,9 +12,11 @@ zwei realen Diensten dahinter:
 
 | Projekt            | Engine   | Viewport            | Testperson                |
 | ------------------ | -------- | ------------------- | ------------------------- |
+| `clerk`            | —        | —                   | — (nur Setup, siehe unten) |
 | `mobile-webkit`    | WebKit   | iPhone 13           | `e2e-webkit@gmail.com`    |
 | `desktop-chromium` | Chromium | Desktop Chrome      | `e2e-chromium@gmail.com`  |
 | `kopplung`         | WebKit   | iPhone 13           | vier eigene, siehe unten  |
+| `tresor`           | WebKit   | iPhone 13           | zwei eigene, ohne Einrichtung |
 
 `mobile-webkit` ist der Hauptfall: Mobile-first PWA, und auf iOS gibt es
 praktisch nur WebKit. Playwrights WebKit ist allerdings **nicht** Safari — es
@@ -49,6 +51,52 @@ verbraucht je Lauf vier Personen und legt Fälle an, die er nicht wieder
 abräumen kann. Ein zweiter Durchlauf derselben Personen liefe gegen bereits
 bestehende Fälle. Da `npm run test:e2e` die Datenbank vor jedem Lauf einmal
 zurücksetzt, sind die Personen zwischen zwei Läufen wieder unbelastet.
+
+### Das Projekt `clerk`
+
+Es ruft `clerkSetup()` aus `@clerk/testing` auf: einmal je Lauf ein Testing
+Token von Clerks Backend-API. Der Token umgeht Clerks Bot-Schutz (Cloudflare
+Turnstile); ohne ihn hängt jede Anmeldung im Captcha fest.
+
+**Ein Projekt und kein `globalSetup`.** Das war es früher, und Clerks eigene
+Anleitung nennt genau diesen Fall als Fehlerquelle: Ein funktionsbasiertes
+`globalSetup` läuft in einem eigenen Prozess, und die Variablen, die
+`clerkSetup()` setzt (`CLERK_FAPI`, `CLERK_TESTING_TOKEN`), kommen bei den
+Workern nie an. Solange nur `clerk.signIn` benutzt wurde, fiel das nicht auf.
+`setupClerkTestingToken()`, das die Specs jetzt in jede Seite legen, braucht
+beide.
+
+Alle übrigen Projekte hängen über `dependencies: ['clerk']` daran.
+
+### Das Projekt `tresor`
+
+`tresor-todesfall.spec.ts` geht den Ablauf aus §3.5 von der Vorsorge bis zum
+gelesenen Nachlass: Vorsorgefall anlegen, Tresor füllen, Angehörige koppeln,
+Todesfall bestätigen, Tresor öffnen. Zwei Personen gleichzeitig auf zwei
+Geräten, aus demselben Grund wie bei der Kopplung: Ein Schlüsselanteil hängt
+an einem Gerät, und zwei Tabs wären ein Gerät.
+
+Die angehörige Person sitzt dabei in der **einfachen** Ansicht — §7 sieht sie
+für die Person vor, die zwei Tage nach einem Todesfall vor dem Telefon sitzt,
+und genau die bestätigt hier einen Todesfall.
+
+**Einzurichten ist dafür nichts.** Seine beiden Personen sind Clerk-Testadressen
+(`+clerk_test`), an die keine Mail geht und die keine Bestätigung verlangen;
+sie stehen in `nutzer.ts` statt in `.env.test`, und `clerk.setup.ts` legt sie
+über die Backend-API an, falls es sie noch nicht gibt
+(`tests/e2e/clerkPersonen.ts`). Gesucht wird zuerst — sonst sammelte die
+Dev-Instanz mit jedem Lauf zwei Karteileichen mehr.
+
+**Aber:** Dieses Spec braucht die Edge Function `vault-release`, und
+`supabase start` serviert sie nicht mit. Der Edge-Runtime-Container läuft, gibt
+aber 404 zurück, bis daneben
+
+```bash
+npx supabase functions serve --no-verify-jwt
+```
+
+läuft. Der Test prüft das vorab und sagt es, statt dreißig Sekunden später an
+"Edge Function returned a non-2xx status code" zu scheitern.
 
 ## Einmalig einrichten
 
@@ -112,8 +160,15 @@ zurücksetzt, sind die Personen zwischen zwei Läufen wieder unbelastet.
 ## Ausführen
 
 ```bash
+npx supabase functions serve --no-verify-jwt   # in einem zweiten Terminal, fuer `tresor`
 npm run test:e2e        # headless
 npm run test:e2e:ui     # Playwright UI Mode, zum Beobachten und Debuggen
+```
+
+Einzelne Projekte:
+
+```bash
+node --env-file=.env.test node_modules/@playwright/test/cli.js test --project=tresor
 ```
 
 Beides läuft über `node --env-file=.env.test`, sonst fehlen Supabase- und

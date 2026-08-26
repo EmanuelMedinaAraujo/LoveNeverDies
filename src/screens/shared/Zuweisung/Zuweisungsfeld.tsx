@@ -6,7 +6,7 @@ import {
   istFrei,
   istZugewiesen,
   mitPerson,
-  nameVon,
+  nameImDativ,
   ohnePerson,
   zuweisungText,
   type Zugewiesene,
@@ -25,6 +25,11 @@ import stile from './Zuweisungsfeld.module.css'
  * Freigeben darf jede:r, nicht nur die eingetragene Person (§7). In einer
  * Familie fällt jemand aus, und eine Aufgabe, die niemand mehr freigeben kann,
  * blockiert eine gesetzliche Frist.
+ *
+ * Die Kaestchen antworten auf "Wem ist sie zugewiesen?" und stehen deshalb im
+ * Dativ: "Allen", "Ihnen", und daneben die Namen der anderen. Der Satz
+ * darueber ("Zuständig: Alle") ist eine Aufzählung und keine Antwort auf
+ * diese Frage; er bleibt im Nominativ.
  *
  * Ein Mitglied ohne Namen heißt "Weiteres Mitglied". Die Namenstabelle
  * `profiles` kommt mit der Kopplung (#10, §3.3), und bis dahin kennt dieses
@@ -90,7 +95,7 @@ export function Zuweisungsfeld({
           checked={alle}
           disabled={gesperrt}
           onChange={(ereignis) => aufSetzen(ereignis.target.checked ? ALLE : NIEMAND)}
-          label="Alle"
+          label="Allen"
         />
 
         {mitglieder.map((person) => (
@@ -102,7 +107,7 @@ export function Zuweisungsfeld({
             // genau diese Person und nicht mehr alle.
             disabled={gesperrt}
             onChange={(ereignis) => schalte(person, ereignis.target.checked)}
-            label={nameVon(person, ich.userId)}
+            label={nameImDativ(person, ich.userId)}
           />
         ))}
       </fieldset>

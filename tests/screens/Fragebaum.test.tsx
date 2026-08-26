@@ -22,6 +22,7 @@ const useCase = vi.fn<() => Falldaten>()
 const speichereFragebaum = vi.fn<(pfad: string[], ersetzen?: boolean) => Promise<void>>()
 const legeFragebaumAufgabeAn = vi.fn<(vorlage: string, notizen?: string) => Promise<void>>()
 const setzeKenntnisAm = vi.fn<(wert: string | null) => Promise<void>>()
+const setzeAnfechtungKenntnisAm = vi.fn<(wert: string | null) => Promise<void>>()
 const mockFragebaum = vi.fn<() => Fragebaumergebnis | null>(() => null)
 /** Ob Bestand und `K_p` schon da sind (ERBE_DESIGN.md §6). */
 const mockGeladen = vi.fn<() => boolean>(() => true)
@@ -63,7 +64,9 @@ vi.mock('../../src/hooks/useAufgaben.ts', () => ({
     fragebaumAufgabe: () => mockVorhandene(),
     legeFragebaumAufgabeAn,
     setzeKenntnisAm,
-    fristbezug: { sterbedatum: null, kenntnisAm: null },
+    setzeAnfechtungKenntnisAm,
+    fristbezug: { sterbedatum: null, kenntnisAm: null, anfechtungKenntnisAm: null },
+    nachlass: [],
   }),
 }))
 
@@ -144,6 +147,7 @@ function zeigeMitRerender(pfadAdresse: string, zustand: { pfad: string[] }) {
 
 const ERBE_PFAD = ['n0', 'n1', 'n2', 'n3', 'n4', 'n6']
 const AUSSCHLAGUNG_PFAD = ['n0', 'n1', 'n2', 'n3', 'n4', 'n7']
+const ANFECHTUNG_PFAD = ['n0', 'n50', 'n51']
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -156,6 +160,7 @@ beforeEach(() => {
   speichereFragebaum.mockResolvedValue(undefined)
   legeFragebaumAufgabeAn.mockResolvedValue(undefined)
   setzeKenntnisAm.mockResolvedValue(undefined)
+  setzeAnfechtungKenntnisAm.mockResolvedValue(undefined)
 })
 
 describe('Einstieg und Navigation (§3)', () => {
@@ -182,13 +187,12 @@ describe('Einstieg und Navigation (§3)', () => {
     expect(screen.queryByRole('button', { name: 'Zurück' })).not.toBeInTheDocument()
   })
 
-  it('zeigt ab der zweiten Frage ein "Zurück"', async () => {
-    const nutzer = userEvent.setup()
+  it('zeigt schon auf der ersten Frage ein "Zurück"', () => {
+    // Der Screen liegt nicht im `Rahmen`: Ohne diesen Knopf käme man von der
+    // ersten Frage nur mit dem Browser wieder heraus.
     zeige('/erbe/fragebaum')
 
-    await nutzer.click(screen.getByRole('button', { name: 'Ja' }))
-
-    expect(screen.getByRole('button', { name: 'Zurück' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/erbe')
   })
 
   it('führt "Zurück" zur vorigen Frage', async () => {
@@ -196,7 +200,7 @@ describe('Einstieg und Navigation (§3)', () => {
     zeige('/erbe/fragebaum')
 
     await nutzer.click(screen.getByRole('button', { name: 'Ja' }))
-    await nutzer.click(screen.getByRole('button', { name: 'Zurück' }))
+    await nutzer.click(screen.getByRole('link', { name: 'Zurück' }))
 
     expect(screen.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeInTheDocument()
   })
@@ -213,6 +217,20 @@ describe('Einstieg und Navigation (§3)', () => {
     zeige('/erbe/fragebaum/n4', { pfad: ['n0', 'n1'] })
 
     expect(screen.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeInTheDocument()
+  })
+
+  it('schreibt bei der gesetzlichen Erbfolge das s ohne Leerzeichen direkt an den Namen des Verstorbenen', async () => {
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum')
+
+    // n0: Sind Sie Erbe? -> "Ich weiß es nicht" (n57)
+    await nutzer.click(screen.getByRole('button', { name: 'Ich weiß es nicht' }))
+    // n57: Gibt es ein Testament? -> "Nein" (n65)
+    await nutzer.click(screen.getByRole('button', { name: 'Nein' }))
+
+    expect(
+      screen.getByRole('heading', { name: 'Ich bin Hans Webers …' }),
+    ).toBeInTheDocument()
   })
 
   it('beginnt von vorn bei einem Knoten, den es nicht gibt', () => {
@@ -422,7 +440,15 @@ describe('Aufgaben aus dem Baum (§7)', () => {
 
     await nutzer.click(screen.getByRole('button', { name: 'Aufgabe erstellen' }))
 
-    expect(legeFragebaumAufgabeAn).toHaveBeenCalledWith('ausschlagung', '')
+    /*
+     * Der dritte Wert ist der gelesene Ergebnistext (§7): "Genau diese
+     * Informationen müssen in die Aufgabe mit rein."
+     */
+    expect(legeFragebaumAufgabeAn).toHaveBeenCalledWith(
+      'ausschlagung',
+      '',
+      expect.stringContaining('Sie wollen das Erbe nicht (Ausschlagung)'),
+    )
   })
 
   it('nimmt Postleitzahl und ermittelte Stelle in die Aufgabe mit (§8)', async () => {
@@ -430,23 +456,27 @@ describe('Aufgaben aus dem Baum (§7)', () => {
     zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
 
     await nutzer.click(screen.getByRole('button', { name: /Zuständige Stelle ermitteln/ }))
-    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '80331')
+    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '74199')
     await nutzer.click(screen.getByRole('button', { name: 'Gericht suchen' }))
     await nutzer.click(screen.getByRole('button', { name: 'Aufgabe erstellen' }))
 
     expect(legeFragebaumAufgabeAn).toHaveBeenCalledWith(
       'ausschlagung',
-      expect.stringContaining('80331'),
+      expect.stringContaining('Amtsgericht Heilbronn'),
+      expect.stringContaining('Sie wollen das Erbe nicht (Ausschlagung)'),
     )
   })
 
-  it('sagt, dass die Suche noch keine ist (§8)', async () => {
+  it('zeigt die Kontaktdaten des ermittelten Gerichts an (§8)', async () => {
     const nutzer = userEvent.setup()
     zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
 
     await nutzer.click(screen.getByRole('button', { name: /Zuständige Stelle ermitteln/ }))
+    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '74199')
+    await nutzer.click(screen.getByRole('button', { name: 'Gericht suchen' }))
 
-    expect(screen.getByText(/Diese Suche ist noch keine/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Amtsgericht Heilbronn' })).toBeInTheDocument()
+    expect(screen.getByText(/Knorrstr\. 1, 74074 Heilbronn/)).toBeInTheDocument()
   })
 
   it('trägt das Kenntnisdatum ein, wenn eines angegeben wurde (§8)', async () => {
@@ -457,6 +487,26 @@ describe('Aufgaben aus dem Baum (§7)', () => {
     await nutzer.click(screen.getByRole('button', { name: 'Aufgabe erstellen' }))
 
     expect(setzeKenntnisAm).toHaveBeenCalledWith('2026-05-12')
+  })
+
+  it('trägt das Anfechtungs-Kenntnisdatum in ein eigenes Feld ein (§8, D)', async () => {
+    // Ausdrücklich nicht `setzeKenntnisAm`: Die Anfechtungsfrist hängt an
+    // einem anderen Tag als die Ausschlagungsfrist nach § 1944 BGB.
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum/n51', { pfad: ANFECHTUNG_PFAD })
+
+    await nutzer.type(screen.getByLabelText(/erfahren/), '2026-05-12')
+    await nutzer.click(screen.getByRole('button', { name: 'Aufgabe erstellen' }))
+
+    expect(setzeAnfechtungKenntnisAm).toHaveBeenCalledWith('2026-05-12')
+    expect(setzeKenntnisAm).not.toHaveBeenCalled()
+  })
+
+  it('sagt an der Anfechtungsfrage, dass die Frist jetzt automatisch berechnet wird (D)', () => {
+    zeige('/erbe/fragebaum/n51', { pfad: ANFECHTUNG_PFAD })
+
+    expect(screen.getByText(/wird automatisch berechnet/)).toBeInTheDocument()
+    expect(screen.queryByText(/wird nicht ausgerechnet/)).not.toBeInTheDocument()
   })
 
   it('legt keine zweite an, sondern öffnet die vorhandene', () => {
@@ -478,9 +528,9 @@ describe('Aufgaben aus dem Baum (§7)', () => {
 describe('Infoknoten (§5)', () => {
   it('klappt die Erläuterung an Ort und Stelle auf', async () => {
     const nutzer = userEvent.setup()
-    zeige('/erbe/fragebaum/n1', { pfad: ['n0', 'n1'] })
+    zeige('/erbe/fragebaum/n59', { pfad: ['n0', 'n50', 'n57', 'n58', 'n59'] })
 
-    const knopf = screen.getByRole('button', { name: /Was ist das Nachlassgericht/ })
+    const knopf = screen.getByRole('button', { name: /Was ist ein Erbschein/ })
 
     expect(knopf).toHaveAttribute('aria-expanded', 'false')
 
@@ -488,6 +538,43 @@ describe('Infoknoten (§5)', () => {
 
     expect(knopf).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getByText(/ergänzt/)).toBeInTheDocument()
+  })
+
+  it('zeigt auf Frage n1 kein Was ist das Nachlassgericht', () => {
+    zeige('/erbe/fragebaum/n1', { pfad: ['n0', 'n1'] })
+
+    expect(screen.queryByRole('button', { name: /Was ist das Nachlassgericht/ })).not.toBeInTheDocument()
+  })
+
+  it('bietet an "Wollen Sie das Erbe haben?" den Pflichtteil-Infoknopf an (B)', async () => {
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum/n4', { pfad: ['n0', 'n1', 'n2', 'n3', 'n4'] })
+
+    const knopf = screen.getByRole('button', { name: /Was ist der Pflichtteil/ })
+
+    expect(knopf).toHaveAttribute('aria-expanded', 'false')
+
+    await nutzer.click(knopf)
+
+    expect(
+      screen.getByText('Der Pflichtteil ist ein Mindest-Betrag an Geld aus dem Erbe.'),
+    ).toBeInTheDocument()
+  })
+})
+
+describe('Hinweis bei Ausschlagung (C)', () => {
+  it('zeigt den Hinweis zur Annahme durch Verkauf, Verschenken oder Nutzung über dem Ergebnistext', () => {
+    zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
+
+    expect(
+      screen.getByText(/nimmt das Erbe automatisch an/),
+    ).toBeInTheDocument()
+  })
+
+  it('zeigt den Hinweis nicht auf einem Ergebnis ohne diesen Fall', () => {
+    zeige('/erbe/fragebaum/n6', { pfad: ERBE_PFAD })
+
+    expect(screen.queryByText(/nimmt das Erbe automatisch an/)).not.toBeInTheDocument()
   })
 })
 

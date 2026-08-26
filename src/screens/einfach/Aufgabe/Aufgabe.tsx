@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -17,6 +17,7 @@ import {
 import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import {
   NIEMAND,
+  darfAbhaken,
   darfBearbeiten,
   istFrei,
   istZugewiesen,
@@ -27,6 +28,11 @@ import {
 } from '../../../services/zuweisung.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
+import {
+  GerichtNachschlagen,
+  istGerichtStelle,
+} from '../../shared/Gericht/GerichtNachschlagen.tsx'
 import { Dokumente } from '../../shared/Dokumente/Dokumente.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
@@ -44,9 +50,6 @@ import type { InhaltZeile } from '../../../core/db/inhalte.ts'
  *   und darüber ein Satz, wer eingetragen ist. Die Namensliste mit Häkchen aus
  *   der erweiterten Ansicht verteilt Arbeit in einer Familie; wer hier sitzt,
  *   nimmt sich eine Aufgabe oder gibt sie ab.
- * - **Keine Quelle.** Die Rechtsgrundlage steht da, der Link auf die
- *   Gesetzesseite nicht: Er führt aus der App heraus in ein Dokument, das
- *   niemand ohne Vorkenntnis liest.
  * - **Unteraufgaben ohne eigene Wege.** Sie werden hier abgehakt und hier
  *   gelöscht; die erweiterte Ansicht verlinkt von jeder in ihr eigenes Detail,
  *   und das ist genau die verschachtelte Navigation, auf die §7 hier
@@ -106,12 +109,15 @@ function ZumFragebaum() {
 /**
  * Was für diese Aufgabe gilt (§8).
  *
- * Fehlt eine Angabe, steht sie nicht da. Eine leere Zeile "Rechtsgrundlage: —"
- * sähe aus wie eine Lücke im Gesetz, und ein "keine Frist" wäre eine Aussage,
+ * Fehlt eine Angabe, steht sie nicht da. Ein "keine Frist" wäre eine Aussage,
  * die der Katalog nicht trifft: Fehlt eine gesetzliche Frist, bleibt das Feld
  * leer, erfunden wird nichts.
+ *
+ * Kein Paragraph und kein Quelllink (ADR-0003): Eine Zeile "§ 1944 BGB" liest
+ * sich wie eine Rechtsberatung, und die gibt diese App nicht. Was bleibt, ist
+ * das, wonach jemand handelt — Frist, Stelle, Dokumente, Hinweis.
  */
-function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
+function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
   const katalog = aufgabe.katalog
 
   if (katalog === null) {
@@ -119,6 +125,7 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
   }
 
   const dokumente = katalog.benoetigteDokumente.filter((eintrag) => eintrag.trim() !== '')
+  const schritte = katalog.unteraufgaben.filter((eintrag) => eintrag.trim() !== '')
 
   return (
     <Abschnitt titel="Das gilt dafür">
@@ -139,12 +146,13 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
           </Angabe>
         ) : null}
 
-        {katalog.rechtsgrundlage === '' ? null : (
-          <Angabe was="Rechtsgrundlage">{katalog.rechtsgrundlage}</Angabe>
-        )}
-
         {katalog.zustaendigeStelle === '' ? null : (
-          <Angabe was="Dorthin geht es">{katalog.zustaendigeStelle}</Angabe>
+          <Angabe was="Dorthin geht es">
+            <div>
+              <span>{katalog.zustaendigeStelle}</span>
+              {istGerichtStelle(katalog.zustaendigeStelle) ? <GerichtNachschlagen /> : null}
+            </div>
+          </Angabe>
         )}
 
         {dokumente.length === 0 ? null : (
@@ -154,6 +162,21 @@ function Rechtliches({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fris
                 <li key={dokument}>{dokument}</li>
               ))}
             </ul>
+          </Angabe>
+        )}
+
+        {/*
+          Die Schritte dieser Aufgabe (§7). Als Aufzählung und nicht als eigene
+          Unteraufgaben: Die Aufgaben aus dem Fragebaum sind privat, und private
+          Aufgaben stehen immer für sich (§3.7).
+        */}
+        {schritte.length === 0 ? null : (
+          <Angabe was="Das ist zu tun">
+            <ol className={stile.punkte}>
+              {schritte.map((schritt) => (
+                <li key={schritt}>{schritt}</li>
+              ))}
+            </ol>
           </Angabe>
         )}
 
@@ -294,6 +317,7 @@ function Unteraufgabenzeile({
   }
 
   const darfAendern = darfBearbeiten(unteraufgabe.assignee, ichUserId)
+  const darfHaken = darfAbhaken(unteraufgabe.assignee, ichUserId)
 
   if (fragt) {
     return (
@@ -321,8 +345,9 @@ function Unteraufgabenzeile({
   return (
     <li className={stile.eintrag}>
       <Checkbox
+        abhaken
         checked={erledigt}
-        disabled={gesperrt || !darfAendern}
+        disabled={gesperrt || !darfHaken}
         onChange={(ereignis) => void haken(ereignis.target.checked)}
         label={unteraufgabe.titel}
       />
@@ -423,16 +448,11 @@ function Detail({
    * und nicht die Zuständigkeit selbst.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ich.userId)
+  const darfHaken = darfAbhaken(aufgabe.assignee, ich.userId)
 
   return (
     <>
       <div className={stile.kopf}>
-        {/* Der Weg zurück steht oben und als Verb: Wer sich verlaufen hat,
-            sucht ihn nicht am Ende einer langen Seite. */}
-        <p>
-          <Link to="/alle">Zurück zu allen Aufgaben</Link>
-        </p>
-
         <h1>{aufgabe.titel}</h1>
 
         {/* §3.7: Wer die Aufgabe öffnet, soll sofort sehen, wer sie sonst noch sieht. */}
@@ -467,8 +487,9 @@ function Detail({
           </p>
         ) : istBlatt ? (
           <Checkbox
+            abhaken
             checked={eigenesHaken}
-            disabled={aktionen.gesperrt || !darfAendern}
+            disabled={aktionen.gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label="Diese Aufgabe ist erledigt"
           />
@@ -486,7 +507,12 @@ function Detail({
           </p>
         )}
 
-        {darfAendern ? null : (
+        {darfAendern ? null : istFrei(aufgabe.assignee) ? (
+          <p className={stile.hinweis}>
+            Diese Aufgabe ist niemandem zugewiesen. Haken Sie sie ab, tragen Sie sich damit
+            ein. Zum Ändern übernehmen Sie sie weiter unten.
+          </p>
+        ) : (
           <p className={stile.hinweis}>
             Diese Aufgabe ist Ihnen nicht zugewiesen. Lesen können Sie alles; zum Ändern
             übernehmen Sie sie weiter unten.
@@ -501,7 +527,7 @@ function Detail({
       */}
       {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
 
-      <Rechtliches aufgabe={aufgabe} lage={lage} />
+      <Angaben aufgabe={aufgabe} lage={lage} />
 
       {/*
         §8: Nur bei den Fristen, die an der eigenen Kenntnis hängen. Bei allen
@@ -784,14 +810,9 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     return zustand.laedtNetz ? (
       <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
     ) : (
-      <>
-        <p className={stile.warnung} role="alert">
-          Diese Aufgabe gibt es nicht mehr. Gelöschtes kommt nicht zurück.
-        </p>
-        <p>
-          <Link to="/alle">Zurück zu allen Aufgaben</Link>
-        </p>
-      </>
+      <p className={stile.warnung} role="alert">
+        Diese Aufgabe gibt es nicht mehr. Gelöschtes kommt nicht zurück.
+      </p>
     )
   }
 
@@ -864,6 +885,7 @@ export function Aufgabe() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
+        <Zurueck ziel="/alle" />
         <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
@@ -876,6 +898,8 @@ export function Aufgabe() {
 
   return (
     <main className={stile.seite}>
+      <Zurueck ziel="/alle" />
+
       {zustand.status === 'fehler' ? (
         <p className={stile.warnung} role="alert">
           Ihre Aufgaben sind gerade nicht abrufbar. {zustand.nachricht}

@@ -76,3 +76,38 @@ export function kopplungsperson(rolle: Kopplungsrolle): string {
 
   return adresse
 }
+
+/**
+ * Die beiden Personen des Tresor-Specs (tests/e2e/tresor-todesfall.spec.ts).
+ *
+ * Anders als die Kopplungspersonen stehen sie nicht in `.env.test`, sondern
+ * hier: Es sind Clerks eigene Test-Adressen (`+clerk_test`), an die keine Mail
+ * geht und die keine Bestaetigung verlangen. `clerk.setup.ts` legt sie an,
+ * falls es sie noch nicht gibt (tests/e2e/clerkPersonen.ts). Damit gibt es zu
+ * diesem Spec nichts einzurichten.
+ *
+ * Elke sorgt vor und legt den Tresor an, Frank ist die Angehoerige, die ihn im
+ * Ernstfall oeffnet. Beide tragen einen Vor- und Nachnamen, weil der
+ * Bestaetigungsscreen aus §6 ihn zeigt.
+ */
+export type Tresorrolle = 'vorsorgend' | 'angehoerig'
+
+export const TRESORPERSONEN: Record<
+  Tresorrolle,
+  { adresse: string; vorname: string; nachname: string }
+> = {
+  vorsorgend: {
+    adresse: 'lnd-tresor-e+clerk_test@example.com',
+    vorname: 'Elke',
+    nachname: 'Fischer',
+  },
+  angehoerig: {
+    adresse: 'lnd-tresor-f+clerk_test@example.com',
+    vorname: 'Frank',
+    nachname: 'Gruber',
+  },
+}
+
+export function tresorperson(rolle: Tresorrolle): string {
+  return TRESORPERSONEN[rolle].adresse
+}

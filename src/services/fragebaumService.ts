@@ -20,7 +20,9 @@ import type {
   Fragebaumknoten,
   Infothema,
 } from '../types/fragebaum.ts'
+import type { Nachlassgericht } from '../types/gericht.ts'
 import type { Fragebaumergebnis, Katalogherkunft } from './aufgabenService'
+import { formatGerichtNotiz } from './gerichtService.ts'
 
 const KNOTEN = new Map(FRAGEBAUM.map((knoten) => [knoten.id, knoten]))
 
@@ -100,8 +102,18 @@ export function ergebnisAus(pfad: string[], jetzt: Date = new Date()): Fragebaum
  * genau so — §8: "Erfunden wird nichts." Ein plausibel klingender Absatz über
  * den Erbschein wäre hier das Schlimmste von allem, weil er aussaehe wie
  * geprüft.
+ *
+ * `pflichtteil` ist die Ausnahme: Der Text dazu liegt vor, wörtlich von den
+ * Juristinnen, und steht deshalb fest da statt hinter dem Platzhalter.
  */
 export function infoText(thema: Infothema): { frage: string; text: string } {
+  if (thema === 'pflichtteil') {
+    return {
+      frage: 'Was ist der Pflichtteil?',
+      text: 'Der Pflichtteil ist ein Mindest-Betrag an Geld aus dem Erbe.',
+    }
+  }
+
   const frage =
     thema === 'erbschein' ? 'Was ist ein Erbschein?' : 'Was ist das Nachlassgericht?'
   const gegenstand =
@@ -130,12 +142,11 @@ export type Aufgabenbauplan = {
  * und die Ausschlagungsfrist ist die eine, deren Versaeumnis den ganzen
  * Nachlass kostet.
  *
- * Die Anfechtung trägt bewusst *keine* rechenbare Frist. Ihr Jahr läuft ab
- * der Kenntnis des Anfechtungsgrundes, und das ist ein anderer Tag als das
- * `kenntnisAm` aus § 1944 BGB. Beides auf dasselbe Feld zu legen ergäbe ein
- * Fristende, das plausibel aussieht und falsch ist; §8 rechnet lieber gar
- * nicht. Die Jahresfrist steht deshalb im Hinweis, wo sie zu lesen und nicht
- * zu verwechseln ist.
+ * Die Anfechtung trägt eine eigene rechenbare Frist: ein Jahr ab der Kenntnis
+ * des Anfechtungsgrundes. Dieser Tag ist ausdrücklich nicht das `kenntnisAm`
+ * aus § 1944 BGB — beides auf dasselbe Feld zu legen ergäbe ein Fristende,
+ * das plausibel aussieht und falsch ist —, sondern ein eigener Anker,
+ * `anfechtungskenntnis`, mit einem eigenen Datum in `Fristbezug` (`fristen.ts`).
  */
 export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
   testament: {
@@ -147,14 +158,17 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
       version: FRAGEBAUM_STAND,
       fristTage: null,
       fristAb: null,
-      rechtsgrundlage: '§ 2259 BGB',
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
       benoetigteDokumente: ['Testament', 'Sterbeurkunde'],
-      unteraufgaben: [],
+      unteraufgaben: [
+        'Zuständiges Nachlassgericht über die Postleitzahl des letzten Wohnorts ermitteln',
+        'Testament im Original heraussuchen',
+        'Sterbeurkunde bereitlegen',
+        'Testament unverzüglich beim Nachlassgericht abgeben',
+      ],
       haengtAbVon: [],
       hinweis:
         'Das Gesetz verlangt die Ablieferung unverzüglich, nennt aber keine Zahl von Tagen. Unverzüglich heißt: ohne schuldhaftes Zögern.',
-      quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__2259.html',
       kategorie: 'Erbe',
       reihenfolge: 40,
     },
@@ -168,14 +182,18 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
       version: FRAGEBAUM_STAND,
       fristTage: 42,
       fristAb: 'kenntnis',
-      rechtsgrundlage: '§ 1944 BGB',
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
       benoetigteDokumente: ['Sterbeurkunde', 'Personalausweis'],
-      unteraufgaben: [],
+      unteraufgaben: [
+        'Datum eintragen, an dem das Nachlassgericht Sie über die Erbschaft informiert hat — damit beginnt die Frist von sechs Wochen',
+        'Entscheiden: über ein Notariat oder persönlich beim Nachlassgericht',
+        'Telefonisch einen Termin vereinbaren',
+        'Sterbeurkunde und Personalausweis mitnehmen',
+        'Ausschlagung innerhalb der Frist erklären',
+      ],
       haengtAbVon: [],
       hinweis:
         'Sechs Wochen ab Ihrer Kenntnis von Anfall und Berufungsgrund, nicht ab dem Sterbetag. Beim Notariat bekommen Sie schneller einen Termin, beim Nachlassgericht fallen keine zusätzlichen Kosten an.',
-      quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__1944.html',
       kategorie: 'Erbe',
       reihenfolge: 50,
     },
@@ -199,14 +217,17 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
       version: FRAGEBAUM_STAND,
       fristTage: null,
       fristAb: null,
-      rechtsgrundlage: '§ 2353 BGB',
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
       benoetigteDokumente: [],
-      unteraufgaben: [],
+      unteraufgaben: [
+        'Prüfen, ob ein Erbschein überhaupt nötig ist — bei einem Erbvertrag oder einem notariell beurkundeten Testament ist er es nicht',
+        'Entscheiden: über ein Notariat oder beim Nachlassgericht',
+        'Anrufen oder online einen Termin vereinbaren',
+        'Erbschein beantragen',
+      ],
       haengtAbVon: [],
       hinweis:
         'Der Erbschein kostet Geld; der Betrag hängt vom Nachlass ab. Beim Notariat bekommen Sie schneller einen Termin, beim Nachlassgericht fallen keine zusätzlichen Kosten an.',
-      quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__2353.html',
       kategorie: 'Erbe',
       reihenfolge: 55,
     },
@@ -218,20 +239,52 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
     katalog: {
       aufgabeId: 'fragebaum-anfechtung',
       version: FRAGEBAUM_STAND,
-      fristTage: null,
-      fristAb: null,
-      rechtsgrundlage: '§ 2082 BGB',
+      fristTage: 365,
+      fristAb: 'anfechtungskenntnis',
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
       benoetigteDokumente: ['Sterbeurkunde', 'Testament'],
-      unteraufgaben: [],
+      unteraufgaben: [
+        'Datum eintragen, an dem Sie vom Anfechtungsgrund erfahren haben — damit beginnt die Frist von einem Jahr',
+        'Den Anfechtungsgrund festhalten (siehe Schritt 3 der Informationen)',
+        'Entscheiden: schriftlicher Antrag oder persönlich beim Nachlassgericht',
+        'Bei persönlichem Erscheinen vorher einen Termin vereinbaren',
+        'Anfechtung innerhalb der Frist beim Nachlassgericht erklären',
+      ],
       haengtAbVon: [],
       hinweis:
-        'Die Frist beträgt ein Jahr ab dem Tag, an dem Sie vom Anfechtungsgrund erfahren haben. Sie wird hier nicht ausgerechnet: Dieser Tag ist ein anderer als Ihre Kenntnis von Anfall und Berufungsgrund, und aus dem falschen Tag entstünde ein falsches Fristende.',
-      quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__2082.html',
+        'Die Frist beträgt ein Jahr ab dem Tag, an dem Sie vom Anfechtungsgrund erfahren haben, und wird ab dem eingetragenen Datum automatisch berechnet. Dieser Tag ist ein anderer als Ihre Kenntnis von Anfall und Berufungsgrund für die Ausschlagungsfrist.',
       kategorie: 'Erbe',
       reihenfolge: 45,
     },
   },
+}
+
+/**
+ * Die Beschreibung der Aufgabe, die an einem Ergebnis entsteht (ERBE_DESIGN.md
+ * §7).
+ *
+ * Sie ist genau das, was unmittelbar über „Aufgabe erstellen“ stand, gefolgt
+ * von der Einordnung aus dem Bauplan. Wer den Knopf drückt, hat den Text eine
+ * Sekunde vorher gelesen und soll ihn in der Aufgabe wiederfinden, ohne den Weg
+ * durch den Baum noch einmal zu gehen — dieselbe Überlegung, aus der die
+ * Erbschein-Aufgabe ihren ganzen Erklärtext trägt (§10).
+ *
+ * Der Ergebnistext kommt als Parameter und nicht aus dem Bauplan: Zehn Knoten
+ * zeigen heute denselben Ausschlagungstext und dürfen ihn morgen
+ * unterschiedlich zeigen (ADR-0002). Was in der Aufgabe landet, ist deshalb der
+ * Text des Knotens, an dem jemand tatsächlich stand.
+ *
+ * @param ergebnisText der Text des Ergebnisknotens, `{person}` bereits ersetzt.
+ */
+export function aufgabenBeschreibung(vorlage: Aufgabenvorlage, ergebnisText = ''): string {
+  const bauplan = BAUPLAENE[vorlage]
+  const gelesen = ergebnisText.trim()
+
+  if (gelesen === '' || gelesen === bauplan.beschreibung.trim()) {
+    return bauplan.beschreibung
+  }
+
+  return `${gelesen}\n\n${bauplan.beschreibung}`
 }
 
 /** Ob diese Herkunft von der genannten Vorlage aus dem Baum stammt. */
@@ -250,13 +303,21 @@ export function istSeedAufgabe(katalog: Katalogherkunft | null): boolean {
 /**
  * Die Notiz, die eine ermittelte Stelle oder ein Anfechtungsdatum festhaelt.
  *
- * Sie wandert in `notizen` der erzeugten Aufgabe, damit eine Eingabe nicht
- * verloren ist, die heute noch nirgends sonst hinkann (ERBE_DESIGN.md §8).
+ * Sie wandert in `notizen` der erzeugten Aufgabe, damit die ermittelten
+ * Kontaktdaten des Nachlassgerichts und das Anfechtungsdatum direkt an der
+ * Aufgabe stehen (ERBE_DESIGN.md §8).
  */
-export function notizAus(teile: { plz?: string; stelle?: string; anfechtungAm?: string }): string {
+export function notizAus(teile: {
+  plz?: string
+  stelle?: string
+  gericht?: Nachlassgericht | null
+  anfechtungAm?: string
+}): string {
   const zeilen: string[] = []
 
-  if (teile.plz !== undefined && teile.plz !== '') {
+  if (teile.gericht && teile.plz) {
+    zeilen.push(formatGerichtNotiz(teile.gericht, teile.plz))
+  } else if (teile.plz !== undefined && teile.plz !== '') {
     zeilen.push(
       teile.stelle === undefined || teile.stelle === ''
         ? `Letzter Wohnort (PLZ): ${teile.plz}`
@@ -265,6 +326,9 @@ export function notizAus(teile: { plz?: string; stelle?: string; anfechtungAm?: 
   }
 
   if (teile.anfechtungAm !== undefined && teile.anfechtungAm !== '') {
+    if (zeilen.length > 0) {
+      zeilen.push('')
+    }
     zeilen.push(`Vom Anfechtungsgrund erfahren am: ${teile.anfechtungAm}`)
     zeilen.push('Die Frist beträgt ein Jahr ab diesem Tag.')
   }

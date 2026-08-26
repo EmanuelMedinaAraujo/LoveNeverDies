@@ -45,6 +45,55 @@ export function tuerklingel(
   fallId: string,
   laeute: () => void,
 ): () => void {
+  return klingel(client, laeute, {
+    kanal: `fall:${fallId}`,
+    // Nur `UPDATE`: Die `cases`-Zeile entsteht, bevor dieses Gerät sie
+    // abonniert, und gelöscht wird sie in diesem Stand nirgends.
+    ereignis: 'UPDATE',
+    tabelle: 'cases',
+    filter: `id=eq.${fallId}`,
+  })
+}
+
+/**
+ * Dieselbe Klingel für die Freigaben eines Vorsorgefalls (§3.5).
+ *
+ * Eine zweite, weil `vault_releases` neben `items` steht und **nicht** am
+ * Delta-Sync hängt: Eine Freigabe hebt `cases.version` nicht, die Türklingel
+ * schweigt also. Wer im Tab Erbe auf den Zähler schaut, während eine andere
+ * Person auf ihrem Telefon bestätigt, sähe ohne das hier gar nichts — bis er
+ * den Tab verlässt und zurückkommt. Genau in dem Moment wartet aber jemand
+ * darauf, dass es weitergeht.
+ *
+ * `INSERT` und `UPDATE`: Eine Freigabe ist ersetzbar (§3.5, ein unbrauchbarer
+ * Anteil), und die zweite Fassung kommt als `UPDATE` herein.
+ */
+export function freigabeklingel(
+  client: SupabaseClient,
+  fallId: string,
+  laeute: () => void,
+): () => void {
+  return klingel(client, laeute, {
+    kanal: `freigaben:${fallId}`,
+    ereignis: '*',
+    tabelle: 'vault_releases',
+    filter: `case_id=eq.${fallId}`,
+  })
+}
+
+/** Worauf eine Klingel hört. */
+type Horchposten = {
+  kanal: string
+  ereignis: '*' | 'INSERT' | 'UPDATE'
+  tabelle: string
+  filter: string
+}
+
+function klingel(
+  client: SupabaseClient,
+  laeute: () => void,
+  posten: Horchposten,
+): () => void {
   let abgeraeumt = false
   let takt: ReturnType<typeof setInterval> | null = null
 
@@ -77,12 +126,15 @@ export function tuerklingel(
 
   try {
     kanal = client
-      .channel(`fall:${fallId}`)
+      .channel(posten.kanal)
       .on(
-        // Nur `UPDATE`: Die `cases`-Zeile entsteht, bevor dieses Gerät sie
-        // abonniert, und gelöscht wird sie in diesem Stand nirgends.
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'cases', filter: `id=eq.${fallId}` },
+        {
+          event: posten.ereignis,
+          schema: 'public',
+          table: posten.tabelle,
+          filter: posten.filter,
+        },
         melde,
       )
       .subscribe((status) => {

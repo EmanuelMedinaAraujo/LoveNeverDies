@@ -41,13 +41,11 @@ function mitFrist(tage: number, ueberschreibung: Partial<Aufgabe> = {}): Aufgabe
     version: '2026-08+testtest',
     fristTage: tage,
     fristAb: 'sterbedatum',
-    rechtsgrundlage: '§ 28 PStG',
     zustaendigeStelle: '',
     benoetigteDokumente: [],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: '',
-    quelleUrl: '',
     kategorie: '',
     reihenfolge: 10,
   }
@@ -72,7 +70,7 @@ function morgens(iso: string, stunde = 6): Date {
 }
 
 function plan(aufgaben: Aufgabe[], jetzt: Date, kenntnisAm: string | null = null) {
-  return planeErinnerungen(baueBaum(aufgaben), { sterbedatum: STERBEDATUM, kenntnisAm }, jetzt)
+  return planeErinnerungen(baueBaum(aufgaben), { sterbedatum: STERBEDATUM, kenntnisAm, anfechtungKenntnisAm: null }, jetzt)
 }
 
 describe('planeErinnerungen (§7)', () => {
@@ -193,7 +191,7 @@ describe('planeErinnerungen (§7)', () => {
     expect(
       planeErinnerungen(
         baueBaum([mitFrist(10)]),
-        { sterbedatum: null, kenntnisAm: null },
+        { sterbedatum: null, kenntnisAm: null, anfechtungKenntnisAm: null },
         morgens('2026-05-12'),
       ),
     ).toEqual([])

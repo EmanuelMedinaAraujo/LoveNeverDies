@@ -74,7 +74,8 @@ function server() {
         ...neu,
         seq: version,
         geloescht: false,
-        imTresor: false,
+        // Wie in `supabaseInhalte`: Was nichts sagt, liegt nicht im Tresor.
+        imTresor: neu.imTresor ?? false,
         geaendertAm: new Date(version).toISOString(),
       })
       return Promise.resolve()
@@ -801,5 +802,108 @@ describe('Zuweisung (§7)', () => {
     const { aufgaben } = await lies(inhalte, k)
 
     expect(aufgaben[0]?.assignee).toEqual(NIEMAND)
+  })
+})
+
+/**
+ * Die Eintraege aus dem geoeffneten Nachlass-Tresor (DESIGN.md §3.5).
+ *
+ * Beim Oeffnen wechseln ihre DEKs von `K_v` auf `K_c` und `in_vault` faellt auf
+ * `false`: Danach sind es gewoehnliche Zeilen, die jedes Mitglied lesen kann.
+ * Was sie unterscheidet, ist ihr Payload -- und nur daran haengt es, dass eine
+ * Notiz "Zugang Sparkasse" nicht als Aufgabe in "Alle" landet.
+ */
+describe('Nachlass-Tresor nach dem Oeffnen (§3.5)', () => {
+  /** Eine Zeile, wie sie nach `open_vault` dasteht: `typ: 'tresor'` unter `K_c`. */
+  async function legeTresorzeile(
+    inhalte: InhalteTabelle,
+    k: Fallschluessel,
+    id: string,
+    titel: string,
+    inhalt: string,
+  ): Promise<void> {
+    const dek = erzeugeDek()
+
+    await inhalte.lege({
+      id,
+      fallId: k.id,
+      art: 'item',
+      kid: k.kid,
+      wrappedDek: await wrappeDek(k.kc, dek),
+      payload: await verschluessele(dek, textBytes(JSON.stringify({ typ: 'tresor', titel, inhalt }))),
+    })
+  }
+
+  it('haelt sie aus der Aufgabenliste heraus', async () => {
+    /*
+     * Vorher kamen sie als Aufgabe durch: Geprueft wurde nur, ob ein `titel`
+     * dasteht, und ein Tresor-Payload hat einen. Die Notiz stuende dann in
+     * "Alle" zwischen den Aufgaben, mit Haekchen und mit "Loeschen".
+     */
+    const { inhalte } = server()
+    const k = fall()
+
+    await legeAn(inhalte, k, 'Konten kündigen')
+    await legeTresorzeile(inhalte, k, 'tresor-1', 'Zugang Sparkasse', 'Kennwort im Umschlag')
+
+    const { aufgaben, nachlass } = await lies(inhalte, k)
+
+    expect(aufgaben.map((aufgabe) => aufgabe.titel)).toEqual(['Konten kündigen'])
+    expect(nachlass).toEqual([
+      expect.objectContaining({
+        id: 'tresor-1',
+        titel: 'Zugang Sparkasse',
+        inhalt: 'Kennwort im Umschlag',
+      }),
+    ])
+  })
+
+  it('zaehlt sie nicht als uebersprungene Zeile', async () => {
+    // Sie sind lesbar und in Ordnung. Im Zaehler aus §3.7 waeren sie ein
+    // Defekt, den es nicht gibt.
+    const { inhalte } = server()
+    const k = fall()
+
+    await legeTresorzeile(inhalte, k, 'tresor-1', 'Brief an Anna', 'Liebe Anna …')
+
+    expect((await lies(inhalte, k)).uebersprungeneIds).toEqual([])
+  })
+
+  it('gibt sie in der Reihenfolge zurueck, in der sie hineingelegt wurden', async () => {
+    // UUIDv7 (§5): Die kleinere Id ist die aeltere. Der Nachlass wird von oben
+    // nach unten gelesen, und oben soll stehen, was zuerst dalag.
+    const { inhalte } = server()
+    const k = fall()
+
+    await legeTresorzeile(inhalte, k, '0192-b', 'Zweitens', '')
+    await legeTresorzeile(inhalte, k, '0192-a', 'Zuerst', '')
+
+    const { nachlass } = await lies(inhalte, k)
+
+    expect(nachlass.map((eintrag) => eintrag.titel)).toEqual(['Zuerst', 'Zweitens'])
+  })
+
+  it('laesst sie im Vorsorgefall unangetastet, wo sie unter K_v liegen', async () => {
+    // Dort tragen sie `in_vault = true` und werden vor jedem Entschluesselungs-
+    // versuch aussortiert: Ihr DEK liegt unter einem Schluessel, den dieser
+    // Dienst nicht kennt.
+    const { inhalte } = server()
+    const k = fall()
+    const kv = erzeugeAesSchluessel()
+
+    await inhalte.lege({
+      id: 'versiegelt',
+      fallId: k.id,
+      art: 'item',
+      kid: `vault_${k.id}`,
+      imTresor: true,
+      wrappedDek: await wrappeDek(kv, erzeugeDek()),
+      payload: await verschluessele(kv, textBytes('{"typ":"tresor","titel":"Geheim","inhalt":""}')),
+    })
+
+    const { nachlass, uebersprungeneIds } = await lies(inhalte, k)
+
+    expect(nachlass).toEqual([])
+    expect(uebersprungeneIds).toEqual([])
   })
 })
