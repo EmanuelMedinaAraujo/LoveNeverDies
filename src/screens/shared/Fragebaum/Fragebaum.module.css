@@ -65,6 +65,18 @@
   color: var(--farbe-akzent);
 }
 
+.rot {
+  color: var(--farbe-frist-abgelaufen-text, #8a1c13);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.ausschlagungshinweis {
+  color: var(--farbe-text);
+  font-size: var(--dichte-schrift-klein);
+  line-height: var(--typo-zeile-text);
+  margin: 0;
+}
+
 .text {
   margin: 0;
   white-space: pre-wrap;

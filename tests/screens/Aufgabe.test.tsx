@@ -281,6 +281,153 @@ describe('Aufgabendetail (§7, §8)', () => {
     expect(screen.getByLabelText('Postleitzahl für Gerichtssuche')).toBeVisible()
   })
 
+  it('zeigt bei der Erbschein-Aufgabe die neuen Verfahrensinformationen und einklappbare Hintergrundinfos', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({
+              titel: BAUPLAENE.erbschein.titel,
+              beschreibung: BAUPLAENE.erbschein.beschreibung,
+              katalog: BAUPLAENE.erbschein.katalog,
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    // Neue Verfahrensinformationen in "Das gilt dafür"
+    expect(screen.getByText('Wie beantragen Sie einen Erbschein?')).toBeVisible()
+    expect(screen.getByText('Beim Notar oder beim Nachlassgericht')).toBeVisible()
+    expect(
+      screen.getByText(
+        'Anrufen oder online Termin vereinbaren - die Stellen erklären Ihnen die weiteren Schritte',
+      ),
+    ).toBeVisible()
+    expect(screen.getByText('Notar oder Nachlassgericht:')).toBeVisible()
+    expect(
+      screen.getByText(/Sie erhalten schneller und innerhalb der Frist einen Termin/),
+    ).toBeVisible()
+    expect(screen.getByText(/Ihnen fallen keine zusätzlichen Kosten an/)).toBeVisible()
+
+    // Einklappbare Abschnitte für die anderen Informationen
+    expect(screen.getByText('1. Was ist ein Erbschein?')).toBeVisible()
+    expect(screen.getByText('2. Wofür wird er gebraucht?')).toBeVisible()
+    expect(screen.getByText('3. Nicht nötig wenn:')).toBeVisible()
+    expect(screen.getByText('4. Kosten')).toBeVisible()
+
+    // Alte Checkliste / Schritte sind gelöscht
+    expect(screen.queryByText(/Prüfen, ob ein Erbschein überhaupt nötig ist/)).toBeNull()
+  })
+
+  it('zeigt bei der Testamentsanfechtung-Aufgabe die neuen Verfahrensinformationen und einklappbaren Hintergrundtexte', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({
+              titel: BAUPLAENE.anfechtung.titel,
+              beschreibung: BAUPLAENE.anfechtung.beschreibung,
+              katalog: BAUPLAENE.anfechtung.katalog,
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    // Einklappbare Abschnitte für Testamentsanfechtung (1 bis 6, ohne "Wie fechte ich...")
+    expect(screen.getByText('1. Was ist das?')).toBeVisible()
+    expect(screen.getByText('2. Wer darf anfechten?')).toBeVisible()
+    expect(screen.getByText('3. Welche Gründe rechtfertigen eine Anfechtung?')).toBeVisible()
+    expect(screen.getByText('4. Folge der Anfechtung')).toBeVisible()
+    expect(screen.getByText('5. Frist')).toBeVisible()
+    expect(screen.getByText('6. Kosten')).toBeVisible()
+    expect(screen.queryByText('5. Wie fechte ich ein Testament an?')).toBeNull()
+
+    // Zuständige Stelle Card (ersetzt "Das gilt dafür" und enthält den Verfahrenstext)
+    expect(screen.getByRole('heading', { name: 'Zuständige Stelle' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
+
+    expect(screen.getByText('Wie fechte ich ein Testament an?')).toBeVisible()
+    expect(screen.getByText('Es gibt zwei Möglichkeiten:')).toBeVisible()
+    expect(screen.getByText('schriftlicher Antrag an das Nachlassgericht')).toBeInTheDocument()
+    expect(screen.getByText('persönlich beim Nachlassgericht')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /Hinweis: Bei persönlichem Erscheinen vereinbaren Sie vorher einen Termin beim Nachlassgericht./,
+      ),
+    ).toBeInTheDocument()
+
+    // Alte Dokumenten- / Schritt-Texte sind gelöscht
+    expect(
+      screen.queryByText(/Datum eintragen, an dem Sie vom Anfechtungsgrund erfahren haben/),
+    ).toBeNull()
+  })
+
+  it('zeigt bei der Ausschlagungs-Aufgabe die neuen einheitlichen Schritte und einklappbaren Abschnitte', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({
+              titel: BAUPLAENE.ausschlagung.titel,
+              beschreibung: BAUPLAENE.ausschlagung.beschreibung,
+              katalog: BAUPLAENE.ausschlagung.katalog,
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    // Einklappbare Abschnitte
+    expect(screen.getByText('1. Frist')).toBeVisible()
+    expect(screen.getByText('2. Wie können Sie das Erbe ablehnen?')).toBeVisible()
+    expect(
+      screen.getByText(/Gibt es ein Testament, läuft die Frist erst los/),
+    ).toBeInTheDocument()
+
+    expect(screen.getByText('Termin bei einem Notar vereinbaren')).toBeInTheDocument()
+    expect(screen.getByText('Antrag auf Ausschlagung stellen')).toBeInTheDocument()
+    expect(
+      screen.getByText('Notar beurkundet den Antrag und schickt ihn an das Nachlassgericht'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('telefonisch Termin beim Nachlassgericht vereinbaren'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('persönlich beim Nachlassgericht erscheinen')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Beim Notar erhalten Sie schneller und sicher innerhalb der Frist einen Termin/),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/Beim Nachlassgericht fallen Ihnen keine zusätzlichen Kosten an/)).toBeInTheDocument()
+
+    // Zuständige Stelle als Titel der Card, kein "Das gilt dafür"
+    expect(screen.getByRole('heading', { name: 'Zuständige Stelle' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
+
+    // Hinweis mit rotem und fettem "Hinweis:"
+    const hinweisLabel = screen.getByText('Hinweis:')
+    expect(hinweisLabel.tagName).toBe('STRONG')
+    expect(hinweisLabel).toHaveClass(/rot/)
+
+    // Alte Dokumenten- / Schritt-Texte sind gelöscht
+    expect(screen.queryByText('Sterbeurkunde und Personalausweis mitnehmen')).toBeNull()
+  })
+
   it('zeigt zu einer selbst angelegten Aufgabe keine erfundenen Rechtsangaben', () => {
     useAufgaben.mockReturnValue(
       aufgabendaten({

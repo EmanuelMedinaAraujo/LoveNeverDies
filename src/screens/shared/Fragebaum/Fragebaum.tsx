@@ -99,7 +99,7 @@ function Klapp({
  * und Listen mit, die in diesen Texten nichts zu suchen haben.
  */
 function mitFett(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|\[gruen:[^\]]+\])/g).map((teil, nummer) => {
+  return text.split(/(\*\*[^*]+\*\*|\[gruen:[^\]]+\]|\[rot:[^\]]+\])/g).map((teil, nummer) => {
     if (teil.startsWith('**') && teil.endsWith('**')) {
       return <strong key={nummer}>{mitFett(teil.slice(2, -2))}</strong>
     }
@@ -110,13 +110,23 @@ function mitFett(text: string): ReactNode[] {
         </span>
       )
     }
+    if (teil.startsWith('[rot:') && teil.endsWith(']')) {
+      return (
+        <span key={nummer} className={stile.rot}>
+          {mitFett(teil.slice(5, -1))}
+        </span>
+      )
+    }
     return teil
   })
 }
 
 /** Derselbe Text ohne die Formatierungs-Tags: fuer die Ueberschrift, die schon fett ist. */
 function ohneFett(text: string): string {
-  return text.replaceAll('**', '').replaceAll(/\[gruen:([^\]]+)\]/g, '$1')
+  return text
+    .replaceAll('**', '')
+    .replaceAll(/\[gruen:([^\]]+)\]/g, '$1')
+    .replaceAll(/\[rot:([^\]]+)\]/g, '$1')
 }
 
 /**
@@ -646,8 +656,8 @@ function Ergebnisseite({
       </div>
 
       {knoten.ausschlagungshinweis !== true ? null : (
-        <p className={stile.warnung}>
-          Hinweis: Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das
+        <p className={stile.ausschlagungshinweis}>
+          <strong className={stile.rot}>Hinweis:</strong> Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das
           Erbe automatisch an. Danach kann das Erbe nicht mehr abgelehnt werden.
         </p>
       )}

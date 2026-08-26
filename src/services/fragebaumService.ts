@@ -12,7 +12,7 @@
  * Juristinnen (DESIGN.md §8).
  */
 
-import { ERBSCHEIN, ERBSCHEIN_ANTRAG, alsText } from '../content/erbstatus.ts'
+import { ERBSCHEIN, alsText } from '../content/erbstatus.ts'
 import { FRAGEBAUM, WURZEL } from '../content/fragebaum.ts'
 import type {
   Aufgabenvorlage,
@@ -178,7 +178,7 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
     titel: 'Erbe ausschlagen',
     beschreibung: `Sie wollen das Erbe nicht (Ausschlagung)
 
-Hinweis: Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das Erbe automatisch an. Danach kann das Erbe nicht mehr abgelehnt werden.
+[rot:Hinweis:] Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das Erbe automatisch an. Danach kann das Erbe nicht mehr abgelehnt werden.
 
 **Folgende Schritte sind jetzt für Sie relevant:**
 
@@ -186,47 +186,43 @@ Hinweis: Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimm
 Die Frist beträgt 6 Wochen.
 Fristbeginn:
 [gruen:Normalfall (gesetzliche Erbfolge):] Die Frist läuft ab dem Moment, in dem Sie erfahren, dass die Person gestorben ist und Sie gesetzlich erben.
-
 [gruen:Testament oder Erbvertrag:] Gibt es ein Testament, läuft die Frist erst los, wenn das Nachlassgericht Ihnen dieses Testament offiziell eröffnet und mitgeteilt hat – selbst wenn Sie vorher schon von dem Dokument wissen.
 
 **2. Wie können Sie das Erbe ablehnen?**
+Sie haben dafür zwei Möglichkeiten:
 [gruen:1. Über ein Notariat:]
 • Termin bei einem Notar vereinbaren
-• persönlich beim Notariat erscheinen
+• Antrag auf Ausschlagung stellen
+• Notar beurkundet den Antrag und schickt ihn an das Nachlassgericht
 
 [gruen:2. Persönlich beim Gericht:]
 • telefonisch Termin beim Nachlassgericht vereinbaren
 • persönlich beim Nachlassgericht erscheinen
 
 **Notar oder Nachlassgericht:**
-• Notar: Sie erhalten schneller und sicher innerhalb der Frist einen Termin
-• Nachlassgericht: Ihnen fallen keine zusätzlichen Kosten an`,
+• Beim Notar erhalten Sie schneller und sicher innerhalb der Frist einen Termin
+• Beim Nachlassgericht fallen Ihnen keine zusätzlichen Kosten an`,
     katalog: {
       aufgabeId: 'fragebaum-ausschlagung',
       version: FRAGEBAUM_STAND,
       fristTage: 42,
       fristAb: 'kenntnis',
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
-      benoetigteDokumente: ['Sterbeurkunde', 'Personalausweis'],
-      unteraufgaben: [
-        'Datum eintragen, an dem Sie von Tod und gesetzlicher Erbfolge bzw. Testamentseröffnung erfahren haben — damit beginnt die Frist von 6 Wochen',
-        'Entscheiden: über ein Notariat oder persönlich beim Nachlassgericht',
-        'Termin beim Notar vereinbaren oder telefonisch einen Termin beim Nachlassgericht vereinbaren',
-        'Sterbeurkunde und Personalausweis mitnehmen',
-        'Ausschlagung persönlich innerhalb der Frist von 6 Wochen erklären',
-      ],
+      benoetigteDokumente: [],
+      unteraufgaben: [],
       haengtAbVon: [],
-      hinweis:
-        'Die Frist beträgt 6 Wochen. Fristbeginn: Normalfall (gesetzliche Erbfolge): Die Frist läuft ab dem Moment, in dem Sie erfahren, dass die Person gestorben ist und Sie gesetzlich erben. Testament oder Erbvertrag: Die Frist läuft erst los, wenn das Nachlassgericht Ihnen dieses Testament offiziell eröffnet und mitgeteilt hat. Notar oder Nachlassgericht: Beim Notar erhalten Sie schneller und sicher innerhalb der Frist einen Termin, beim Nachlassgericht fallen Ihnen keine zusätzlichen Kosten an.',
+      hinweis: '',
       kategorie: 'Erbe',
       reihenfolge: 50,
     },
   },
   /*
    * Der Erbschein hängt an keinem Ergebnisknoten, sondern am Status "Erbe"
-   * auf der Erbe-Seite (§10). Seine Beschreibung ist der ganze Erklärtext:
-   * Wer "Ja" getippt hat, hat ihn eine Sekunde vorher gelesen und soll ihn in
-   * der Aufgabe wiederfinden, ohne den Weg dorthin noch einmal zu gehen.
+   * auf der Erbe-Seite (§10). Seine Beschreibung ist der allgemeine Erklärtext,
+   * der in der Aufgabe einklappbar dargestellt wird.
+   *
+   * Die Verfahrensschritte (Notar vs. Nachlassgericht) stehen genau einmal im
+   * Aufgabenabschnitt.
    *
    * Ohne rechenbare Frist. Das Gesetz nennt für den Antrag keine, und §8
    * rechnet lieber gar nicht als falsch — eine erfundene Frist auf einer
@@ -235,7 +231,7 @@ Fristbeginn:
    */
   erbschein: {
     titel: 'Erbschein beantragen',
-    beschreibung: alsText(ERBSCHEIN, ERBSCHEIN_ANTRAG),
+    beschreibung: alsText(ERBSCHEIN),
     katalog: {
       aufgabeId: 'fragebaum-erbschein',
       version: FRAGEBAUM_STAND,
@@ -243,43 +239,58 @@ Fristbeginn:
       fristAb: null,
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
       benoetigteDokumente: [],
-      unteraufgaben: [
-        'Prüfen, ob ein Erbschein überhaupt nötig ist — bei einem Erbvertrag oder einem notariell beurkundeten Testament ist er es nicht',
-        'Entscheiden: über ein Notariat oder beim Nachlassgericht',
-        'Anrufen oder online einen Termin vereinbaren',
-        'Erbschein beantragen',
-      ],
+      unteraufgaben: [],
       haengtAbVon: [],
-      hinweis:
-        'Der Erbschein kostet Geld; der Betrag hängt vom Nachlass ab. Beim Notariat bekommen Sie schneller einen Termin, beim Nachlassgericht fallen keine zusätzlichen Kosten an.',
+      hinweis: '',
       kategorie: 'Erbe',
       reihenfolge: 55,
     },
   },
   anfechtung: {
-    titel: 'Erbschaftsannahme anfechten',
-    beschreibung:
-      'Sie können die Annahme der Erbschaft anfechten, wenn Sie sich über wesentliche Eigenschaften des Nachlasses (wie eine Überschuldung) geirrt haben. Die Anfechtung muss gegenüber dem Nachlassgericht erklärt werden — zur Niederschrift oder in öffentlich beglaubigter Form über ein Notariat.',
+    titel: 'Testament anfechten',
+    beschreibung: `Informationen zur Testamentsanfechtung
+
+1. **Was ist das?**
+Eine Testamentsanfechtung bedeutet, dass ein Testament nachträglich für ungültig erklärt wird, weil beim Verfassen etwas grundlegend schiefgelaufen ist.
+
+2. **Wer darf anfechten?**
+Pflichtteilsberechtigte: Kind, Ehegatte, Elternteil
+• Elternteile dürfen nur anfechten, wenn die Abkömmlinge der verstorbenen Person bereits verstorben sind.
+• Enkel dürfen nur anfechten, wenn das Elternteil, das Kind der verstorbenen Person ist, bereits verstorben ist.
+Jeder, der bei gesetzlicher Erbfolge Erbe wäre.
+Jeder, den ein vorheriges Testament zum Erben einsetzt.
+
+3. **Welche Gründe rechtfertigen eine Anfechtung?**
+• Verschreiben oder Versprechen: Die verstorbene Person wollte eigentlich etwas anderes schreiben, als am Ende im Testament steht.
+• Bedeutungsfehler: Die verstorbene Person nutzt einen Begriff, versteht dessen rechtliche oder tatsächliche Bedeutung aber falsch.
+• Falsche Beweggründe: Die verstorbene Person hat sich über die Zukunft oder über Tatsachen geirrt.
+• Drohung: Das Testament wurde nur verfasst, weil jemand die verstorbene Person unrechtmäßig unter Druck gesetzt oder bedroht hat.
+• Täuschung: Das Testament wurde nur verfasst, weil jemand die verstorbene Person getäuscht hat.
+**Nur für Pflichtteilsberechtigte:**
+• Die verstorbene Person hat beim Erstellen des Testaments nicht an Ehegatte, Elternteil oder Kind gedacht. Es kann aber davon ausgegangen werden, dass diese Person nach ihrem Willen Erbe werden sollte.
+• Die verstorbene Person wusste beim Verfassen nicht, dass es noch ein Kind gibt (zum Beispiel ein erst später geborenes Kind).
+
+4. **Folge der Anfechtung**
+• Das Testament wird ganz oder teilweise ungültig.
+• Es gilt dann entweder das ältere Testament oder das Erbrecht nach dem Gesetz.
+
+5. **Frist**
+Frist: 1 Jahr
+Die Frist beginnt, sobald Sie von dem Grund für die Anfechtung erfahren haben (siehe Schritt 3).
+
+6. **Kosten**
+• Durch die Anfechtung entstehen Kosten.
+  • Die Kosten werden gemildert oder entfallen bei wirksamer Anfechtung.`,
     katalog: {
       aufgabeId: 'fragebaum-anfechtung',
       version: FRAGEBAUM_STAND,
       fristTage: 365,
       fristAb: 'anfechtungskenntnis',
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
-      benoetigteDokumente: [
-        'Sterbeurkunde',
-        'Personalausweis',
-        'Nachweise über den Irrtumsgrund (z. B. Gläubigerbriefe)',
-      ],
-      unteraufgaben: [
-        'Datum eintragen, an dem Sie vom Anfechtungsgrund erfahren haben',
-        'Nachweise über den Irrtum sammeln (z. B. Schuldenbelege)',
-        'Fachanwalt für Erbrecht oder Notariat kontaktieren',
-        'Anfechtungserklärung fristgerecht beim Nachlassgericht einreichen',
-      ],
+      benoetigteDokumente: [],
+      unteraufgaben: [],
       haengtAbVon: [],
-      hinweis:
-        'Die Anfechtungsfrist beträgt ein Jahr ab dem Tag, an dem Sie von dem Irrtumsgrund erfahren haben. Lassen Sie sich unbedingt juristisch beraten.',
+      hinweis: '',
       kategorie: 'Erbe',
       reihenfolge: 70,
     },
@@ -353,7 +364,48 @@ export function stammtAus(
   katalog: Katalogherkunft | null,
   vorlage: Aufgabenvorlage,
 ): boolean {
-  return katalog !== null && katalog.aufgabeId === BAUPLAENE[vorlage].katalog.aufgabeId
+  if (katalog === null) {
+    return false
+  }
+  return (
+    katalog.aufgabeId === BAUPLAENE[vorlage].katalog.aufgabeId ||
+    katalog.aufgabeId === vorlage ||
+    katalog.aufgabeId === `fragebaum-${vorlage}` ||
+    katalog.aufgabeId.includes(vorlage)
+  )
+}
+
+export function istErbscheinAufgabe(aufgabe: {
+  titel?: string
+  katalog?: Katalogherkunft | null
+}): boolean {
+  if (stammtAus(aufgabe.katalog ?? null, 'erbschein')) return true
+  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? ''
+  if (id.includes('erbschein')) return true
+  const titel = aufgabe.titel?.toLowerCase() ?? ''
+  return titel.includes('erbschein')
+}
+
+export function istAnfechtungAufgabe(aufgabe: {
+  titel?: string
+  katalog?: Katalogherkunft | null
+}): boolean {
+  if (stammtAus(aufgabe.katalog ?? null, 'anfechtung')) return true
+  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? ''
+  if (id.includes('anfechtung') || id.includes('anfechten')) return true
+  const titel = aufgabe.titel?.toLowerCase() ?? ''
+  return titel.includes('anfecht')
+}
+
+export function istAusschlagungAufgabe(aufgabe: {
+  titel?: string
+  katalog?: Katalogherkunft | null
+}): boolean {
+  if (stammtAus(aufgabe.katalog ?? null, 'ausschlagung')) return true
+  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? ''
+  if (id.includes('ausschlag')) return true
+  const titel = aufgabe.titel?.toLowerCase() ?? ''
+  return titel.includes('ausschlag')
 }
 
 /** Ob diese Aufgabe die Katalogaufgabe ist, die auf den Fragebaum führt. */

@@ -38,6 +38,11 @@
   color: var(--farbe-akzent);
 }
 
+.rot {
+  color: var(--farbe-frist-abgelaufen-text);
+  font-weight: var(--typo-gewicht-betont);
+}
+
 .anriss {
   color: var(--farbe-text);
   font-size: var(--dichte-schrift);
@@ -84,6 +89,11 @@
 .punkte {
   margin: 0;
   padding-left: var(--dichte-abstand-gross);
+}
+
+.prozedurText {
+  margin: 0;
+  line-height: var(--dichte-zeilenhoehe);
 }
 
 .zeile {
