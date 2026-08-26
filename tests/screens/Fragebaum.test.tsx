@@ -602,6 +602,24 @@ describe('Infoknoten (§5)', () => {
       screen.getByText('Der Pflichtteil ist ein Mindest-Betrag an Geld aus dem Erbe.'),
     ).toBeInTheDocument()
   })
+
+  it('zeigt den Infotext und den Pflichtteil-Infoknopf vor der Frageüberschrift an', () => {
+    zeige('/erbe/fragebaum/n4', { pfad: ['n0', 'n1', 'n2', 'n3', 'n4'] })
+
+    const hinweis = screen.getByText(/Zum Erbe können auch Schulden/)
+    const knopf = screen.getByRole('button', { name: /Was ist der Pflichtteil/ })
+    const ueberschrift = screen.getByRole('heading', { name: 'Wollen Sie das Erbe haben?' })
+
+    expect(hinweis.compareDocumentPosition(ueberschrift)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(knopf.compareDocumentPosition(ueberschrift)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(hinweis.compareDocumentPosition(knopf)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+  })
 })
 
 describe('Hinweis bei Ausschlagung (C)', () => {

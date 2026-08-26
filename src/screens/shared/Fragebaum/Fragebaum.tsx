@@ -333,14 +333,13 @@ function Frageseite({
     <>
       <div className={stile.kopf}>
         <p className={stile.schritt}>Frage {pfad.length}</p>
-        <h1 className={stile.frage}>{ueberschrift}</h1>
-        {rest === '' ? null : <p className={stile.text}>{mitFett(rest)}</p>}
         {knoten.hinweis === undefined ? null : (
           <p className={stile.hinweisKasten}>{knoten.hinweis}</p>
         )}
+        {knoten.info === undefined ? null : <Infoknopf thema={knoten.info} />}
+        <h1 className={stile.frage}>{ueberschrift}</h1>
+        {rest === '' ? null : <p className={stile.text}>{mitFett(rest)}</p>}
       </div>
-
-      {knoten.info === undefined ? null : <Infoknopf thema={knoten.info} />}
 
       {knoten.gericht === true ? (
         <Gerichtssuche
