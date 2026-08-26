@@ -233,6 +233,11 @@ describe('Aufgabe (einfach)', () => {
         /Hinweis: Bei persönlichem Erscheinen vereinbaren Sie vorher einen Termin beim Nachlassgericht./,
       ),
     ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'An welchem Tag haben Sie von dem Grund der möglichen Anfechtung erfahren? Ab diesem Tag laufen die 365 Tage dieser Frist. Das Datum sehen nur Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein anderes Ende.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('zeigt bei Ausschlagung die neuen einheitlichen Schritte und einklappbaren Abschnitte', () => {
