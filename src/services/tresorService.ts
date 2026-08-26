@@ -248,6 +248,42 @@ export function mutationTresorLoeschen(itemId: string): Mutation {
 }
 
 /**
+ * Woran eine selbst gestellte Frage zu erkennen ist.
+ *
+ * Die acht gelieferten Fragen tragen ihre Kennung aus der Inhaltsdatei
+ * (`content/vorsorgefragen.ts`), eine selbst gestellte bekommt sie beim
+ * Anlegen. Das Präfix trennt beide, ohne dass der Tresor ein zweites Feld
+ * dafür braucht: Wer die Zeilen ohne diese App liest, sieht an der Kennung,
+ * dass der Wortlaut der Frage im Titel steht und nicht in einer Inhaltsdatei,
+ * die er nicht hat.
+ */
+export const EIGENE_FRAGE_PRAEFIX = 'eigen-'
+
+/** Ob diese Kennung zu einer selbst gestellten Frage gehört. */
+export function istEigeneFrage(frageId: string | null): boolean {
+  return frageId !== null && frageId.startsWith(EIGENE_FRAGE_PRAEFIX)
+}
+
+/** Eine frische Kennung für eine selbst gestellte Frage. */
+export function neueEigeneFrageId(): string {
+  return `${EIGENE_FRAGE_PRAEFIX}${uuidv7()}`
+}
+
+/**
+ * Die selbst gestellten Fragen, in der Reihenfolge, in der sie entstanden sind.
+ *
+ * Sortiert wird über die Item-Kennung und nicht über `geaendertAm`: Sonst
+ * spränge eine Frage nach unten, sobald jemand ihre Antwort ändert, und die
+ * Liste sähe nach jedem Speichern anders aus. `uuidv7` trägt die Zeit im
+ * Präfix, die Kennung ordnet also nach Entstehung.
+ */
+export function eigeneFragen(items: TresorItem[]): TresorItem[] {
+  return items
+    .filter((item) => istEigeneFrage(item.frageId))
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+}
+
+/**
  * Die Antwort auf eine Vorsorgefrage, oder `null`, solange keine dasteht.
  *
  * Bei mehreren Zeilen zu derselben Frage gewinnt die zuletzt geänderte. Das

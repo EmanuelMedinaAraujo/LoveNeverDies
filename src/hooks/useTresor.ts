@@ -27,6 +27,7 @@ import type { LesbarerFall } from '../services/fallService.ts'
 import {
   antwortZuFrage,
   berechneTresorSchwelle,
+  neueEigeneFrageId,
   mutationTresorAendern,
   mutationTresorAnlegen,
   mutationTresorLoeschen,
@@ -57,6 +58,16 @@ export type Tresordaten = {
    * Auskünfte ohne Hinweis darauf, welche die spätere ist.
    */
   speichereAntwort: (frageId: string, frage: string, antwort: string) => Promise<void>
+  /**
+   * Legt eine selbst gestellte Vorsorgefrage an, zunächst ohne Antwort.
+   *
+   * Die Frage ist eine Tresorzeile wie jede andere: Ihr Wortlaut steht im
+   * Titel, die Antwort im Inhalt. Sie entsteht deshalb schon in dem Moment, in
+   * dem jemand sie stellt, und nicht erst mit der ersten Antwort — sonst wäre
+   * eine notierte, aber noch offene Frage beim nächsten Öffnen der App wieder
+   * verschwunden.
+   */
+  legeEigeneFrageAn: (frage: string) => Promise<void>
   loescheItem: (item: TresorItem) => Promise<void>
   /**
    * Verteilt die Shares von Hand neu.
@@ -265,6 +276,17 @@ export function useTresor(
     [fall.id, items, kv, mutiere],
   )
 
+  const legeEigeneFrageAn = useCallback(
+    async (frage: string) => {
+      if (kv === null) {
+        throw new TresorDienstFehler('Ohne Tresorschlüssel kann keine Frage angelegt werden.')
+      }
+
+      mutiere(await mutationTresorAnlegen(fall.id, kv, frage, '', neueEigeneFrageId()))
+    },
+    [fall.id, kv, mutiere],
+  )
+
   const loescheItem = useCallback(
     async (item: TresorItem) => {
       mutiere(mutationTresorLoeschen(item.id))
@@ -293,6 +315,7 @@ export function useTresor(
       legeItemAn,
       aendereItem,
       speichereAntwort,
+      legeEigeneFrageAn,
       loescheItem,
       verteileShares,
       resplitLaeuft,
@@ -303,6 +326,7 @@ export function useTresor(
       fall.vaultResplitPending,
       istPreparer,
       items,
+      legeEigeneFrageAn,
       legeItemAn,
       loescheItem,
       speichereAntwort,

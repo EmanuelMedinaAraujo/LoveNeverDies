@@ -315,6 +315,21 @@ Dieselben Fragen stehen im Tab Erbe, über den frei angelegten Inhalten: Der Tre
 Ort, an dem man nachsieht, was man hinterlegt hat. Angehörige sehen sie nicht — ohne `K_v`
 gibt es nichts zu beantworten und nichts zu lesen.
 
+Unter den acht gelieferten Fragen stellt die vorsorgende Person eigene. Eine selbst gestellte
+Frage ist dieselbe Tresorzeile wie eine beantwortete gelieferte, nur trägt ihr Titel den
+Wortlaut der Frage statt einer Kopie aus der Inhaltsdatei; ihre Kennung beginnt mit `eigen-`.
+Daran hängt alles Weitere: Der Fragenblock sammelt sie über das Präfix ein, `antwortZuFrage`
+findet ihre Antwort wie jede andere, und "Weitere Tresor-Inhalte" lässt sie draussen, weil
+dort nur steht, was keine Frage-Kennung hat. Die Zeile entsteht schon beim Stellen der Frage
+und nicht erst mit der ersten Antwort — sonst wäre eine notierte, aber noch offene Frage beim
+nächsten Öffnen der App wieder verschwunden. Löschen lässt sich nur eine selbst gestellte
+Frage, und nur nach Rückfrage: Die acht gelieferten bleiben stehen.
+
+Die Todesbestätigung steht im Tab Erbe ausschliesslich bei den Angehörigen. `k` zählt
+Angehörige ohne den Preparer (§3.5); die vorsorgende Person konnte ihren eigenen Tod nie
+freigeben, und der Kasten war für sie ein Hinweis auf die eigene Beerdigung auf dem Weg zu
+den eigenen Unterlagen.
+
 #### Warum der Zähler nichts auslöst
 
 Ein Mitglied kann jederzeit einen unbrauchbaren Share hochladen, korrekt signiert und mit
