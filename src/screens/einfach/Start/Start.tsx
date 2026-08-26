@@ -191,7 +191,7 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
         key={eintrag.knoten.aufgabe.id}
         knoten={eintrag.knoten}
         unter={eintrag.unter}
-        lage={fristlage(eintrag.knoten.aufgabe.katalog, fristbezug, heute)}
+        lage={fristlage(eintrag.knoten.aufgabe.katalog, fristbezug, heute, eintrag.knoten.aufgabe.fristAm)}
         gesperrt={laeuft}
         darfHaken={darfAbhaken(eintrag.knoten.aufgabe.assignee, ich.userId)}
         aufHaken={(erledigt: boolean) => fuehreAus(() => hakeAb(eintrag.knoten.aufgabe, erledigt))}

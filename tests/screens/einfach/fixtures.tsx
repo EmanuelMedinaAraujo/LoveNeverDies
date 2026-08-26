@@ -73,6 +73,7 @@ export function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     parentId: null,
     dependsOn: [],
     assignee: personen([ICH]),
+    fristAm: null,
     katalog: null,
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,

@@ -288,14 +288,73 @@ export type Fristbezug = {
  * Die Frist einer Aufgabe, gerechnet für heute.
  *
  * @param katalog die Herkunft der Aufgabe. `null` bei einer selbst angelegten:
- * Fristen stehen im Gesetz und nicht im Eingabefeld (§8).
+ * Gesetzliche Fristen stehen im Gesetz und nicht im Eingabefeld (§8).
  * @param bezug die beiden Daten, ab denen gezählt wird. `kenntnisAm` ist das
  * *eigene* (§8, #12): Dieselbe geteilte Aufgabe ergibt für zwei Mitglieder
  * zwei Fristenden, ohne dass sich an ihr etwas ändert.
  * @param heute der Kalendertag, gegen den gezählt wird: als Parameter, damit
  * diese Funktion rein bleibt und ein Test einen Tag vorgeben kann.
+ * @param eigeneFrist die selbst gesetzte Frist der Aufgabe (`fristAm`), oder
+ * `null`. Sie tritt neben die gesetzliche und nicht an ihre Stelle: Gezeigt
+ * wird die frühere von beiden. Ein selbst eingetragener späterer Tag darf eine
+ * Ausschlagungsfrist nicht vom Bildschirm nehmen (§8) — und ein früherer soll
+ * mahnen, weil genau dafür ihn jemand eingetragen hat.
  */
 export function fristlage(
+  katalog: Katalogherkunft | null,
+  bezug: Fristbezug,
+  heute: string,
+  eigeneFrist: string | null = null,
+): Fristlage {
+  const gesetzlich = gesetzlicheLage(katalog, bezug, heute)
+  const eigen = eigeneLage(eigeneFrist, heute)
+
+  if (eigen === null) {
+    return gesetzlich
+  }
+
+  /*
+   * "unverzüglich" hat kein Datum und ist trotzdem das Dringlichere: Wer ohne
+   * schuldhaftes Zögern handeln muss, wartet nicht bis zu dem Tag, den er sich
+   * selbst notiert hat.
+   */
+  if (gesetzlich.art === 'unverzueglich') {
+    return gesetzlich
+  }
+
+  if (gesetzlich.art !== 'datum') {
+    return eigen
+  }
+
+  return eigen.ende < gesetzlich.ende ? eigen : gesetzlich
+}
+
+/**
+ * Die selbst gesetzte Frist als Lage, oder `null`, wenn keine (gültige)
+ * dasteht.
+ *
+ * Ohne Sonntags-/Feiertagsverschiebung: Sie gilt für Fristen, die eine Zahl von
+ * Tagen aus einem Ereignis ableiten (§8). Wer sich selbst einen Tag notiert,
+ * hat sich diesen Tag notiert, und ihn stillschweigend auf den Montag zu
+ * schieben hiesse, ein Datum zu zeigen, das niemand eingegeben hat.
+ */
+function eigeneLage(eigeneFrist: string | null, heute: string): (Fristlage & { art: 'datum' }) | null {
+  const ende = alsTag(eigeneFrist)
+  const heuteTag = alsTag(heute)
+
+  if (ende === null || heuteTag === null) {
+    return null
+  }
+
+  return {
+    art: 'datum',
+    ende: alsIso(ende),
+    restTage: Math.round((ende - heuteTag) / TAG_MS),
+  }
+}
+
+/** Die gesetzliche Frist aus dem Katalog, ohne die selbst gesetzte (§8). */
+function gesetzlicheLage(
   katalog: Katalogherkunft | null,
   bezug: Fristbezug,
   heute: string,

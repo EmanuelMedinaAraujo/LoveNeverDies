@@ -108,7 +108,7 @@ export function planeErinnerungen(
       continue
     }
 
-    const lage = fristlage(knoten.aufgabe.katalog, bezug, heute)
+    const lage = fristlage(knoten.aufgabe.katalog, bezug, heute, knoten.aufgabe.fristAm)
 
     if (lage.art !== 'datum') {
       continue

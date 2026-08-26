@@ -6,7 +6,6 @@ import type { Fallschluessel } from '../../../services/aufgabenService.ts'
 import { groessentext, type Dokument } from '../../../services/dokumentService.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
-import { Gruppe } from '../../../ui/Liste/Liste.tsx'
 import stile from './Dokumente.module.css'
 
 /**
@@ -304,8 +303,8 @@ export function Dokumente({
       {inhalt}
     </section>
   ) : (
-    <Gruppe titel="Dokumente">
-      <Card className={stile.karte}>{inhalt}</Card>
-    </Gruppe>
+    <Card titel="Dokumente" className={stile.karte}>
+      {inhalt}
+    </Card>
   )
 }

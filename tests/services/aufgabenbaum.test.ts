@@ -28,6 +28,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
     parentId: null,
     dependsOn: [],
     assignee: NIEMAND,
+    fristAm: null,
     katalog: null,
     dek: new Uint8Array([9]),
     kid: 'case_fall-1:1',

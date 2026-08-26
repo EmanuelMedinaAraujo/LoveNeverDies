@@ -552,6 +552,7 @@ describe('Nichts hängt von einer privaten Aufgabe ab (§3.7, §7)', () => {
       beschreibung: '',
       erledigt: false,
       notizen: '',
+      fristAm: null,
       parentId: null,
       dependsOn: [],
       assignee: NIEMAND,
