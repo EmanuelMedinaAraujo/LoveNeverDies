@@ -293,6 +293,19 @@ function Infoknopf({ thema }: { thema: Infothema }) {
   )
 }
 
+/**
+ * Die angelegte Aufgabe oeffnen und dabei sagen, wohin „Zurück" fuehrt (§7).
+ *
+ * Ohne das `state` naehme der Zurueck-Knopf die Historie und truege mitten in
+ * den Fragebaum zurueck — auf die Frage, die man eben beantwortet hat. Der
+ * Baum ist aber ein Ablauf, den man an dieser Stelle verlaesst: Wer die
+ * Aufgabe gesehen hat, will zu seinen Aufgaben und nicht noch einmal zur
+ * Frage, aus der sie entstanden ist.
+ */
+function oeffneAufgabe(navigate: ReturnType<typeof useNavigate>, id: string) {
+  navigate(`/aufgabe/${id}`, { state: { zurueck: '/alle' } })
+}
+
 function Frageseite({
   knoten,
   fall,
@@ -377,7 +390,7 @@ function Frageseite({
                 Sie haben diese Aufgabe bereits angelegt. Sie steht unter „{BAUPLAENE[vorlage].titel}“
                 und ist nur für Sie sichtbar.
               </p>
-              <Button volleBreite onClick={() => navigate(`/aufgabe/${vorhandene.id}`)}>
+              <Button volleBreite onClick={() => oeffneAufgabe(navigate, vorhandene.id)}>
                 Aufgabe öffnen
               </Button>
             </>
@@ -741,7 +754,7 @@ function Ergebnisseite({
               Sie haben diese Aufgabe bereits angelegt. Sie steht unter „{BAUPLAENE[vorlage].titel}“
               und ist nur für Sie sichtbar.
             </p>
-            <Button volleBreite onClick={() => navigate(`/aufgabe/${vorhandene.id}`)}>
+            <Button volleBreite onClick={() => oeffneAufgabe(navigate, vorhandene.id)}>
               Aufgabe öffnen
             </Button>
           </>
