@@ -146,47 +146,7 @@
   text-decoration: underline;
 }
 
-/*
- * Der Status "Erbe" als Schaltflaeche (ERBE_DESIGN.md §10).
- *
- * Die Pille bleibt, was sie ist; der Knopf liegt darum. Seine Hoehe ist das
- * Touch-Ziel aus §7 und nicht die Hoehe der Pille: Auf ein 20 px hohes Wort
- * trifft niemand, der die App mit dem Daumen bedient.
- */
-.statusKnopf {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--dichte-abstand-klein);
-
-  min-height: var(--ziel-mindestmass);
-  padding: 0;
-
-  border: none;
-  background: none;
-  color: var(--farbe-akzent);
-
-  font: inherit;
-  cursor: pointer;
-}
-
-.pfeil,
-.pfeilOffen {
-  display: inline-flex;
-  transition: transform 120ms ease-out;
-}
-
-.pfeilOffen {
-  transform: rotate(180deg);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pfeil,
-  .pfeilOffen {
-    transition: none;
-  }
-}
-
-/* Die aufgeklappte Ebene: Knoepfe und Texte untereinander, mit Luft nach oben. */
+/* Die ausgeklappte Ebene: Knöpfe und Texte untereinander, mit Luft nach oben. */
 .wege {
   display: flex;
   flex-direction: column;
