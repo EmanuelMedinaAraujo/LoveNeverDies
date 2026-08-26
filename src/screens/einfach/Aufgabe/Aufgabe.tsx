@@ -14,7 +14,14 @@ import {
   type Fristbezug,
   type Fristlage,
 } from '../../../services/fristen.ts'
-import { BAUPLAENE, istSeedAufgabe, stammtAus } from '../../../services/fragebaumService.ts'
+import {
+  BAUPLAENE,
+  istAnfechtungAufgabe,
+  istAusschlagungAufgabe,
+  istErbscheinAufgabe,
+  istSeedAufgabe,
+  stammtAus,
+} from '../../../services/fragebaumService.ts'
 import type { Katalogherkunft } from '../../../services/aufgabenService.ts'
 import {
   darfAbhaken,
@@ -35,6 +42,11 @@ import { Dokumente } from '../../shared/Dokumente/Dokumente.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
 import { Zuweisungsfeld } from '../../shared/Zuweisung/Zuweisungsfeld.tsx'
+import {
+  AnfechtungInfo,
+  AusschlagungInfo,
+  ErbscheinInfo,
+} from '../../shared/Erbe/ErbscheinInfo.tsx'
 import { Fristzeile } from '../Bausteine.tsx'
 import stile from '../einfach.module.css'
 import type { InhaltZeile } from '../../../core/db/inhalte.ts'
@@ -68,7 +80,7 @@ function Ladeanzeige({ text }: { text: string }) {
 }
 
 function mitFett(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*|\[gruen:[^\]]+\])/g).map((teil, nummer) => {
+  return text.split(/(\*\*[^*]+\*\*|\[gruen:[^\]]+\]|\[rot:[^\]]+\])/g).map((teil, nummer) => {
     if (teil.startsWith('**') && teil.endsWith('**')) {
       return <strong key={nummer}>{mitFett(teil.slice(2, -2))}</strong>
     }
@@ -79,31 +91,52 @@ function mitFett(text: string): ReactNode[] {
         </span>
       )
     }
+    if (teil.startsWith('[rot:') && teil.endsWith(']')) {
+      return (
+        <span key={nummer} className={stile.rot}>
+          {mitFett(teil.slice(5, -1))}
+        </span>
+      )
+    }
     return teil
   })
 }
 
 function aktuelleBeschreibung(aufgabe: Aufgabendatensatz): string {
-  if (stammtAus(aufgabe.katalog, 'ausschlagung')) {
-    if (
-      aufgabe.beschreibung === '' ||
-      aufgabe.beschreibung.includes('informiert worden sind') ||
-      aufgabe.beschreibung.includes('Sie haben dafür zwei Möglichkeiten') ||
-      aufgabe.beschreibung.includes('Die Ausschlagung wird beim Nachlassgericht erklärt') ||
-      !aufgabe.beschreibung.includes('Normalfall (gesetzliche Erbfolge)')
-    ) {
-      return BAUPLAENE.ausschlagung.beschreibung
-    }
+  if (
+    istAusschlagungAufgabe(aufgabe) ||
+    istErbscheinAufgabe(aufgabe) ||
+    istAnfechtungAufgabe(aufgabe)
+  ) {
+    return ''
   }
   return aufgabe.beschreibung
 }
 
-function aktuellerKatalog(katalog: Katalogherkunft | null): Katalogherkunft | null {
-  if (katalog === null) {
+function aktuellerKatalog(
+  katalog: Katalogherkunft | null,
+  aufgabe?: Aufgabendatensatz,
+): Katalogherkunft | null {
+  if (katalog === null && !aufgabe) {
     return null
   }
-  if (stammtAus(katalog, 'ausschlagung')) {
+  if (
+    (aufgabe && istAusschlagungAufgabe(aufgabe)) ||
+    (katalog && stammtAus(katalog, 'ausschlagung'))
+  ) {
     return BAUPLAENE.ausschlagung.katalog
+  }
+  if (
+    (aufgabe && istErbscheinAufgabe(aufgabe)) ||
+    (katalog && stammtAus(katalog, 'erbschein'))
+  ) {
+    return BAUPLAENE.erbschein.katalog
+  }
+  if (
+    (aufgabe && istAnfechtungAufgabe(aufgabe)) ||
+    (katalog && stammtAus(katalog, 'anfechtung'))
+  ) {
+    return BAUPLAENE.anfechtung.katalog
   }
   return katalog
 }
@@ -227,13 +260,70 @@ function Angaben({
   aufGerichtGefunden?: (gericht: Nachlassgericht, plz: string) => Promise<void>
   gesperrt?: boolean
 }) {
-  const katalog = aktuellerKatalog(aufgabe.katalog)
+  const katalog = aktuellerKatalog(aufgabe.katalog, aufgabe)
 
   if (katalog === null) {
     return null
   }
 
   const dokumente = katalog.benoetigteDokumente.filter((eintrag) => eintrag.trim() !== '')
+  if (istAnfechtungAufgabe(aufgabe)) {
+    return (
+      <Abschnitt titel="Zuständige Stelle">
+        <div className={stile.angaben}>
+          {katalog.zustaendigeStelle === '' ? null : (
+            <div>
+              <span className={stile.wert}>{katalog.zustaendigeStelle}</span>
+              {istGerichtStelle(katalog.zustaendigeStelle) ? (
+                <GerichtNachschlagen
+                  initialNotiz={aufgabe.notizen}
+                  aufGerichtGefunden={aufGerichtGefunden}
+                  gesperrt={gesperrt}
+                />
+              ) : null}
+            </div>
+          )}
+          <div className={stile.prozedurText}>
+            <p style={{ margin: 0 }}>
+              <strong>Wie fechte ich ein Testament an?</strong>
+            </p>
+            <p style={{ margin: 'var(--dichte-abstand-klein) 0 0 0' }}>
+              Es gibt zwei Möglichkeiten:
+            </p>
+            <ul className={stile.punkte}>
+              <li>schriftlicher Antrag an das Nachlassgericht</li>
+              <li>persönlich beim Nachlassgericht</li>
+            </ul>
+            <p style={{ margin: 'var(--dichte-abstand-klein) 0 0 0' }}>
+              Hinweis: Bei persönlichem Erscheinen vereinbaren Sie vorher einen Termin beim Nachlassgericht.
+            </p>
+          </div>
+        </div>
+      </Abschnitt>
+    )
+  }
+
+  if (istAusschlagungAufgabe(aufgabe)) {
+    return (
+      <Abschnitt titel="Zuständige Stelle">
+        <div className={stile.angaben}>
+          {katalog.zustaendigeStelle === '' ? null : (
+            <div>
+              <span className={stile.wert}>{katalog.zustaendigeStelle}</span>
+              {istGerichtStelle(katalog.zustaendigeStelle) ? (
+                <GerichtNachschlagen
+                  initialNotiz={aufgabe.notizen}
+                  aufGerichtGefunden={aufGerichtGefunden}
+                  gesperrt={gesperrt}
+                />
+              ) : null}
+            </div>
+          )}
+        </div>
+      </Abschnitt>
+    )
+  }
+
   const schritte = katalog.unteraufgaben.filter((eintrag) => eintrag.trim() !== '')
 
   return (
@@ -256,7 +346,7 @@ function Angaben({
           </Angabe>
         ) : null}
 
-        {lage.art === 'ab-kenntnis' ? (
+        {lage.art === 'ab-kenntnis' && !istAnfechtungAufgabe(aufgabe) ? (
           /*
             §8: Ohne Kenntnisdatum wird kein Ende gerechnet und keines
             geschätzt. Die Frist hängt an einem Tag, den nur diese Person kennt.
@@ -284,32 +374,46 @@ function Angaben({
           </Angabe>
         )}
 
-        {dokumente.length === 0 ? null : (
-          <Angabe was="Das brauchen Sie dafür">
-            <ul className={stile.punkte}>
-              {dokumente.map((dokument) => (
-                <li key={dokument}>{dokument}</li>
-              ))}
-            </ul>
-          </Angabe>
-        )}
+        {istErbscheinAufgabe(aufgabe) ? (
+          <>
+            <Angabe was="Wie beantragen Sie einen Erbschein?">
+              <ul className={stile.punkte}>
+                <li>Beim Notar oder beim Nachlassgericht</li>
+                <li>Anrufen oder online Termin vereinbaren - die Stellen erklären Ihnen die weiteren Schritte</li>
+              </ul>
+            </Angabe>
+            <Angabe was="Notar oder Nachlassgericht:">
+              <p className={stile.prozedurText}>
+                <strong>Notar:</strong> Sie erhalten schneller und innerhalb der Frist einen Termin<br />
+                <strong>Nachlassgericht:</strong> Ihnen fallen keine zusätzlichen Kosten an
+              </p>
+            </Angabe>
+          </>
+        ) : istAnfechtungAufgabe(aufgabe) || istAusschlagungAufgabe(aufgabe) ? null : (
+          <>
+            {dokumente.length === 0 ? null : (
+              <Angabe was="Das brauchen Sie dafür">
+                <ul className={stile.punkte}>
+                  {dokumente.map((dokument) => (
+                    <li key={dokument}>{dokument}</li>
+                  ))}
+                </ul>
+              </Angabe>
+            )}
 
-        {/*
-          Die Schritte dieser Aufgabe (§7). Als Aufzählung und nicht als eigene
-          Unteraufgaben: Die Aufgaben aus dem Fragebaum sind privat, und private
-          Aufgaben stehen immer für sich (§3.7).
-        */}
-        {schritte.length === 0 ? null : (
-          <Angabe was="Das ist zu tun">
-            <ol className={stile.punkte}>
-              {schritte.map((schritt) => (
-                <li key={schritt}>{schritt}</li>
-              ))}
-            </ol>
-          </Angabe>
-        )}
+            {schritte.length === 0 ? null : (
+              <Angabe was="Das ist zu tun">
+                <ol className={stile.punkte}>
+                  {schritte.map((schritt) => (
+                    <li key={schritt}>{schritt}</li>
+                  ))}
+                </ol>
+              </Angabe>
+            )}
 
-        {katalog.hinweis === '' ? null : <Angabe was="Hinweis">{katalog.hinweis}</Angabe>}
+            {katalog.hinweis === '' ? null : <Angabe was="Hinweis">{katalog.hinweis}</Angabe>}
+          </>
+        )}
       </dl>
     </Abschnitt>
   )
@@ -598,7 +702,19 @@ function Detail({
       </div>
 
       <div className={[stile.abschnitt, stile.ohnelinie].join(' ')}>
-        {aktuelleBeschreibung(aufgabe) === '' ? null : (
+        {istErbscheinAufgabe(aufgabe) ? (
+          <ErbscheinInfo />
+        ) : istAnfechtungAufgabe(aufgabe) ? (
+          <AnfechtungInfo />
+        ) : istAusschlagungAufgabe(aufgabe) ? (
+          <>
+            <p className={stile.hinweisText}>
+              <strong className={stile.rot}>Hinweis:</strong> Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das
+              Erbe automatisch an. Danach kann das Erbe nicht mehr abgelehnt werden.
+            </p>
+            <AusschlagungInfo />
+          </>
+        ) : aktuelleBeschreibung(aufgabe) === '' ? null : (
           <p className={stile.beschreibung}>{mitFett(aktuelleBeschreibung(aufgabe))}</p>
         )}
 

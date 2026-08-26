@@ -647,6 +647,10 @@ describe('Hinweis bei Ausschlagung (C)', () => {
     expect(screen.getByText('1. Frist').tagName).toBe('STRONG')
     expect(screen.getByText('2. Wie können Sie das Erbe ablehnen?').tagName).toBe('STRONG')
     expect(screen.getByText('Notar oder Nachlassgericht:').tagName).toBe('STRONG')
+
+    const hinweisLabel = screen.getByText('Hinweis:')
+    expect(hinweisLabel.tagName).toBe('STRONG')
+    expect(hinweisLabel).toHaveClass(/rot/)
   })
 })
 

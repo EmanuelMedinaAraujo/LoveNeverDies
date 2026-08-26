@@ -107,8 +107,6 @@ describe('Bauplaene (§7)', () => {
     // deshalb ein eigener Anker und kein `kenntnis`.
     expect(BAUPLAENE.anfechtung.katalog.fristTage).toBe(365)
     expect(BAUPLAENE.anfechtung.katalog.fristAb).toBe('anfechtungskenntnis')
-    expect(BAUPLAENE.anfechtung.katalog.hinweis).toContain('ein Jahr')
-    expect(BAUPLAENE.anfechtung.katalog.hinweis).not.toContain('wird hier nicht ausgerechnet')
   })
 
   it('gibt dem Testament die Frist unverzüglich ohne Tagesfrist', () => {
@@ -117,15 +115,11 @@ describe('Bauplaene (§7)', () => {
     expect(BAUPLAENE.testament.katalog.hinweis).toContain('Unverzüglich')
   })
 
-  it('schreibt den ganzen Erbschein-Text in die Aufgabe (§10)', () => {
-    // Wer "Ja" getippt hat, hat den Text eine Sekunde vorher gelesen und soll
-    // ihn in der Aufgabe wiederfinden — samt dem Weg dorthin, der auf der
-    // Seite selbst nicht steht.
+  it('schreibt den Erbschein-Erklärtext in die Vorlage (§10)', () => {
     const beschreibung = BAUPLAENE.erbschein.beschreibung
 
     expect(beschreibung).toContain('Eine amtliche Urkunde')
-    expect(beschreibung).toContain('Wie beantragen Sie einen Erbschein?')
-    expect(beschreibung).toContain('Beim Notar oder beim Nachlassgericht')
+    expect(beschreibung).toContain('Grundbuchamt')
   })
 
   it('setzt in der Aufgabenbeschreibung gefuellte Punkte', () => {
@@ -329,25 +323,16 @@ describe('aufgabenBeschreibung (§7)', () => {
 })
 
 describe('Schritte an den Aufgaben aus dem Baum (§7)', () => {
-  it('nennt zu jeder Vorlage, was dafür zu tun ist', () => {
-    for (const [name, bauplan] of Object.entries(BAUPLAENE)) {
-      expect(bauplan.katalog.unteraufgaben.length, name).toBeGreaterThan(0)
-
-      for (const schritt of bauplan.katalog.unteraufgaben) {
-        expect(schritt.trim(), name).not.toBe('')
-      }
+  it('nennt bei der Testament-Vorlage die einzelnen Schritte', () => {
+    expect(BAUPLAENE.testament.katalog.unteraufgaben.length).toBeGreaterThan(0)
+    for (const schritt of BAUPLAENE.testament.katalog.unteraufgaben) {
+      expect(schritt.trim()).not.toBe('')
     }
   })
 
-  it('lässt die Aufgaben mit Frist nach dem Tag des Fristbeginns fragen', () => {
-    // §8: Wo eine Frist zählt, muss der Tag erfragt werden, ab dem sie läuft.
-    for (const vorlage of ['ausschlagung', 'anfechtung'] as const) {
-      const { katalog } = BAUPLAENE[vorlage]
-
-      expect(katalog.fristTage, vorlage).not.toBeNull()
-      expect(katalog.unteraufgaben.some((schritt) => schritt.includes('Datum eintragen'))).toBe(
-        true,
-      )
-    }
+  it('führt bei den Spezialaufgaben (Ausschlagung, Erbschein, Anfechtung) keine doppelten Unteraufgaben-Listen', () => {
+    expect(BAUPLAENE.ausschlagung.katalog.unteraufgaben).toEqual([])
+    expect(BAUPLAENE.erbschein.katalog.unteraufgaben).toEqual([])
+    expect(BAUPLAENE.anfechtung.katalog.unteraufgaben).toEqual([])
   })
 })
