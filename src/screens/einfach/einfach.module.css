@@ -254,12 +254,28 @@
   line-height: var(--dichte-zeilenhoehe);
 }
 
+.prozedurText {
+  margin: 0;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
 /*
  * Die Beschreibung einer Aufgabe. `pre-wrap` aus demselben Grund wie drueben:
  * Eine gegliederte Beschreibung soll gegliedert bleiben (ERBE_DESIGN.md §10).
  */
 .gruen {
   color: var(--farbe-akzent);
+}
+
+.rot {
+  color: var(--farbe-frist-abgelaufen-text);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.hinweisText {
+  color: var(--farbe-text);
+  line-height: var(--dichte-zeilenhoehe);
+  margin: 0;
 }
 
 .beschreibung {

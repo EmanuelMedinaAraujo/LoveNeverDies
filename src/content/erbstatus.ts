@@ -66,12 +66,12 @@ export const ERBSCHEIN_ANTRAG: Infotext = {
         'Anrufen oder online Termin vereinbaren - die Stellen erklären Ihnen die weiteren Schritte',
       ],
     },
-    { art: 'zwischentitel', text: 'Notar oder Nachlassgericht' },
+    { art: 'zwischentitel', text: 'Notar oder Nachlassgericht:' },
     {
       art: 'punkte',
       punkte: [
-        'Beim Notar erhalten Sie schneller und sicher innerhalb der First einen Termin',
-        'Beim Nachlassgericht fallen Ihnen keine zusätzlichen Kosten an',
+        'Notar: Sie erhalten schneller und innerhalb der Frist einen Termin',
+        'Nachlassgericht: Ihnen fallen keine zusätzlichen Kosten an',
       ],
     },
   ],
@@ -106,6 +106,122 @@ export const ALLEINERBE: Infotext = {
     {
       art: 'absatz',
       text: 'Als Alleinerbe tritt man das ganze Erbe an. Sowohl das gesamte Vermögen als auch alle Schulden gehen auf den Erben über.',
+    },
+  ],
+}
+
+export const TESTAMENTSANFECHTUNG: Infotext = {
+  titel: 'Informationen zur Testamentsanfechtung',
+  abschnitte: [
+    { art: 'zwischentitel', text: '1. Was ist das?' },
+    {
+      art: 'absatz',
+      text: 'Eine Testamentsanfechtung bedeutet, dass ein Testament nachträglich für ungültig erklärt wird, weil beim Verfassen etwas grundlegend schiefgelaufen ist.',
+    },
+    { art: 'zwischentitel', text: '2. Wer darf anfechten?' },
+    {
+      art: 'absatz',
+      text: 'Pflichtteilsberechtigte: Kind, Ehegatte, Elternteil',
+    },
+    {
+      art: 'punkte',
+      punkte: [
+        'Elternteile dürfen nur anfechten, wenn die Abkömmlinge der verstorbenen Person bereits verstorben sind.',
+        'Enkel dürfen nur anfechten, wenn das Elternteil, das Kind der verstorbenen Person ist, bereits verstorben ist.',
+      ],
+    },
+    {
+      art: 'absatz',
+      text: 'Jeder, der bei gesetzlicher Erbfolge Erbe wäre.\nJeder, den ein vorheriges Testament zum Erben einsetzt.',
+    },
+    { art: 'zwischentitel', text: '3. Welche Gründe rechtfertigen eine Anfechtung?' },
+    {
+      art: 'punkte',
+      punkte: [
+        'Verschreiben oder Versprechen: Die verstorbene Person wollte eigentlich etwas anderes schreiben, als am Ende im Testament steht.',
+        'Bedeutungsfehler: Die verstorbene Person nutzt einen Begriff, versteht dessen rechtliche oder tatsächliche Bedeutung aber falsch.',
+        'Falsche Beweggründe: Die verstorbene Person hat sich über die Zukunft oder über Tatsachen geirrt.',
+        'Drohung: Das Testament wurde nur verfasst, weil jemand die verstorbene Person unrechtmäßig unter Druck gesetzt oder bedroht hat.',
+        'Täuschung: Das Testament wurde nur verfasst, weil jemand die verstorbene Person getäuscht hat.',
+      ],
+    },
+    {
+      art: 'absatz',
+      text: '**Nur für Pflichtteilsberechtigte:**',
+    },
+    {
+      art: 'punkte',
+      punkte: [
+        'Die verstorbene Person hat beim Erstellen des Testaments nicht an Ehegatte, Elternteil oder Kind gedacht. Es kann aber davon ausgegangen werden, dass diese Person nach ihrem Willen Erbe werden sollte.',
+        'Die verstorbene Person wusste beim Verfassen nicht, dass es noch ein Kind gibt (zum Beispiel ein erst später geborenes Kind).',
+      ],
+    },
+    { art: 'zwischentitel', text: '4. Folge der Anfechtung' },
+    {
+      art: 'punkte',
+      punkte: [
+        'Das Testament wird ganz oder teilweise ungültig.',
+        'Es gilt dann entweder das ältere Testament oder das Erbrecht nach dem Gesetz.',
+      ],
+    },
+    { art: 'zwischentitel', text: '5. Frist' },
+    {
+      art: 'absatz',
+      text: 'Frist: 1 Jahr\nDie Frist beginnt, sobald Sie von dem Grund für die Anfechtung erfahren haben (siehe Schritt 3).',
+    },
+    { art: 'zwischentitel', text: '6. Kosten' },
+    {
+      art: 'punkte',
+      punkte: [
+        'Durch die Anfechtung entstehen Kosten.',
+        'Die Kosten werden gemildert oder entfallen bei wirksamer Anfechtung.',
+      ],
+    },
+  ],
+}
+
+export const AUSSCHLAGUNG: Infotext = {
+  titel: 'Sie wollen das Erbe nicht (Ausschlagung)',
+  abschnitte: [
+    { art: 'zwischentitel', text: '1. Frist' },
+    {
+      art: 'absatz',
+      text: 'Die Frist beträgt 6 Wochen.\nFristbeginn:\n[gruen:Normalfall (gesetzliche Erbfolge):] Die Frist läuft ab dem Moment, in dem Sie erfahren, dass die Person gestorben ist und Sie gesetzlich erben.\n[gruen:Testament oder Erbvertrag:] Gibt es ein Testament, läuft die Frist erst los, wenn das Nachlassgericht Ihnen dieses Testament offiziell eröffnet und mitgeteilt hat – selbst wenn Sie vorher schon von dem Dokument wissen.',
+    },
+    { art: 'zwischentitel', text: '2. Wie können Sie das Erbe ablehnen?' },
+    {
+      art: 'absatz',
+      text: 'Sie haben dafür zwei Möglichkeiten:\n[gruen:1. Über ein Notariat:]',
+    },
+    {
+      art: 'punkte',
+      punkte: [
+        'Termin bei einem Notar vereinbaren',
+        'Antrag auf Ausschlagung stellen',
+        'Notar beurkundet den Antrag und schickt ihn an das Nachlassgericht',
+      ],
+    },
+    {
+      art: 'absatz',
+      text: '[gruen:2. Persönlich beim Gericht:]',
+    },
+    {
+      art: 'punkte',
+      punkte: [
+        'telefonisch Termin beim Nachlassgericht vereinbaren',
+        'persönlich beim Nachlassgericht erscheinen',
+      ],
+    },
+    {
+      art: 'absatz',
+      text: '**Notar oder Nachlassgericht:**',
+    },
+    {
+      art: 'punkte',
+      punkte: [
+        'Beim Notar erhalten Sie schneller und sicher innerhalb der Frist einen Termin',
+        'Beim Nachlassgericht fallen Ihnen keine zusätzlichen Kosten an',
+      ],
     },
   ],
 }
