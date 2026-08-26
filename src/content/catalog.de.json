@@ -1,7 +1,7 @@
 {
   "sprache": "de",
   "stand": "2026-08",
-  "version": "2026-08+37dc188f",
+  "version": "2026-08+49a12977",
   "aufgaben": [
     {
       "id": "totenschein-erstellen",
@@ -54,20 +54,6 @@
       "hinweis": "",
       "kategorie": "Sofort",
       "reihenfolge": 30
-    },
-    {
-      "id": "tresor-des-vorsorgenden-oeffnen",
-      "titel": "Tresor des Vorsorgenden öffnen und die Fragen",
-      "kurzbeschreibung": "Den Tresor des Vorsorgenden öffnen und die hinterlegten Fragen und Informationen einsehen.",
-      "fristTage": null,
-      "fristAb": null,
-      "zustaendigeStelle": "",
-      "benoetigteDokumente": [],
-      "unteraufgaben": [],
-      "haengtAbVon": [],
-      "hinweis": "",
-      "kategorie": "Sofort",
-      "reihenfolge": 40
     },
     {
       "id": "erbenstellung-klaeren",
