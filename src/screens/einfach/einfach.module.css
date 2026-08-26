@@ -258,6 +258,10 @@
  * Die Beschreibung einer Aufgabe. `pre-wrap` aus demselben Grund wie drueben:
  * Eine gegliederte Beschreibung soll gegliedert bleiben (ERBE_DESIGN.md §10).
  */
+.gruen {
+  color: var(--farbe-akzent);
+}
+
 .beschreibung {
   margin: 0;
   line-height: var(--dichte-zeilenhoehe);

@@ -14,7 +14,8 @@ import {
   type Fristbezug,
   type Fristlage,
 } from '../../../services/fristen.ts'
-import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
+import { BAUPLAENE, istSeedAufgabe, stammtAus } from '../../../services/fragebaumService.ts'
+import type { Katalogherkunft } from '../../../services/aufgabenService.ts'
 import {
   darfAbhaken,
   darfBearbeiten,
@@ -64,6 +65,47 @@ function Ladeanzeige({ text }: { text: string }) {
       {text}
     </p>
   )
+}
+
+function mitFett(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*|\[gruen:[^\]]+\])/g).map((teil, nummer) => {
+    if (teil.startsWith('**') && teil.endsWith('**')) {
+      return <strong key={nummer}>{mitFett(teil.slice(2, -2))}</strong>
+    }
+    if (teil.startsWith('[gruen:') && teil.endsWith(']')) {
+      return (
+        <span key={nummer} className={stile.gruen}>
+          {mitFett(teil.slice(7, -1))}
+        </span>
+      )
+    }
+    return teil
+  })
+}
+
+function aktuelleBeschreibung(aufgabe: Aufgabendatensatz): string {
+  if (stammtAus(aufgabe.katalog, 'ausschlagung')) {
+    if (
+      aufgabe.beschreibung === '' ||
+      aufgabe.beschreibung.includes('informiert worden sind') ||
+      aufgabe.beschreibung.includes('Sie haben dafür zwei Möglichkeiten') ||
+      aufgabe.beschreibung.includes('Die Ausschlagung wird beim Nachlassgericht erklärt') ||
+      !aufgabe.beschreibung.includes('Normalfall (gesetzliche Erbfolge)')
+    ) {
+      return BAUPLAENE.ausschlagung.beschreibung
+    }
+  }
+  return aufgabe.beschreibung
+}
+
+function aktuellerKatalog(katalog: Katalogherkunft | null): Katalogherkunft | null {
+  if (katalog === null) {
+    return null
+  }
+  if (stammtAus(katalog, 'ausschlagung')) {
+    return BAUPLAENE.ausschlagung.katalog
+  }
+  return katalog
 }
 
 /** Ein Abschnitt: Überschrift, darunter der Inhalt, darüber eine Haarlinie. */
@@ -126,7 +168,7 @@ function Angaben({
   aufGerichtGefunden?: (gericht: Nachlassgericht, plz: string) => Promise<void>
   gesperrt?: boolean
 }) {
-  const katalog = aufgabe.katalog
+  const katalog = aktuellerKatalog(aufgabe.katalog)
 
   if (katalog === null) {
     return null
@@ -138,8 +180,14 @@ function Angaben({
   return (
     <Abschnitt titel="Das gilt dafür">
       <dl className={stile.angaben}>
+        {lage.art === 'datum' ? (
+          <Angabe was="Frist">
+            endet am {datumText(lage.ende)} ({fristText(lage)})
+          </Angabe>
+        ) : null}
+
         {/*
-          Kein zweites Fristdatum: Es steht schon unter dem Titel. Die Frist ab
+          Fristen nach Tod stehen in der Fristzeile der Zeile; eine Frist nach
           der eigenen Kenntnis steht dagegen hier, weil sie kein Datum ist,
           sondern eine Erklärung (§8).
         */}
@@ -155,8 +203,10 @@ function Angaben({
             geschätzt. Die Frist hängt an einem Tag, den nur diese Person kennt.
           */
           <Angabe was="Frist">
-            {katalog.fristTage === null ? 'Die Tage' : `${katalog.fristTage} Tage`} ab dem Tag, an
-            dem Sie davon erfahren haben. Tragen Sie ihn unten ein.
+            6 Wochen ({katalog.fristTage ?? 42} Tage) ab dem Fristbeginn: Im Normalfall (gesetzliche
+            Erbfolge) ab dem Moment, in dem Sie von Tod und Erbschaft erfahren; bei Testament
+            oder Erbvertrag erst ab offizieller Eröffnung durch das Nachlassgericht. Tragen Sie
+            das Datum unten ein.
           </Angabe>
         ) : null}
 
@@ -248,8 +298,9 @@ function Kenntnisdatum({
   return (
     <Abschnitt titel="Wann haben Sie davon erfahren?">
       <p className={stile.hinweis}>
-        Ab diesem Tag läuft Ihre Frist. Das Datum sehen nur Sie: Jede und jeder trägt den
-        eigenen Tag ein.
+        An welchem Tag haben Sie von der Erbschaft erfahren bzw. das Testament erhalten? Ab
+        diesem Tag läuft Ihre Frist. Das Datum sehen nur Sie: Jede und jeder trägt den eigenen
+        Tag ein.
       </p>
 
       {lage.art === 'datum' ? (
@@ -486,8 +537,8 @@ function Detail({
       </div>
 
       <div className={[stile.abschnitt, stile.ohnelinie].join(' ')}>
-        {aufgabe.beschreibung === '' ? null : (
-          <p className={stile.beschreibung}>{aufgabe.beschreibung}</p>
+        {aktuelleBeschreibung(aufgabe) === '' ? null : (
+          <p className={stile.beschreibung}>{mitFett(aktuelleBeschreibung(aufgabe))}</p>
         )}
 
         {/*
