@@ -15,7 +15,8 @@ import {
   type Fristbezug,
   type Fristlage,
 } from '../../../services/fristen.ts'
-import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
+import { BAUPLAENE, istSeedAufgabe, stammtAus } from '../../../services/fragebaumService.ts'
+import type { Katalogherkunft } from '../../../services/aufgabenService.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
@@ -73,6 +74,22 @@ function Ladeanzeige({ text }: { text: string }) {
   )
 }
 
+function mitFett(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*|\[gruen:[^\]]+\])/g).map((teil, nummer) => {
+    if (teil.startsWith('**') && teil.endsWith('**')) {
+      return <strong key={nummer}>{mitFett(teil.slice(2, -2))}</strong>
+    }
+    if (teil.startsWith('[gruen:') && teil.endsWith(']')) {
+      return (
+        <span key={nummer} className={stile.gruen}>
+          {mitFett(teil.slice(7, -1))}
+        </span>
+      )
+    }
+    return teil
+  })
+}
+
 /** Wie dringend eine Frist aussieht (§12). Ab drei Tagen wird es knapp. */
 function badgelage(lage: Fristlage): Badgelage {
   if (lage.art === 'unverzueglich') {
@@ -84,6 +101,31 @@ function badgelage(lage: Fristlage): Badgelage {
   }
 
   return lage.restTage < 0 ? 'abgelaufen' : lage.restTage <= 3 ? 'knapp' : 'ruhig'
+}
+
+function aktuelleBeschreibung(aufgabe: Aufgabendatensatz): string {
+  if (stammtAus(aufgabe.katalog, 'ausschlagung')) {
+    if (
+      aufgabe.beschreibung === '' ||
+      aufgabe.beschreibung.includes('informiert worden sind') ||
+      aufgabe.beschreibung.includes('Sie haben dafür zwei Möglichkeiten') ||
+      aufgabe.beschreibung.includes('Die Ausschlagung wird beim Nachlassgericht erklärt') ||
+      !aufgabe.beschreibung.includes('Normalfall (gesetzliche Erbfolge)')
+    ) {
+      return BAUPLAENE.ausschlagung.beschreibung
+    }
+  }
+  return aufgabe.beschreibung
+}
+
+function aktuellerKatalog(katalog: Katalogherkunft | null): Katalogherkunft | null {
+  if (katalog === null) {
+    return null
+  }
+  if (stammtAus(katalog, 'ausschlagung')) {
+    return BAUPLAENE.ausschlagung.katalog
+  }
+  return katalog
 }
 
 /** Eine Angabe aus dem Katalog, oder nichts, wenn sie leer ist. */
@@ -122,7 +164,7 @@ function ZumFragebaum() {
  * leer, erfunden wird nichts (§8).
  *
  * Kein Paragraph und kein Quelllink (ADR-0003): Eine Zeile "§ 1944 BGB" und ein
- * Link auf die Gesetzesseite lesen sich wie eine Rechtsberatung, und die gibt
+ * Link auf the Gesetzesseite lesen sich wie eine Rechtsberatung, und die gibt
  * diese App nicht. Deshalb heißt der Abschnitt auch nicht mehr "Rechtliches".
  */
 function Angaben({
@@ -136,7 +178,7 @@ function Angaben({
   aufGerichtGefunden?: (gericht: Nachlassgericht, plz: string) => Promise<void>
   gesperrt?: boolean
 }) {
-  const katalog = aufgabe.katalog
+  const katalog = aktuellerKatalog(aufgabe.katalog)
 
   if (katalog === null) {
     return null
@@ -148,6 +190,11 @@ function Angaben({
   return (
     <Card titel="Das gilt dafür">
       <dl className={stile.angaben}>
+        {/*
+          §8: Nur bei gesetzten Fristen. Aufgaben ohne Frist tragen "ohne
+          Frist" als Badge am Titel (§12); hier stünde sonst eine doppelte
+          Auskunft.
+        */}
         {lage.art === 'datum' ? (
           <Angabe was="Frist">
             endet am {datumText(lage.ende)} ({fristText(lage)})
@@ -168,9 +215,11 @@ function Angaben({
             Person kennt.
           */
           <Angabe was="Frist">
-            Diese Frist läuft ab <em>Ihrer</em> Kenntnis: {katalog.fristTage} Tage ab dem Tag, an
-            dem Sie von Anfall und Berufungsgrund erfahren haben. Tragen Sie ihn unten ein, dann
-            rechnet die App das Ende aus.
+            Diese Frist läuft ab <em>Ihrer</em> Kenntnis und beträgt 6 Wochen ({katalog.fristTage} Tage):
+            Im Normalfall (gesetzliche Erbfolge) ab dem Moment, in dem Sie erfahren, dass die Person
+            gestorben ist und Sie gesetzlich erben; bei Testament oder Erbvertrag erst ab der offiziellen
+            Eröffnung und Mitteilung durch das Nachlassgericht. Tragen Sie das Datum unten ein, dann
+            rechnet die App das genaue Ende aus.
           </Angabe>
         ) : null}
 
@@ -461,7 +510,8 @@ function Kenntnisdatum({
   return (
     <Card titel="Ihr Kenntnisdatum">
       <p>
-        An welchem Tag haben Sie erfahren, dass Sie Erbe sind? Ab diesem Tag laufen
+        An welchem Tag haben Sie von der Erbschaft erfahren (bzw. an welchem Tag hat das
+        Nachlassgericht das Testament eröffnet)? Ab diesem Tag laufen
         {fristTage === null ? ' die' : ` die ${fristTage}`} Tage dieser Frist. Das Datum sehen nur
         Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein
         anderes Ende.
@@ -668,8 +718,8 @@ function Detail({
         Kasten: Ein Kasten sagt "hier fängt ein Abschnitt an", und das tut er
         hier nicht — er gehört zu dem Titel darüber.
       */}
-      {aufgabe.beschreibung === '' ? null : (
-        <p className={stile.anriss}>{aufgabe.beschreibung}</p>
+      {aktuelleBeschreibung(aufgabe) === '' ? null : (
+        <p className={stile.anriss}>{mitFett(aktuelleBeschreibung(aufgabe))}</p>
       )}
 
       {/*

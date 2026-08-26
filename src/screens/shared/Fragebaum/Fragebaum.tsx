@@ -86,7 +86,7 @@ function Klapp({
 }
 
 /**
- * `**fett**` aus der Inhaltsdatei als `<strong>`.
+ * `**fett**` aus der Inhaltsdatei als `<strong>` und `[gruen:text]` als farbiger Span.
  *
  * Die Ueberschriften einer Aufzaehlung — "1. Frist", "Aussehen", "Nur fuer
  * Pflichtteilsberechtigte:" — stehen mitten in einem Absatz, der seine
@@ -94,23 +94,29 @@ function Klapp({
  * jedem der 80 Ergebnistexte eine Struktur, die die Juristinnen pflegen
  * muessten; zwei Sternchen sind das, was sie ohnehin schreiben.
  *
- * Bewusst kein Markdown: Fett ist die einzige Auszeichnung, die hier vorkommt,
- * und eine Bibliothek dafuer brächte Ueberschriften, Links und Listen mit, die
- * in diesen Texten nichts zu suchen haben.
+ * Bewusst kein Markdown: Fett und Akzentgrün sind die einzigen Auszeichnungen,
+ * die hier vorkommen, und eine Bibliothek dafuer brächte Ueberschriften, Links
+ * und Listen mit, die in diesen Texten nichts zu suchen haben.
  */
 function mitFett(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((teil, nummer) =>
-    teil.startsWith('**') && teil.endsWith('**') ? (
-      <strong key={nummer}>{teil.slice(2, -2)}</strong>
-    ) : (
-      teil
-    ),
-  )
+  return text.split(/(\*\*[^*]+\*\*|\[gruen:[^\]]+\])/g).map((teil, nummer) => {
+    if (teil.startsWith('**') && teil.endsWith('**')) {
+      return <strong key={nummer}>{mitFett(teil.slice(2, -2))}</strong>
+    }
+    if (teil.startsWith('[gruen:') && teil.endsWith(']')) {
+      return (
+        <span key={nummer} className={stile.gruen}>
+          {mitFett(teil.slice(7, -1))}
+        </span>
+      )
+    }
+    return teil
+  })
 }
 
-/** Derselbe Text ohne die Sternchen: fuer die Ueberschrift, die schon fett ist. */
+/** Derselbe Text ohne die Formatierungs-Tags: fuer die Ueberschrift, die schon fett ist. */
 function ohneFett(text: string): string {
-  return text.replaceAll('**', '')
+  return text.replaceAll('**', '').replaceAll(/\[gruen:([^\]]+)\]/g, '$1')
 }
 
 /**
@@ -662,7 +668,7 @@ function Ergebnisseite({
       {knoten.kenntnisdatum === true ? (
         <div className={stile.feld}>
           <label htmlFor="fragebaum-kenntnis">
-            Wann hat das Nachlassgericht Sie über die Erbschaft informiert?
+            Datum des Fristbeginns (Kenntnis der Erbschaft bzw. Testamentseröffnung)
           </label>
           <input
             id="fragebaum-kenntnis"
@@ -672,8 +678,8 @@ function Ergebnisseite({
             onChange={(ereignis) => setzeKenntnis(ereignis.target.value)}
           />
           <p className={stile.hinweis}>
-            Ohne dieses Datum kann die Frist nicht berechnet werden. Sie können es auch später
-            in der Aufgabe eintragen.
+            Die Frist beträgt 6 Wochen ab diesem Tag. Ohne dieses Datum kann die Frist nicht
+            berechnet werden. Sie können es auch später in der Aufgabe eintragen oder ändern.
           </p>
         </div>
       ) : null}

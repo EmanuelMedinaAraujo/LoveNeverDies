@@ -483,7 +483,7 @@ describe('Aufgaben aus dem Baum (§7)', () => {
     const nutzer = userEvent.setup()
     zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
 
-    await nutzer.type(screen.getByLabelText(/informiert/), '2026-05-12')
+    await nutzer.type(screen.getByLabelText(/Fristbeginn|informiert/), '2026-05-12')
     await nutzer.click(screen.getByRole('button', { name: 'Aufgabe erstellen' }))
 
     expect(setzeKenntnisAm).toHaveBeenCalledWith('2026-05-12')
@@ -617,6 +617,18 @@ describe('Hinweis bei Ausschlagung (C)', () => {
     zeige('/erbe/fragebaum/n6', { pfad: ERBE_PFAD })
 
     expect(screen.queryByText(/nimmt das Erbe automatisch an/)).not.toBeInTheDocument()
+  })
+
+  it('formatiert die Ausschlagungs-Schritte und hebt die Abschnitte grün hervor', () => {
+    zeige('/erbe/fragebaum/n7', { pfad: AUSSCHLAGUNG_PFAD })
+
+    expect(screen.getByText('Normalfall (gesetzliche Erbfolge):')).toHaveClass(/gruen/)
+    expect(screen.getByText('Testament oder Erbvertrag:')).toHaveClass(/gruen/)
+    expect(screen.getByText('1. Über ein Notariat:')).toHaveClass(/gruen/)
+    expect(screen.getByText('2. Persönlich beim Gericht:')).toHaveClass(/gruen/)
+    expect(screen.getByText('1. Frist').tagName).toBe('STRONG')
+    expect(screen.getByText('2. Wie können Sie das Erbe ablehnen?').tagName).toBe('STRONG')
+    expect(screen.getByText('Notar oder Nachlassgericht:').tagName).toBe('STRONG')
   })
 })
 

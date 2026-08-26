@@ -61,6 +61,10 @@
  * Der Ergebnistext. `pre-wrap`, weil die Absätze aus der Inhaltsdatei kommen
  * und dort echte Umbrueche sind.
  */
+.gruen {
+  color: var(--farbe-akzent);
+}
+
 .text {
   margin: 0;
   white-space: pre-wrap;

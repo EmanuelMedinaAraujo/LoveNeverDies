@@ -176,8 +176,31 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
   },
   ausschlagung: {
     titel: 'Erbe ausschlagen',
-    beschreibung:
-      'Die Ausschlagung wird beim Nachlassgericht erklärt, zur Niederschrift oder in öffentlich beglaubigter Form über ein Notariat.',
+    beschreibung: `Sie wollen das Erbe nicht (Ausschlagung)
+
+Hinweis: Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das Erbe automatisch an. Danach kann das Erbe nicht mehr abgelehnt werden.
+
+**Folgende Schritte sind jetzt für Sie relevant:**
+
+**1. Frist**
+Die Frist beträgt 6 Wochen.
+Fristbeginn:
+[gruen:Normalfall (gesetzliche Erbfolge):] Die Frist läuft ab dem Moment, in dem Sie erfahren, dass die Person gestorben ist und Sie gesetzlich erben.
+
+[gruen:Testament oder Erbvertrag:] Gibt es ein Testament, läuft die Frist erst los, wenn das Nachlassgericht Ihnen dieses Testament offiziell eröffnet und mitgeteilt hat – selbst wenn Sie vorher schon von dem Dokument wissen.
+
+**2. Wie können Sie das Erbe ablehnen?**
+[gruen:1. Über ein Notariat:]
+• Termin bei einem Notar vereinbaren
+• persönlich beim Notariat erscheinen
+
+[gruen:2. Persönlich beim Gericht:]
+• telefonisch Termin beim Nachlassgericht vereinbaren
+• persönlich beim Nachlassgericht erscheinen
+
+**Notar oder Nachlassgericht:**
+• Notar: Sie erhalten schneller und sicher innerhalb der Frist einen Termin
+• Nachlassgericht: Ihnen fallen keine zusätzlichen Kosten an`,
     katalog: {
       aufgabeId: 'fragebaum-ausschlagung',
       version: FRAGEBAUM_STAND,
@@ -186,15 +209,15 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
       benoetigteDokumente: ['Sterbeurkunde', 'Personalausweis'],
       unteraufgaben: [
-        'Datum eintragen, an dem das Nachlassgericht Sie über die Erbschaft informiert hat — damit beginnt die Frist von sechs Wochen',
+        'Datum eintragen, an dem Sie von Tod und gesetzlicher Erbfolge bzw. Testamentseröffnung erfahren haben — damit beginnt die Frist von 6 Wochen',
         'Entscheiden: über ein Notariat oder persönlich beim Nachlassgericht',
-        'Telefonisch einen Termin vereinbaren',
+        'Termin beim Notar vereinbaren oder telefonisch einen Termin beim Nachlassgericht vereinbaren',
         'Sterbeurkunde und Personalausweis mitnehmen',
-        'Ausschlagung innerhalb der Frist erklären',
+        'Ausschlagung persönlich innerhalb der Frist von 6 Wochen erklären',
       ],
       haengtAbVon: [],
       hinweis:
-        'Sechs Wochen ab Ihrer Kenntnis von Anfall und Berufungsgrund, nicht ab dem Sterbetag. Beim Notariat bekommen Sie schneller einen Termin, beim Nachlassgericht fallen keine zusätzlichen Kosten an.',
+        'Die Frist beträgt 6 Wochen. Fristbeginn: Normalfall (gesetzliche Erbfolge): Die Frist läuft ab dem Moment, in dem Sie erfahren, dass die Person gestorben ist und Sie gesetzlich erben. Testament oder Erbvertrag: Die Frist läuft erst los, wenn das Nachlassgericht Ihnen dieses Testament offiziell eröffnet und mitgeteilt hat. Notar oder Nachlassgericht: Beim Notar erhalten Sie schneller und sicher innerhalb der Frist einen Termin, beim Nachlassgericht fallen Ihnen keine zusätzlichen Kosten an.',
       kategorie: 'Erbe',
       reihenfolge: 50,
     },
@@ -234,32 +257,36 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
     },
   },
   anfechtung: {
-    titel: 'Testament anfechten',
+    titel: 'Erbschaftsannahme anfechten',
     beschreibung:
-      'Die Anfechtung wird beim Nachlassgericht erklärt, schriftlich oder persönlich nach Terminvereinbarung. Durch die Anfechtung entstehen Kosten; sie werden gemildert oder entfallen bei wirksamer Anfechtung.',
+      'Sie können die Annahme der Erbschaft anfechten, wenn Sie sich über wesentliche Eigenschaften des Nachlasses (wie eine Überschuldung) geirrt haben. Die Anfechtung muss gegenüber dem Nachlassgericht erklärt werden — zur Niederschrift oder in öffentlich beglaubigter Form über ein Notariat.',
     katalog: {
       aufgabeId: 'fragebaum-anfechtung',
       version: FRAGEBAUM_STAND,
       fristTage: 365,
       fristAb: 'anfechtungskenntnis',
-      zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
-      benoetigteDokumente: ['Sterbeurkunde', 'Testament'],
+      zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
+      benoetigteDokumente: [
+        'Sterbeurkunde',
+        'Personalausweis',
+        'Nachweise über den Irrtumsgrund (z. B. Gläubigerbriefe)',
+      ],
       unteraufgaben: [
-        'Datum eintragen, an dem Sie vom Anfechtungsgrund erfahren haben — damit beginnt die Frist von einem Jahr',
-        'Den Anfechtungsgrund festhalten (siehe Schritt 3 der Informationen)',
-        'Entscheiden: schriftlicher Antrag oder persönlich beim Nachlassgericht',
-        'Bei persönlichem Erscheinen vorher einen Termin vereinbaren',
-        'Anfechtung innerhalb der Frist beim Nachlassgericht erklären',
+        'Datum eintragen, an dem Sie vom Anfechtungsgrund erfahren haben',
+        'Nachweise über den Irrtum sammeln (z. B. Schuldenbelege)',
+        'Fachanwalt für Erbrecht oder Notariat kontaktieren',
+        'Anfechtungserklärung fristgerecht beim Nachlassgericht einreichen',
       ],
       haengtAbVon: [],
       hinweis:
-        'Die Frist beträgt ein Jahr ab dem Tag, an dem Sie vom Anfechtungsgrund erfahren haben, und wird ab dem eingetragenen Datum automatisch berechnet. Dieser Tag ist ein anderer als Ihre Kenntnis von Anfall und Berufungsgrund für die Ausschlagungsfrist.',
+        'Die Anfechtungsfrist beträgt ein Jahr ab dem Tag, an dem Sie von dem Irrtumsgrund erfahren haben. Lassen Sie sich unbedingt juristisch beraten.',
       kategorie: 'Erbe',
-      reihenfolge: 45,
+      reihenfolge: 70,
     },
   },
 }
 
+/**
 /**
  * Der Bauplan für die private Seed-Aufgabe "Klären ob Sie Erbe sind",
  * die auf den Fragebaum führt.
@@ -285,13 +312,14 @@ export const SEED_BAUPLAN: Aufgabenbauplan = {
 }
 
 /**
- * Die Beschreibung der Aufgabe, die an einem Ergebnis entsteht (ERBE_DESIGN.md
- * §7).
+ * Der vollständige Beschreibungstext einer Aufgabe, die aus einem
+ * Ergebnisknoten angelegt wird (§7, §10).
  *
- * Sie ist genau das, was unmittelbar über „Aufgabe erstellen“ stand, gefolgt
- * von der Einordnung aus dem Bauplan. Wer den Knopf drückt, hat den Text eine
- * Sekunde vorher gelesen und soll ihn in der Aufgabe wiederfinden, ohne den Weg
- * durch den Baum noch einmal zu gehen — dieselbe Überlegung, aus der die
+ * Wenn die Juristinnen zu einem Knoten schon einen ausführlichen Text
+ * mitgeliefert haben (wie bei der Ausschlagung), steht dieser Text vorne,
+ * gefolgt von der Bauplan-Beschreibung. Das stellt sicher, dass der Nutzer in
+ * der angelegten Aufgabe genau das wiederfindet, was er vor dem Klick auf
+ * "Aufgabe erstellen" gelesen hat — dieselbe Überlegung, aus der auch die
  * Erbschein-Aufgabe ihren ganzen Erklärtext trägt (§10).
  *
  * Der Ergebnistext kommt als Parameter und nicht aus dem Bauplan: Zehn Knoten
@@ -307,6 +335,14 @@ export function aufgabenBeschreibung(vorlage: Aufgabenvorlage, ergebnisText = ''
 
   if (gelesen === '' || gelesen === bauplan.beschreibung.trim()) {
     return bauplan.beschreibung
+  }
+
+  if (
+    gelesen.includes('Folgende Schritte sind jetzt für Sie relevant') ||
+    gelesen.includes(bauplan.beschreibung) ||
+    bauplan.beschreibung.includes(gelesen)
+  ) {
+    return gelesen
   }
 
   return `${gelesen}\n\n${bauplan.beschreibung}`
