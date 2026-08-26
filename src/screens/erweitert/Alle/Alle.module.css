@@ -9,10 +9,30 @@
   margin: 0 auto;
 }
 
+/*
+ * Titel links, das Plus rechts. Ausrichtung auf `center` und nicht auf
+ * `baseline`: Das Plus ist ein Symbol ohne Schriftlinie, und an einer Baseline
+ * haengt es sichtbar zu tief unter einer H1, die groesser gesetzt ist als es.
+ */
 .kopf {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
   gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Das Plus steht am rechten Rand und traegt seine 44 px selbst: Ein Symbol
+ * ohne Text bekommt sie sonst von nichts (§7).
+ */
+.plusknopf {
+  flex: none;
+  min-width: var(--ziel-mindestmass);
+}
+
+.plus {
+  width: var(--dichte-schrift-gross);
+  height: var(--dichte-schrift-gross);
 }
 
 .formular {
@@ -88,6 +108,33 @@
 }
 
 /*
+ * Titel links, Badges rechts, mit Umbruch bei grosser Textskalierung. Der
+ * Titel bekommt `min-width: 0`, damit er sich kuerzen laesst, statt die Badges
+ * aus der Zeile zu schieben; die Badges geben nicht nach, sie sind kurz und
+ * ihre Aussage haengt an jedem Wort ("noch 2 Tage").
+ */
+.titelzeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0 var(--dichte-abstand-klein);
+}
+
+.titelzeile > :first-child {
+  min-width: 0;
+  flex: 1;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--raster-1);
+}
+
+/*
  * Der Titel einer Aufgabe mit Unteraufgaben. Sie hat kein eigenes Haekchen
  * (§7), ruecht aber genauso weit ein wie die Titel mit: Sonst stuenden in
  * einer Liste zwei Textkanten uebereinander.
@@ -147,28 +194,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/*
- * Uebernehmen ist die Aktion, wegen der man diese Liste ueberhaupt aufmacht.
- * Aendern, Loeschen und Freigeben sind daneben Verwaltung; sie stehen in der
- * Sekundaerfarbe, damit die eine Aktion, die weiterbringt, in einer langen
- * Liste noch auffaellt. AA halten beide (§7).
- */
-.leise {
-  color: var(--farbe-text-sekundaer);
-}
-
-/*
- * Die Aktionen einer Zeile stehen nebeneinander, brechen aber um, statt bei
- * grosser Textskalierung aus der Flaeche zu laufen (§7).
- */
-.aktionen {
-  padding-inline-start: var(--einzug);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0 var(--dichte-abstand);
 }
 
 .hinweis {

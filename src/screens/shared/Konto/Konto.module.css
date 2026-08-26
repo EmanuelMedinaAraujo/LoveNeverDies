@@ -1,0 +1,20 @@
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  /*
+   * Breiter als die uebrigen Screens: Clerks Kontoansicht hat eine eigene
+   * Navigation links neben ihrem Inhalt und wird darunter sonst zweispaltig
+   * auf 32 rem gedraengt.
+   */
+  max-width: 44rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}

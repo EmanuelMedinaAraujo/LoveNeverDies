@@ -422,8 +422,9 @@ test('Trauerfall anlegen', async ({ page }) => {
     await gotoVerlaesslich(page, '/alle')
 
     const angelegt = gespeichert(page, 'POST')
-    await page.getByLabel('Neue Aufgabe').fill('Sterbefall beim Standesamt anzeigen')
-    await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+    await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
+    await page.getByLabel('Was ist zu tun?').fill('Sterbefall beim Standesamt anzeigen')
+    await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
     await angelegt
 
     await expect(
@@ -450,8 +451,8 @@ test('Trauerfall anlegen', async ({ page }) => {
       page.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen' }),
     ).toBeVisible()
 
-    await expect(page.getByText('Zuständig: Niemand')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toBeDisabled()
+    await expect(page.getByText('Niemand zugewiesen')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Neue Unteraufgabe' })).toBeDisabled()
 
     const uebernommen = gespeichert(page, 'PATCH')
     await page.getByRole('button', { name: 'Übernehmen' }).click()
@@ -518,8 +519,11 @@ test('Trauerfall anlegen', async ({ page }) => {
 
   await test.step('Unteraufgaben sind eigene Zeilen und tragen den Abschluss (§7)', async () => {
     const angelegteUnteraufgabe = gespeichert(page, 'POST')
-    await page.getByLabel('Neue Unteraufgabe').fill('Sterbeurkunden in ausreichender Zahl bestellen')
-    await page.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click()
+    await page.getByRole('button', { name: 'Neue Unteraufgabe' }).click()
+    await page
+      .getByLabel('Was ist zu tun?')
+      .fill('Sterbeurkunden in ausreichender Zahl bestellen')
+    await page.getByRole('button', { name: 'Unteraufgabe speichern' }).click()
     await angelegteUnteraufgabe
 
     const unteraufgabe = page.getByRole('checkbox', {
@@ -544,7 +548,7 @@ test('Trauerfall anlegen', async ({ page }) => {
     // Wer sie anlegt, ist eingetragen (§7); für die Gegenprobe wird sie frei
     // gegeben und wieder übernommen.
     await page
-      .getByRole('link', { name: /^Zuständigkeit ändern.*Sterbeurkunden in ausreichender Zahl/ })
+      .getByRole('link', { name: /^Details.*Sterbeurkunden in ausreichender Zahl/ })
       .click()
 
     /*
@@ -571,7 +575,7 @@ test('Trauerfall anlegen', async ({ page }) => {
      * sie erst übernehmen müsste, um sie abhaken zu dürfen, machte zwei
      * Handgriffe für eine Auskunft.
      */
-    await expect(page.getByText('Zuständig: Niemand')).toBeVisible()
+    await expect(page.getByText('Niemand zugewiesen')).toBeVisible()
     await expect(page.getByText(/Diese Aufgabe ist niemandem zugewiesen/)).toBeVisible()
 
     const ausGehakt = gespeichert(page, 'PATCH')
@@ -609,8 +613,9 @@ test('Trauerfall anlegen', async ({ page }) => {
     // Eine weitere Unteraufgabe macht sie wieder offen. Das ist der Weg, den
     // §7 anbietet, wenn inhaltlich noch etwas fehlt.
     const angelegt = gespeichert(page, 'POST')
-    await page.getByLabel('Neue Unteraufgabe').fill('Sechs Ausfertigungen abholen')
-    await page.getByRole('button', { name: 'Unteraufgabe hinzufügen' }).click()
+    await page.getByRole('button', { name: 'Neue Unteraufgabe' }).click()
+    await page.getByLabel('Was ist zu tun?').fill('Sechs Ausfertigungen abholen')
+    await page.getByRole('button', { name: 'Unteraufgabe speichern' }).click()
     await angelegt
 
     await expect(page.getByText('Offen: 1 von 2 Unteraufgaben erledigt.')).toBeVisible()
@@ -623,11 +628,28 @@ test('Trauerfall anlegen', async ({ page }) => {
       .click()
     await expect(page.getByText('Offen: 1 von 2 Unteraufgaben erledigt.')).toBeVisible()
 
-    // Wieder aufgeräumt: die eigene Unteraufgabe weg, das Häkchen zurück.
+    /*
+     * Wieder aufgeräumt: die eigene Unteraufgabe weg, das Häkchen zurück.
+     * Gelöscht wird seit §7 in der Aufgabe selbst, oben rechts — ein Weg statt
+     * eines zweiten unter jeder Listenzeile, und der Weg dorthin führt an dem
+     * vorbei, was gleich verschwindet.
+     */
+    await page.getByRole('link', { name: /^Details.*Sechs Ausfertigungen abholen/ }).click()
+    await expect(
+      page.getByRole('heading', { name: 'Sechs Ausfertigungen abholen', level: 1 }),
+    ).toBeVisible()
+
     const geloescht = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: /^Löschen.*Sechs Ausfertigungen abholen/ }).click()
+    await page.getByRole('button', { name: /^Löschen/ }).click()
     await page.getByRole('button', { name: 'Endgültig löschen' }).click()
     await geloescht
+
+    // Nach dem Löschen steht der Screen vor einer Aufgabe, die es nicht mehr
+    // gibt; er geht deshalb zurück in die Liste.
+    await expect(page).toHaveURL(/\/alle$/)
+    await page
+      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
+      .click()
 
     const zurueckgenommen = gespeichert(page, 'PATCH')
     await page
@@ -640,9 +662,15 @@ test('Trauerfall anlegen', async ({ page }) => {
   let grundZeilen = 0
 
   await test.step('Notizen überleben das Neuladen', async () => {
+    /*
+     * §5, §7: Notizen speichern von selbst, kurz nachdem jemand aufgehört hat
+     * zu tippen. Ein Feld mit einer Schaltfläche daneben ist eine Zusage, die
+     * man einlösen muss — und auf einem Telefon verdeckt die Tastatur genau
+     * die Schaltfläche, die man danach hätte drücken sollen.
+     */
     const gesichert = gespeichert(page, 'PATCH')
     await page.getByLabel(/Notizen/).fill('Termin am Montag um 9 Uhr')
-    await page.getByRole('button', { name: 'Notizen speichern' }).click()
+    await expect(page.getByText('Gespeichert.')).toBeVisible()
     await gesichert
 
     await gotoVerlaesslich(page, '/alle')
@@ -677,13 +705,15 @@ test('Trauerfall anlegen', async ({ page }) => {
 
     grundZeilen = await zeilen(page).count()
 
-    await page.getByLabel('Neue Aufgabe').fill('Sterbeurkunde beantragen')
-    await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+    await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
+    await page.getByLabel('Was ist zu tun?').fill('Sterbeurkunde beantragen')
+    await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
 
     await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
 
-    await page.getByLabel('Neue Aufgabe').fill('Konten kündigen')
-    await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+    await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
+    await page.getByLabel('Was ist zu tun?').fill('Konten kündigen')
+    await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
 
     await expect(zeilen(page)).toHaveCount(grundZeilen + 2)
   })
@@ -800,8 +830,9 @@ test('Trauerfall anlegen', async ({ page }) => {
       await expect(zweiterTab.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeVisible()
 
       const angelegt = gespeichert(page, 'POST')
-      await page.getByLabel('Neue Aufgabe').fill('Konto der Sparkasse kündigen')
-      await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+      await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
+      await page.getByLabel('Was ist zu tun?').fill('Konto der Sparkasse kündigen')
+      await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
       await angelegt
 
       /*
@@ -897,8 +928,9 @@ test('Trauerfall anlegen', async ({ page }) => {
     await gotoVerlaesslich(page, '/alle')
 
     const unbesetzt = gespeichert(page, 'POST')
-    await page.getByLabel('Neue Aufgabe').fill('Nachlassverzeichnis erstellen')
-    await page.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+    await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
+    await page.getByLabel('Was ist zu tun?').fill('Nachlassverzeichnis erstellen')
+    await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
     await unbesetzt
 
     const freigegeben = gespeichert(page, 'PATCH')

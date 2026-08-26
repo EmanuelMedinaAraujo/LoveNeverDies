@@ -342,7 +342,7 @@ describe('useAufgaben', () => {
     })
     // Die anlegende Person geht mit hinaus: Wer etwas aufschreibt, ist damit
     // eingetragen (§7).
-    expect(mutationAnlegen).toHaveBeenCalledWith(FALL, 'Konten kündigen', null, ICH)
+    expect(mutationAnlegen).toHaveBeenCalledWith(FALL, 'Konten kündigen', null, ICH, {})
     expect(mutiere).toHaveBeenCalledWith(angelegt)
 
     await act(async () => {
@@ -942,9 +942,29 @@ describe('Private Aufgaben (§3.7)', () => {
       PRIVAT,
       'Erbausschlagung erwägen',
       ICH,
+      {},
     )
     expect(mutationAnlegen).not.toHaveBeenCalled()
     expect(mutiere).toHaveBeenCalledWith(mutation)
+  })
+
+  it('reicht Beschreibung und Frist bis in dieselbe Mutation durch (§7)', async () => {
+    mutationAnlegen.mockResolvedValue({ op: 'anlegen', itemId: 'item-1' })
+    useSync.mockReturnValue(syncdaten())
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await act(async () => {
+      await result.current.legeAn('Konten kündigen', null, false, {
+        beschreibung: 'Sparkasse',
+        fristAm: '2026-09-30',
+      })
+    })
+
+    expect(mutationAnlegen).toHaveBeenCalledWith(FALL, 'Konten kündigen', null, ICH, {
+      beschreibung: 'Sparkasse',
+      fristAm: '2026-09-30',
+    })
   })
 
   it('legt ohne den Schalter weiterhin eine geteilte Aufgabe an', async () => {
