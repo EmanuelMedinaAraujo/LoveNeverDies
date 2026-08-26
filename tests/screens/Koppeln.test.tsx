@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { act, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
@@ -18,9 +18,18 @@ const useEinloesung = vi.fn()
 const einloesen = vi.fn()
 const bestaetigen = vi.fn()
 const abbrechen = vi.fn()
+const useQrScanner = vi.fn()
 
 vi.mock('../../src/hooks/useKopplung.ts', () => ({
   useEinloesung: () => useEinloesung(),
+}))
+
+// Die Kamera selbst -- Berechtigung, Stream, `BarcodeDetector` -- gehört
+// `useQrScanner.test.tsx`. Hier geht es nur darum, was `Koppeln` mit dessen
+// Zuständen anstellt: den Knopf, die drei Zustände der Scan-Ansicht, und dass
+// ein erkannter Code exakt so behandelt wird wie ein getippter (§6).
+vi.mock('../../src/hooks/useQrScanner.ts', () => ({
+  useQrScanner: (...a: unknown[]) => useQrScanner(...a),
 }))
 
 const { Koppeln } = await import('../../src/screens/shared/Koppeln/Koppeln.tsx')
@@ -81,6 +90,7 @@ function daten(
 beforeEach(() => {
   vi.clearAllMocks()
   useEinloesung.mockReturnValue(daten({ status: 'leer', fehler: null }))
+  useQrScanner.mockReturnValue({ zustand: { status: 'aktiv' }, videoRef: { current: null } })
 })
 
 describe('Koppeln: Code eingeben (§6, Schritt 4)', () => {
@@ -90,7 +100,39 @@ describe('Koppeln: Code eingeben (§6, Schritt 4)', () => {
     await userEvent.type(screen.getByLabelText('Kopplungscode'), 'k4m7-qp2x')
     await userEvent.click(screen.getByRole('button', { name: 'Weiter' }))
 
-    expect(einloesen).toHaveBeenCalledWith('k4m7-qp2x')
+    expect(einloesen).toHaveBeenCalledWith('K4M7-QP2X')
+  })
+
+  it('setzt den Bindestrich, sobald das vierte Zeichen steht', async () => {
+    rendereMitProvidern(<Koppeln />)
+
+    const feld = screen.getByLabelText('Kopplungscode')
+    await userEvent.type(feld, 'k4m7')
+
+    expect(feld).toHaveValue('K4M7-')
+  })
+
+  // Der Bindestrich gehört nicht zum Code: Wer hinter ihm löscht, meint das
+  // vierte Zeichen. Sonst käme die Trennung sofort zurück und das Zeichen
+  // ließe sich nie entfernen.
+  it('nimmt beim Löschen des Bindestrichs das vierte Zeichen mit', async () => {
+    rendereMitProvidern(<Koppeln />)
+
+    const feld = screen.getByLabelText('Kopplungscode')
+    await userEvent.type(feld, 'k4m7')
+    await userEvent.type(feld, '{backspace}')
+
+    expect(feld).toHaveValue('K4M')
+  })
+
+  it('lässt hinter der Trennung Zeichen für Zeichen löschen', async () => {
+    rendereMitProvidern(<Koppeln />)
+
+    const feld = screen.getByLabelText('Kopplungscode')
+    await userEvent.type(feld, 'k4m7qp')
+    await userEvent.type(feld, '{backspace}')
+
+    expect(feld).toHaveValue('K4M7-Q')
   })
 
   it('nennt den Grund, wenn der Code nicht durchging', () => {
@@ -101,6 +143,81 @@ describe('Koppeln: Code eingeben (§6, Schritt 4)', () => {
     rendereMitProvidern(<Koppeln />)
 
     expect(screen.getByRole('alert')).toHaveTextContent('abgelaufen')
+  })
+})
+
+describe('Koppeln: Code scannen (Alternative zum Eintippen, §6)', () => {
+  it('lässt den Scan anfordern, ohne dass die Kamera von selbst angeht', () => {
+    rendereMitProvidern(<Koppeln />)
+
+    expect(screen.getByRole('button', { name: 'Code scannen' })).toBeVisible()
+    // Erst nach Anfrage steht `aktiv`; ohne diesen Aufruf fragte die Seite
+    // beim bloßen Öffnen schon nach der Kamera.
+    expect(useQrScanner).toHaveBeenCalledWith(false, expect.any(Function))
+  })
+
+  it('zeigt die Kamera, sobald der Scan angefordert wurde', async () => {
+    const { container } = rendereMitProvidern(<Koppeln />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Code scannen' }))
+
+    expect(useQrScanner).toHaveBeenLastCalledWith(true, expect.any(Function))
+    expect(container.querySelector('video')).not.toBeNull()
+    expect(screen.getByText('Halten Sie den QR-Code vor die Kamera.')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Scannen abbrechen' })).toBeVisible()
+  })
+
+  it('sagt es, wenn Scannen auf diesem Gerät nicht unterstützt wird', async () => {
+    useQrScanner.mockReturnValue({ zustand: { status: 'nicht-unterstuetzt' }, videoRef: { current: null } })
+
+    const { container } = rendereMitProvidern(<Koppeln />)
+    await userEvent.click(screen.getByRole('button', { name: 'Code scannen' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Scannen wird auf diesem Gerät nicht unterstützt, bitte Code eintippen.',
+    )
+    expect(container.querySelector('video')).toBeNull()
+  })
+
+  it('zeigt den Kamerafehler, wenn der Zugriff scheitert', async () => {
+    useQrScanner.mockReturnValue({
+      zustand: { status: 'fehler', nachricht: 'Der Zugriff auf die Kamera wurde nicht erlaubt.' },
+      videoRef: { current: null },
+    })
+
+    rendereMitProvidern(<Koppeln />)
+    await userEvent.click(screen.getByRole('button', { name: 'Code scannen' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Der Zugriff auf die Kamera wurde nicht erlaubt.',
+    )
+  })
+
+  it('übernimmt einen erkannten Code wie einen getippten und löst ihn ein', async () => {
+    rendereMitProvidern(<Koppeln />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Code scannen' }))
+
+    const onErkannt = useQrScanner.mock.calls.at(-1)?.[1] as (wert: string) => void
+    act(() => onErkannt('k4m7qp2x'))
+
+    // Dieselbe Normalisierung wie beim Tippen (`formatiereKopplungscodeEingabe`):
+    // klein geschrieben und ohne Trenner hereingekommen, gruppiert und groß
+    // im Feld.
+    expect(screen.getByLabelText('Kopplungscode')).toHaveValue('K4M7-QP2X')
+    expect(einloesen).toHaveBeenCalledWith('K4M7-QP2X')
+    // Die Scan-Ansicht schließt sich von selbst, sobald etwas erkannt wurde.
+    expect(screen.getByRole('button', { name: 'Code scannen' })).toBeVisible()
+  })
+
+  it('bricht ab, ohne etwas einzulösen', async () => {
+    rendereMitProvidern(<Koppeln />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Code scannen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Scannen abbrechen' }))
+
+    expect(screen.getByRole('button', { name: 'Code scannen' })).toBeVisible()
+    expect(einloesen).not.toHaveBeenCalled()
   })
 })
 

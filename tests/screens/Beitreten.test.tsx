@@ -16,6 +16,7 @@ const useKopplungscode = vi.fn()
 const useKopplungswache = vi.fn()
 const navigiere = vi.fn()
 const neuAnfordern = vi.fn()
+const qrToString = vi.fn()
 
 vi.mock('../../src/hooks/useKopplung.ts', () => ({
   useKopplungscode: (...a: unknown[]) => useKopplungscode(...a),
@@ -25,6 +26,15 @@ vi.mock('react-router-dom', async () => {
   const echt = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return { ...echt, useNavigate: () => navigiere }
 })
+
+// `qrcode` baut ein PNG nur über ein `<canvas>`, das jsdom nicht kennt. Der
+// SVG-Pfad bräuchte das nicht, aber ersetzt wird die Bibliothek trotzdem: So
+// prüft der Test, was `Beitreten` selbst tut (auf- und zuklappen, den
+// richtigen Code weiterreichen), nicht, wie `qrcode` einen String encodiert --
+// das steht in dessen eigenen Tests.
+vi.mock('qrcode', () => ({
+  default: { toString: (...a: unknown[]) => qrToString(...a) },
+}))
 
 const { Beitreten } = await import('../../src/screens/shared/Beitreten/Beitreten.tsx')
 
@@ -44,6 +54,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   useKopplungscode.mockReturnValue({ zustand: BEREIT, neuAnfordern })
   useKopplungswache.mockReturnValue({ status: 'wartet' })
+  qrToString.mockResolvedValue('<svg>mock</svg>')
 })
 
 describe('Beitreten (§6)', () => {
@@ -179,5 +190,50 @@ describe('Beitreten (§6)', () => {
     rendereMitProvidern(<Beitreten zweck="join" />)
 
     expect(screen.getByText(/Kein Netz\./)).toBeVisible()
+  })
+
+  describe('QR-Code (Alternative zum Vorlesen)', () => {
+    it('zeigt den QR-Code erst nach einem Klick auf den Knopf', async () => {
+      const { container } = rendereMitProvidern(<Beitreten zweck="join" />)
+
+      const knopf = screen.getByRole('button', { name: 'QR-Code anzeigen' })
+      expect(knopf).toHaveAttribute('aria-expanded', 'false')
+      expect(container.querySelector('img')).toBeNull()
+      expect(qrToString).not.toHaveBeenCalled()
+
+      await userEvent.click(knopf)
+
+      expect(screen.getByRole('button', { name: 'QR-Code verbergen' })).toHaveAttribute(
+        'aria-expanded',
+        'true',
+      )
+      expect(await screen.findByText(/Lassen Sie die andere Seite diesen QR-Code scannen/)).toBeVisible()
+      expect(container.querySelector('img')).not.toBeNull()
+    })
+
+    it('kodiert genau den Kopplungscode, ohne Bindestrich', async () => {
+      rendereMitProvidern(<Beitreten zweck="join" />)
+
+      await userEvent.click(screen.getByRole('button', { name: 'QR-Code anzeigen' }))
+
+      await screen.findByRole('button', { name: 'QR-Code verbergen' })
+      expect(qrToString).toHaveBeenCalledWith('K4M7QP2X', expect.objectContaining({ type: 'svg' }))
+    })
+
+    it('klappt wieder zu, wenn man ein zweites Mal klickt', async () => {
+      const { container } = rendereMitProvidern(<Beitreten zweck="join" />)
+
+      const knopf = screen.getByRole('button', { name: 'QR-Code anzeigen' })
+      await userEvent.click(knopf)
+      await screen.findByRole('button', { name: 'QR-Code verbergen' })
+
+      await userEvent.click(screen.getByRole('button', { name: 'QR-Code verbergen' }))
+
+      expect(screen.getByRole('button', { name: 'QR-Code anzeigen' })).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      )
+      expect(container.querySelector('img')).toBeNull()
+    })
   })
 })

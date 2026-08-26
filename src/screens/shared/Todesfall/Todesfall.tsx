@@ -4,6 +4,7 @@ import { alsNachricht } from '../../../core/fehler.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import stile from './Todesfall.module.css'
 
 /**
@@ -44,6 +45,8 @@ export function Todesfall() {
 
   return (
     <main className={stile.seite}>
+      <Zurueck ziel="/" />
+
       <div className={stile.kopf}>
         <h1>Ein Todesfall ist eingetreten</h1>
         <p className={stile.einleitung}>

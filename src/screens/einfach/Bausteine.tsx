@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { Aufgabenknoten } from '../../services/aufgabenbaum.ts'
 import { datumText, fristText, type Fristlage } from '../../services/fristen.ts'
+import { istSeedAufgabe } from '../../services/fragebaumService.ts'
 import { Checkbox } from '../../ui/Checkbox/Checkbox.tsx'
 import stile from './einfach.module.css'
 
@@ -63,6 +64,14 @@ function Winkel() {
 /**
  * Eine Aufgabe in der Liste: abhaken, hineingehen, mehr nicht.
  *
+ * Hineingehen tut die ganze Zeile: "Aufgabe oeffnen" legt seine
+ * Trefferflaeche ueber sie. Das Haekchen liegt darueber und faengt seinen Tipp
+ * vorher ab, und die Beschriftung des Haekchens laesst Tipps durch
+ * (`nurKaestchen`). Damit gilt in der ganzen Liste dieselbe Regel: Das
+ * Kaestchen hakt ab, alles andere fuehrt ins Detail. Vorher hakte ein Tipp auf
+ * den Titel die Aufgabe ab -- die haeufigste Stelle der Zeile fuer die
+ * seltenere der beiden Absichten.
+ *
  * Alles andere — umbenennen, löschen, übernehmen, freigeben — steht in der
  * Aufgabe selbst. In der erweiterten Ansicht liegt es als Reihe von
  * Textaktionen unter jeder Zeile; das ist dort richtig, weil man sich dann
@@ -123,10 +132,12 @@ export function Aufgabenzeile({
     <li className={stile.eintrag}>
       {istBlatt ? (
         <Checkbox
+          abhaken
           checked={erledigt}
           disabled={gesperrt || !darfHaken}
           onChange={(ereignis) => void haken(ereignis.target.checked)}
           label={aufgabe.titel}
+          nurKaestchen
         />
       ) : (
         <p className={[stile.titel, giltAlsErledigt ? stile.fertig : null].filter(Boolean).join(' ')}>
@@ -158,11 +169,49 @@ export function Aufgabenzeile({
         </p>
       )}
 
-      <Link className={stile.weiter} to={`/aufgabe/${aufgabe.id}`}>
-        Aufgabe öffnen
+      {/*
+        Die eine Aufgabe, die noch aus dem Katalog kommt (ADR-0001), hat keine
+        eigene Detailseite: Ihr Ergebnis steht im Fragebaum, nicht in einem
+        Titel- und Beschreibungsfeld. Erkannt wird sie an ihrer Herkunft und
+        nicht am Titel, damit eine umbenannte Aufgabe den Weg dorthin nicht
+        verliert (§7, ERBE_DESIGN.md §9).
+      */}
+      <Link
+        className={stile.weiter}
+        to={istSeedAufgabe(aufgabe.katalog) ? '/erbe/fragebaum' : `/aufgabe/${aufgabe.id}`}
+      >
+        {istSeedAufgabe(aufgabe.katalog) ? 'Fragebaum starten' : 'Aufgabe öffnen'}
         <span className="nur-vorlesen">: „{aufgabe.titel}“</span>
         <Winkel />
       </Link>
     </li>
   )
+}
+
+/**
+ * Ein Abschnitt: Überschrift, darunter der Inhalt, darüber eine Haarlinie.
+ *
+ * Dieselbe Form wie in `screens/einfach/Aufgabe/Aufgabe.tsx`, hier exportiert:
+ * "Start" und "Alle" brauchen sie beide für den Abschnitt "Weitere Aufgaben"
+ * (§7).
+ */
+export function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) {
+  return (
+    <section className={stile.abschnitt}>
+      <h2>{titel}</h2>
+      {children}
+    </section>
+  )
+}
+
+/**
+ * Die Beschriftung des Auf-/Zuklappers für erledigte Aufgaben (§7).
+ *
+ * Eine Funktion und keine Konstante, weil die Zahl mitgezählt werden soll:
+ * "1 erledigte Aufgabe" und nicht "1 erledigte Aufgaben".
+ */
+export function erledigtSchalter(anzahl: number): { titel: string; offenText: string } {
+  const wort = anzahl === 1 ? 'erledigte Aufgabe' : 'erledigte Aufgaben'
+
+  return { titel: `${anzahl} ${wort} anzeigen`, offenText: `${anzahl} ${wort} ausblenden` }
 }

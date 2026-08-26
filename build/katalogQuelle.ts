@@ -13,10 +13,9 @@ import type { Fristanker, Katalog, Katalogaufgabe } from '../src/types/katalog.t
  * einen Katalog zurueck; `import-content.ts` daneben legt die Datei an. So
  * laesst sich jede Regel dieses Moduls pruefen, ohne eine Datei anzulegen.
  *
- * Die harte Regel aus §8 steht in {@link pruefeFrist}: Eine Frist ohne
- * Rechtsgrundlage bricht den Import ab. Fristen sind das, was diese App
- * gefaehrlich macht, wenn sie falsch sind. Eine Zahl ohne Paragraph ist eine
- * Behauptung, und Behauptungen kommen hier nicht durch.
+ * Die harte Regel aus §8 steht in {@link pruefeFrist}: Eine Frist ohne Anker
+ * bricht den Import ab. Fristen sind das, was diese App gefaehrlich macht,
+ * wenn sie falsch sind, und eine Zahl ohne Anker liefe ab nichts.
  */
 
 /** Die Spalten aus §8, in der Reihenfolge der Quelltabelle. */
@@ -26,13 +25,11 @@ export const SPALTEN = [
   'kurzbeschreibung',
   'frist_tage',
   'frist_ab',
-  'rechtsgrundlage',
   'zustaendige_stelle',
   'benoetigte_dokumente',
   'subtasks',
   'depends_on',
   'hinweis',
-  'quelle_url',
   'kategorie',
   'reihenfolge',
 ] as const
@@ -206,11 +203,15 @@ function zugriff(kopf: string[], datensatz: Datensatz): Zugriff {
 }
 
 /**
- * Die harte Regel aus §8 und ihre beiden Nachbarn.
+ * Eine Frist muss rechenbar sein, sonst kommt sie nicht durch.
  *
- * Eine Frist ohne Rechtsgrundlage ist ein Importfehler. Eine Frist ohne Anker
- * waere nicht berechenbar (§8: ab Sterbedatum oder ab Kenntnis), und ein Anker
- * ohne Frist benennt einen Zeitpunkt, ab dem nichts laeuft.
+ * Eine Frist ohne Anker waere nicht berechenbar (§8: ab Sterbedatum oder ab
+ * Kenntnis), und ein Anker ohne Frist benennt einen Zeitpunkt, ab dem nichts
+ * laeuft. Eine Rechtsgrundlage verlangt der Import seit ADR-0003 nicht mehr:
+ * Der Katalog fuehrt keine Paragraphen mehr, weil eine Zeile "§ 1944 BGB" im
+ * Aufgabendetail wie eine Rechtsberatung aussieht, und die gibt diese App
+ * nicht. Die Frist selbst bleibt die Zusage: eine Zahl, ein Anker, sonst
+ * nichts.
  */
 function pruefeFrist(lies: Zugriff, ort: string, maengel: string[]): void {
   const tage = lies('frist_tage')
@@ -222,12 +223,6 @@ function pruefeFrist(lies: Zugriff, ort: string, maengel: string[]): void {
 
   if (ab !== '' && !FRISTANKER.includes(ab)) {
     maengel.push(`${ort}: frist_ab ist "${ab}" und weder "sterbedatum" noch "kenntnis".`)
-  }
-
-  if (tage !== '' && lies('rechtsgrundlage') === '') {
-    maengel.push(
-      `${ort}: frist_tage ist gesetzt, rechtsgrundlage ist leer. Eine Frist ohne Rechtsgrundlage geht nicht durch (§8).`,
-    )
   }
 
   if (tage !== '' && ab === '') {
@@ -260,12 +255,6 @@ function pruefeZeile(lies: Zugriff, ort: string, maengel: string[]): void {
     maengel.push(`${ort}: reihenfolge ist "${lies('reihenfolge')}" und keine ganze Zahl.`)
   }
 
-  const quelle = lies('quelle_url')
-
-  if (quelle !== '' && !quelle.startsWith('https://') && !quelle.startsWith('http://')) {
-    maengel.push(`${ort}: quelle_url "${quelle}" ist keine URL.`)
-  }
-
   pruefeFrist(lies, ort, maengel)
 }
 
@@ -279,13 +268,11 @@ function alsAufgabe(lies: Zugriff): Katalogaufgabe {
     kurzbeschreibung: lies('kurzbeschreibung'),
     fristTage: tage === '' ? null : Number(tage),
     fristAb: ab === '' ? null : (ab as Fristanker),
-    rechtsgrundlage: lies('rechtsgrundlage'),
     zustaendigeStelle: lies('zustaendige_stelle'),
     benoetigteDokumente: liste(lies('benoetigte_dokumente')),
     unteraufgaben: liste(lies('subtasks')),
     haengtAbVon: liste(lies('depends_on')),
     hinweis: lies('hinweis'),
-    quelleUrl: lies('quelle_url'),
     kategorie: lies('kategorie'),
     reihenfolge: Number(lies('reihenfolge')),
   }

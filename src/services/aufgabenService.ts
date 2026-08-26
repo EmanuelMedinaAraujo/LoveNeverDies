@@ -38,6 +38,7 @@ import { uuidv7 } from '../core/uuidv7'
 import type { Erbstatus } from '../types/fragebaum'
 import type { Katalogaufgabe } from '../types/katalog'
 import { istKalendertag } from './fristen'
+import type { TresorItemPayload } from './tresorService'
 import type { PersoenlicherSchluessel } from './privatService'
 import { NIEMAND, personen, zuweisungAus, type Zugewiesene, type Zuweisung } from './zuweisung'
 
@@ -78,8 +79,10 @@ export type Privatschluessel = PersoenlicherSchluessel | null
  * Kopiert und nicht verknüpft: `catalog_version` ist eine Herkunftsangabe
  * ("aufgesetzt aus Katalogstand 2031-03"), keine lebende Verbindung: Ein
  * späterer Import ändert an einer bereits instanziierten Aufgabe nichts. Wer
- * Rechtsgrundlage und Quelle im Aufgabendetail liest (§7), liest den Stand von
+ * Frist und zuständige Stelle im Aufgabendetail liest (§7), liest den Stand von
  * damals, und genau den soll er lesen, denn danach hat jemand gehandelt.
+ *
+ * Paragraph und Quelllink stehen seit ADR-0003 nicht mehr darin.
  *
  * Alles ausser Titel und Kurzbeschreibung steht hier: Die beiden sind der
  * Aufgabe selbst geworden und dort änderbar.
@@ -151,9 +154,10 @@ export type Aufgabenpayload = {
  * Baum deshalb nicht verletzen. Die beiden Strukturregeln aus §3.7 gelten für
  * sie ausdrücklich nicht.
  *
- * Bislang trägt sie genau ein Feld. Ein eigener `typ` steht trotzdem darüber:
- * Er ist die Unterscheidung, an der ein Leser dieses Item von einer Aufgabe
- * trennt, ohne aus dem Fehlen eines Titels auf einen Defekt zu schließen.
+ * Trägt heute drei Daten und ein Ergebnis. Ein eigener `typ` steht trotzdem
+ * darüber: Er ist die Unterscheidung, an der ein Leser dieses Item von einer
+ * Aufgabe trennt, ohne aus dem Fehlen eines Titels auf einen Defekt zu
+ * schließen.
  */
 export type Konfigurationspayload = {
   typ: 'konfiguration'
@@ -166,6 +170,15 @@ export type Konfigurationspayload = {
    * bleiben dann fristenlos.
    */
   kenntnisAm: string | null
+  /**
+   * Der Tag, an dem diese Person vom Grund einer Testamentsanfechtung erfahren
+   * hat (§8, ERBE_DESIGN.md §7), als ISO `YYYY-MM-DD`, oder `null`.
+   *
+   * Ausdrücklich nicht `kenntnisAm`: Beide sind die Kenntnis von etwas anderem
+   * und tragen deshalb unterschiedliche Fristenden (`fristen.ts`,
+   * `types/fragebaum.ts` bei `anfechtungsdatum`).
+   */
+  anfechtungKenntnisAm: string | null
   /**
    * Das gespeicherte Ergebnis des Erbe-Fragebaums (ERBE_DESIGN.md §6), oder
    * `null`, solange niemand ihn zu Ende gegangen ist.
@@ -198,10 +211,36 @@ export type Fragebaumergebnis = {
   am: string
 }
 
+/**
+ * Ein Eintrag aus dem Nachlass-Tresor, so wie er nach dem Öffnen dasteht (§3.5).
+ *
+ * Beim Öffnen wechseln die Tresor-DEKs von `K_v` auf `K_c` und `in_vault`
+ * fällt auf `false`: Die Zeilen sind danach gewöhnliche Items, die jedes
+ * Mitglied lesen kann. Was bleibt, ist ihr Payload -- `typ: 'tresor'` -- und
+ * daran erkennt dieser Dienst sie wieder.
+ *
+ * Ohne diese Unterscheidung sähen sie aus wie Aufgaben: Geprüft wurde nur, ob
+ * ein `titel` dasteht, und ein Tresor-Payload hat einen. Eine Notiz "Zugang
+ * Sparkasse" stünde dann in "Alle" zwischen den Aufgaben, mit Häkchen,
+ * Zuständigkeit und einer Schaltfläche "Löschen" -- die letzte Nachricht der
+ * verstorbenen Person, einen Fehltipp von der Auslöschung entfernt.
+ *
+ * Kein `dek`: Der Nachlass ist zu lesen, nicht zu ändern. Wer ihn ändern
+ * könnte, bräuchte ihn.
+ */
+export type Nachlasseintrag = {
+  id: string
+  titel: string
+  inhalt: string
+  /** `updated_at` der Zeile: wann der Eintrag zuletzt geschrieben wurde. */
+  geaendertAm: string
+}
+
 /** Ein gelesenes Konfigurations-Item mit allem, was ein Edit daran braucht. */
 export type Konfiguration = {
   id: string
   kenntnisAm: string | null
+  anfechtungKenntnisAm: string | null
   fragebaum: Fragebaumergebnis | null
   /** Der DEK dieser Zeile, entpackt: Ein neues Datum schreibt darunter weiter. */
   dek: Uint8Array
@@ -255,6 +294,15 @@ export type Aufgabenliste = {
    * ist eine UUIDv7 (§5), also ist die größere die jüngere.
    */
   konfigurationen: Konfiguration[]
+  /**
+   * Die Einträge aus dem geöffneten Nachlass-Tresor (§3.5), in der Reihenfolge,
+   * in der sie hineingelegt wurden: Die IDs sind UUIDv7 (§5), also ist die
+   * kleinere die ältere.
+   *
+   * In einem Vorsorgefall ist die Liste leer. Dort liegen die Tresor-Items
+   * unter `K_v`, den dieser Dienst nicht kennt und nicht bekommt.
+   */
+  nachlass: Nachlasseintrag[]
   /**
    * Die Zeilen, die still verworfen wurden (§3.7), bei ihrer ID. Sichtbar
    * ausschließlich im Dev-Modus: In Produktion gibt es diesen Zähler nirgends
@@ -336,14 +384,16 @@ function herkunftAus(wert: unknown): Katalogherkunft | null {
     version: alsText(felder.version),
     fristTage: typeof felder.fristTage === 'number' ? felder.fristTage : null,
     fristAb:
-      felder.fristAb === 'sterbedatum' || felder.fristAb === 'kenntnis' ? felder.fristAb : null,
-    rechtsgrundlage: alsText(felder.rechtsgrundlage),
+      felder.fristAb === 'sterbedatum' ||
+      felder.fristAb === 'kenntnis' ||
+      felder.fristAb === 'anfechtungskenntnis'
+        ? felder.fristAb
+        : null,
     zustaendigeStelle: alsText(felder.zustaendigeStelle),
     benoetigteDokumente: alsListe(felder.benoetigteDokumente),
     unteraufgaben: alsListe(felder.unteraufgaben),
     haengtAbVon: alsListe(felder.haengtAbVon),
     hinweis: alsText(felder.hinweis),
-    quelleUrl: alsText(felder.quelleUrl),
     kategorie: alsText(felder.kategorie),
     reihenfolge: typeof felder.reihenfolge === 'number' ? felder.reihenfolge : 0,
   }
@@ -397,18 +447,23 @@ function gelesenesErgebnis(wert: unknown): Fragebaumergebnis | null {
 }
 
 /**
- * Liest, was in einem entschlüsselten Payload steht: eine Aufgabe oder ein
- * privates Konfigurations-Item (§3.7, §8).
+ * Liest, was in einem entschlüsselten Payload steht: eine Aufgabe, ein privates
+ * Konfigurations-Item (§3.7, §8) oder ein Eintrag aus dem geöffneten
+ * Nachlass-Tresor (§3.5).
  *
  * Unterschieden wird am `typ` und nicht daran, ob ein Titel fehlt. Ein
  * Konfigurations-Item hat keinen, und aus seinem Fehlen auf einen Defekt zu
  * schließen hieße, das eigene `kenntnisAm` als übersprungene Zeile zu zählen.
+ * Ein Tresor-Payload hat dagegen einen und käme ohne die Prüfung auf `typ` als
+ * Aufgabe durch -- genau dafür steht sie hier.
  *
  * @throws wenn es weder das eine noch das andere ist. Der Aufrufer macht
  * daraus eine übersprungene Zeile: Von aussen ist ein Defekt nicht von dem
  * privaten Item einer anderen Person zu unterscheiden (§11.8).
  */
-function lesePayload(klartext: Uint8Array): Aufgabenpayload | Konfigurationspayload {
+function lesePayload(
+  klartext: Uint8Array,
+): Aufgabenpayload | Konfigurationspayload | TresorItemPayload {
   const roh: unknown = JSON.parse(bytesText(klartext))
 
   if (typeof roh !== 'object' || roh === null) {
@@ -421,8 +476,15 @@ function lesePayload(klartext: Uint8Array): Aufgabenpayload | Konfigurationspayl
     return {
       typ: 'konfiguration',
       kenntnisAm: alsDatum(felder.kenntnisAm),
+      anfechtungKenntnisAm: alsDatum(felder.anfechtungKenntnisAm),
       fragebaum: gelesenesErgebnis(felder.fragebaum),
     }
+  }
+
+  if ('typ' in roh && roh.typ === 'tresor') {
+    const felder = roh as Partial<TresorItemPayload>
+
+    return { typ: 'tresor', titel: alsText(felder.titel), inhalt: alsText(felder.inhalt) }
   }
 
   if (!('titel' in roh) || typeof roh.titel !== 'string') {
@@ -468,22 +530,46 @@ function schluesselFuer(zeile: InhaltZeile, fall: Fallschluessel, privat: Privat
  * Konfigurations-Item keinen Titel. Wer die beiden auseinanderhält, braucht
  * dafür nichts, was in der Zeile stünde.
  */
-export function istKonfiguration(eintrag: Aufgabe | Konfiguration): eintrag is Konfiguration {
+export function istKonfiguration(
+  eintrag: Aufgabe | Konfiguration | Nachlasseintrag,
+): eintrag is Konfiguration {
   return 'kenntnisAm' in eintrag
+}
+
+/**
+ * Ob dieser Eintrag aus dem geöffneten Tresor stammt (§3.5).
+ *
+ * Am Feld und nicht an einem Marker, wie schon bei der Konfiguration: Eine
+ * Aufgabe hat kein `inhalt`, ein Tresor-Eintrag hat keine `assignee`.
+ */
+export function istNachlass(
+  eintrag: Aufgabe | Konfiguration | Nachlasseintrag,
+): eintrag is Nachlasseintrag {
+  return 'inhalt' in eintrag
 }
 
 async function leseZeile(
   zeile: InhaltZeile,
   fall: Fallschluessel,
   privat: Privatschluessel,
-): Promise<Aufgabe | Konfiguration> {
+): Promise<Aufgabe | Konfiguration | Nachlasseintrag> {
   const dek = await entpackeDek(schluesselFuer(zeile, fall, privat), zeile.wrappedDek)
   const inhalt = lesePayload(await entschluessele(dek, zeile.payload))
+
+  if (inhalt.typ === 'tresor') {
+    return {
+      id: zeile.id,
+      titel: inhalt.titel,
+      inhalt: inhalt.inhalt,
+      geaendertAm: zeile.geaendertAm,
+    }
+  }
 
   if (inhalt.typ === 'konfiguration') {
     return {
       id: zeile.id,
       kenntnisAm: inhalt.kenntnisAm,
+      anfechtungKenntnisAm: inhalt.anfechtungKenntnisAm,
       fragebaum: inhalt.fragebaum,
       dek,
       kid: zeile.kid,
@@ -531,6 +617,7 @@ export async function aufgabenAusZeilen(
 ): Promise<Aufgabenliste> {
   const aufgaben: Aufgabe[] = []
   const konfigurationen: Konfiguration[] = []
+  const nachlass: Nachlasseintrag[] = []
   const uebersprungeneIds: string[] = []
 
   for (const zeile of zeilen) {
@@ -549,7 +636,9 @@ export async function aufgabenAusZeilen(
     try {
       const eintrag = await leseZeile(zeile, fall, privat)
 
-      if (istKonfiguration(eintrag)) {
+      if (istNachlass(eintrag)) {
+        nachlass.push(eintrag)
+      } else if (istKonfiguration(eintrag)) {
         konfigurationen.push(eintrag)
       } else {
         aufgaben.push(eintrag)
@@ -559,7 +648,11 @@ export async function aufgabenAusZeilen(
     }
   }
 
-  return { aufgaben, konfigurationen, uebersprungeneIds }
+  // Nach der ID und damit nach der Zeit: UUIDv7 (§5). Der Nachlass wird von
+  // oben nach unten gelesen, und oben soll stehen, was zuerst dalag.
+  nachlass.sort((eins, zwei) => (eins.id < zwei.id ? -1 : eins.id > zwei.id ? 1 : 0))
+
+  return { aufgaben, konfigurationen, nachlass, uebersprungeneIds }
 }
 
 /**
@@ -660,7 +753,7 @@ export async function mutationAendern(
     assignee: aenderung.assignee ?? aufgabe.assignee,
     // Die Herkunft schreibt jede Änderung unverändert mit. Sie ist kein Feld,
     // das jemand bearbeitet. Sie fiele sonst beim ersten Häkchen aus dem
-    // Payload, und mit ihr Rechtsgrundlage und Quelle (§8).
+    // Payload, und mit ihr Frist und zuständige Stelle (§8).
     katalog: aufgabe.katalog,
   }
 

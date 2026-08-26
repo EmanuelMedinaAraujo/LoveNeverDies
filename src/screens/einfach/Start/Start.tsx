@@ -6,12 +6,15 @@ import { useCase } from '../../../hooks/useCase.ts'
 import type { Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
 import { fallBeschriftung } from '../../../services/fallbeschriftung.ts'
 import type { Fall, LesbarerFall } from '../../../services/fallService.ts'
+import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import { fristlage, heuteIso } from '../../../services/fristen.ts'
-import { istZugewiesen } from '../../../services/zuweisung.ts'
+import { darfAbhaken, istZugewiesen } from '../../../services/zuweisung.ts'
+import { Klapp } from '../../../ui/Klapp/Klapp.tsx'
 import { KeinFall } from '../../shared/KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
-import { Aufgabenzeile } from '../Bausteine.tsx'
+import { Vorsorgebereich } from '../../shared/Vorsorgefragen/Vorsorgebereich.tsx'
+import { Abschnitt, Aufgabenzeile, erledigtSchalter } from '../Bausteine.tsx'
 import stile from '../einfach.module.css'
 
 /**
@@ -119,7 +122,61 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
   }
 
   const heute = heuteIso()
-  const eintraege = meineAufgaben(zustand.baum, ich.userId)
+
+  /*
+   * Die Fragebaum-Standardaufgabe steht immer oben, solange sie offen ist,
+   * unabhängig davon, ob sie dieser Person zugewiesen ist: Wer neu in der App
+   * sitzt, soll schnell auf den Fragebaum aufmerksam werden, und darauf zu
+   * warten, dass jemand sie erst zuweist, wäre genau die Verzögerung, die
+   * einen leeren Start-Screen überhaupt erst verwirrend macht.
+   */
+  const seedKnoten = zustand.baum.find((knoten) => istSeedAufgabe(knoten.aufgabe.katalog)) ?? null
+  const seedOffen = seedKnoten !== null && !seedKnoten.erledigt
+
+  const persoenlich = meineAufgaben(zustand.baum, ich.userId)
+  // Ohne die Seed-Aufgabe: Sie steht oben für sich, nicht noch einmal in der
+  // persönlichen Liste darunter.
+  const persoenlichOhneSeed = persoenlich.filter(
+    (eintrag) => seedKnoten === null || eintrag.knoten.aufgabe.id !== seedKnoten.aufgabe.id,
+  )
+  const offenePersoenlich = persoenlichOhneSeed.filter((eintrag) => !eintrag.knoten.erledigt)
+  // §7: Erledigtes steht am Ende der Liste und zu Anfang eingeklappt — nicht
+  // weg, nur nicht im Weg.
+  const erledigtePersoenlich = persoenlichOhneSeed.filter((eintrag) => eintrag.knoten.erledigt)
+
+  /*
+   * "Weitere Aufgaben": ein Ausschnitt aus dem allgemeinen Bestand, ergänzt,
+   * solange die Seite durch persönliche Aufgaben noch nicht gut gefüllt ist.
+   * Kein hartes Limit, sondern eine Zahl, die auf einen Blick reicht.
+   */
+  const ZIEL_ANZAHL = 5
+  const bereitsGezeigt = new Set(persoenlichOhneSeed.map((eintrag) => eintrag.knoten.aufgabe.id))
+  if (seedKnoten !== null) {
+    bereitsGezeigt.add(seedKnoten.aufgabe.id)
+  }
+  const weitere =
+    offenePersoenlich.length >= ZIEL_ANZAHL
+      ? []
+      : zustand.baum
+          .filter((knoten) => !knoten.erledigt && !bereitsGezeigt.has(knoten.aufgabe.id))
+          .slice(0, ZIEL_ANZAHL - offenePersoenlich.length)
+
+  // Wirklich gar keine offene Aufgabe mehr, weder persönlich noch allgemein.
+  const allesErledigt = !seedOffen && offenePersoenlich.length === 0 && weitere.length === 0
+
+  function zeile(eintrag: Eintrag) {
+    return (
+      <Aufgabenzeile
+        key={eintrag.knoten.aufgabe.id}
+        knoten={eintrag.knoten}
+        unter={eintrag.unter}
+        lage={fristlage(eintrag.knoten.aufgabe.katalog, fristbezug, heute)}
+        gesperrt={laeuft}
+        darfHaken={darfAbhaken(eintrag.knoten.aufgabe.assignee, ich.userId)}
+        aufHaken={(erledigt: boolean) => fuehreAus(() => hakeAb(eintrag.knoten.aufgabe, erledigt))}
+      />
+    )
+  }
 
   return (
     <>
@@ -147,34 +204,41 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
         <Abgelehnt form="flach" aenderungen={abgelehnt} aufBestaetigen={bestaetige} />
       )}
 
-      {eintraege.length === 0 ? (
+      {
         // Ein leerer Cache und ein laufender erster Abruf sind nicht dasselbe
-        // wie "Ihnen ist nichts zugewiesen" (§5).
+        // wie "keine offene Aufgabe" (§5).
         zustand.laedtNetz && zustand.aufgaben.length === 0 ? (
           <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
+        ) : allesErledigt && erledigtePersoenlich.length === 0 ? (
+          <p className={stile.hinweis}>Sie haben alle Aufgaben erledigt.</p>
         ) : (
-          <p className={stile.hinweis}>
-            Für Sie ist gerade nichts eingetragen. Unten in der Leiste finden Sie unter „Alle“
-            alle Aufgaben.
-          </p>
+          <>
+            {seedKnoten === null || !seedOffen ? null : (
+              <ul className={stile.liste}>{zeile({ knoten: seedKnoten, unter: null })}</ul>
+            )}
+
+            {offenePersoenlich.length === 0 ? null : (
+              <ul className={stile.liste}>{offenePersoenlich.map((eintrag) => zeile(eintrag))}</ul>
+            )}
+
+            {erledigtePersoenlich.length === 0 ? null : (
+              <Klapp {...erledigtSchalter(erledigtePersoenlich.length)}>
+                <ul className={stile.liste}>
+                  {erledigtePersoenlich.map((eintrag) => zeile(eintrag))}
+                </ul>
+              </Klapp>
+            )}
+
+            {weitere.length === 0 ? null : (
+              <Abschnitt titel="Weitere Aufgaben">
+                <ul className={stile.liste}>
+                  {weitere.map((knoten) => zeile({ knoten, unter: null }))}
+                </ul>
+              </Abschnitt>
+            )}
+          </>
         )
-      ) : (
-        <ul className={stile.liste}>
-          {eintraege.map((eintrag) => (
-            <Aufgabenzeile
-              key={eintrag.knoten.aufgabe.id}
-              knoten={eintrag.knoten}
-              unter={eintrag.unter}
-              lage={fristlage(eintrag.knoten.aufgabe.katalog, fristbezug, heute)}
-              gesperrt={laeuft}
-              darfHaken
-              aufHaken={(erledigt: boolean) =>
-                fuehreAus(() => hakeAb(eintrag.knoten.aufgabe, erledigt))
-              }
-            />
-          ))}
-        </ul>
-      )}
+      }
     </>
   )
 }
@@ -235,6 +299,15 @@ export function Start() {
             </Link>
           </p>
         </>
+      ) : zustand.aktiver.status === 'vorsorge' ? (
+        /*
+         * §2, §3.5: Ein Vorsorgefall hat keine Aufgaben — kein Sterbedatum,
+         * kein Rechtskatalog. Wer vorsorgt, läse hier für immer "Für Sie ist
+         * gerade nichts eingetragen". An dieser Stelle stehen deshalb die
+         * Vorsorgefragen: der erste Screen nach dem Öffnen, und das Einzige,
+         * was in diesem Fall zu tun ist.
+         */
+        <Vorsorgebereich fall={zustand.aktiver} />
       ) : (
         <MeineAufgaben fall={zustand.aktiver} />
       )}

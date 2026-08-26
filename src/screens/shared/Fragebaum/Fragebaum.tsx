@@ -15,8 +15,12 @@ import {
   knoten as knotenMit,
 } from '../../../services/fragebaumService.ts'
 import type { Fragebaumknoten, Infothema } from '../../../types/fragebaum.ts'
+import type { GerichtLookupErgebnis, Nachlassgericht } from '../../../types/gericht.ts'
+import { findeNachlassgericht } from '../../../services/gerichtService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
+import { Gerichtskarte } from '../../../ui/Gerichtskarte/Gerichtskarte.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import stile from './Fragebaum.module.css'
@@ -152,25 +156,48 @@ function Langtext({ text }: { text: string }) {
 }
 
 /**
- * Die zuständige Stelle ermitteln (§8).
+ * Die zuständige Stelle ermitteln (ERBE_DESIGN.md §8).
  *
- * Die Suche ist noch keine und sagt das. Ein Gerichtsname, der für jemanden in
- * Hamburg schlicht falsch ist und unkommentiert dasteht, ist etwas, wonach
- * jemand handelt.
+ * Ermittelt aus der eingegebenen 5-stelligen PLZ das zuständige Nachlassgericht
+ * aus dem bundesweiten Datensatz aller 611 Gerichte.
  */
-const STELLE = 'Nachlassgericht München'
-
 function Gerichtssuche({
   plz,
   setzePlz,
-  stelle,
-  setzeStelle,
+  setzeGericht,
 }: {
   plz: string
   setzePlz: (wert: string) => void
-  stelle: string
-  setzeStelle: (wert: string) => void
+  setzeGericht: (wert: Nachlassgericht | null) => void
 }) {
+  const [ergebnis, setzeErgebnis] = useState<GerichtLookupErgebnis | null>(() => {
+    if (plz.trim().length === 5) {
+      return findeNachlassgericht(plz)
+    }
+    return null
+  })
+
+  function suche(suchPlz: string) {
+    const res = findeNachlassgericht(suchPlz)
+    setzeErgebnis(res)
+    if (res.status === 'gefunden') {
+      setzeGericht(res.gericht)
+    } else {
+      setzeGericht(null)
+    }
+  }
+
+  function handlePlzChange(neuePlz: string) {
+    setzePlz(neuePlz)
+    const trimmed = neuePlz.trim()
+    if (trimmed.length === 5) {
+      suche(trimmed)
+    } else if (trimmed.length === 0) {
+      setzeErgebnis(null)
+      setzeGericht(null)
+    }
+  }
+
   return (
     <Klapp titel="Zuständige Stelle ermitteln" offenText="Zuständige Stelle ermitteln (schließen)">
       <div className={stile.feld}>
@@ -182,19 +209,34 @@ function Gerichtssuche({
           className={stile.eingabe}
           inputMode="numeric"
           value={plz}
-          onChange={(ereignis) => setzePlz(ereignis.target.value)}
-          placeholder="z. B. 80331"
+          onChange={(ereignis) => handlePlzChange(ereignis.target.value)}
+          placeholder="z. B. 74199"
+          maxLength={5}
         />
       </div>
-      <Button variante="sekundaer" onClick={() => setzeStelle(STELLE)}>
+      <Button variante="sekundaer" onClick={() => suche(plz)}>
         Gericht suchen
       </Button>
-      {stelle === '' ? null : <p className={stile.klappInhalt}>{stelle}</p>}
-      <p className={stile.platzhalter}>
-        Diese Suche ist noch keine: Sie antwortet immer „{STELLE}“, unabhängig von Ihrer
-        Eingabe. Die richtige Stelle finden Sie bis dahin beim Amtsgericht am letzten Wohnort.
-        Ihre Eingabe wird trotzdem in die Aufgabe übernommen.
-      </p>
+
+      {ergebnis?.status === 'gefunden' ? <Gerichtskarte gericht={ergebnis.gericht} /> : null}
+
+      {ergebnis?.status === 'mehrdeutig' ? (
+        <div className={stile.gerichtHinweis}>
+          <p>{ergebnis.hinweis}</p>
+          <a
+            className={stile.gerichtLink}
+            href={ergebnis.linkUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Zuständiges Gericht im Justizportal ermitteln ↗
+          </a>
+        </div>
+      ) : null}
+
+      {ergebnis?.status === 'nicht_gefunden' || ergebnis?.status === 'ungueltig' ? (
+        <p className={stile.gerichtHinweis}>{ergebnis.hinweis}</p>
+      ) : null}
     </Klapp>
   )
 }
@@ -240,7 +282,9 @@ function Frageseite({
         <p className={stile.schritt}>Frage {pfad.length}</p>
         <h1 className={stile.frage}>{ueberschrift}</h1>
         {rest === '' ? null : <p className={stile.text}>{mitFett(rest)}</p>}
-        {knoten.hinweis === undefined ? null : <p className={stile.hinweis}>{knoten.hinweis}</p>}
+        {knoten.hinweis === undefined ? null : (
+          <p className={stile.hinweisKasten}>{knoten.hinweis}</p>
+        )}
       </div>
 
       {knoten.info === undefined ? null : <Infoknopf thema={knoten.info} />}
@@ -303,6 +347,7 @@ function Ergebnisseite({
     fragebaumAufgabe,
     legeFragebaumAufgabeAn,
     setzeKenntnisAm,
+    setzeAnfechtungKenntnisAm,
     fristbezug,
   } = aufgaben
 
@@ -336,7 +381,7 @@ function Ergebnisseite({
   const zeitgeber = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [fehler, setzeFehler] = useState<string | null>(null)
   const [plz, setzePlz] = useState('')
-  const [stelle, setzeStelle] = useState('')
+  const [gericht, setzeGericht] = useState<Nachlassgericht | null>(null)
   const [anfechtungAm, setzeAnfechtungAm] = useState('')
   const [kenntnis, setzeKenntnis] = useState(fristbezug.kenntnisAm ?? '')
   /*
@@ -369,7 +414,11 @@ function Ergebnisseite({
    * genau einmal geschrieben wird.
    */
   useEffect(() => {
-    if (entschieden === null || entschieden.vorher !== null || geschrieben.current) {
+    if (
+      entschieden === null ||
+      (entschieden.vorher !== null && entschieden.vorher.status !== null) ||
+      geschrieben.current
+    ) {
       return
     }
 
@@ -441,7 +490,8 @@ function Ergebnisseite({
    * "Sie sind Erbe" wäre eine Warnung vor einem Widerspruch, den es nicht gibt.
    */
   const vorher = entschieden?.vorher ?? null
-  const abweichend = vorher !== null && vorher.knotenId !== knoten.id ? vorher : null
+  const abweichend =
+    vorher !== null && vorher.status !== null && vorher.knotenId !== knoten.id ? vorher : null
 
   const vorlage = knoten.aufgabe
   const vorhandene = vorlage === undefined ? null : fragebaumAufgabe(vorlage)
@@ -462,10 +512,23 @@ function Ergebnisseite({
     }
 
     try {
-      await legeFragebaumAufgabeAn(vorlage, notizAus({ plz, stelle, anfechtungAm }))
+      /*
+       * Der Ergebnistext wandert mit in die Aufgabe (§7): Genau er stand über
+       * dem Knopf, und wer ihn dort gelesen hat, soll ihn in der Aufgabe
+       * wiederfinden, statt den Baum noch einmal gehen zu müssen.
+       */
+      await legeFragebaumAufgabeAn(
+        vorlage,
+        notizAus({ plz, gericht, anfechtungAm }),
+        knoten.text.replaceAll('{person}', fall.personName),
+      )
 
       if (kenntnis !== '' && knoten.kenntnisdatum === true) {
         await setzeKenntnisAm(kenntnis)
+      }
+
+      if (anfechtungAm !== '' && knoten.anfechtungsdatum === true) {
+        await setzeAnfechtungKenntnisAm(anfechtungAm)
       }
     } catch (ursache) {
       setzeFehler(alsNachricht(ursache))
@@ -484,12 +547,23 @@ function Ergebnisseite({
         {rest === '' ? null : <h1 className={stile.frage}>{ueberschrift}</h1>}
       </div>
 
+      {knoten.ausschlagungshinweis !== true ? null : (
+        <p className={stile.warnung}>
+          Hinweis: Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das
+          Erbe automatisch an. Danach kann das Erbe nicht mehr abgelehnt werden.
+        </p>
+      )}
+
       <Langtext text={rest === '' ? ueberschrift : rest} />
 
       {knoten.info === undefined ? null : <Infoknopf thema={knoten.info} />}
 
       {knoten.gericht === true ? (
-        <Gerichtssuche plz={plz} setzePlz={setzePlz} stelle={stelle} setzeStelle={setzeStelle} />
+        <Gerichtssuche
+          plz={plz}
+          setzePlz={setzePlz}
+          setzeGericht={setzeGericht}
+        />
       ) : null}
 
       {knoten.kenntnisdatum === true ? (
@@ -522,8 +596,9 @@ function Ergebnisseite({
             onChange={(ereignis) => setzeAnfechtungAm(ereignis.target.value)}
           />
           <p className={stile.hinweis}>
-            Ohne dieses Datum kann die Frist nicht berechnet werden. Sie können es auch später
-            in der Aufgabe eintragen.
+            Die Frist beträgt ein Jahr ab diesem Tag und wird automatisch berechnet. Dieser Tag
+            ist ein anderer als Ihre Kenntnis von Anfall und Berufungsgrund. Das Datum wird in
+            die Aufgabe übernommen.
           </p>
         </div>
       ) : null}
@@ -579,7 +654,6 @@ function Ergebnisseite({
 }
 
 function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
-  const navigate = useNavigate()
   const location = useLocation()
   const pfad = (location.state as Pfadstatus)?.pfad
   const knoten = knotenMit(knotenId)
@@ -610,11 +684,13 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
 
   return (
     <main className={stile.seite}>
-      {pfad.length > 1 ? (
-        <Button variante="text" className={stile.zurueck} onClick={() => navigate(-1)}>
-          Zurück
-        </Button>
-      ) : null}
+      {/*
+        Auch auf der ersten Frage: Dort gibt es keine vorige, und dann führt
+        der Knopf zurück in den Tab Erbe. Vorher stand auf der ersten Frage
+        gar keiner, und der Screen liegt nicht im `Rahmen` -- wer hier landete,
+        kam nur mit dem Browser wieder heraus.
+      */}
+      <Zurueck ziel="/erbe" />
 
       {knoten.art === 'frage' ? (
         <Frageseite knoten={knoten} fall={fall} pfad={pfad} />

@@ -36,6 +36,15 @@ describe('Anmelden', () => {
     rendereMitProvidern(<Anmelden />)
 
     expect(screen.getByRole('heading', { name: 'LoveNeverDies' })).toBeVisible()
+
+    /*
+     * Die Marke steht als Bild darueber, in der Fassung des gewaehlten
+     * Farbschemas. Ihr `alt` ist leer: Der Name steht schon als Ueberschrift
+     * daneben, und eine Vorlesestimme saegte ihn sonst zweimal.
+     */
+    const marke = document.querySelector('img')
+    expect(marke).toHaveAttribute('alt', '')
+    expect(marke?.getAttribute('src')).toMatch(/^\/logo-(hell|dunkel)-256\.png$/)
     expect(screen.getByText(/nach einem Todesfall zu erledigen sind/)).toBeVisible()
   })
 

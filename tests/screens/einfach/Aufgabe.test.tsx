@@ -77,26 +77,19 @@ beforeEach(() => {
 })
 
 describe('Aufgabe (einfach)', () => {
-  it('trägt den Titel als Überschrift und den Weg zurück', () => {
+  it('trägt den Titel als Überschrift und oben links den Weg zurück', () => {
     mitDetail([aufgabe({ titel: 'Sterbefall anzeigen', katalog: herkunft() })])
 
     expect(screen.getByRole('heading', { level: 1, name: 'Sterbefall anzeigen' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Zurück zu allen Aufgaben' })).toHaveAttribute(
-      'href',
-      '/alle',
-    )
+    expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/alle')
   })
 
-  it('zeigt die Rechtsgrundlage, aber nicht die Quelle (§7)', () => {
-    /*
-     * Weniger Elemente pro Screen: Der Link führt aus der App heraus in ein
-     * Dokument, das niemand ohne Vorkenntnis liest. Die erweiterte Ansicht
-     * zeigt ihn.
-     */
+  it('zeigt weder Rechtsgrundlage noch Quelle (ADR-0003)', () => {
     mitDetail([aufgabe({ katalog: herkunft() })])
 
-    expect(screen.getByText('§ 28 PStG')).toBeVisible()
     expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
+    expect(screen.queryByText(/§/)).toBeNull()
+    expect(screen.queryByText('Rechtsgrundlage')).toBeNull()
     expect(screen.queryByRole('link', { name: /gesetze-im-internet/ })).toBeNull()
   })
 
@@ -137,7 +130,7 @@ describe('Aufgabe (einfach)', () => {
     // eine Aufgabe oder gibt sie ab.
     mitDetail([aufgabe({ katalog: herkunft() })])
 
-    expect(screen.queryByRole('checkbox', { name: 'Alle' })).toBeNull()
+    expect(screen.queryByRole('checkbox', { name: 'Allen' })).toBeNull()
     expect(screen.queryByRole('checkbox', { name: 'Bert Müller' })).toBeNull()
   })
 
@@ -225,7 +218,7 @@ describe('Aufgabe (einfach)', () => {
 
     mitDetail(
       [aufgabe({ katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }) })],
-      { fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null }, setzeKenntnisAm },
+      { fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null, anfechtungKenntnisAm: null }, setzeKenntnisAm },
     )
 
     const feld = screen.getByLabelText('Tag Ihrer Kenntnis')
@@ -252,6 +245,6 @@ describe('Aufgabe (einfach)', () => {
     expect(screen.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeDisabled()
     expect(screen.getByText(/Diese Aufgabe ist Ihnen nicht zugewiesen/)).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Diese Aufgabe löschen' })).toBeNull()
-    expect(screen.getByText('§ 28 PStG')).toBeVisible()
+    expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
   })
 })

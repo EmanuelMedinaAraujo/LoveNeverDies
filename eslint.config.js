@@ -49,6 +49,11 @@ export default tseslint.config(
       'supabase/.branches/**',
       'playwright-report/**',
       'test-results/**',
+      // Agenten-Arbeitsbaeume (`git worktree`) liegen hier und tragen eine
+      // zweite Kopie der tsconfig. typescript-eslint findet dann zwei
+      // Wurzelverzeichnisse und bricht mit einem Parsing-Fehler je Datei ab.
+      // Sie sind bereits ueber .git/info/exclude ausgenommen.
+      '.claude/**',
       // Edge Functions laufen unter Deno, nicht im Browser und nicht in Node:
       // eigene Globals (`Deno`), eigene Importspezifizierer (`jsr:`). Sie
       // gegen die Regeln dieser App zu pruefen, meldete ausschliesslich

@@ -1,7 +1,7 @@
 {
   "sprache": "de",
   "stand": "2026-08",
-  "version": "2026-08+11c49c53",
+  "version": "2026-08+2a5f3283",
   "aufgaben": [
     {
       "id": "erbenstellung-klaeren",
@@ -9,13 +9,11 @@
       "kurzbeschreibung": "Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch.",
       "fristTage": null,
       "fristAb": null,
-      "rechtsgrundlage": "",
       "zustaendigeStelle": "",
       "benoetigteDokumente": [],
       "unteraufgaben": [],
       "haengtAbVon": [],
       "hinweis": "Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.",
-      "quelleUrl": "",
       "kategorie": "Erbe",
       "reihenfolge": 10
     }
