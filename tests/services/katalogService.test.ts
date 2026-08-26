@@ -44,13 +44,11 @@ const KATALOG: Katalog = {
       kurzbeschreibung: 'Das Standesamt beurkundet den Sterbefall.',
       fristTage: 3,
       fristAb: 'sterbedatum',
-      rechtsgrundlage: '§ 28 PStG',
       zustaendigeStelle: 'Standesamt des Sterbeortes',
       benoetigteDokumente: ['Todesbescheinigung'],
       unteraufgaben: ['Sterbeurkunden bestellen'],
       haengtAbVon: [],
       hinweis: 'Werktage, keine Kalendertage.',
-      quelleUrl: 'https://www.gesetze-im-internet.de/pstg/__28.html',
       kategorie: 'Sofort',
       reihenfolge: 10,
     },
@@ -60,13 +58,11 @@ const KATALOG: Katalog = {
       kurzbeschreibung: 'Wer erbt, haftet auch für die Schulden.',
       fristTage: 42,
       fristAb: 'kenntnis',
-      rechtsgrundlage: '§ 1944 BGB',
       zustaendigeStelle: 'Nachlassgericht',
       benoetigteDokumente: ['Sterbeurkunde'],
       unteraufgaben: [],
       haengtAbVon: ['sterbefall-anzeigen'],
       hinweis: 'Diese Frist läuft ab Ihrer Kenntnis.',
-      quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__1944.html',
       kategorie: 'Erbe',
       reihenfolge: 20,
     },
@@ -180,13 +176,11 @@ describe('instanziiereKatalog (§8)', () => {
       version: '2026-08+testtest',
       fristTage: 42,
       fristAb: 'kenntnis',
-      rechtsgrundlage: '§ 1944 BGB',
       zustaendigeStelle: 'Nachlassgericht',
       benoetigteDokumente: ['Sterbeurkunde'],
       unteraufgaben: [],
       haengtAbVon: ['sterbefall-anzeigen'],
       hinweis: 'Diese Frist läuft ab Ihrer Kenntnis.',
-      quelleUrl: 'https://www.gesetze-im-internet.de/bgb/__1944.html',
       kategorie: 'Erbe',
       reihenfolge: 20,
     })
@@ -302,7 +296,7 @@ describe('instanziiereKatalog (§8)', () => {
     )
 
     expect(wiedergelesen).toMatchObject({ titel: 'Standesamt Mitte', erledigt: true })
-    expect(wiedergelesen?.katalog?.rechtsgrundlage).toBe('§ 28 PStG')
+    expect(wiedergelesen?.katalog?.zustaendigeStelle).toBe('Standesamt des Sterbeortes')
   })
 
   it('lässt ein späterer Import die bereits instanziierte Aufgabe unberührt', async () => {
@@ -311,13 +305,12 @@ describe('instanziiereKatalog (§8)', () => {
 
     await instanziiereKatalog(inhalte, anna, [], KATALOG)
 
-    // Der Katalog zieht nach: neue Rechtsgrundlage, neue Version.
+    // Der Katalog zieht nach: neue Version.
     const spaeter: Katalog = {
       ...KATALOG,
       version: '2031-03+spaeter',
       aufgaben: KATALOG.aufgaben.map((aufgabe) => ({
         ...aufgabe,
-        rechtsgrundlage: '§ 28 PStG in der Fassung von 2031',
       })),
     }
 
@@ -326,7 +319,7 @@ describe('instanziiereKatalog (§8)', () => {
     ).rejects.toThrow(KatalogFehler)
 
     const [aufgabe] = await aufgabenVon(zeilen, anna)
-    expect(aufgabe?.katalog?.rechtsgrundlage).toBe('§ 28 PStG')
+    expect(aufgabe?.katalog?.zustaendigeStelle).toBe('Standesamt des Sterbeortes')
     expect(aufgabe?.katalog?.version).toBe('2026-08+testtest')
   })
 

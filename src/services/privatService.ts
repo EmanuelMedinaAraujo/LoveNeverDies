@@ -13,9 +13,10 @@
  * Codepfad ist derselbe, den die Tresorfreigabe benutzt (§3.5).
  *
  * Neben den privaten Aufgaben liegt hier die zweite Sorte privater Items: die
- * Konfiguration, heute genau ein Feld, das eigene `kenntnisAm` (§8, #12). Sie
- * steht nie im Aufgabenbaum, hat weder Eltern noch Kinder noch Abhängigkeiten
- * und ist von den beiden Strukturregeln unten deshalb ausdrücklich nicht
+ * Konfiguration, mit dem eigenen `kenntnisAm` (§8, #12) und dem eigenen
+ * `anfechtungKenntnisAm` (§8) — zwei Daten, zwei Fristen, ein Item. Sie steht
+ * nie im Aufgabenbaum, hat weder Eltern noch Kinder noch Abhängigkeiten und
+ * ist von den beiden Strukturregeln unten deshalb ausdrücklich nicht
  * betroffen.
  *
  * Zwei Strukturregeln stehen hier und nicht in der Datenbank: Private Aufgaben
@@ -402,6 +403,7 @@ export async function mutationKenntnisAnlegen(
   const payload: Konfigurationspayload = {
     typ: 'konfiguration',
     kenntnisAm: pruefeKenntnisdatum(kenntnisAm, heute),
+    anfechtungKenntnisAm: null,
     fragebaum: null,
   }
 
@@ -438,9 +440,70 @@ export async function mutationKenntnisAendern(
   return schreibeKonfiguration(konfiguration, {
     typ: 'konfiguration',
     kenntnisAm: pruefeKenntnisdatum(kenntnisAm, heute),
-    // Das Ergebnis des Fragebaums bleibt stehen: Der Payload wird ganz
-    // geschrieben, und ein hier vergessenes Feld wäre kein leeres Feld,
-    // sondern ein geloeschtes (ERBE_DESIGN.md §6).
+    // Das Anfechtungsdatum und das Ergebnis des Fragebaums bleiben stehen: Der
+    // Payload wird ganz geschrieben, und ein hier vergessenes Feld wäre kein
+    // leeres Feld, sondern ein geloeschtes (ERBE_DESIGN.md §6, §8).
+    anfechtungKenntnisAm: konfiguration.anfechtungKenntnisAm,
+    fragebaum: konfiguration.fragebaum,
+  })
+}
+
+/**
+ * Das erste eigene Anfechtungs-Kenntnisdatum: dasselbe private Konfigurations-
+ * Item wie beim Kenntnisdatum nach § 1944 BGB, nur mit dem anderen Feld (§8).
+ *
+ * Zwei getrennte Anlegefunktionen und keine gemeinsame mit einem Feldnamen als
+ * Parameter: `mutationKenntnisAnlegen` und diese hier schreiben in
+ * unterschiedliche Felder desselben Payloads, und ein Parameter, der zwischen
+ * beiden umschaltet, wäre an der Aufrufstelle die Einladung, das falsche Feld
+ * zu treffen.
+ */
+export async function mutationAnfechtungKenntnisAnlegen(
+  fall: Pick<Fallschluessel, 'id'>,
+  schluessel: PersoenlicherSchluessel,
+  anfechtungKenntnisAm: string | null,
+  heute: string = heuteIso(),
+): Promise<Mutation> {
+  const payload: Konfigurationspayload = {
+    typ: 'konfiguration',
+    kenntnisAm: null,
+    anfechtungKenntnisAm: pruefeKenntnisdatum(anfechtungKenntnisAm, heute),
+    fragebaum: null,
+  }
+
+  const { id, wrappedDek, payload: verschluesselt } = await verschluesselterInhalt(
+    { id: fall.id, kid: schluessel.kid, kc: schluessel.kp },
+    uuidv7(),
+    payload,
+  )
+
+  return {
+    op: 'anlegen',
+    itemId: id,
+    fallId: fall.id,
+    art: 'item',
+    kid: schluessel.kid,
+    wrappedDek,
+    payload: verschluesselt,
+    ts: Date.now(),
+  }
+}
+
+/**
+ * Ein geändertes Anfechtungs-Kenntnisdatum unter demselben DEK (§3.1, §8).
+ */
+export async function mutationAnfechtungKenntnisAendern(
+  konfiguration: Konfiguration,
+  anfechtungKenntnisAm: string | null,
+  heute: string = heuteIso(),
+): Promise<Mutation> {
+  return schreibeKonfiguration(konfiguration, {
+    typ: 'konfiguration',
+    // Das Kenntnisdatum nach § 1944 BGB und das Ergebnis des Fragebaums
+    // bleiben stehen, aus demselben Grund wie umgekehrt in
+    // `mutationKenntnisAendern`.
+    kenntnisAm: konfiguration.kenntnisAm,
+    anfechtungKenntnisAm: pruefeKenntnisdatum(anfechtungKenntnisAm, heute),
     fragebaum: konfiguration.fragebaum,
   })
 }
@@ -462,6 +525,7 @@ export async function mutationFragebaumAnlegen(
   const payload: Konfigurationspayload = {
     typ: 'konfiguration',
     kenntnisAm: null,
+    anfechtungKenntnisAm: null,
     fragebaum: ergebnis,
   }
 
@@ -496,9 +560,11 @@ export async function mutationFragebaumAendern(
 ): Promise<Mutation> {
   return schreibeKonfiguration(konfiguration, {
     typ: 'konfiguration',
-    // Umgekehrt genauso: Das Kenntnisdatum überlebt ein neues Ergebnis. Es
-    // hängt an § 1944 BGB und nicht daran, was der Baum zuletzt gesagt hat.
+    // Umgekehrt genauso: Beide Kenntnisdaten überleben ein neues Ergebnis. Sie
+    // hängen an ihrer eigenen Frist und nicht daran, was der Baum zuletzt
+    // gesagt hat.
     kenntnisAm: konfiguration.kenntnisAm,
+    anfechtungKenntnisAm: konfiguration.anfechtungKenntnisAm,
     fragebaum: ergebnis,
   })
 }

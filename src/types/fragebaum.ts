@@ -43,8 +43,11 @@ export type Aufgabenvorlage = 'testament' | 'ausschlagung' | 'anfechtung' | 'erb
  * Der Export nennt nur das Thema ("Infos zu Erbschein"), nicht den Text. Der
  * Text kommt von den Juristinnen; bis dahin sagt die Erläuterung genau das
  * und erfindet nichts (DESIGN.md §8).
+ *
+ * `pflichtteil` ist die Ausnahme: Der Text dazu liegt vor und steht in
+ * `infoText`, kein Platzhalter.
  */
-export type Infothema = 'erbschein' | 'nachlassgericht'
+export type Infothema = 'erbschein' | 'nachlassgericht' | 'pflichtteil'
 
 /** Eine Antwort und der Knoten, zu dem sie führt. */
 export type Antwort = {
@@ -98,9 +101,20 @@ export type Fragebaumknoten = {
    * Ausdruecklich nicht `kenntnisAm`: Das ist die Kenntnis von Anfall und
    * Berufungsgrund und trägt eine andere Frist. Die beiden zu vermengen ergäbe
    * ein falsch gerechnetes Fristende, und §8 rechnet lieber gar nicht als
-   * falsch. Der Tag wandert deshalb in die Notizen der Aufgabe.
+   * falsch. Der Tag wandert deshalb sowohl in die Notizen der Aufgabe als auch
+   * in das eigene `anfechtungKenntnisAm` (§8), von dem die Anfechtungsfrist
+   * tatsächlich abhängt.
    */
   anfechtungsdatum?: boolean
+  /**
+   * Zeigt den festen Hinweis zur Ausschlagungswirkung über dem Ergebnistext
+   * (ERBE_DESIGN.md §7): Wer Nachlassgegenstände verkauft, verschenkt oder
+   * nutzt, nimmt das Erbe damit an, auch ohne es zu wollen. Ein deklaratives
+   * Flag statt Freitext an jedem der zehn Ausschlagungsknoten, aus demselben
+   * Grund wie `kenntnisdatum` und `gericht`: Zehnmal derselbe Satz von Hand
+   * gepflegt liefe irgendwann auseinander.
+   */
+  ausschlagungshinweis?: boolean
   /** Der Erbstatus, den dieses Ergebnis begruendet, oder keiner. */
   status?: Erbstatus
   antworten: Antwort[]

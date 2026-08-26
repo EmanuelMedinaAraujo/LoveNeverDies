@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AufgabenZustand, Aufgabendaten } from '../../src/hooks/useAufgaben.ts'
 import type { Falldaten } from '../../src/hooks/useCase.ts'
 import type { Erinnerungsdaten } from '../../src/hooks/useErinnerungen.ts'
-import type { Aufgabe } from '../../src/services/aufgabenService.ts'
+import type { Aufgabe, Katalogherkunft } from '../../src/services/aufgabenService.ts'
 import { baueBaum } from '../../src/services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 import { ALLE, NIEMAND, personen } from '../../src/services/zuweisung.ts'
@@ -124,8 +124,10 @@ function aufgabendaten(
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
     gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
-    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null },
+    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null, anfechtungKenntnisAm: null },
+    nachlass: [],
     setzeKenntnisAm: vi.fn().mockResolvedValue(undefined),
+    setzeAnfechtungKenntnisAm: vi.fn().mockResolvedValue(undefined),
     fragebaum: null,
     fragebaumGeladen: true,
     speichereFragebaum: vi.fn().mockResolvedValue(undefined),
@@ -181,16 +183,24 @@ describe('Start', () => {
     }
   })
 
-  it('zeigt ausschließlich die eigenen Aufgaben (§7)', () => {
+  it('zeigt ausschließlich die eigenen Aufgaben in der persönlichen Liste (§7)', () => {
     /*
      * Der Kern des Screens: Gefiltert wird clientseitig, nach dem
      * Entschlüsseln: Der Server kann es nicht, weil `assignee` verschlüsselt
      * ist (§3.3).
+     *
+     * Fünf eigene Aufgaben, damit die Seite als "gut gefüllt" gilt und der
+     * Ausschnitt aus dem allgemeinen Bestand (§7, "Weitere Aufgaben") nicht
+     * greift; sonst prüfte dieser Test zwei Dinge auf einmal.
      */
     mitAufgaben([
       aufgabe({ id: 'item-1', titel: 'Meine Aufgabe' }),
-      aufgabe({ id: 'item-2', titel: 'Berts Aufgabe', assignee: personen([BERT]) }),
-      aufgabe({ id: 'item-3', titel: 'Noch offen', assignee: NIEMAND }),
+      aufgabe({ id: 'item-2', titel: 'Meine zweite Aufgabe' }),
+      aufgabe({ id: 'item-3', titel: 'Meine dritte Aufgabe' }),
+      aufgabe({ id: 'item-4', titel: 'Meine vierte Aufgabe' }),
+      aufgabe({ id: 'item-5', titel: 'Meine fünfte Aufgabe' }),
+      aufgabe({ id: 'item-6', titel: 'Berts Aufgabe', assignee: personen([BERT]) }),
+      aufgabe({ id: 'item-7', titel: 'Noch offen', assignee: NIEMAND }),
     ])
 
     rendereMitProvidern(<Start />)
@@ -198,6 +208,7 @@ describe('Start', () => {
     expect(screen.getByText('Meine Aufgabe')).toBeVisible()
     expect(screen.queryByText('Berts Aufgabe')).toBeNull()
     expect(screen.queryByText('Noch offen')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Weitere Aufgaben' })).toBeNull()
   })
 
   it('zeigt eine "Alle" zugewiesene Aufgabe bei jedem Mitglied (§7)', () => {
@@ -237,12 +248,28 @@ describe('Start', () => {
     expect(screen.getByText('Teil von „Sterbefall anzeigen“')).toBeVisible()
   })
 
-  it('sagt es, wenn gerade nichts zugewiesen ist', () => {
-    mitAufgaben([aufgabe({ assignee: personen([BERT]) })])
+  it('ergänzt "Weitere Aufgaben" aus dem allgemeinen Bestand, wenn wenig Persönliches da ist (§7)', () => {
+    /*
+     * Ein leerer Start-Screen ist für einen neuen Nutzer verwirrend: "Für Sie
+     * ist gerade nichts eingetragen" beantwortet nicht, was in diesem Fall
+     * überhaupt zu tun ist. Ohne persönliche Aufgaben zeigt der Screen deshalb
+     * einen Ausschnitt aus der allgemeinen Liste.
+     */
+    mitAufgaben([aufgabe({ titel: 'Konto kündigen', assignee: personen([BERT]) })])
 
     rendereMitProvidern(<Start />)
 
-    expect(screen.getByText(/Ihnen ist gerade nichts zugewiesen/)).toBeVisible()
+    expect(screen.getByRole('heading', { name: 'Weitere Aufgaben' })).toBeVisible()
+    expect(screen.getByText('Konto kündigen')).toBeVisible()
+  })
+
+  it('sagt es, wenn wirklich keine offene Aufgabe mehr existiert, weder persönlich noch allgemein', () => {
+    mitAufgaben([aufgabe({ assignee: personen([BERT]), erledigt: true })])
+
+    rendereMitProvidern(<Start />)
+
+    expect(screen.getByText('Sie haben alle Aufgaben erledigt.')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Weitere Aufgaben' })).toBeNull()
   })
 
   it('hakt eine Aufgabe von hier aus ab', async () => {
@@ -281,6 +308,91 @@ describe('Start', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Verstanden' }))
 
     expect(bestaetigeUebernahmen).toHaveBeenCalled()
+  })
+})
+
+/**
+ * Die Fragebaum-Standardaufgabe auf Start (ERBE_DESIGN.md §9).
+ *
+ * Sie steht immer oben, solange sie offen ist — unabhängig davon, wem sie
+ * zugewiesen ist —, und führt direkt in den Fragebaum statt in eine
+ * Detailseite, die es für sie nicht gibt.
+ */
+describe('Seed-Aufgabe auf Start (ERBE_DESIGN.md §9)', () => {
+  function seedAufgabe(ueberschreibung: Partial<Aufgabe> = {}): Aufgabe {
+    return aufgabe({
+      id: 'seed-1',
+      titel: 'Klären ob Sie Erbe sind',
+      assignee: NIEMAND,
+      katalog: { aufgabeId: 'erbenstellung-klaeren', fristTage: null, fristAb: null } as Katalogherkunft,
+      ...ueberschreibung,
+    })
+  }
+
+  it('steht oben, auch ohne eigene Zuweisung', () => {
+    mitAufgaben([seedAufgabe(), aufgabe({ id: 'item-2', titel: 'Berts Aufgabe', assignee: personen([BERT]) })])
+
+    rendereMitProvidern(<Start />)
+
+    expect(screen.getByText('Klären ob Sie Erbe sind')).toBeVisible()
+  })
+
+  it('führt direkt in den Fragebaum statt in eine Detailseite', () => {
+    mitAufgaben([seedAufgabe()])
+
+    rendereMitProvidern(<Start />)
+
+    expect(screen.getByRole('link', { name: /Details/ })).toHaveAttribute(
+      'href',
+      '/erbe/fragebaum',
+    )
+  })
+
+  it('steht nicht mehr oben, sobald sie erledigt ist', () => {
+    mitAufgaben([seedAufgabe({ erledigt: true })])
+
+    rendereMitProvidern(<Start />)
+
+    expect(screen.queryByText('Klären ob Sie Erbe sind')).toBeNull()
+  })
+})
+
+/**
+ * Erledigte Aufgaben auf Start (§7): ans Ende, zu Anfang eingeklappt.
+ */
+describe('Erledigte Aufgaben auf Start (§7)', () => {
+  it('stehen hinter den offenen und sind zu Anfang eingeklappt', () => {
+    mitAufgaben([
+      aufgabe({ id: 'item-1', titel: 'Offene Aufgabe' }),
+      aufgabe({ id: 'item-2', titel: 'Erledigte Aufgabe', erledigt: true }),
+    ])
+
+    rendereMitProvidern(<Start />)
+
+    expect(screen.getByText('Offene Aufgabe')).toBeVisible()
+    expect(screen.queryByText('Erledigte Aufgabe')).toBeNull()
+    expect(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' })).toBeVisible()
+  })
+
+  it('zeigt sie nach einem Klick auf den Schalter', async () => {
+    mitAufgaben([
+      aufgabe({ id: 'item-1', titel: 'Offene Aufgabe' }),
+      aufgabe({ id: 'item-2', titel: 'Erledigte Aufgabe', erledigt: true }),
+    ])
+
+    rendereMitProvidern(<Start />)
+
+    await userEvent.click(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' }))
+
+    expect(screen.getByText('Erledigte Aufgabe')).toBeVisible()
+  })
+
+  it('lässt den Schalter ganz weg, wenn nichts erledigt ist', () => {
+    mitAufgaben([aufgabe({ id: 'item-1', titel: 'Offene Aufgabe' })])
+
+    rendereMitProvidern(<Start />)
+
+    expect(screen.queryByRole('button', { name: /erledigte Aufgabe/ })).toBeNull()
   })
 })
 

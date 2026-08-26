@@ -20,3 +20,15 @@
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift);
 }
+
+/*
+ * Die Marke ueber der Ueberschrift. Klein genug, dass das Anmeldeformular auf
+ * einem Handy ohne Scrollen darunter passt: Wer sich anmelden will, soll das
+ * Feld sehen und nicht erst danach suchen.
+ */
+.marke {
+  align-self: center;
+  width: 5rem;
+  height: 5rem;
+  border-radius: var(--dichte-radius);
+}

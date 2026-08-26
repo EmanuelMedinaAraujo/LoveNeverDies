@@ -26,6 +26,8 @@ import {
   erzeugePersoenlichesKid,
   gibFuerAlleFrei,
   ladePersoenlichenSchluessel,
+  mutationAnfechtungKenntnisAendern,
+  mutationAnfechtungKenntnisAnlegen,
   mutationFragebaumAendern,
   mutationFragebaumAnlegen,
   mutationKenntnisAendern,
@@ -675,13 +677,11 @@ describe('Kenntnisdatum als privates Konfigurations-Item (§8, #12)', () => {
     version: '2026-08+testtest',
     fristTage: 42,
     fristAb: 'kenntnis' as const,
-    rechtsgrundlage: '§ 1944 BGB',
     zustaendigeStelle: 'Nachlassgericht',
     benoetigteDokumente: [],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: '',
-    quelleUrl: '',
     kategorie: 'Frist',
     reihenfolge: 20,
   }
@@ -775,7 +775,7 @@ describe('Kenntnisdatum als privates Konfigurations-Item (§8, #12)', () => {
 
     expect(konfigurationen[0]?.kenntnisAm).toBeNull()
     expect(
-      fristlage(AUSSCHLAGUNG, { sterbedatum: '2026-05-12', kenntnisAm: null }, '2026-05-20'),
+      fristlage(AUSSCHLAGUNG, { sterbedatum: '2026-05-12', kenntnisAm: null, anfechtungKenntnisAm: null }, '2026-05-20'),
     ).toEqual({ art: 'ab-kenntnis' })
   })
 
@@ -802,12 +802,12 @@ describe('Kenntnisdatum als privates Konfigurations-Item (§8, #12)', () => {
 
     const annasEnde = fristlage(
       AUSSCHLAGUNG,
-      { sterbedatum: '2026-05-12', kenntnisAm: '2026-05-12' },
+      { sterbedatum: '2026-05-12', kenntnisAm: '2026-05-12', anfechtungKenntnisAm: null },
       '2026-05-20',
     )
     const brudersEnde = fristlage(
       AUSSCHLAGUNG,
-      { sterbedatum: '2026-05-12', kenntnisAm: '2026-06-02' },
+      { sterbedatum: '2026-05-12', kenntnisAm: '2026-06-02', anfechtungKenntnisAm: null },
       '2026-05-20',
     )
 
@@ -834,6 +834,118 @@ describe('Kenntnisdatum als privates Konfigurations-Item (§8, #12)', () => {
     )
     await expect(
       mutationKenntnisAnlegen(k, schluessel, '2026-02-31', '2026-05-20'),
+    ).rejects.toThrow(AufgabenFehler)
+  })
+})
+
+/**
+ * Das eigene Anfechtungs-Kenntnisdatum als privates Konfigurations-Item (§8,
+ * ERBE_DESIGN.md §7).
+ *
+ * Dasselbe Item wie beim Kenntnisdatum nach § 1944 BGB, nur das andere Feld:
+ * Der Tag, an dem eine Person vom Grund einer Testamentsanfechtung erfahren
+ * hat, ist ein anderer als der ihrer Kenntnis von Anfall und Berufungsgrund,
+ * und beide Fristen dürfen sich deshalb nicht gegenseitig überschreiben.
+ */
+describe('Anfechtungs-Kenntnisdatum als privates Konfigurations-Item (§8)', () => {
+  it('legt es unter K_p ab, getrennt vom Kenntnisdatum nach § 1944 BGB', async () => {
+    const { s, k, anna, annasIdentitaet, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationAnfechtungKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const eigener = await ladePersoenlichenSchluessel(
+      anna.persoenlich,
+      k.id,
+      ANNAS_GERAET,
+      annasIdentitaet,
+    )
+
+    const { konfigurationen, uebersprungeneIds } = await aufgabenAusZeilen(
+      await s.inhalte.seit(k.id, 0),
+      k,
+      eigener,
+    )
+
+    expect(konfigurationen.map((eintrag) => eintrag.anfechtungKenntnisAm)).toEqual(['2026-05-12'])
+    expect(konfigurationen[0]?.kenntnisAm).toBeNull()
+    expect(uebersprungeneIds).toEqual([])
+  })
+
+  it('ändert das Datum unter demselben DEK, statt ein zweites Item anzulegen', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationAnfechtungKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const vorher = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    await uebertrage(
+      s.inhalte,
+      await mutationAnfechtungKenntnisAendern(vorher, '2026-06-02', '2026-06-10'),
+    )
+
+    const nachher = await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel)
+
+    expect(nachher.konfigurationen).toHaveLength(1)
+    expect(nachher.konfigurationen[0]?.id).toBe(vorher.id)
+    expect(nachher.konfigurationen[0]?.anfechtungKenntnisAm).toBe('2026-06-02')
+    expect(s.itemZeilen).toHaveLength(1)
+  })
+
+  it('lässt das Kenntnisdatum nach § 1944 BGB unberührt, wenn nur die Anfechtung geändert wird', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const mitKenntnis = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    await uebertrage(
+      s.inhalte,
+      await mutationAnfechtungKenntnisAendern(mitKenntnis, '2026-06-02', '2026-06-10'),
+    )
+
+    const nachher = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    expect(nachher.kenntnisAm).toBe('2026-05-12')
+    expect(nachher.anfechtungKenntnisAm).toBe('2026-06-02')
+  })
+
+  it('lässt umgekehrt die Anfechtung unberührt, wenn nur das Kenntnisdatum geändert wird', async () => {
+    const { s, k, schluessel } = await ausgangslage()
+
+    await uebertrage(
+      s.inhalte,
+      await mutationAnfechtungKenntnisAnlegen(k, schluessel, '2026-05-12', '2026-05-20'),
+    )
+
+    const mitAnfechtung = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    await uebertrage(s.inhalte, await mutationKenntnisAendern(mitAnfechtung, '2026-06-02', '2026-06-10'))
+
+    const nachher = (await aufgabenAusZeilen(await s.inhalte.seit(k.id, 0), k, schluessel))
+      .konfigurationen[0]!
+
+    expect(nachher.kenntnisAm).toBe('2026-06-02')
+    expect(nachher.anfechtungKenntnisAm).toBe('2026-05-12')
+  })
+
+  it('weist ein Anfechtungsdatum in der Zukunft ab, wie das Kenntnisdatum', async () => {
+    const { k, schluessel } = await ausgangslage()
+
+    await expect(
+      mutationAnfechtungKenntnisAnlegen(k, schluessel, '2062-05-12', '2026-05-20'),
     ).rejects.toThrow(AufgabenFehler)
   })
 })

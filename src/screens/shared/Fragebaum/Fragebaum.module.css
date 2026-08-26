@@ -23,14 +23,6 @@
   gap: var(--dichte-abstand-klein);
 }
 
-/*
- * Der Weg zurück steht über der Frage und nicht unter den Antworten: Wer ihn
- * sucht, sucht ihn, bevor er gelesen hat.
- */
-.zurueck {
-  align-self: flex-start;
-}
-
 .schritt {
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
@@ -45,6 +37,23 @@
 .hinweis {
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
+  margin: 0;
+}
+
+/*
+ * Der Hinweis an "Wollen Sie das Erbe haben?" (ERBE_DESIGN.md §2, §7): Er
+ * soll auffallen und zuerst gelesen werden, bevor jemand antwortet. Grün, weil
+ * `--farbe-akzent` in dieser App bereits die Grundfarbe der Palette ist (§12)
+ * und kein zweiter Ton dafür erfunden werden muss.
+ */
+.hinweisKasten {
+  background: color-mix(in srgb, var(--farbe-akzent) 12%, var(--farbe-karte));
+  border: 0.0625rem solid color-mix(in srgb, var(--farbe-akzent) 35%, transparent);
+  border-radius: var(--dichte-radius);
+  padding: var(--dichte-abstand);
+  color: var(--farbe-text);
+  font-size: var(--dichte-schrift-klein);
+  line-height: var(--typo-zeile-text);
   margin: 0;
 }
 
@@ -141,16 +150,30 @@
 }
 
 /*
- * Der Hinweis, dass die Suche noch keine ist. Auffaellig genug, um nicht
- * ueberlesen zu werden, und nicht als Fehler gefaerbt: Es ist keiner.
+ * Hinweise bei der Gerichtssuche (Mehrfachtreffer, Sonder-PLZ).
  */
-.platzhalter {
-  color: var(--farbe-frist-knapp-text);
-  background: var(--farbe-frist-knapp-flaeche);
+.gerichtHinweis {
+  color: var(--farbe-text);
+  background: var(--farbe-karte);
+  border: 0.0625rem solid var(--farbe-kartenrand);
   border-radius: var(--dichte-radius);
-  padding: var(--dichte-abstand-klein);
+  padding: var(--dichte-abstand);
   font-size: var(--dichte-schrift-klein);
   margin: 0;
+  line-height: var(--typo-zeile-text);
+  width: 100%;
+}
+
+.gerichtLink {
+  color: var(--farbe-akzent, #1a56db);
+  text-decoration: underline;
+  text-underline-offset: 0.125rem;
+  display: inline-block;
+  margin-top: 0.375rem;
+}
+
+.gerichtLink:hover {
+  text-decoration: none;
 }
 
 .warnung {

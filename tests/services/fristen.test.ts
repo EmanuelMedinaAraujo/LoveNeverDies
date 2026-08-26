@@ -5,6 +5,7 @@ import {
   fristlage,
   fristText,
   heuteIso,
+  naechsterWerktag,
   vergleicheNachFrist,
   type Fristlage,
 } from '../../src/services/fristen'
@@ -27,13 +28,11 @@ function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkun
     version: '2026-08+testtest',
     fristTage: 3,
     fristAb: 'sterbedatum',
-    rechtsgrundlage: '§ 28 PStG',
     zustaendigeStelle: 'Standesamt des Sterbeortes',
     benoetigteDokumente: [],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis: '',
-    quelleUrl: '',
     kategorie: 'Sofort',
     reihenfolge: 10,
     ...ueberschreibung,
@@ -41,8 +40,12 @@ function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkun
 }
 
 /** Sterbedatum und eigenes Kenntnisdatum, wie `fristlage` sie erwartet (§8). */
-function bezug(sterbedatum: string | null, kenntnisAm: string | null = null) {
-  return { sterbedatum, kenntnisAm }
+function bezug(
+  sterbedatum: string | null,
+  kenntnisAm: string | null = null,
+  anfechtungKenntnisAm: string | null = null,
+) {
+  return { sterbedatum, kenntnisAm, anfechtungKenntnisAm }
 }
 
 describe('fristlage (§8)', () => {
@@ -66,8 +69,26 @@ describe('fristlage (§8)', () => {
     })
   })
 
+  it('verschiebt ein Fristende, das auf einen Sonntag fällt, auf den Montag (§8, D)', () => {
+    // 12.5.2026 + 5 Tage wäre der 17.5.2026 — ein Sonntag.
+    expect(fristlage(herkunft({ fristTage: 5 }), bezug('2026-05-12'), '2026-05-12')).toEqual({
+      art: 'datum',
+      ende: '2026-05-18',
+      restTage: 6,
+    })
+  })
+
+  it('verschiebt ein Fristende, das auf einen bundeseinheitlichen Feiertag fällt (§8, D)', () => {
+    // 12.5.2026 + 2 Tage wäre der 14.5.2026 — Christi Himmelfahrt.
+    expect(fristlage(herkunft({ fristTage: 2 }), bezug('2026-05-12'), '2026-05-12')).toEqual({
+      art: 'datum',
+      ende: '2026-05-15',
+      restTage: 3,
+    })
+  })
+
   it('erfindet keine Frist, wo das Gesetz keine nennt', () => {
-    const ohne = herkunft({ fristTage: null, fristAb: null, rechtsgrundlage: '' })
+    const ohne = herkunft({ fristTage: null, fristAb: null })
 
     expect(fristlage(ohne, bezug('2026-05-12'), '2026-05-12')).toEqual({ art: 'keine' })
   })
@@ -155,6 +176,109 @@ describe('fristlage (§8)', () => {
 
   it('rechnet aus einem unbrauchbaren Sterbedatum nichts aus', () => {
     expect(fristlage(herkunft(), bezug('irgendwann'), '2026-05-12')).toEqual({ art: 'keine' })
+  })
+
+  describe('Anfechtungsfrist ab eigener Anfechtungskenntnis (D)', () => {
+    // Ein eigener Anker, `anfechtungskenntnis`, und ausdrücklich nicht
+    // `kenntnis`: Beides ist die Kenntnis von etwas anderem und trägt ein
+    // eigenes Fristende (ERBE_DESIGN.md §7).
+    const anfechtung = herkunft({ fristTage: 365, fristAb: 'anfechtungskenntnis' })
+
+    it('bleibt ohne eigenes Anfechtungsdatum "ab Kenntnis", auch mit einem Ausschlagungsdatum', () => {
+      expect(
+        fristlage(anfechtung, { sterbedatum: null, kenntnisAm: '2026-05-12', anfechtungKenntnisAm: null }, '2026-05-12'),
+      ).toEqual({ art: 'ab-kenntnis' })
+    })
+
+    it('rechnet ab dem eigenen Anfechtungsdatum, sobald es eingetragen ist', () => {
+      // Ein Jahr (365 Tage) ab dem 5. Januar 2026 ist der 5. Januar 2027 — ein
+      // Dienstag, also ohne Verschiebung.
+      expect(
+        fristlage(
+          anfechtung,
+          { sterbedatum: null, kenntnisAm: null, anfechtungKenntnisAm: '2026-01-05' },
+          '2026-01-05',
+        ),
+      ).toEqual({ art: 'datum', ende: '2027-01-05', restTage: 365 })
+    })
+
+    it('verwechselt das Ausschlagungs-Kenntnisdatum nicht mit dem Anfechtungsdatum', () => {
+      // Wären beide auf demselben Feld, ergäbe ein eingetragenes
+      // Ausschlagungsdatum ein Anfechtungsende, das niemand eingegeben hat.
+      const nurAusschlagung = fristlage(
+        anfechtung,
+        { sterbedatum: null, kenntnisAm: '2026-05-12', anfechtungKenntnisAm: null },
+        '2026-05-12',
+      )
+      const nurAnfechtung = fristlage(
+        herkunft({ fristTage: 42, fristAb: 'kenntnis' }),
+        { sterbedatum: null, kenntnisAm: null, anfechtungKenntnisAm: '2026-05-12' },
+        '2026-05-12',
+      )
+
+      expect(nurAusschlagung).toEqual({ art: 'ab-kenntnis' })
+      expect(nurAnfechtung).toEqual({ art: 'ab-kenntnis' })
+    })
+  })
+})
+
+describe('naechsterWerktag (§8, D)', () => {
+  it('lässt einen gewöhnlichen Werktag unverändert', () => {
+    // Dienstag, weder Sonntag noch Feiertag.
+    expect(naechsterWerktag('2026-05-12')).toBe('2026-05-12')
+  })
+
+  it('verschiebt einen Sonntag auf den Montag', () => {
+    expect(naechsterWerktag('2026-05-17')).toBe('2026-05-18')
+  })
+
+  it('verschiebt einen festen Feiertag, auch über einen zweiten Feiertag und einen Sonntag hinweg', () => {
+    /*
+     * 2026: Der erste Weihnachtsfeiertag (Fr, 25.12.) trifft auf den zweiten
+     * (Sa, 26.12.) und den darauffolgenden Sonntag (27.12.) — erst der Montag
+     * (28.12.) ist frei von beidem.
+     */
+    expect(naechsterWerktag('2026-12-25')).toBe('2026-12-28')
+  })
+
+  it('verschiebt einen beweglichen Feiertag (Ostermontag, über die Gauß-Formel)', () => {
+    // Ostersonntag 2026 ist der 5. April, Ostermontag also der 6. April.
+    expect(naechsterWerktag('2026-04-06')).toBe('2026-04-07')
+  })
+
+  it('verschiebt einen Feiertag, der auf einen Samstag fällt, trotzdem (Tag der Deutschen Einheit 2026)', () => {
+    // 3.10.2026 ist ein Samstag und ein Feiertag; 4.10. ist ein Sonntag;
+    // erst der 5.10. (Montag) ist frei von beidem.
+    expect(naechsterWerktag('2026-10-03')).toBe('2026-10-05')
+  })
+
+  it('lässt einen Samstag ohne Feiertag unverändert (keine erfundene Samstagsregel)', () => {
+    // 16.5.2026 ist ein Samstag, aber kein Feiertag: Verlangt ist nur die
+    // Verschiebung ab Sonntag oder Feiertag.
+    expect(naechsterWerktag('2026-05-16')).toBe('2026-05-16')
+  })
+
+  it('lässt einen Text, der kein Kalendertag ist, unverändert', () => {
+    expect(naechsterWerktag('irgendwann')).toBe('irgendwann')
+  })
+})
+
+/**
+ * Was passiert, wenn eine Herkunft ihre Tageszahl gar nicht mitbringt (§8).
+ *
+ * Der Fall ist kein Hirngespinst: Eine Herkunft aus einer älteren Fassung oder
+ * aus einem Test trägt `undefined` statt `null`, und `undefined * TAG_MS` ist
+ * `NaN`. Ohne Schutz lief die Verschiebung darauf endlos — eine Menge aus
+ * lauter `NaN` enthält `NaN`, und `NaN + einem Tag` bleibt `NaN`. Der
+ * Bildschirm fror ein, statt dass irgendwo eine Frist fehlte.
+ */
+describe('Frist ohne brauchbare Tageszahl (§8)', () => {
+  it('hält eine Herkunft ohne `fristTage` für fristenlos, statt sich aufzuhängen', () => {
+    const ohneZahl = { aufgabeId: 'irgendeine', fristAb: 'sterbedatum' } as unknown as Katalogherkunft
+
+    expect(
+      fristlage(ohneZahl, { sterbedatum: '2026-05-12', kenntnisAm: null, anfechtungKenntnisAm: null }, '2026-05-20'),
+    ).toEqual({ art: 'keine' })
   })
 })
 

@@ -1,0 +1,10 @@
+/*
+ * Der Schalter steht wie ein Textlink da, nicht wie eine umrandete
+ * Schaltfläche: Er ist eine Nebensache in der Liste, keine Aktion, die man
+ * sucht.
+ */
+.klapp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}

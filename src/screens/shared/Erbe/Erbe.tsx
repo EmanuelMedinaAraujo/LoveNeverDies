@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ALLEINERBE,
   ERBENGEMEINSCHAFT,
   ERBSCHEIN,
   ERBSCHEIN_FRAGE,
 } from '../../../content/erbstatus.ts'
+import { VORSORGEFRAGEN } from '../../../content/vorsorgefragen.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -14,13 +15,18 @@ import { useTresor } from '../../../hooks/useTresor.ts'
 import type { Aufgabe, Fragebaumergebnis } from '../../../services/aufgabenService.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
 import { BAUPLAENE, knoten, statusText } from '../../../services/fragebaumService.ts'
-import type { TresorItem } from '../../../services/tresorService.ts'
+import {
+  antwortZuFrage,
+  eigeneFragen,
+  type TresorItem,
+} from '../../../services/tresorService.ts'
 import type { Infotext } from '../../../types/infotext.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
+import { Vorsorgefragen } from '../Vorsorgefragen/Vorsorgefragen.tsx'
 import stile from './Erbe.module.css'
 import { SymbolPerson, SymbolPersonen, SymbolPfeil, SymbolUrkunde } from './Symbole.tsx'
 
@@ -67,7 +73,7 @@ function TresorInhalte({
   return (
     <Card>
       <div className={stile.statusKopf}>
-        <h2 className={stile.abschnitt}>Tresor-Inhalte</h2>
+        <h2 className={stile.abschnitt}>Weitere Tresor-Inhalte</h2>
         <Badge lage="ruhig">{items.length} {items.length === 1 ? 'Eintrag' : 'Einträge'}</Badge>
       </div>
 
@@ -77,7 +83,7 @@ function TresorInhalte({
       </p>
 
       {items.length === 0 ? (
-        <p className={stile.hinweis}>Der Tresor ist noch leer.</p>
+        <p className={stile.hinweis}>Hier steht noch nichts außer Ihren Antworten oben.</p>
       ) : (
         <ul className={stile.liste}>
           {items.map((item) => (
@@ -369,6 +375,8 @@ function VorsorgeTresor({
     istPreparer,
     resplitPending,
     legeItemAn,
+    speichereAntwort,
+    legeEigeneFrageAn,
     loescheItem,
     verteileShares,
     resplitLaeuft,
@@ -397,6 +405,28 @@ function VorsorgeTresor({
     return <Ladeanzeige text="Tresor wird geladen..." />
   }
 
+  /*
+   * Die Antworten auf die Vorsorgefragen stehen in ihrem eigenen Block; unter
+   * "Weitere Tresor-Inhalte" hätten sie ein zweites Mal dagestanden, dort ohne
+   * ihre Frage und ohne Feld zum Ändern.
+   */
+  const freieItems = items.filter((item) => item.frageId === null)
+
+  /*
+   * Gezaehlt werden die gelieferten Fragen und die selbst gestellten zusammen.
+   * "3 von 8" neben elf Fragen waere eine Auskunft ueber eine Liste, die so
+   * nicht auf dem Bildschirm steht.
+   *
+   * Eine selbst gestellte Frage gilt als beantwortet, sobald etwas im Feld
+   * steht: Ihre Zeile entsteht schon beim Stellen der Frage, ihr blosses
+   * Dasein sagt also nichts darueber, ob jemand sie beantwortet hat.
+   */
+  const eigene = eigeneFragen(items)
+  const gesamt = VORSORGEFRAGEN.length + eigene.length
+  const beantwortet =
+    VORSORGEFRAGEN.filter((frage) => antwortZuFrage(items, frage.id) !== null).length +
+    eigene.filter((item) => item.inhalt !== '').length
+
   return (
     <>
       <Card>
@@ -408,8 +438,9 @@ function VorsorgeTresor({
         {schwelle.n === 0 ? (
           <>
             <p className={stile.warnung}>
-              Der Tresor ist versiegelt, kann aber noch von niemandem geöffnet werden. Bitte laden
-              Sie Angehörige ein, damit der Tresor im Ernstfall freigegeben werden kann.
+              Der Tresor ist versiegelt. Im Tresor befinden sich Ihre Antworten. Der Tresor kann
+              nach Ihrem Tod nur von Ihren Angehörigen geöffnet werde. Bitte laden Sie Angehörige
+              ein, damit diese im Ernstfall auf Ihre Antworten Zugriefen können.
             </p>
             <Button volleBreite onClick={() => navigate('/koppeln')}>
               Angehörige einladen
@@ -451,11 +482,47 @@ function VorsorgeTresor({
         ) : null}
       </Card>
 
-      <Todesfallfreigabe fall={fall} onFallAktualisieren={onFallAktualisieren} />
+      {/*
+        Die Todesbestaetigung steht nur bei den Angehoerigen (§3.5, §7).
+        Die vorsorgende Person kann ihren eigenen Tod nicht freigeben: `k`
+        zaehlt ausschliesslich Angehoerige, und der Knopf war fuer sie ohnehin
+        immer gesperrt. Was blieb, war ein Kasten ueber die eigene Beerdigung
+        auf dem Weg zu den eigenen Unterlagen.
+      */}
+      {istPreparer ? null : (
+        <Todesfallfreigabe fall={fall} onFallAktualisieren={onFallAktualisieren} />
+      )}
 
       {istPreparer ? (
         <>
-          <TresorInhalte items={items} onNeu={legeItemAn} onLoeschen={loescheItem} />
+          {/*
+            Dieselben Fragen wie auf dem ersten Screen, und dieselben Antworten
+            (§3.5). Sie stehen hier ein zweites Mal, weil der Tresor der Ort
+            ist, an dem man nachsieht, was man hinterlegt hat: Wer eine Auskunft
+            ändern will, sucht sie dort, wo sie liegt, und nicht in einem
+            Formular auf der Startseite.
+          */}
+          <Card>
+            <div className={stile.statusKopf}>
+              <h2 className={stile.abschnitt}>Ihre Vorsorgefragen</h2>
+              <Badge lage="ruhig">
+                {beantwortet} von {gesamt} beantwortet
+              </Badge>
+            </div>
+            <p className={stile.hinweis}>
+              Ihre Antworten liegen verschlüsselt im Tresor. Sie können sie hier jederzeit
+              ändern; gespeichert wird jede Antwort für sich.
+            </p>
+          </Card>
+
+          <Vorsorgefragen
+            items={items}
+            onSpeichern={speichereAntwort}
+            onFrageAnlegen={legeEigeneFrageAn}
+            onFrageLoeschen={loescheItem}
+          />
+
+          <TresorInhalte items={freieItems} onNeu={legeItemAn} onLoeschen={loescheItem} />
 
           <Card>
             <h2 className={stile.abschnitt}>Vorsorge beenden</h2>
@@ -913,16 +980,32 @@ export function Erbe() {
         <>
           <Erbstatus fall={fall} />
 
-          <Card>
-            <div className={stile.statusKopf}>
-              <h2 className={stile.abschnitt}>Nachlass-Tresor</h2>
-              <Badge lage="ruhig">Trauerfall</Badge>
-            </div>
-            <p className={stile.hinweis}>
-              Der Fall ist ein Trauerfall. Die Aufgaben und Dokumente stehen im Tab „Alle"
-              bereit.
-            </p>
-          </Card>
+          {/*
+            §3.5: Die ganze Karte führt in den geöffneten Tresor. Vorher stand
+            hier ein Satz, der auf einen anderen Tab verwies -- der Inhalt, den
+            die vorsorgende Person hinterlegt hat, war nirgends zu sehen.
+
+            Nur bei einem Fall, der aus einer Vorsorge hervorgegangen ist:
+            `preparerId` steht ausschließlich dort (siehe die Spalte in
+            `faelle`, "nur bei Vorsorge"). Ein Trauerfall, der direkt angelegt
+            wurde, hatte nie einen Tresor, und eine Karte, die zu einem
+            Screen führt, der nur "Versiegelt, 0 von 0" melden könnte, wäre
+            keine Auskunft, sondern eine Enttäuschung, einen Fingertipp weiter.
+          */}
+          {fall.preparerId === null ? null : (
+            <Link className={stile.karte} to="/erbe/tresor">
+              <Card>
+                <div className={stile.statusKopf}>
+                  <h2 className={stile.abschnitt}>Nachlass-Tresor</h2>
+                  <Badge lage="ruhig">Trauerfall</Badge>
+                </div>
+                <p className={stile.hinweis}>
+                  Was {fall.personName} hinterlegt hat: Zugänge, Unterlagen, persönliche
+                  Nachrichten. Tippen Sie, um es zu lesen.
+                </p>
+              </Card>
+            </Link>
+          )}
 
           <ErneutDurchlaufen />
         </>

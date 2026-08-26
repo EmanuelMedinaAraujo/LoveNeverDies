@@ -59,6 +59,25 @@ vi.mock('../../src/core/db/supabaseTresor.ts', () => ({ supabaseTresor: () => tr
 vi.mock('../../src/core/db/supabaseInhalte.ts', () => ({ supabaseInhalte: () => inhalteDb }))
 vi.mock('../../src/core/db/supabaseProfil.ts', () => ({ supabaseProfil: () => profilDb }))
 
+/**
+ * Die Klingel auf `vault_releases` (§3.5), als Doppel.
+ *
+ * Was sie mit Realtime und Polling anstellt, steht in
+ * `tests/sync/realtime.test.tsx`. Hier zaehlt nur, ob dieser Hook sie
+ * ueberhaupt anmeldet und was er tut, wenn sie laeutet.
+ */
+const klingeln: { fallId: string; laeute: () => void }[] = []
+const abgeraeumt = vi.fn()
+
+vi.mock('../../src/core/sync/realtime.ts', () => ({
+  POLLING_ABSTAND_MS: 30_000,
+  tuerklingel: () => () => undefined,
+  freigabeklingel: (_client: unknown, fallId: string, laeute: () => void) => {
+    klingeln.push({ fallId, laeute })
+    return abgeraeumt
+  },
+}))
+
 const stabilerClient = {}
 // Ein stabiler Zugang, kein frischer bei jedem Rendern: `zugang` steht in der
 // Abhängigkeitsliste des Ladeeffekts, und eine neue Funktion je Rendern liesse
@@ -151,6 +170,7 @@ function setzeOnline(wert: boolean): void {
 describe('useTodesfall (§3.5, §5)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    klingeln.length = 0
     setzeOnline(true)
     tresorDb.sharesFuerFall.mockResolvedValue([])
     tresorDb.freigabenFuerFall.mockResolvedValue([])
@@ -399,5 +419,56 @@ describe('useTodesfall (§3.5, §5)', () => {
 
     await expect(result.current.oeffneTresor('2026-02-30')).rejects.toThrow(/Sterbedatum/i)
     expect(tresorDb.oeffneTresor).not.toHaveBeenCalled()
+  })
+
+  it('horcht auf die Freigaben dieses Falls', async () => {
+    /*
+     * §3.5: Bestätigt eine andere Person auf ihrem Telefon, soll der Zähler
+     * hier nachziehen. Die Türklingel aus §5 reicht dafür nicht: Eine Freigabe
+     * schreibt `vault_releases`, und das hebt `cases.version` nicht.
+     */
+    const dieser = fall()
+
+    renderHook(() => useTodesfall(dieser, vi.fn()))
+
+    await waitFor(() => {
+      expect(klingeln).toHaveLength(1)
+    })
+    expect(klingeln[0]?.fallId).toBe(dieser.id)
+  })
+
+  it('lädt den Freigabestand nach, wenn die Klingel läutet', async () => {
+    const dieser = fall()
+    const { result } = renderHook(() => useTodesfall(dieser, vi.fn()))
+
+    await waitFor(() => {
+      expect(result.current.laedt).toBe(false)
+    })
+    expect(result.current.freigaben).toEqual([])
+
+    // Jetzt bestätigt jemand anderes — ohne dass hier jemand die Seite wechselt.
+    tresorDb.freigabenFuerFall.mockResolvedValue([
+      await freigabeZeile(dieser.kc, dieser.kid, kv, BERND),
+    ])
+
+    await act(async () => {
+      klingeln[0]?.laeute()
+    })
+
+    await waitFor(() => {
+      expect(result.current.freigaben).toHaveLength(1)
+    })
+    expect(result.current.freigaben[0]?.name).toBe('Bernd Weber')
+  })
+
+  it('horcht nicht mehr, sobald der Fall ein Trauerfall ist', () => {
+    /*
+     * Danach gibt es keine Freigaben mehr entgegenzunehmen, und ein offener
+     * Kanal hörte für den Rest der Sitzung auf eine Tabelle, in die niemand
+     * mehr schreibt.
+     */
+    renderHook(() => useTodesfall(fall({ status: 'trauerfall' }), vi.fn()))
+
+    expect(klingeln).toHaveLength(0)
   })
 })

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { POLLING_ABSTAND_MS, tuerklingel } from '../../src/core/sync/realtime'
+import { POLLING_ABSTAND_MS, freigabeklingel, tuerklingel } from '../../src/core/sync/realtime'
 
 /**
  * Nahtstelle: die Türklingel (DESIGN.md §5).
@@ -211,5 +211,64 @@ describe('tuerklingel', () => {
     aendereZeile()
 
     expect(laeute).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Die zweite Klingel: die Freigaben eines Vorsorgefalls (DESIGN.md §3.5).
+ *
+ * Es gibt sie, weil `vault_releases` neben `items` steht und nicht am
+ * Delta-Sync haengt: Eine Freigabe hebt `cases.version` nicht, die Tuerklingel
+ * schweigt also. Wer im Tab Erbe auf den Zaehler schaut, waehrend eine andere
+ * Person auf ihrem Telefon bestaetigt, saehe ohne sie gar nichts -- bis er den
+ * Tab verlaesst und zurueckkommt.
+ */
+describe('freigabeklingel', () => {
+  it('abonniert die Freigaben genau dieses Falls', () => {
+    const { client, gesehen } = clientDoppel()
+
+    freigabeklingel(client, 'fall-1', vi.fn())
+
+    expect(gesehen.kanal).toBe('freigaben:fall-1')
+    expect(gesehen.optionen).toEqual({
+      // `*` und nicht nur `INSERT`: Eine Freigabe ist ersetzbar (§3.5, ein
+      // unbrauchbarer Anteil), und die zweite Fassung kommt als `UPDATE`.
+      event: '*',
+      schema: 'public',
+      table: 'vault_releases',
+      filter: 'case_id=eq.fall-1',
+    })
+  })
+
+  it('laeutet, wenn eine Freigabe hereinkommt', () => {
+    const { client, aendereZeile, meldeStatus } = clientDoppel()
+    const laeute = vi.fn()
+
+    freigabeklingel(client, 'fall-1', laeute)
+    meldeStatus('SUBSCRIBED')
+    aendereZeile()
+
+    expect(laeute).toHaveBeenCalledTimes(1)
+  })
+
+  it('faellt auf Polling zurueck wie die Tuerklingel', () => {
+    // Dieselbe Zusage aus §5, und deshalb derselbe Weg: Fokus und alle 30
+    // Sekunden, aber nur, wenn die Subscription nicht traegt.
+    const { client, meldeStatus } = clientDoppel()
+    const laeute = vi.fn()
+
+    freigabeklingel(client, 'fall-1', laeute)
+    meldeStatus('CHANNEL_ERROR')
+    vi.advanceTimersByTime(POLLING_ABSTAND_MS)
+
+    expect(laeute).toHaveBeenCalledTimes(1)
+  })
+
+  it('raeumt ihren Kanal wieder ab', () => {
+    const { client, gesehen } = clientDoppel()
+
+    freigabeklingel(client, 'fall-1', vi.fn())()
+
+    expect(gesehen.entfernt).toBe(1)
   })
 })

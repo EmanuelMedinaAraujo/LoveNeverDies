@@ -175,7 +175,7 @@ Im Klartext liegen: `case_id`, `status`, `catalog_version`, `seq`, `updated_at`,
 Dazu Anzeigename und E-Mail jeder Person (Tabelle `profiles`, §4).
 
 Verschlüsselt sind: Titel, Beschreibung, Fristangaben (`fristTage`, `fristAb`),
-Zuständigkeit/Assignee, Notizen, Dokumente, Rechtsgrundlagen, Elternbeziehungen
+Zuständigkeit/Assignee, Notizen, Dokumente, Elternbeziehungen
 (`parentId`), Abhängigkeiten (`dependsOn`), Item-Typ, Erledigt-Status, Name und
 Sterbedatum der verstorbenen Person sowie `kenntnisAm` je Person.
 
@@ -292,6 +292,43 @@ Tresor kaskadierend entfernt. Träte er aus, zeigte `preparer_id` weiter auf ihn
 `vault_key_wraps` bliebe für alle anderen unlesbar, `vault_resplit_pending` stünde für
 immer, und der Tresor wäre ein Datenblock, den niemand mehr öffnen und niemand mehr
 loswerden kann.
+
+#### Die Vorsorgefragen
+
+Ein Vorsorgefall hat keine Aufgaben: kein Sterbedatum, kein Rechtskatalog (§2). Was der
+vorsorgenden Person auf "Meine Aufgaben" begegnete, wäre sonst für immer der Satz "Für Sie
+ist gerade nichts eingetragen" — richtig und nutzlos.
+
+An dieser Stelle stehen deshalb die acht Fragen aus `content/vorsorgefragen.ts`: wo die
+Papiere liegen, ob es eine postmortale Vollmacht gibt, welche Verträge laufen, was mit der
+Bestattung sein soll. Der Wortlaut kommt von den Juristinnen und bleibt wörtlich (§8). Eine
+Frage, ein Feld, eine Schaltfläche: Wer eine Frage beantwortet und die übrigen sieben offen
+lässt, hat gespeichert.
+
+Eine Antwort ist ein Tresor-Item wie jedes andere — DEK unter `K_v`, `in_vault = true` — mit
+einer Frage-Kennung im Payload. Die Kennung ist der Unterschied zwischen einer Antwort und
+einer frei angelegten Notiz: Sie hält eine Frage bei genau einer Zeile, sodass das zweite
+Speichern ändert und nicht ein zweites Mal anlegt, und sie bleibt stabil, wenn die
+Juristinnen den Wortlaut später ändern.
+
+Dieselben Fragen stehen im Tab Erbe, über den frei angelegten Inhalten: Der Tresor ist der
+Ort, an dem man nachsieht, was man hinterlegt hat. Angehörige sehen sie nicht — ohne `K_v`
+gibt es nichts zu beantworten und nichts zu lesen.
+
+Unter den acht gelieferten Fragen stellt die vorsorgende Person eigene. Eine selbst gestellte
+Frage ist dieselbe Tresorzeile wie eine beantwortete gelieferte, nur trägt ihr Titel den
+Wortlaut der Frage statt einer Kopie aus der Inhaltsdatei; ihre Kennung beginnt mit `eigen-`.
+Daran hängt alles Weitere: Der Fragenblock sammelt sie über das Präfix ein, `antwortZuFrage`
+findet ihre Antwort wie jede andere, und "Weitere Tresor-Inhalte" lässt sie draussen, weil
+dort nur steht, was keine Frage-Kennung hat. Die Zeile entsteht schon beim Stellen der Frage
+und nicht erst mit der ersten Antwort — sonst wäre eine notierte, aber noch offene Frage beim
+nächsten Öffnen der App wieder verschwunden. Löschen lässt sich nur eine selbst gestellte
+Frage, und nur nach Rückfrage: Die acht gelieferten bleiben stehen.
+
+Die Todesbestätigung steht im Tab Erbe ausschliesslich bei den Angehörigen. `k` zählt
+Angehörige ohne den Preparer (§3.5); die vorsorgende Person konnte ihren eigenen Tod nie
+freigeben, und der Kasten war für sie ein Hinweis auf die eigene Beerdigung auf dem Weg zu
+den eigenen Unterlagen.
 
 #### Warum der Zähler nichts auslöst
 
@@ -926,7 +963,7 @@ wäre ein Risiko ohne Gegenwert.
 
 ### Aufgabendetail
 
-Ganzseitig. Enthält Rechtsgrundlage und Quelle, Frist, Dokumente, Notizen, Unteraufgaben
+Ganzseitig. Enthält Frist, zuständige Stelle, Dokumente, Notizen, Unteraufgaben
 (eine Ebene, keine Verschachtelung) und optional `dependsOn`. Blockierte Aufgaben erscheinen
 ausgegraut mit "Zuerst: …".
 
@@ -1054,16 +1091,18 @@ Die Juristinnen pflegen eine Tabelle, ein Datensatz pro Aufgabe:
 
 ```
 id · titel · kurzbeschreibung · frist_tage · frist_ab (sterbedatum|kenntnis|leer)
-rechtsgrundlage · zustaendige_stelle · benoetigte_dokumente (;) · subtasks (;)
-depends_on (;) · hinweis · quelle_url · kategorie · reihenfolge
+zustaendige_stelle · benoetigte_dokumente (;) · subtasks (;) · depends_on (;)
+hinweis · kategorie · reihenfolge
 ```
 
 `npm import:content` validiert und erzeugt `src/content/catalog.de.json` (eingecheckt).
 
-- Eine `frist` ohne `rechtsgrundlage` ist ein harter Importfehler.
+- Eine `frist_tage` ohne `frist_ab` ist ein harter Importfehler, und umgekehrt: Eine
+  Frist, die ab nichts läuft, ist nicht anzeigbar.
 - Fehlt eine gesetzliche Frist, bleibt das Feld leer. Erfunden wird nichts.
-- Rechtsgrundlage und Quelle stehen im Aufgabendetail. Direkter lässt sich die juristische
-  Arbeit nicht in das Bewertungskriterium "Rechtliche Qualität" übersetzen.
+- **Keine Rechtsgrundlage und keine Quelle** (ADR-0003). Ein Paragraph mit Fundstelle unter
+  einer Handlung ist der Form nach eine Rechtsauskunft, und die gibt diese App nicht. Was
+  bleibt, ist das, wonach jemand handelt: Frist, Stelle, Dokumente, Hinweis.
 
 ### Wann der Katalog eingefroren wird
 
@@ -1075,7 +1114,7 @@ Sonderfall.
 
 Der Katalog initialisiert, mehr nicht. Danach sind es gewöhnliche Items: frei änderbar,
 ergänzbar, löschbar. `catalog_version` ist eine Herkunftsangabe ("aufgesetzt aus
-Katalogstand 2031-03") und keine lebende Verknüpfung. Rechtsgrundlage und Quelle werden
+Katalogstand 2031-03") und keine lebende Verknüpfung. Frist und zuständige Stelle werden
 beim Instanziieren in das Item kopiert und altern mit ihm.
 
 ### Instanziierung ist strukturell idempotent

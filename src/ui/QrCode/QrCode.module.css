@@ -1,0 +1,16 @@
+.bild {
+  display: block;
+  width: 100%;
+  max-width: 14rem;
+  height: auto;
+  margin: 0 auto;
+
+  background: #ffffff;
+  padding: var(--dichte-abstand-klein);
+  border-radius: var(--dichte-radius);
+}
+
+.hinweis {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}
