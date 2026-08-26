@@ -12,23 +12,23 @@
  * Juristinnen (DESIGN.md §8).
  */
 
-import { ERBSCHEIN, alsText } from '../content/erbstatus.ts'
-import { FRAGEBAUM, WURZEL } from '../content/fragebaum.ts'
+import { ERBSCHEIN, alsText } from "../content/erbstatus.ts";
+import { FRAGEBAUM, WURZEL } from "../content/fragebaum.ts";
 import type {
   Aufgabenvorlage,
   Erbstatus,
   Fragebaumknoten,
   Infothema,
-} from '../types/fragebaum.ts'
-import type { Nachlassgericht } from '../types/gericht.ts'
-import type { Fragebaumergebnis, Katalogherkunft } from './aufgabenService'
-import { formatGerichtNotiz } from './gerichtService.ts'
-import type { Zugewiesene, Zuweisung } from './zuweisung.ts'
+} from "../types/fragebaum.ts";
+import type { Nachlassgericht } from "../types/gericht.ts";
+import type { Fragebaumergebnis, Katalogherkunft } from "./aufgabenService";
+import { formatGerichtNotiz } from "./gerichtService.ts";
+import type { Zugewiesene, Zuweisung } from "./zuweisung.ts";
 
-const KNOTEN = new Map(FRAGEBAUM.map((knoten) => [knoten.id, knoten]))
+const KNOTEN = new Map(FRAGEBAUM.map((knoten) => [knoten.id, knoten]));
 
 /** Die Herkunftsangabe der Aufgaben aus dem Baum (§8, ERBE_DESIGN.md §7). */
-export const FRAGEBAUM_STAND = 'fragebaum-2026-08'
+export const FRAGEBAUM_STAND = "fragebaum-2026-08";
 
 /**
  * Die Katalogaufgabe, die auf den Fragebaum führt (ADR-0001).
@@ -36,18 +36,18 @@ export const FRAGEBAUM_STAND = 'fragebaum-2026-08'
  * Die einzige Aufgabe, die noch automatisch entsteht. Die Aufgabendetails
  * erkennen sie an dieser Kennung und zeigen den Knopf "Fragebaum starten".
  */
-export const SEED_AUFGABE = 'erbenstellung-klaeren'
+export const SEED_AUFGABE = "erbenstellung-klaeren";
 
-export { WURZEL }
+export { WURZEL };
 
 /** Der Knoten zu dieser Id, oder `null`, wenn es ihn nicht gibt. */
 export function knoten(id: string): Fragebaumknoten | null {
-  return KNOTEN.get(id) ?? null
+  return KNOTEN.get(id) ?? null;
 }
 
 /** Alle Knoten, für Tests und für das Pruefen eines gespeicherten Pfads. */
 export function alleKnoten(): Fragebaumknoten[] {
-  return FRAGEBAUM
+  return FRAGEBAUM;
 }
 
 /**
@@ -58,16 +58,16 @@ export function alleKnoten(): Fragebaumknoten[] {
  */
 export function statusText(status: Erbstatus): string {
   switch (status) {
-    case 'erbe':
-      return 'Erbe'
-    case 'wahrscheinlich-erbe':
-      return 'Wahrscheinlich Erbe'
-    case 'wahrscheinlich-kein-erbe':
-      return 'Wahrscheinlich kein Erbe'
-    case 'kein-erbe':
-      return 'Kein Erbe'
-    case 'noch-erbe':
-      return 'Noch Erbe'
+    case "erbe":
+      return "Erbe";
+    case "wahrscheinlich-erbe":
+      return "Wahrscheinlich Erbe";
+    case "wahrscheinlich-kein-erbe":
+      return "Wahrscheinlich kein Erbe";
+    case "kein-erbe":
+      return "Kein Erbe";
+    case "noch-erbe":
+      return "Noch Erbe";
   }
 }
 
@@ -79,12 +79,17 @@ export function statusText(status: Erbstatus): string {
  * @throws {Error} wenn der letzte Knoten gar kein Ergebnis ist. Ein Ergebnis
  * an einer Frage wäre ein Status, den niemand erreicht hat.
  */
-export function ergebnisAus(pfad: string[], jetzt: Date = new Date()): Fragebaumergebnis {
-  const letzter = pfad.at(-1)
-  const ziel = letzter === undefined ? null : knoten(letzter)
+export function ergebnisAus(
+  pfad: string[],
+  jetzt: Date = new Date(),
+): Fragebaumergebnis {
+  const letzter = pfad.at(-1);
+  const ziel = letzter === undefined ? null : knoten(letzter);
 
-  if (ziel === null || ziel.art !== 'ergebnis') {
-    throw new Error('Ein Fragebaum-Ergebnis entsteht nur an einem Ergebnisknoten.')
+  if (ziel === null || ziel.art !== "ergebnis") {
+    throw new Error(
+      "Ein Fragebaum-Ergebnis entsteht nur an einem Ergebnisknoten.",
+    );
   }
 
   return {
@@ -92,7 +97,7 @@ export function ergebnisAus(pfad: string[], jetzt: Date = new Date()): Fragebaum
     pfad: [...pfad],
     status: ziel.status ?? null,
     am: jetzt.toISOString(),
-  }
+  };
 }
 
 /**
@@ -108,32 +113,34 @@ export function ergebnisAus(pfad: string[], jetzt: Date = new Date()): Fragebaum
  * Juristinnen, und steht deshalb fest da statt hinter dem Platzhalter.
  */
 export function infoText(thema: Infothema): { frage: string; text: string } {
-  if (thema === 'pflichtteil') {
+  if (thema === "pflichtteil") {
     return {
-      frage: 'Was ist der Pflichtteil?',
-      text: 'Der Pflichtteil ist ein Mindest-Betrag an Geld aus dem Erbe.',
-    }
+      frage: "Was ist der Pflichtteil?",
+      text: "Der Pflichtteil ist ein Mindest-Betrag an Geld aus dem Erbe.",
+    };
   }
 
   const frage =
-    thema === 'erbschein' ? 'Was ist ein Erbschein?' : 'Was ist das Nachlassgericht?'
+    thema === "erbschein"
+      ? "Was ist ein Erbschein?"
+      : "Was ist das Nachlassgericht?";
   const gegenstand =
-    thema === 'erbschein'
-      ? 'den Erbschein'
-      : 'das Nachlassgericht und darüber, wie es Kontakt aufnimmt'
+    thema === "erbschein"
+      ? "den Erbschein"
+      : "das Nachlassgericht und darüber, wie es Kontakt aufnimmt";
 
   return {
     frage,
     text: `Diese Erläuterung wird noch von den Juristinnen ergänzt. Bis dahin steht hier nichts über ${gegenstand} — geraten wird an dieser Stelle nicht.`,
-  }
+  };
 }
 
 /** Titel, Beschreibung und Rechtsangaben einer Aufgabe aus dem Baum. */
 export type Aufgabenbauplan = {
-  titel: string
-  beschreibung: string
-  katalog: Katalogherkunft
-}
+  titel: string;
+  beschreibung: string;
+  katalog: Katalogherkunft;
+};
 
 /**
  * Die Aufgaben, die aus dem Baum und aus dem Erbstatus entstehen (§7, §10).
@@ -151,25 +158,24 @@ export type Aufgabenbauplan = {
  */
 export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
   testament: {
-    titel: 'Testament beim Nachlassgericht abliefern',
-    beschreibung:
-      '.',
+    titel: "Testament beim Nachlassgericht abliefern",
+    beschreibung: ".",
     katalog: {
-      aufgabeId: 'fragebaum-testament',
+      aufgabeId: "fragebaum-testament",
       version: FRAGEBAUM_STAND,
       fristTage: null,
-      fristAb: 'unverzueglich',
-      zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
+      fristAb: "unverzueglich",
+      zustaendigeStelle: "Nachlassgericht (Amtsgericht)",
       benoetigteDokumente: [],
       unteraufgaben: [],
       haengtAbVon: [],
-      hinweis:'',
-      kategorie: 'Erbe',
+      hinweis: "",
+      kategorie: "Erbe",
       reihenfolge: 40,
     },
   },
   ausschlagung: {
-    titel: 'Erbe ausschlagen',
+    titel: "Erbe ablehnen",
     beschreibung: `Sie wollen das Erbe nicht (Ausschlagung)
 
 [rot:Hinweis:] Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das Erbe automatisch an. Danach kann das Erbe nicht mehr abgelehnt werden.
@@ -197,16 +203,16 @@ Sie haben dafür zwei Möglichkeiten:
 • Beim Notar erhalten Sie schneller und sicher innerhalb der Frist einen Termin
 • Beim Nachlassgericht fallen Ihnen keine zusätzlichen Kosten an`,
     katalog: {
-      aufgabeId: 'fragebaum-ausschlagung',
+      aufgabeId: "fragebaum-ausschlagung",
       version: FRAGEBAUM_STAND,
       fristTage: 42,
-      fristAb: 'kenntnis',
-      zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
+      fristAb: "kenntnis",
+      zustaendigeStelle: "Nachlassgericht (Amtsgericht) oder Notariat",
       benoetigteDokumente: [],
       unteraufgaben: [],
       haengtAbVon: [],
-      hinweis: '',
-      kategorie: 'Erbe',
+      hinweis: "",
+      kategorie: "Erbe",
       reihenfolge: 50,
     },
   },
@@ -224,24 +230,24 @@ Sie haben dafür zwei Möglichkeiten:
    * braucht.
    */
   erbschein: {
-    titel: 'Erbschein beantragen',
+    titel: "Erbschein beantragen",
     beschreibung: alsText(ERBSCHEIN),
     katalog: {
-      aufgabeId: 'fragebaum-erbschein',
+      aufgabeId: "fragebaum-erbschein",
       version: FRAGEBAUM_STAND,
       fristTage: null,
       fristAb: null,
-      zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
+      zustaendigeStelle: "Nachlassgericht (Amtsgericht) oder Notariat",
       benoetigteDokumente: [],
       unteraufgaben: [],
       haengtAbVon: [],
-      hinweis: '',
-      kategorie: 'Erbe',
+      hinweis: "",
+      kategorie: "Erbe",
       reihenfolge: 55,
     },
   },
   anfechtung: {
-    titel: 'Testament anfechten',
+    titel: "Testament anfechten",
     beschreibung: `Informationen zur Testamentsanfechtung
 
 1. **Was ist das?**
@@ -276,20 +282,20 @@ Die Frist beginnt, sobald Sie von dem Grund für die Anfechtung erfahren haben (
 • Durch die Anfechtung entstehen Kosten.
   • Die Kosten werden gemildert oder entfallen bei wirksamer Anfechtung.`,
     katalog: {
-      aufgabeId: 'fragebaum-anfechtung',
+      aufgabeId: "fragebaum-anfechtung",
       version: FRAGEBAUM_STAND,
       fristTage: 365,
-      fristAb: 'anfechtungskenntnis',
-      zustaendigeStelle: 'Nachlassgericht (Amtsgericht) oder Notariat',
+      fristAb: "anfechtungskenntnis",
+      zustaendigeStelle: "Nachlassgericht (Amtsgericht) oder Notariat",
       benoetigteDokumente: [],
       unteraufgaben: [],
       haengtAbVon: [],
-      hinweis: '',
-      kategorie: 'Erbe',
+      hinweis: "",
+      kategorie: "Erbe",
       reihenfolge: 70,
     },
   },
-}
+};
 
 /**
 /**
@@ -297,24 +303,24 @@ Die Frist beginnt, sobald Sie von dem Grund für die Anfechtung erfahren haben (
  * die auf den Fragebaum führt.
  */
 export const SEED_BAUPLAN: Aufgabenbauplan = {
-  titel: 'Klären ob Sie Erbe sind',
+  titel: "Klären ob Sie Erbe sind",
   beschreibung:
-    'Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch.',
+    "Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch.",
   katalog: {
     aufgabeId: SEED_AUFGABE,
     version: FRAGEBAUM_STAND,
     fristTage: null,
     fristAb: null,
-    zustaendigeStelle: '',
+    zustaendigeStelle: "",
     benoetigteDokumente: [],
     unteraufgaben: [],
     haengtAbVon: [],
     hinweis:
-      'Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.',
-    kategorie: 'Erbe',
+      "Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.",
+    kategorie: "Erbe",
     reihenfolge: 50,
   },
-}
+};
 
 /**
  * Der vollständige Beschreibungstext einer Aufgabe, die aus einem
@@ -334,23 +340,26 @@ export const SEED_BAUPLAN: Aufgabenbauplan = {
  *
  * @param ergebnisText der Text des Ergebnisknotens, `{person}` bereits ersetzt.
  */
-export function aufgabenBeschreibung(vorlage: Aufgabenvorlage, ergebnisText = ''): string {
-  const bauplan = BAUPLAENE[vorlage]
-  const gelesen = ergebnisText.trim()
+export function aufgabenBeschreibung(
+  vorlage: Aufgabenvorlage,
+  ergebnisText = "",
+): string {
+  const bauplan = BAUPLAENE[vorlage];
+  const gelesen = ergebnisText.trim();
 
-  if (gelesen === '' || gelesen === bauplan.beschreibung.trim()) {
-    return bauplan.beschreibung
+  if (gelesen === "" || gelesen === bauplan.beschreibung.trim()) {
+    return bauplan.beschreibung;
   }
 
   if (
-    gelesen.includes('Folgende Schritte sind jetzt für Sie relevant') ||
+    gelesen.includes("Folgende Schritte sind jetzt für Sie relevant") ||
     gelesen.includes(bauplan.beschreibung) ||
     bauplan.beschreibung.includes(gelesen)
   ) {
-    return gelesen
+    return gelesen;
   }
 
-  return `${gelesen}\n\n${bauplan.beschreibung}`
+  return `${gelesen}\n\n${bauplan.beschreibung}`;
 }
 
 /** Ob diese Herkunft von der genannten Vorlage aus dem Baum stammt. */
@@ -359,52 +368,52 @@ export function stammtAus(
   vorlage: Aufgabenvorlage,
 ): boolean {
   if (katalog === null) {
-    return false
+    return false;
   }
   return (
     katalog.aufgabeId === BAUPLAENE[vorlage].katalog.aufgabeId ||
     katalog.aufgabeId === vorlage ||
     katalog.aufgabeId === `fragebaum-${vorlage}` ||
     katalog.aufgabeId.includes(vorlage)
-  )
+  );
 }
 
 export function istErbscheinAufgabe(aufgabe: {
-  titel?: string
-  katalog?: Katalogherkunft | null
+  titel?: string;
+  katalog?: Katalogherkunft | null;
 }): boolean {
-  if (stammtAus(aufgabe.katalog ?? null, 'erbschein')) return true
-  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? ''
-  if (id.includes('erbschein')) return true
-  const titel = aufgabe.titel?.toLowerCase() ?? ''
-  return titel.includes('erbschein')
+  if (stammtAus(aufgabe.katalog ?? null, "erbschein")) return true;
+  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? "";
+  if (id.includes("erbschein")) return true;
+  const titel = aufgabe.titel?.toLowerCase() ?? "";
+  return titel.includes("erbschein");
 }
 
 export function istAnfechtungAufgabe(aufgabe: {
-  titel?: string
-  katalog?: Katalogherkunft | null
+  titel?: string;
+  katalog?: Katalogherkunft | null;
 }): boolean {
-  if (stammtAus(aufgabe.katalog ?? null, 'anfechtung')) return true
-  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? ''
-  if (id.includes('anfechtung') || id.includes('anfechten')) return true
-  const titel = aufgabe.titel?.toLowerCase() ?? ''
-  return titel.includes('anfecht')
+  if (stammtAus(aufgabe.katalog ?? null, "anfechtung")) return true;
+  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? "";
+  if (id.includes("anfechtung") || id.includes("anfechten")) return true;
+  const titel = aufgabe.titel?.toLowerCase() ?? "";
+  return titel.includes("anfecht");
 }
 
 export function istAusschlagungAufgabe(aufgabe: {
-  titel?: string
-  katalog?: Katalogherkunft | null
+  titel?: string;
+  katalog?: Katalogherkunft | null;
 }): boolean {
-  if (stammtAus(aufgabe.katalog ?? null, 'ausschlagung')) return true
-  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? ''
-  if (id.includes('ausschlag')) return true
-  const titel = aufgabe.titel?.toLowerCase() ?? ''
-  return titel.includes('ausschlag')
+  if (stammtAus(aufgabe.katalog ?? null, "ausschlagung")) return true;
+  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? "";
+  if (id.includes("ausschlag")) return true;
+  const titel = aufgabe.titel?.toLowerCase() ?? "";
+  return titel.includes("ausschlag");
 }
 
 /** Ob diese Aufgabe die Katalogaufgabe ist, die auf den Fragebaum führt. */
 export function istSeedAufgabe(katalog: Katalogherkunft | null): boolean {
-  return katalog !== null && katalog.aufgabeId === SEED_AUFGABE
+  return katalog !== null && katalog.aufgabeId === SEED_AUFGABE;
 }
 
 /**
@@ -415,32 +424,32 @@ export function istSeedAufgabe(katalog: Katalogherkunft | null): boolean {
  * Aufgabe stehen (ERBE_DESIGN.md §8).
  */
 export function notizAus(teile: {
-  plz?: string
-  stelle?: string
-  gericht?: Nachlassgericht | null
-  anfechtungAm?: string
+  plz?: string;
+  stelle?: string;
+  gericht?: Nachlassgericht | null;
+  anfechtungAm?: string;
 }): string {
-  const zeilen: string[] = []
+  const zeilen: string[] = [];
 
   if (teile.gericht && teile.plz) {
-    zeilen.push(formatGerichtNotiz(teile.gericht, teile.plz))
-  } else if (teile.plz !== undefined && teile.plz !== '') {
+    zeilen.push(formatGerichtNotiz(teile.gericht, teile.plz));
+  } else if (teile.plz !== undefined && teile.plz !== "") {
     zeilen.push(
-      teile.stelle === undefined || teile.stelle === ''
+      teile.stelle === undefined || teile.stelle === ""
         ? `Letzter Wohnort (PLZ): ${teile.plz}`
         : `Letzter Wohnort (PLZ) ${teile.plz} → ${teile.stelle}`,
-    )
+    );
   }
 
-  if (teile.anfechtungAm !== undefined && teile.anfechtungAm !== '') {
+  if (teile.anfechtungAm !== undefined && teile.anfechtungAm !== "") {
     if (zeilen.length > 0) {
-      zeilen.push('')
+      zeilen.push("");
     }
-    zeilen.push(`Vom Anfechtungsgrund erfahren am: ${teile.anfechtungAm}`)
-    zeilen.push('Die Frist beträgt ein Jahr ab diesem Tag.')
+    zeilen.push(`Vom Anfechtungsgrund erfahren am: ${teile.anfechtungAm}`);
+    zeilen.push("Die Frist beträgt ein Jahr ab diesem Tag.");
   }
 
-  return zeilen.join('\n')
+  return zeilen.join("\n");
 }
 
 /**
@@ -455,10 +464,10 @@ export function notizAus(teile: {
  */
 export function mitAbgeleitetemHaken<
   T extends {
-    erledigt: boolean
-    katalog: Katalogherkunft | null
-    privat?: boolean
-    assignee?: Zuweisung
+    erledigt: boolean;
+    katalog: Katalogherkunft | null;
+    privat?: boolean;
+    assignee?: Zuweisung;
   },
 >(
   aufgaben: T[],
@@ -467,18 +476,17 @@ export function mitAbgeleitetemHaken<
 ): (T & { privat?: boolean; assignee?: Zuweisung })[] {
   return aufgaben.map((aufgabe) => {
     if (!istSeedAufgabe(aufgabe.katalog)) {
-      return aufgabe
+      return aufgabe;
     }
     return {
       ...aufgabe,
       erledigt: ergebnis !== null,
-      ...(ich && ich.userId !== ''
+      ...(ich && ich.userId !== ""
         ? {
             privat: true,
-            assignee: { typ: 'personen' as const, personen: [ich] },
+            assignee: { typ: "personen" as const, personen: [ich] },
           }
         : {}),
-    }
-  })
+    };
+  });
 }
-
