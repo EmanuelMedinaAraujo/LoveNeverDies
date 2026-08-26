@@ -114,7 +114,7 @@
  * Vorher gab nur der Titel nach. Er hatte `flex: 1` — und das heisst
  * `flex-basis: 0`: Seine eigene Textbreite zaehlte gar nicht mit, er nahm
  * einfach, was uebrig blieb. Die Badges nahmen sich derweil ihre volle Breite,
- * und auf einem Telefon blieben fuer "Erbe ausschlagen" achtzig Pixel uebrig,
+ * und auf einem Telefon blieben fuer "Erbe ablehnen" achtzig Pixel uebrig,
  * waehrend zwei Pillen daneben zweihundert belegten. Jetzt bringt der Titel
  * seine Textbreite mit (`flex-basis: auto`), die Badges schrumpfen mit dem
  * hundertfachen Gewicht und geben damit praktisch immer zuerst nach.

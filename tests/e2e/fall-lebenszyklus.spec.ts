@@ -1,5 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
-import { fuelleDatum, gotoVerlaesslich, zeilen } from './helpers.ts'
+import { expect, test, type Page } from "@playwright/test";
+import { fuelleDatum, gotoVerlaesslich, zeilen } from "./helpers.ts";
 
 /**
  * Wartet darauf, dass eine Änderung den Server erreicht hat (DESIGN.md §5).
@@ -13,13 +13,13 @@ import { fuelleDatum, gotoVerlaesslich, zeilen } from './helpers.ts'
  * Eine Sekundenzahl wäre auf einer langsamen Maschine zu kurz und auf jeder
  * anderen verschenkte Zeit.
  */
-function gespeichert(page: Page, methode: 'POST' | 'PATCH'): Promise<unknown> {
+function gespeichert(page: Page, methode: "POST" | "PATCH"): Promise<unknown> {
   return page.waitForResponse(
     (antwort) =>
-      antwort.url().includes('/rest/v1/items') &&
+      antwort.url().includes("/rest/v1/items") &&
       antwort.request().method() === methode &&
       antwort.ok(),
-  )
+  );
 }
 
 /**
@@ -36,7 +36,7 @@ function gespeichert(page: Page, methode: 'POST' | 'PATCH'): Promise<unknown> {
  * Schlüssel zu diesem Fall vor`). `test.step` haelt dagegen alles im selben
  * Kontext, also demselben Geraet, so wie eine reale Sitzung es auch waere.
  */
-test('Trauerfall anlegen', async ({ page }) => {
+test("Trauerfall anlegen", async ({ page }) => {
   /*
    * Mehr als die üblichen 30 Sekunden, weil dieser eine Test absichtlich der
    * ganze Lebenszyklus ist (siehe oben) und mit jedem Slice länger wird: Er
@@ -52,31 +52,38 @@ test('Trauerfall anlegen', async ({ page }) => {
    * teilen sich eine Maschine, und ein knapp bemessenes Limit macht aus dem
    * Test einen Zufallsgenerator.
    */
-  test.setTimeout(240_000)
+  test.setTimeout(240_000);
 
-  await test.step('ohne Fall steht die Fallweiche aus §7', async () => {
-    await gotoVerlaesslich(page, '/')
+  await test.step("ohne Fall steht die Fallweiche aus §7", async () => {
+    await gotoVerlaesslich(page, "/");
 
     // Nicht mehr die Anmeldung: der gespeicherte Sitzungszustand aus
     // auth.setup.ts hat bereits gegriffen.
-    await expect(page.getByRole('heading', { name: 'Willkommen' })).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Willkommen" }),
+    ).toBeVisible();
 
     await expect(
-      page.getByRole('button', { name: 'Ein Todesfall ist eingetreten' }),
-    ).toBeEnabled()
+      page.getByRole("button", { name: "Ein Todesfall ist eingetreten" }),
+    ).toBeEnabled();
     // Seit Slice #14 offen: Der Weg führt auf /vorsorge und die Vorsorgeanlage (§2, §3.5).
     await expect(
-      page.getByRole('button', { name: 'Ich möchte für später vorsorgen' }),
-    ).toBeEnabled()
+      page.getByRole("button", { name: "Ich möchte für später vorsorgen" }),
+    ).toBeEnabled();
     // Seit §6 offen: Der Weg fuehrt auf /beitreten und den Kopplungscode.
-    await expect(page.getByRole('button', { name: 'Ich wurde eingeladen' })).toBeEnabled()
-  })
+    await expect(
+      page.getByRole("button", { name: "Ich wurde eingeladen" }),
+    ).toBeEnabled();
+  });
 
-  await test.step('Profil ist über die untere Leiste erreichbar (§7)', async () => {
-    await page.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Profil' }).click()
+  await test.step("Profil ist über die untere Leiste erreichbar (§7)", async () => {
+    await page
+      .getByRole("navigation", { name: "Hauptbereiche" })
+      .getByRole("link", { name: "Profil" })
+      .click();
 
-    await expect(page).toHaveURL(/\/profil$/)
-    await expect(page.getByRole('heading', { name: 'Profil' })).toBeVisible()
+    await expect(page).toHaveURL(/\/profil$/);
+    await expect(page.getByRole("heading", { name: "Profil" })).toBeVisible();
 
     /*
      * Warten, bis dieses Gerät in der Liste steht, und zwar nicht nur der
@@ -88,95 +95,128 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Der Screen sagt an dieser einen Stelle, dass die Anmeldung durch ist;
      * das Formular unter /todesfall sagt es nirgends.
      */
-    await expect(zeilen(page).filter({ hasText: 'Dieses Gerät · Prüfcode' })).toBeVisible()
-
-    await page.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Start' }).click()
-    await expect(page).toHaveURL(/\/$/)
-  })
-
-  await test.step('legt einen Vorsorgefall an und prüft den versiegelten Tresor (§2, §3.5)', async () => {
-    await page.getByRole('button', { name: 'Ich möchte für später vorsorgen' }).click()
-    await expect(page).toHaveURL(/\/vorsorge$/)
-    await expect(page.getByRole('heading', { name: 'Für später vorsorgen' })).toBeVisible()
-
-    await page.getByLabel('Ihr Name').fill('Erika Mustermann')
-    await page.getByRole('button', { name: 'Vorsorge anlegen' }).click()
-
-    await expect(page).toHaveURL(/\/erbe$/, { timeout: 15_000 })
-    await expect(page.getByRole('heading', { name: 'Erbe & Tresor' })).toBeVisible()
-    await expect(page.getByText('Erika Mustermann · Vorsorge')).toBeVisible()
-    await expect(page.getByText('Versiegelt', { exact: true })).toBeVisible()
     await expect(
-      page.getByText(/Der Tresor ist versiegelt, kann aber noch von niemandem geöffnet werden/),
-    ).toBeVisible()
-  })
+      zeilen(page).filter({ hasText: "Dieses Gerät · Prüfcode" }),
+    ).toBeVisible();
 
-  await test.step('befüllt den Tresor und löscht den Eintrag wieder (§3.5)', async () => {
-    await page.getByRole('button', { name: 'Inhalt in Tresor legen' }).click()
+    await page
+      .getByRole("navigation", { name: "Hauptbereiche" })
+      .getByRole("link", { name: "Start" })
+      .click();
+    await expect(page).toHaveURL(/\/$/);
+  });
 
-    await page.getByLabel('Titel').fill('Bankschließfach')
-    await page.getByLabel('Inhalt / Notiz').fill('Schlüssel im Arbeitszimmer')
-    
-    const angelegt = gespeichert(page, 'POST')
-    await page.getByRole('button', { name: 'Im Tresor speichern' }).click()
-    await angelegt
-
-    await expect(page.getByText('Bankschließfach')).toBeVisible()
-    await expect(page.getByText('Schlüssel im Arbeitszimmer')).toBeVisible()
-
-    const geloescht = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: '"Bankschließfach" löschen' }).click()
-    await geloescht
-
-    await expect(page.getByText('Der Tresor ist noch leer.')).toBeVisible()
-  })
-
-  await test.step('löscht den Vorsorgefall samt Tresor (§3.5)', async () => {
-    await page.getByRole('button', { name: 'Vorsorge löschen' }).click()
+  await test.step("legt einen Vorsorgefall an und prüft den versiegelten Tresor (§2, §3.5)", async () => {
+    await page
+      .getByRole("button", { name: "Ich möchte für später vorsorgen" })
+      .click();
+    await expect(page).toHaveURL(/\/vorsorge$/);
     await expect(
-      page.getByText(/Möchten Sie diesen Vorsorgefall samt Tresor wirklich unwiderruflich löschen/),
-    ).toBeVisible()
+      page.getByRole("heading", { name: "Für später vorsorgen" }),
+    ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Ja, Vorsorge löschen' }).click()
-    await expect(page).toHaveURL(/\/$/)
+    await page.getByLabel("Ihr Name").fill("Erika Mustermann");
+    await page.getByRole("button", { name: "Vorsorge anlegen" }).click();
+
+    await expect(page).toHaveURL(/\/erbe$/, { timeout: 15_000 });
+    await expect(
+      page.getByRole("heading", { name: "Erbe & Tresor" }),
+    ).toBeVisible();
+    await expect(page.getByText("Erika Mustermann · Vorsorge")).toBeVisible();
+    await expect(page.getByText("Versiegelt", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(
+        /Der Tresor ist versiegelt, kann aber noch von niemandem geöffnet werden/,
+      ),
+    ).toBeVisible();
+  });
+
+  await test.step("befüllt den Tresor und löscht den Eintrag wieder (§3.5)", async () => {
+    await page.getByRole("button", { name: "Inhalt in Tresor legen" }).click();
+
+    await page.getByLabel("Titel").fill("Bankschließfach");
+    await page.getByLabel("Inhalt / Notiz").fill("Schlüssel im Arbeitszimmer");
+
+    const angelegt = gespeichert(page, "POST");
+    await page.getByRole("button", { name: "Im Tresor speichern" }).click();
+    await angelegt;
+
+    await expect(page.getByText("Bankschließfach")).toBeVisible();
+    await expect(page.getByText("Schlüssel im Arbeitszimmer")).toBeVisible();
+
+    const geloescht = gespeichert(page, "PATCH");
+    await page
+      .getByRole("button", { name: '"Bankschließfach" löschen' })
+      .click();
+    await geloescht;
+
+    await expect(page.getByText("Der Tresor ist noch leer.")).toBeVisible();
+  });
+
+  await test.step("löscht den Vorsorgefall samt Tresor (§3.5)", async () => {
+    await page.getByRole("button", { name: "Vorsorge löschen" }).click();
+    await expect(
+      page.getByText(
+        /Möchten Sie diesen Vorsorgefall samt Tresor wirklich unwiderruflich löschen/,
+      ),
+    ).toBeVisible();
+
+    await page.getByRole("button", { name: "Ja, Vorsorge löschen" }).click();
+    await expect(page).toHaveURL(/\/$/);
 
     // Wieder im Zustand ohne Fall
-    await expect(page.getByRole('heading', { name: 'Willkommen' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Ein Todesfall ist eingetreten' })).toBeEnabled()
-  })
+    await expect(
+      page.getByRole("heading", { name: "Willkommen" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Ein Todesfall ist eingetreten" }),
+    ).toBeEnabled();
+  });
 
-  await test.step('legt einen Trauerfall an', async () => {
-    await page.getByRole('button', { name: 'Ein Todesfall ist eingetreten' }).click()
+  await test.step("legt einen Trauerfall an", async () => {
+    await page
+      .getByRole("button", { name: "Ein Todesfall ist eingetreten" })
+      .click();
 
-    await expect(page).toHaveURL(/\/todesfall$/)
+    await expect(page).toHaveURL(/\/todesfall$/);
 
-    await page.getByLabel('Name der verstorbenen Person').fill('Hans Weber')
-    await fuelleDatum(page.getByLabel('Sterbedatum'), '2024-03-15')
-    await page.getByRole('button', { name: 'Fall anlegen' }).click()
+    await page.getByLabel("Name der verstorbenen Person").fill("Hans Weber");
+    await fuelleDatum(page.getByLabel("Sterbedatum"), "2024-03-15");
+    await page.getByRole("button", { name: "Fall anlegen" }).click();
 
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(/\/$/);
 
     // §7: Start heisst "Meine Aufgaben"; um wessen Fall es geht, steht darunter.
-    await expect(page.getByRole('heading', { name: 'Meine Aufgaben' })).toBeVisible()
-    await expect(page.getByText('Hans Weber · Trauerfall seit 15. März 2024')).toBeVisible()
-  })
+    await expect(
+      page.getByRole("heading", { name: "Meine Aufgaben" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Hans Weber · Trauerfall seit 15. März 2024"),
+    ).toBeVisible();
+  });
 
-  await test.step('ein zweiter Besuch von /todesfall legt keinen zweiten Fall an', async () => {
+  await test.step("ein zweiter Besuch von /todesfall legt keinen zweiten Fall an", async () => {
     // Todesfall.tsx: "Wer schon einen Fall hat, legt hier keinen zweiten an."
-    await page.goto('/todesfall')
-    await expect(page).toHaveURL(/\/$/)
-    await expect(page.getByRole('heading', { name: 'Meine Aufgaben' })).toBeVisible()
-    await expect(page.getByText('Hans Weber · Trauerfall seit 15. März 2024')).toBeVisible()
-  })
+    await page.goto("/todesfall");
+    await expect(page).toHaveURL(/\/$/);
+    await expect(
+      page.getByRole("heading", { name: "Meine Aufgaben" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Hans Weber · Trauerfall seit 15. März 2024"),
+    ).toBeVisible();
+  });
 
-  await test.step('Start ist leer, solange nichts zugewiesen ist (§7)', async () => {
+  await test.step("Start ist leer, solange nichts zugewiesen ist (§7)", async () => {
     /*
      * Die eine Aufgabe, die der Katalog noch mitbringt (ADR-0001), kommt
      * unzugewiesen in den Fall: Wer sie übernimmt, entscheidet die Familie.
      * Start zeigt deshalb nichts und sagt, wo man eine findet.
      */
-    await expect(page.getByText(/Ihnen ist gerade nichts zugewiesen/)).toBeVisible()
-  })
+    await expect(
+      page.getByText(/Ihnen ist gerade nichts zugewiesen/),
+    ).toBeVisible();
+  });
 
   /**
    * Wie viele Zeilen der Fall von selbst mitbringt (§8, ADR-0001).
@@ -184,44 +224,63 @@ test('Trauerfall anlegen', async ({ page }) => {
    * Gezählt statt aus dem Katalog importiert: Die Zahl ändert sich mit jedem
    * `npm run import:content`, und dieser Test soll davon nichts wissen.
    */
-  let katalogZeilen = 0
+  let katalogZeilen = 0;
 
-  await test.step('der neue Fall bringt die Aufgabe zum Fragebaum mit (ADR-0001)', async () => {
+  await test.step("der neue Fall bringt die Aufgabe zum Fragebaum mit (ADR-0001)", async () => {
     /*
      * Seit ADR-0001 steht im Katalog genau ein Eintrag. Er führt in den
      * Erbe-Fragebaum, und alle weiteren Aufgaben entstehen dort oder von Hand.
      */
-    await page.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Alle' }).click()
+    await page
+      .getByRole("navigation", { name: "Hauptbereiche" })
+      .getByRole("link", { name: "Alle" })
+      .click();
 
-    await expect(page).toHaveURL(/\/alle$/)
-    await expect(page.getByRole('heading', { name: 'Alle Aufgaben' })).toBeVisible()
+    await expect(page).toHaveURL(/\/alle$/);
+    await expect(
+      page.getByRole("heading", { name: "Alle Aufgaben" }),
+    ).toBeVisible();
 
     // `exact`, weil derselbe Titel im Vorlesetext der Zeilenaktionen steht (§7).
-    await expect(page.getByText('Klären ob Sie Erbe sind', { exact: true })).toBeVisible()
+    await expect(
+      page.getByText("Klären ob Sie Erbe sind", { exact: true }),
+    ).toBeVisible();
 
-    katalogZeilen = await zeilen(page).count()
-    expect(katalogZeilen).toBe(1)
+    katalogZeilen = await zeilen(page).count();
+    expect(katalogZeilen).toBe(1);
 
     // Und beim Neuladen steht dieselbe Liste: kein zweiter Satz, keine
     // Duplikate. Die IDs sind deterministisch, das Anlegen ist idempotent (§8).
-    await gotoVerlaesslich(page, '/alle')
-    await expect(zeilen(page)).toHaveCount(katalogZeilen)
-  })
+    await gotoVerlaesslich(page, "/alle");
+    await expect(zeilen(page)).toHaveCount(katalogZeilen);
+  });
 
-  await test.step('die Katalogaufgabe führt in den Fragebaum (ERBE_DESIGN.md §9)', async () => {
-    await page.getByRole('link', { name: /^Details.*Klären ob Sie Erbe sind/ }).click()
+  await test.step("die Katalogaufgabe führt in den Fragebaum (ERBE_DESIGN.md §9)", async () => {
+    await page
+      .getByRole("link", { name: /^Details.*Klären ob Sie Erbe sind/ })
+      .click();
 
-    await expect(page.getByRole('heading', { name: 'Klären ob Sie Erbe sind' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Fragebaum starten' })).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Klären ob Sie Erbe sind" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Fragebaum starten" }),
+    ).toBeVisible();
 
     /*
      * Sie hat kein eigenes Häkchen (ERBE_DESIGN.md §9): Sie ist geteilt, ihr
      * Ergebnis liegt privat, und ein gespeichertes Häkchen hakte sie für alle
      * ab. Der Stand kommt aus dem eigenen Ergebnis und steht als Satz da.
      */
-    await expect(page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toHaveCount(0)
-    await expect(page.getByText(/Offen, solange Sie den Fragebaum nicht durchlaufen haben/)).toBeVisible()
-  })
+    await expect(
+      page.getByRole("checkbox", { name: "Diese Aufgabe ist erledigt" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText(
+        /Offen, solange Sie den Fragebaum nicht durchlaufen haben/,
+      ),
+    ).toBeVisible();
+  });
 
   /*
    * Der Erbe-Fragebaum (ERBE_DESIGN.md §3, §6, §10).
@@ -237,40 +296,52 @@ test('Trauerfall anlegen', async ({ page }) => {
    * vorn beginnen lässt. Beides hängt an der History und nicht am Zustand einer
    * Komponente.
    */
-  await test.step('Erbe lädt in den Fragebaum ein, solange kein Ergebnis vorliegt (§10)', async () => {
+  await test.step("Erbe lädt in den Fragebaum ein, solange kein Ergebnis vorliegt (§10)", async () => {
     // Der vorige Schritt endet im ganzseitigen Aufgabendetail (§7), und das
     // trägt keine untere Leiste.
-    await gotoVerlaesslich(page, '/erbe')
+    await gotoVerlaesslich(page, "/erbe");
 
-    await expect(page).toHaveURL(/\/erbe$/)
-    await expect(page.getByRole('heading', { name: 'Ihr Erbstatus' })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Fragebaum starten' })).toBeVisible()
-  })
+    await expect(page).toHaveURL(/\/erbe$/);
+    await expect(
+      page.getByRole("heading", { name: "Ihr Erbstatus" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Fragebaum starten" }),
+    ).toBeVisible();
+  });
 
-  await test.step('jede Frage ist eine eigene Seite (§3)', async () => {
-    await page.getByRole('button', { name: 'Fragebaum starten' }).click()
+  await test.step("jede Frage ist eine eigene Seite (§3)", async () => {
+    await page.getByRole("button", { name: "Fragebaum starten" }).click();
 
-    await expect(page).toHaveURL(/\/erbe\/fragebaum\/\w+$/)
-    await expect(page.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeVisible()
+    await expect(page).toHaveURL(/\/erbe\/fragebaum\/\w+$/);
+    await expect(
+      page.getByRole("heading", { name: "Sind Sie Erbe?" }),
+    ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Ja', exact: true }).click()
+    await page.getByRole("button", { name: "Ja", exact: true }).click();
 
-    await expect(page.getByRole('heading', { name: 'Haben Sie ein Testament gefunden?' })).toBeVisible()
-  })
+    await expect(
+      page.getByRole("heading", { name: "Haben Sie ein Testament gefunden?" }),
+    ).toBeVisible();
+  });
 
-  await test.step('der Zurück-Knopf des Browsers führt zur vorigen Frage (§3)', async () => {
+  await test.step("der Zurück-Knopf des Browsers führt zur vorigen Frage (§3)", async () => {
     // Auf einem Telefon der Knopf, den Menschen tatsächlich benutzen. Deshalb
     // steht der Pfad in der History und nicht im Zustand einer Komponente.
-    await page.goBack()
+    await page.goBack();
 
-    await expect(page.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Sind Sie Erbe?" }),
+    ).toBeVisible();
 
-    await page.goForward()
+    await page.goForward();
 
-    await expect(page.getByRole('heading', { name: 'Haben Sie ein Testament gefunden?' })).toBeVisible()
-  })
+    await expect(
+      page.getByRole("heading", { name: "Haben Sie ein Testament gefunden?" }),
+    ).toBeVisible();
+  });
 
-  await test.step('ein neuer Aufruf derselben Frage beginnt von vorn (§3)', async () => {
+  await test.step("ein neuer Aufruf derselben Frage beginnt von vorn (§3)", async () => {
     /*
      * Ein geteilter Link, ein Lesezeichen, die wieder geöffnete App: Ohne Pfad
      * im `state` gibt es keinen Durchlauf, zu dem die Seite gehört, und ein
@@ -282,91 +353,111 @@ test('Trauerfall anlegen', async ({ page }) => {
      * der App — mit dem Tab ist der Pfad weg. Deshalb erst weg und dann hin,
      * so wie jemand, der den Link von woanders aufruft.
      */
-    const frage = new URL(page.url()).pathname
+    const frage = new URL(page.url()).pathname;
 
-    await gotoVerlaesslich(page, '/')
-    await gotoVerlaesslich(page, frage)
+    await gotoVerlaesslich(page, "/");
+    await gotoVerlaesslich(page, frage);
 
-    await expect(page.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeVisible()
-  })
+    await expect(
+      page.getByRole("heading", { name: "Sind Sie Erbe?" }),
+    ).toBeVisible();
+  });
 
-  await test.step('ein Ergebnis wird gespeichert und erscheint in Erbe (§6, §10)', async () => {
-    await page.getByRole('button', { name: 'Nein', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Gibt es ein Testament?' })).toBeVisible()
+  await test.step("ein Ergebnis wird gespeichert und erscheint in Erbe (§6, §10)", async () => {
+    await page.getByRole("button", { name: "Nein", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Gibt es ein Testament?" }),
+    ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Nein', exact: true }).click()
+    await page.getByRole("button", { name: "Nein", exact: true }).click();
 
-    await expect(page.getByText('Sie sind kein Erbe.')).toBeVisible()
+    await expect(page.getByText("Sie sind kein Erbe.")).toBeVisible();
 
-    await page.getByRole('button', { name: 'Zurück zur Übersicht' }).click()
+    await page.getByRole("button", { name: "Zurück zur Übersicht" }).click();
 
-    await expect(page).toHaveURL(/\/erbe$/)
-    await expect(page.getByText('Sie sind kein Erbe.')).toBeVisible()
-    await expect(page.getByText(/Nur für Sie sichtbar/)).toBeVisible()
-  })
+    await expect(page).toHaveURL(/\/erbe$/);
+    await expect(page.getByText("Sie sind kein Erbe.")).toBeVisible();
+    await expect(page.getByText(/Nur für Sie sichtbar/)).toBeVisible();
+  });
 
-  await test.step('der Status steht im Profil und sonst nirgends (§6)', async () => {
+  await test.step("der Status steht im Profil und sonst nirgends (§6)", async () => {
     await page
-      .getByRole('navigation', { name: 'Hauptbereiche' })
-      .getByRole('link', { name: 'Profil' })
-      .click()
+      .getByRole("navigation", { name: "Hauptbereiche" })
+      .getByRole("link", { name: "Profil" })
+      .click();
 
-    await expect(page).toHaveURL(/\/profil$/)
+    await expect(page).toHaveURL(/\/profil$/);
 
     // `exact`, sonst trifft "Kein Erbe" auch den Ergebnissatz "Sie sind kein
     // Erbe.": `getByText` vergleicht als Teilzeichenkette ohne Rücksicht auf
     // Gross- und Kleinschreibung.
-    await expect(zeilen(page).filter({ hasText: 'Erbstatus' })).toContainText('Kein Erbe')
-  })
+    await expect(zeilen(page).filter({ hasText: "Erbstatus" })).toContainText(
+      "Kein Erbe",
+    );
+  });
 
-  await test.step('die Ausschlagungs-Aufgabe entsteht privat und trägt ihre Frist (§7)', async () => {
+  await test.step("die Ausschlagungs-Aufgabe entsteht privat und trägt ihre Frist (§7)", async () => {
     /*
      * Der Weg, an dem §8 seit ADR-0001 hängt: Die Fristangaben stehen nicht
      * mehr im Katalog, sondern am Bauplan der Aufgabe, die der Baum erzeugt.
      * Ohne `{fristTage, fristAb}` rechnete die Ausschlagungsfrist nicht — die
      * eine Frist in dieser App, deren Versäumnis den ganzen Nachlass kostet.
      */
-    await gotoVerlaesslich(page, '/erbe')
-    await page.getByRole('button', { name: 'Fragebaum erneut durchlaufen' }).click()
+    await gotoVerlaesslich(page, "/erbe");
+    await page
+      .getByRole("button", { name: "Fragebaum erneut durchlaufen" })
+      .click();
 
-    await page.getByRole('button', { name: 'Ja', exact: true }).click()
-    await page.getByRole('button', { name: 'Ja', exact: true }).click()
-    await page.getByRole('button', { name: 'Weiter zu Fragen über das Erbe' }).click()
-    await page.getByRole('button', { name: 'Ja', exact: true }).click()
+    await page.getByRole("button", { name: "Ja", exact: true }).click();
+    await page.getByRole("button", { name: "Ja", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Weiter zu Fragen über das Erbe" })
+      .click();
+    await page.getByRole("button", { name: "Ja", exact: true }).click();
 
     // §2: Die Kette "Ja oder Nein" ist zusammengelegt — Frage, Hinweis und
     // beide Antworten stehen auf einer Seite.
-    await expect(page.getByRole('heading', { name: 'Wollen Sie das Erbe haben?' })).toBeVisible()
-    await expect(page.getByText(/Schulden des Verstorbenen/)).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Wollen Sie das Erbe haben?" }),
+    ).toBeVisible();
+    await expect(page.getByText(/Schulden des Verstorbenen/)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Nein, ich will das Erbe nicht' }).click()
+    await page
+      .getByRole("button", { name: "Nein, ich will das Erbe nicht" })
+      .click();
 
-    await expect(page.getByText(/Ausschlagung/).first()).toBeVisible()
+    await expect(page.getByText(/Ausschlagung/).first()).toBeVisible();
 
     // Das eigene Kenntnisdatum, dieselbe Ablage wie im Aufgabendetail (§8).
-    await page.getByLabel(/informiert/).fill('2024-03-15')
+    await page.getByLabel(/informiert/).fill("2024-03-15");
 
-    const angelegt = gespeichert(page, 'POST')
-    await page.getByRole('button', { name: 'Aufgabe erstellen' }).click()
-    await angelegt
+    const angelegt = gespeichert(page, "POST");
+    await page.getByRole("button", { name: "Aufgabe erstellen" }).click();
+    await angelegt;
 
-    await expect(page.getByRole('button', { name: 'Aufgabe öffnen' })).toBeVisible()
+    await expect(
+      page.getByRole("button", { name: "Aufgabe öffnen" }),
+    ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Aufgabe öffnen' }).click()
+    await page.getByRole("button", { name: "Aufgabe öffnen" }).click();
 
-    await expect(page.getByRole('heading', { name: 'Erbe ausschlagen' })).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Erbe ablehnen" }),
+    ).toBeVisible();
 
     // §8: Die zuständige Stelle steht im Item und ist das, wonach jemand
     // handelt.
-    await expect(page.getByText(/Nachlassgericht/).first()).toBeVisible()
+    await expect(page.getByText(/Nachlassgericht/).first()).toBeVisible();
 
     /*
      * ADR-0003: kein Paragraph und kein Link auf die Gesetzesseite. Beides
      * zusammen unter einer Handlung ist der Form nach eine Rechtsauskunft, und
      * die gibt diese App nicht.
      */
-    await expect(page.getByText('§')).toHaveCount(0)
-    await expect(page.getByRole('link', { name: /gesetze-im-internet/ })).toHaveCount(0)
+    await expect(page.getByText("§")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: /gesetze-im-internet/ }),
+    ).toHaveCount(0);
 
     /*
      * 15. März 2024 plus die 42 Tage der Ausschlagungsfrist, gerechnet und
@@ -380,36 +471,46 @@ test('Trauerfall anlegen', async ({ page }) => {
      * scheitert am zweiten Treffer.
      */
     await expect(
-      page.getByRole('definition').filter({ hasText: /endet am 26. April 2024/ }),
-    ).toBeVisible()
+      page
+        .getByRole("definition")
+        .filter({ hasText: /endet am 26. April 2024/ }),
+    ).toBeVisible();
 
     // §3.7: privat. Sie steht in "Alle" nur für diese Person — geprüft wird
     // hier, dass sie überhaupt dort auftaucht; dass niemand sonst sie sieht,
     // prüft `privatService.test.ts` gegen den echten Ciphertext.
-    await gotoVerlaesslich(page, '/alle')
-    await expect(page.getByText('Erbe ausschlagen', { exact: true })).toBeVisible()
-  })
+    await gotoVerlaesslich(page, "/alle");
+    await expect(
+      page.getByText("Erbe ablehnen", { exact: true }),
+    ).toBeVisible();
+  });
 
-  await test.step('ein zweiter Durchlauf überschreibt das Ergebnis nicht (§6)', async () => {
+  await test.step("ein zweiter Durchlauf überschreibt das Ergebnis nicht (§6)", async () => {
     // Der Durchlauf davor hat ebenfalls nicht überschrieben: Gespeichert ist
     // weiterhin "Kein Erbe" aus dem ersten.
-    await gotoVerlaesslich(page, '/erbe')
+    await gotoVerlaesslich(page, "/erbe");
 
-    await page.getByRole('button', { name: 'Fragebaum erneut durchlaufen' }).click()
+    await page
+      .getByRole("button", { name: "Fragebaum erneut durchlaufen" })
+      .click();
 
-    await expect(page.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Sind Sie Erbe?" }),
+    ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Nein', exact: true }).click()
-    await page.getByRole('button', { name: 'Ich weiß es nicht' }).click()
+    await page.getByRole("button", { name: "Nein", exact: true }).click();
+    await page.getByRole("button", { name: "Ich weiß es nicht" }).click();
 
     // Das Ergebnis dieses Durchlaufs steht da, das gespeicherte bleibt.
-    await expect(page.getByText(/Ihr gespeichertes Ergebnis bleibt/)).toBeVisible()
     await expect(
-      page.getByRole('button', { name: 'Gespeichertes Ergebnis ersetzen' }),
-    ).toBeVisible()
-  })
+      page.getByText(/Ihr gespeichertes Ergebnis bleibt/),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Gespeichertes Ergebnis ersetzen" }),
+    ).toBeVisible();
+  });
 
-  await test.step('legt die Aufgabe an, an der die folgenden Schritte hängen', async () => {
+  await test.step("legt die Aufgabe an, an der die folgenden Schritte hängen", async () => {
     /*
      * Bis ADR-0001 kam sie aus dem Katalog. Jetzt legt der Test sie selbst an:
      * Was hier geprüft wird — Zuweisung, Unteraufgaben, Notizen, Löschen — sind
@@ -419,49 +520,63 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Ausschlagungs-Aufgabe: Sie ist seit ADR-0001 die Aufgabe, die
      * `{fristTage, fristAb}` und die zuständige Stelle trägt.
      */
-    await gotoVerlaesslich(page, '/alle')
+    await gotoVerlaesslich(page, "/alle");
 
-    const angelegt = gespeichert(page, 'POST')
-    await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
-    await page.getByLabel('Was ist zu tun?').fill('Sterbefall beim Standesamt anzeigen')
-    await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
-    await angelegt
+    const angelegt = gespeichert(page, "POST");
+    await page.getByRole("button", { name: "Neue Aufgabe" }).click();
+    await page
+      .getByLabel("Was ist zu tun?")
+      .fill("Sterbefall beim Standesamt anzeigen");
+    await page.getByRole("button", { name: "Aufgabe speichern" }).click();
+    await angelegt;
 
     await expect(
-      page.getByRole('checkbox', { name: 'Sterbefall beim Standesamt anzeigen' }),
-    ).toBeVisible()
+      page.getByRole("checkbox", {
+        name: "Sterbefall beim Standesamt anzeigen",
+      }),
+    ).toBeVisible();
 
     // Wer eine Aufgabe anlegt, ist eingetragen (§7). Für den nächsten Schritt
     // muss sie wieder frei sein.
-    const freigegeben = gespeichert(page, 'PATCH')
+    const freigegeben = gespeichert(page, "PATCH");
     await page
-      .getByRole('button', { name: /^Freigeben.*Sterbefall beim Standesamt anzeigen/ })
-      .click()
-    await freigegeben
-  })
+      .getByRole("button", {
+        name: /^Freigeben.*Sterbefall beim Standesamt anzeigen/,
+      })
+      .click();
+    await freigegeben;
+  });
 
-  await test.step('eine unzugewiesene Aufgabe lässt sich übernehmen (§7)', async () => {
+  await test.step("eine unzugewiesene Aufgabe lässt sich übernehmen (§7)", async () => {
     /*
      * Die Aufgabe gehört gerade niemandem, und §7 lässt nur bearbeiten, wem
      * sie zugewiesen ist. Also erst eintragen: Das ist die Reservierung, mit
      * der eine Familie sich die Arbeit teilt.
      */
-    await page.getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ }).click()
+    await page
+      .getByRole("link", {
+        name: /^Details.*Sterbefall beim Standesamt anzeigen/,
+      })
+      .click();
     await expect(
-      page.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen' }),
-    ).toBeVisible()
+      page.getByRole("heading", {
+        name: "Sterbefall beim Standesamt anzeigen",
+      }),
+    ).toBeVisible();
 
-    await expect(page.getByText('Niemand zugewiesen')).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Neue Unteraufgabe' })).toBeDisabled()
+    await expect(page.getByText("Niemand zugewiesen")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Neue Unteraufgabe" }),
+    ).toBeDisabled();
 
-    const uebernommen = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: 'Übernehmen' }).click()
-    await uebernommen
+    const uebernommen = gespeichert(page, "PATCH");
+    await page.getByRole("button", { name: "Übernehmen" }).click();
+    await uebernommen;
 
-    await expect(page.getByText('Zuständig: Sie')).toBeVisible()
-  })
+    await expect(page.getByText("Zuständig: Sie")).toBeVisible();
+  });
 
-  await test.step('ein Tipp auf die Zeile führt ins Detail, das Kästchen hakt ab', async () => {
+  await test.step("ein Tipp auf die Zeile führt ins Detail, das Kästchen hakt ab", async () => {
     /*
      * §7: In der Liste ist die Aufgabe die Sache. Vorher hakte ein Tipp auf
      * den Titel sie ab — die häufigste Stelle der Zeile für die seltenere der
@@ -475,24 +590,26 @@ test('Trauerfall anlegen', async ({ page }) => {
      * trüge die Übernahme mit (siehe unten), und dieser Schritt will die
      * Zuständigkeit nicht nebenbei ändern.
      */
-    await gotoVerlaesslich(page, '/alle')
+    await gotoVerlaesslich(page, "/alle");
 
     // Das Kästchen fängt seinen Tipp ab: Es hakt ab und navigiert nicht.
-    const kaestchen = page.getByRole('checkbox', { name: 'Sterbefall beim Standesamt anzeigen' })
-    const gehakt = gespeichert(page, 'PATCH')
-    await kaestchen.check()
-    await gehakt
+    const kaestchen = page.getByRole("checkbox", {
+      name: "Sterbefall beim Standesamt anzeigen",
+    });
+    const gehakt = gespeichert(page, "PATCH");
+    await kaestchen.check();
+    await gehakt;
 
-    await expect(page).toHaveURL(/\/alle$/)
-    await expect(kaestchen).toBeChecked()
+    await expect(page).toHaveURL(/\/alle$/);
+    await expect(kaestchen).toBeChecked();
 
-    const zurueckgenommen = gespeichert(page, 'PATCH')
-    await kaestchen.uncheck()
-    await zurueckgenommen
+    const zurueckgenommen = gespeichert(page, "PATCH");
+    await kaestchen.uncheck();
+    await zurueckgenommen;
 
     const titel = page
-      .getByRole('main')
-      .getByText('Sterbefall beim Standesamt anzeigen', { exact: true })
+      .getByRole("main")
+      .getByText("Sterbefall beim Standesamt anzeigen", { exact: true });
 
     /*
      * Getippt wird mit der Maus auf die Stelle, an der der Titel steht, und
@@ -505,39 +622,51 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Zeile am Ende der Liste liegt sonst darunter, und dann fängt die Leiste
      * den Tipp ab.
      */
-    await titel.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+    await titel.evaluate((element) =>
+      element.scrollIntoView({ block: "center" }),
+    );
 
-    const kasten = await titel.boundingBox()
-    expect(kasten).not.toBeNull()
-    await page.mouse.click(kasten!.x + kasten!.width / 2, kasten!.y + kasten!.height / 2)
+    const kasten = await titel.boundingBox();
+    expect(kasten).not.toBeNull();
+    await page.mouse.click(
+      kasten!.x + kasten!.width / 2,
+      kasten!.y + kasten!.height / 2,
+    );
 
     await expect(
-      page.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen', level: 1 }),
-    ).toBeVisible()
-    await expect(page).toHaveURL(/\/aufgabe\//)
-  })
+      page.getByRole("heading", {
+        name: "Sterbefall beim Standesamt anzeigen",
+        level: 1,
+      }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/aufgabe\//);
+  });
 
-  await test.step('Unteraufgaben sind eigene Zeilen und tragen den Abschluss (§7)', async () => {
-    const angelegteUnteraufgabe = gespeichert(page, 'POST')
-    await page.getByRole('button', { name: 'Neue Unteraufgabe' }).click()
+  await test.step("Unteraufgaben sind eigene Zeilen und tragen den Abschluss (§7)", async () => {
+    const angelegteUnteraufgabe = gespeichert(page, "POST");
+    await page.getByRole("button", { name: "Neue Unteraufgabe" }).click();
     await page
-      .getByLabel('Was ist zu tun?')
-      .fill('Sterbeurkunden in ausreichender Zahl bestellen')
-    await page.getByRole('button', { name: 'Unteraufgabe speichern' }).click()
-    await angelegteUnteraufgabe
+      .getByLabel("Was ist zu tun?")
+      .fill("Sterbeurkunden in ausreichender Zahl bestellen");
+    await page.getByRole("button", { name: "Unteraufgabe speichern" }).click();
+    await angelegteUnteraufgabe;
 
-    const unteraufgabe = page.getByRole('checkbox', {
-      name: 'Sterbeurkunden in ausreichender Zahl bestellen',
-    })
+    const unteraufgabe = page.getByRole("checkbox", {
+      name: "Sterbeurkunden in ausreichender Zahl bestellen",
+    });
 
     // §7: Eine Unteraufgabe ist eine eigene Zeile mit eigener UUID und keine
     // Liste im Payload der Elternaufgabe.
-    await expect(unteraufgabe).toBeVisible()
-    await expect(unteraufgabe).not.toBeChecked()
+    await expect(unteraufgabe).toBeVisible();
+    await expect(unteraufgabe).not.toBeChecked();
 
     // Und die Elternaufgabe hat kein eigenes Häkchen mehr.
-    await expect(page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toHaveCount(0)
-    await expect(page.getByText('Offen: 0 von 1 Unteraufgaben erledigt.')).toBeVisible()
+    await expect(
+      page.getByRole("checkbox", { name: "Diese Aufgabe ist erledigt" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText("Offen: 0 von 1 Unteraufgaben erledigt."),
+    ).toBeVisible();
 
     /*
      * Eine Unteraufgabe ist eine Zeile wie jede andere und trägt deshalb ihre
@@ -548,8 +677,10 @@ test('Trauerfall anlegen', async ({ page }) => {
     // Wer sie anlegt, ist eingetragen (§7); für die Gegenprobe wird sie frei
     // gegeben und wieder übernommen.
     await page
-      .getByRole('link', { name: /^Details.*Sterbeurkunden in ausreichender Zahl/ })
-      .click()
+      .getByRole("link", {
+        name: /^Details.*Sterbeurkunden in ausreichender Zahl/,
+      })
+      .click();
 
     /*
      * Erst warten, dann klicken: Der Wechsel ist eine Navigation im Client,
@@ -559,15 +690,15 @@ test('Trauerfall anlegen', async ({ page }) => {
      * nicht, weil er danach gleich wieder übernahm.
      */
     await expect(
-      page.getByRole('heading', {
-        name: 'Sterbeurkunden in ausreichender Zahl bestellen',
+      page.getByRole("heading", {
+        name: "Sterbeurkunden in ausreichender Zahl bestellen",
         level: 1,
       }),
-    ).toBeVisible()
+    ).toBeVisible();
 
-    const unteraufgabeFrei = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: 'Freigeben' }).click()
-    await unteraufgabeFrei
+    const unteraufgabeFrei = gespeichert(page, "PATCH");
+    await page.getByRole("button", { name: "Freigeben" }).click();
+    await unteraufgabeFrei;
 
     /*
      * §7: Eine freie Aufgabe abzuhaken *ist* die Ansage "ich habe das
@@ -575,21 +706,29 @@ test('Trauerfall anlegen', async ({ page }) => {
      * sie erst übernehmen müsste, um sie abhaken zu dürfen, machte zwei
      * Handgriffe für eine Auskunft.
      */
-    await expect(page.getByText('Niemand zugewiesen')).toBeVisible()
-    await expect(page.getByText(/Diese Aufgabe ist niemandem zugewiesen/)).toBeVisible()
+    await expect(page.getByText("Niemand zugewiesen")).toBeVisible();
+    await expect(
+      page.getByText(/Diese Aufgabe ist niemandem zugewiesen/),
+    ).toBeVisible();
 
-    const ausGehakt = gespeichert(page, 'PATCH')
-    await page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' }).check()
-    await ausGehakt
+    const ausGehakt = gespeichert(page, "PATCH");
+    await page
+      .getByRole("checkbox", { name: "Diese Aufgabe ist erledigt" })
+      .check();
+    await ausGehakt;
 
     // Eine Mutation, nicht zwei: Nach dem Häkchen steht die eigene Person da.
-    await expect(page.getByText('Zuständig: Sie')).toBeVisible()
-    await expect(page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeChecked()
+    await expect(page.getByText("Zuständig: Sie")).toBeVisible();
+    await expect(
+      page.getByRole("checkbox", { name: "Diese Aufgabe ist erledigt" }),
+    ).toBeChecked();
 
     // Und wieder zurück, damit der nächste Schritt sie offen vorfindet.
-    const zurueck = gespeichert(page, 'PATCH')
-    await page.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' }).uncheck()
-    await zurueck
+    const zurueck = gespeichert(page, "PATCH");
+    await page
+      .getByRole("checkbox", { name: "Diese Aufgabe ist erledigt" })
+      .uncheck();
+    await zurueck;
 
     /*
      * §7: "Zurück" oben links geht in der Historie zurück und nicht auf einen
@@ -597,36 +736,53 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Zuständigkeit dieser Unteraufgabe aufgerufen wurde — und genau dorthin
      * will, wer sich verlaufen hat.
      */
-    await page.getByRole('link', { name: 'Zurück' }).click()
+    await page.getByRole("link", { name: "Zurück" }).click();
 
     await expect(
-      page.getByRole('heading', { name: 'Sterbefall beim Standesamt anzeigen', level: 1 }),
-    ).toBeVisible()
+      page.getByRole("heading", {
+        name: "Sterbefall beim Standesamt anzeigen",
+        level: 1,
+      }),
+    ).toBeVisible();
 
-    const abgehakt = gespeichert(page, 'PATCH')
-    await page.getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' }).check()
-    await abgehakt
+    const abgehakt = gespeichert(page, "PATCH");
+    await page
+      .getByRole("checkbox", {
+        name: "Sterbeurkunden in ausreichender Zahl bestellen",
+      })
+      .check();
+    await abgehakt;
 
     // §7: Sind alle Kinder erledigt, gilt die Aufgabe zwingend als erledigt.
-    await expect(page.getByText('Erledigt: alle 1 Unteraufgaben sind abgehakt.')).toBeVisible()
+    await expect(
+      page.getByText("Erledigt: alle 1 Unteraufgaben sind abgehakt."),
+    ).toBeVisible();
 
     // Eine weitere Unteraufgabe macht sie wieder offen. Das ist der Weg, den
     // §7 anbietet, wenn inhaltlich noch etwas fehlt.
-    const angelegt = gespeichert(page, 'POST')
-    await page.getByRole('button', { name: 'Neue Unteraufgabe' }).click()
-    await page.getByLabel('Was ist zu tun?').fill('Sechs Ausfertigungen abholen')
-    await page.getByRole('button', { name: 'Unteraufgabe speichern' }).click()
-    await angelegt
+    const angelegt = gespeichert(page, "POST");
+    await page.getByRole("button", { name: "Neue Unteraufgabe" }).click();
+    await page
+      .getByLabel("Was ist zu tun?")
+      .fill("Sechs Ausfertigungen abholen");
+    await page.getByRole("button", { name: "Unteraufgabe speichern" }).click();
+    await angelegt;
 
-    await expect(page.getByText('Offen: 1 von 2 Unteraufgaben erledigt.')).toBeVisible()
+    await expect(
+      page.getByText("Offen: 1 von 2 Unteraufgaben erledigt."),
+    ).toBeVisible();
 
     // Der abgeleitete Abschluss überlebt das Neuladen, weil er nirgends
     // gespeichert ist: Er entsteht bei jedem Rendern neu.
-    await gotoVerlaesslich(page, '/alle')
+    await gotoVerlaesslich(page, "/alle");
     await page
-      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
-      .click()
-    await expect(page.getByText('Offen: 1 von 2 Unteraufgaben erledigt.')).toBeVisible()
+      .getByRole("link", {
+        name: /^Details.*Sterbefall beim Standesamt anzeigen/,
+      })
+      .click();
+    await expect(
+      page.getByText("Offen: 1 von 2 Unteraufgaben erledigt."),
+    ).toBeVisible();
 
     /*
      * Wieder aufgeräumt: die eigene Unteraufgabe weg, das Häkchen zurück.
@@ -634,55 +790,68 @@ test('Trauerfall anlegen', async ({ page }) => {
      * eines zweiten unter jeder Listenzeile, und der Weg dorthin führt an dem
      * vorbei, was gleich verschwindet.
      */
-    await page.getByRole('link', { name: /^Details.*Sechs Ausfertigungen abholen/ }).click()
+    await page
+      .getByRole("link", { name: /^Details.*Sechs Ausfertigungen abholen/ })
+      .click();
     await expect(
-      page.getByRole('heading', { name: 'Sechs Ausfertigungen abholen', level: 1 }),
-    ).toBeVisible()
+      page.getByRole("heading", {
+        name: "Sechs Ausfertigungen abholen",
+        level: 1,
+      }),
+    ).toBeVisible();
 
-    const geloescht = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: /^Löschen/ }).click()
-    await page.getByRole('button', { name: 'Endgültig löschen' }).click()
-    await geloescht
+    const geloescht = gespeichert(page, "PATCH");
+    await page.getByRole("button", { name: /^Löschen/ }).click();
+    await page.getByRole("button", { name: "Endgültig löschen" }).click();
+    await geloescht;
 
     // Nach dem Löschen steht der Screen vor einer Aufgabe, die es nicht mehr
     // gibt; er geht deshalb zurück in die Liste.
-    await expect(page).toHaveURL(/\/alle$/)
+    await expect(page).toHaveURL(/\/alle$/);
     await page
-      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
-      .click()
+      .getByRole("link", {
+        name: /^Details.*Sterbefall beim Standesamt anzeigen/,
+      })
+      .click();
 
-    const zurueckgenommen = gespeichert(page, 'PATCH')
+    const zurueckgenommen = gespeichert(page, "PATCH");
     await page
-      .getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' })
-      .uncheck()
-    await zurueckgenommen
-  })
+      .getByRole("checkbox", {
+        name: "Sterbeurkunden in ausreichender Zahl bestellen",
+      })
+      .uncheck();
+    await zurueckgenommen;
+  });
 
   /** Der Zeilenstand, bevor die frei angelegten Aufgaben dazukommen. */
-  let grundZeilen = 0
+  let grundZeilen = 0;
 
-  await test.step('Notizen überleben das Neuladen', async () => {
+  await test.step("Notizen überleben das Neuladen", async () => {
     /*
      * §5, §7: Notizen speichern von selbst, kurz nachdem jemand aufgehört hat
      * zu tippen. Ein Feld mit einer Schaltfläche daneben ist eine Zusage, die
      * man einlösen muss — und auf einem Telefon verdeckt die Tastatur genau
      * die Schaltfläche, die man danach hätte drücken sollen.
      */
-    const gesichert = gespeichert(page, 'PATCH')
-    await page.getByLabel(/Notizen/).fill('Termin am Montag um 9 Uhr')
-    await expect(page.getByText('Gespeichert.')).toBeVisible()
-    await gesichert
+    const gesichert = gespeichert(page, "PATCH");
+    await page.getByLabel(/Notizen/).fill("Termin am Montag um 9 Uhr");
+    await expect(page.getByText("Gespeichert.")).toBeVisible();
+    await gesichert;
 
-    await gotoVerlaesslich(page, '/alle')
+    await gotoVerlaesslich(page, "/alle");
     await page
-      .getByRole('link', { name: /^Details.*Sterbefall beim Standesamt anzeigen/ })
-      .click()
+      .getByRole("link", {
+        name: /^Details.*Sterbefall beim Standesamt anzeigen/,
+      })
+      .click();
 
-    await expect(page.getByLabel(/Notizen/)).toHaveValue('Termin am Montag um 9 Uhr')
+    await expect(page.getByLabel(/Notizen/)).toHaveValue(
+      "Termin am Montag um 9 Uhr",
+    );
 
-    await page.getByRole('link', { name: 'Zurück' }).click()
-    await expect(page).toHaveURL(/\/alle$/)
-  })
+    await page.getByRole("link", { name: "Zurück" }).click();
+    await expect(page).toHaveURL(/\/alle$/);
+  });
 
   await test.step('legt im Tab "Alle" eine Aufgabe an', async () => {
     /*
@@ -697,45 +866,55 @@ test('Trauerfall anlegen', async ({ page }) => {
      * wenn `K_p` da ist (§3.7). `count()` wartet auf nichts — sofort gerufen
      * zählt es null, und der Schritt prüfte danach die falsche Zahl.
      */
-    await expect(zeilen(page).filter({ hasText: 'Klären ob Sie Erbe sind' })).toBeVisible()
-    await expect(zeilen(page).filter({ hasText: 'Erbe ausschlagen' })).toBeVisible()
     await expect(
-      zeilen(page).filter({ hasText: 'Sterbefall beim Standesamt anzeigen' }),
-    ).toBeVisible()
+      zeilen(page).filter({ hasText: "Klären ob Sie Erbe sind" }),
+    ).toBeVisible();
+    await expect(
+      zeilen(page).filter({ hasText: "Erbe ablehnen" }),
+    ).toBeVisible();
+    await expect(
+      zeilen(page).filter({ hasText: "Sterbefall beim Standesamt anzeigen" }),
+    ).toBeVisible();
 
-    grundZeilen = await zeilen(page).count()
+    grundZeilen = await zeilen(page).count();
 
-    await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
-    await page.getByLabel('Was ist zu tun?').fill('Sterbeurkunde beantragen')
-    await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
+    await page.getByRole("button", { name: "Neue Aufgabe" }).click();
+    await page.getByLabel("Was ist zu tun?").fill("Sterbeurkunde beantragen");
+    await page.getByRole("button", { name: "Aufgabe speichern" }).click();
 
-    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
+    await expect(
+      page.getByRole("checkbox", { name: "Sterbeurkunde beantragen" }),
+    ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
-    await page.getByLabel('Was ist zu tun?').fill('Konten kündigen')
-    await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
+    await page.getByRole("button", { name: "Neue Aufgabe" }).click();
+    await page.getByLabel("Was ist zu tun?").fill("Konten kündigen");
+    await page.getByRole("button", { name: "Aufgabe speichern" }).click();
 
-    await expect(zeilen(page)).toHaveCount(grundZeilen + 2)
-  })
+    await expect(zeilen(page)).toHaveCount(grundZeilen + 2);
+  });
 
-  await test.step('die Reihenfolge bleibt, wenn eine Aufgabe geändert wird', async () => {
+  await test.step("die Reihenfolge bleibt, wenn eine Aufgabe geändert wird", async () => {
     /*
      * `seq` steigt bei jedem Schreibvorgang (§4) und taugt deshalb nicht als
      * Anzeigereihenfolge. Danach sortiert wanderte die gerade abgehakte
      * Aufgabe ans Ende. Sortiert wird über die UUIDv7 der Zeile.
      */
-    const abgehakt = gespeichert(page, 'PATCH')
-    await page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' }).check()
-    await abgehakt
+    const abgehakt = gespeichert(page, "PATCH");
+    await page
+      .getByRole("checkbox", { name: "Sterbeurkunde beantragen" })
+      .check();
+    await abgehakt;
 
-    await gotoVerlaesslich(page, '/alle')
+    await gotoVerlaesslich(page, "/alle");
 
-    await expect(zeilen(page)).toHaveCount(grundZeilen + 2)
+    await expect(zeilen(page)).toHaveCount(grundZeilen + 2);
 
     // Hinter dem Katalog: Der steht in der Reihenfolge der Juristinnen vorn
     // (§8), selbst angelegte Aufgaben folgen in ihrer Anlagereihenfolge.
-    await expect(zeilen(page).nth(grundZeilen)).toContainText('Sterbeurkunde beantragen')
-    await expect(zeilen(page).last()).toContainText('Konten kündigen')
+    await expect(zeilen(page).nth(grundZeilen)).toContainText(
+      "Sterbeurkunde beantragen",
+    );
+    await expect(zeilen(page).last()).toContainText("Konten kündigen");
 
     /*
      * Aufgeräumt, damit die folgenden Schritte wieder mit genau einer selbst
@@ -746,14 +925,16 @@ test('Trauerfall anlegen', async ({ page }) => {
      * die Navigation käme dem eigentlichen Schreibvorgang zuvor, und der
      * Schritt prüfte einen Server, der die Änderung nie gesehen hat.
      */
-    const geloescht = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: /^Löschen.*Konten kündigen/ }).click()
-    await page.getByRole('button', { name: 'Endgültig löschen' }).click()
-    await expect(zeilen(page)).toHaveCount(grundZeilen + 1)
-    await geloescht
-  })
+    const geloescht = gespeichert(page, "PATCH");
+    await page
+      .getByRole("button", { name: /^Löschen.*Konten kündigen/ })
+      .click();
+    await page.getByRole("button", { name: "Endgültig löschen" }).click();
+    await expect(zeilen(page)).toHaveCount(grundZeilen + 1);
+    await geloescht;
+  });
 
-  await test.step('nimmt das Haekchen zurueck und setzt es wieder; beides ueberlebt das Neuladen', async () => {
+  await test.step("nimmt das Haekchen zurueck und setzt es wieder; beides ueberlebt das Neuladen", async () => {
     /*
      * Der eigentliche Punkt des Slices: Der Stand liegt nicht im Speicher des
      * Tabs, sondern verschlüsselt auf dem Server. Neu geladen wird über eine
@@ -764,36 +945,52 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Ein zweites `check()` wäre ein Klick, der nichts tut, und der Schritt
      * prüfte am Ende nur, dass sich nichts geändert hat.
      */
-    const kaestchen = page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })
+    const kaestchen = page.getByRole("checkbox", {
+      name: "Sterbeurkunde beantragen",
+    });
 
-    const zurueckgenommen = gespeichert(page, 'PATCH')
-    await kaestchen.uncheck()
-    await expect(kaestchen).not.toBeChecked()
-    await zurueckgenommen
+    const zurueckgenommen = gespeichert(page, "PATCH");
+    await kaestchen.uncheck();
+    await expect(kaestchen).not.toBeChecked();
+    await zurueckgenommen;
 
-    await gotoVerlaesslich(page, '/alle')
-    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).not.toBeChecked()
+    await gotoVerlaesslich(page, "/alle");
+    await expect(
+      page.getByRole("checkbox", { name: "Sterbeurkunde beantragen" }),
+    ).not.toBeChecked();
 
-    const abgehakt = gespeichert(page, 'PATCH')
-    await page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' }).check()
+    const abgehakt = gespeichert(page, "PATCH");
+    await page
+      .getByRole("checkbox", { name: "Sterbeurkunde beantragen" })
+      .check();
 
     // Sofort sichtbar, noch bevor irgendetwas das Gerät verlassen hat (§5).
-    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeChecked()
+    await expect(
+      page.getByRole("checkbox", { name: "Sterbeurkunde beantragen" }),
+    ).toBeChecked();
 
-    await abgehakt
-    await gotoVerlaesslich(page, '/alle')
+    await abgehakt;
+    await gotoVerlaesslich(page, "/alle");
 
-    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeChecked()
-  })
+    await expect(
+      page.getByRole("checkbox", { name: "Sterbeurkunde beantragen" }),
+    ).toBeChecked();
+  });
 
-  await test.step('benennt sie um und gibt ihr eine Beschreibung', async () => {
-    await page.getByRole('button', { name: /^Ändern.*Sterbeurkunde beantragen/ }).click()
+  await test.step("benennt sie um und gibt ihr eine Beschreibung", async () => {
+    await page
+      .getByRole("button", { name: /^Ändern.*Sterbeurkunde beantragen/ })
+      .click();
 
-    await page.getByLabel('Titel').fill('Sterbeurkunde abholen')
-    await page.getByLabel('Beschreibung').fill('Sechs Ausfertigungen, Standesamt Freiburg')
-    await page.getByRole('button', { name: 'Speichern' }).click()
+    await page.getByLabel("Titel").fill("Sterbeurkunde abholen");
+    await page
+      .getByLabel("Beschreibung")
+      .fill("Sechs Ausfertigungen, Standesamt Freiburg");
+    await page.getByRole("button", { name: "Speichern" }).click();
 
-    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeVisible()
+    await expect(
+      page.getByRole("checkbox", { name: "Sterbeurkunde abholen" }),
+    ).toBeVisible();
 
     /*
      * Die Beschreibung steht nicht in der Liste, sondern nur im Detail: Sie
@@ -801,16 +998,22 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Aufgaben macht sie aus jeder Zeile einen Block (Alle.tsx). Gespeichert
      * ist sie trotzdem, und genau das prüft dieser Umweg.
      */
-    await page.getByRole('link', { name: /^Details.*Sterbeurkunde abholen/ }).click()
-    await expect(page.getByText('Sechs Ausfertigungen, Standesamt Freiburg')).toBeVisible()
-    await page.getByRole('link', { name: 'Zurück' }).click()
+    await page
+      .getByRole("link", { name: /^Details.*Sterbeurkunde abholen/ })
+      .click();
+    await expect(
+      page.getByText("Sechs Ausfertigungen, Standesamt Freiburg"),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Zurück" }).click();
 
     // Das Häkchen überlebt das Umbenennen: Geändert wird der Payload, und der
     // trägt beides.
-    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeChecked()
-  })
+    await expect(
+      page.getByRole("checkbox", { name: "Sterbeurkunde abholen" }),
+    ).toBeChecked();
+  });
 
-  await test.step('ein zweiter Tab sieht die Änderung, ohne neu zu laden', async () => {
+  await test.step("ein zweiter Tab sieht die Änderung, ohne neu zu laden", async () => {
     /*
      * Die Türklingel aus §5: Eine Realtime-Subscription auf die `cases`-Zeile,
      * deren `version` der Trigger bei jeder Inhaltsänderung mithebt. Was sich
@@ -823,17 +1026,21 @@ test('Trauerfall anlegen', async ({ page }) => {
      * angeht, hängt an der Kopplung und gehört dorthin. Der Weg, um den es hier
      * geht von der Änderung über Trigger, Klingel und Delta bis zum Bildschirm, ist derselbe.
      */
-    const zweiterTab = await page.context().newPage()
+    const zweiterTab = await page.context().newPage();
 
     try {
-      await gotoVerlaesslich(zweiterTab, '/alle')
-      await expect(zweiterTab.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toBeVisible()
+      await gotoVerlaesslich(zweiterTab, "/alle");
+      await expect(
+        zweiterTab.getByRole("checkbox", { name: "Sterbeurkunde abholen" }),
+      ).toBeVisible();
 
-      const angelegt = gespeichert(page, 'POST')
-      await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
-      await page.getByLabel('Was ist zu tun?').fill('Konto der Sparkasse kündigen')
-      await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
-      await angelegt
+      const angelegt = gespeichert(page, "POST");
+      await page.getByRole("button", { name: "Neue Aufgabe" }).click();
+      await page
+        .getByLabel("Was ist zu tun?")
+        .fill("Konto der Sparkasse kündigen");
+      await page.getByRole("button", { name: "Aufgabe speichern" }).click();
+      await angelegt;
 
       /*
        * Kein `goto`, kein `reload`: Der zweite Tab bekommt es von selbst mit.
@@ -846,34 +1053,44 @@ test('Trauerfall anlegen', async ({ page }) => {
        * deshalb eine größere Zusage und kein weicheres Kriterium.
        */
       await expect(
-        zweiterTab.getByRole('checkbox', { name: 'Konto der Sparkasse kündigen' }),
-      ).toBeVisible({ timeout: 30_000 })
+        zweiterTab.getByRole("checkbox", {
+          name: "Konto der Sparkasse kündigen",
+        }),
+      ).toBeVisible({ timeout: 30_000 });
 
       // Und wieder aufgeräumt, damit der nächste Schritt eine Aufgabe vorfindet.
-      const geloescht = gespeichert(page, 'PATCH')
-      await page.getByRole('button', { name: /^Löschen.*Konto der Sparkasse kündigen/ }).click()
-      await page.getByRole('button', { name: 'Endgültig löschen' }).click()
-      await geloescht
+      const geloescht = gespeichert(page, "PATCH");
+      await page
+        .getByRole("button", { name: /^Löschen.*Konto der Sparkasse kündigen/ })
+        .click();
+      await page.getByRole("button", { name: "Endgültig löschen" }).click();
+      await geloescht;
     } finally {
-      await zweiterTab.close()
+      await zweiterTab.close();
     }
-  })
+  });
 
-  await test.step('löscht sie nach einer Rückfrage, und sie bleibt fort', async () => {
-    await page.getByRole('button', { name: /^Löschen.*Sterbeurkunde abholen/ }).click()
+  await test.step("löscht sie nach einer Rückfrage, und sie bleibt fort", async () => {
+    await page
+      .getByRole("button", { name: /^Löschen.*Sterbeurkunde abholen/ })
+      .click();
 
     // §5: Löschen gewinnt endgültig. Das steht vor der Aktion auf dem Schirm.
-    await expect(page.getByText('kommen nicht zurück')).toBeVisible()
-    await page.getByRole('button', { name: 'Endgültig löschen' }).click()
+    await expect(page.getByText("kommen nicht zurück")).toBeVisible();
+    await page.getByRole("button", { name: "Endgültig löschen" }).click();
 
-    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toHaveCount(0)
+    await expect(
+      page.getByRole("checkbox", { name: "Sterbeurkunde abholen" }),
+    ).toHaveCount(0);
 
-    await gotoVerlaesslich(page, '/alle')
-    await expect(page.getByRole('checkbox', { name: 'Sterbeurkunde abholen' })).toHaveCount(0)
-    await expect(zeilen(page)).toHaveCount(grundZeilen)
-  })
+    await gotoVerlaesslich(page, "/alle");
+    await expect(
+      page.getByRole("checkbox", { name: "Sterbeurkunde abholen" }),
+    ).toHaveCount(0);
+    await expect(zeilen(page)).toHaveCount(grundZeilen);
+  });
 
-  await test.step('eine gelöschte Katalogaufgabe kommt nicht wieder', async () => {
+  await test.step("eine gelöschte Katalogaufgabe kommt nicht wieder", async () => {
     /*
      * §8: Der Katalog initialisiert, mehr nicht. Danach ist es ein
      * gewöhnliches Item. Der Tombstone steht im Bestand (§5), und die
@@ -883,41 +1100,53 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Seit ADR-0001 ist es genau eine: die, die in den Fragebaum führt.
      */
     // Auch das Löschen ist Bearbeiten (§7): erst eintragen, dann löschen.
-    const uebernommen = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: /^Übernehmen.*Klären ob Sie Erbe sind/ }).click()
-    await uebernommen
+    const uebernommen = gespeichert(page, "PATCH");
+    await page
+      .getByRole("button", { name: /^Übernehmen.*Klären ob Sie Erbe sind/ })
+      .click();
+    await uebernommen;
 
-    const geloescht = gespeichert(page, 'PATCH')
-    await page.getByRole('button', { name: /^Löschen.*Klären ob Sie Erbe sind/ }).click()
-    await page.getByRole('button', { name: 'Endgültig löschen' }).click()
-    await geloescht
+    const geloescht = gespeichert(page, "PATCH");
+    await page
+      .getByRole("button", { name: /^Löschen.*Klären ob Sie Erbe sind/ })
+      .click();
+    await page.getByRole("button", { name: "Endgültig löschen" }).click();
+    await geloescht;
 
-    await gotoVerlaesslich(page, '/alle')
+    await gotoVerlaesslich(page, "/alle");
 
-    await expect(page.getByText('Klären ob Sie Erbe sind', { exact: true })).toHaveCount(0)
-    await expect(zeilen(page)).toHaveCount(grundZeilen - 1)
-  })
+    await expect(
+      page.getByText("Klären ob Sie Erbe sind", { exact: true }),
+    ).toHaveCount(0);
+    await expect(zeilen(page)).toHaveCount(grundZeilen - 1);
+  });
 
-  await test.step('Start zeigt genau die eigenen Aufgaben (§7)', async () => {
+  await test.step("Start zeigt genau die eigenen Aufgaben (§7)", async () => {
     /*
      * Der Screen aus §7, jetzt mit Inhalt: Übernommen wurden die Aufgabe beim
      * Standesamt und eine ihrer Unteraufgaben, und genau die beiden stehen
      * hier. Gefiltert wird clientseitig, nach dem Entschlüsseln (§3.3): Der
      * Server kann nach `assignee` nicht filtern, weil er ihn nicht lesen kann.
      */
-    await gotoVerlaesslich(page, '/')
+    await gotoVerlaesslich(page, "/");
 
-    await expect(page.getByRole('heading', { name: 'Meine Aufgaben' })).toBeVisible()
+    await expect(
+      page.getByRole("heading", { name: "Meine Aufgaben" }),
+    ).toBeVisible();
     // `exact`, weil der Titel auch im Hinweis der Unteraufgabe darunter steht.
     await expect(
-      page.getByText('Sterbefall beim Standesamt anzeigen', { exact: true }),
-    ).toBeVisible()
+      page.getByText("Sterbefall beim Standesamt anzeigen", { exact: true }),
+    ).toBeVisible();
 
     // Eine zugewiesene Unteraufgabe steht mit da und nennt ihre Elternaufgabe.
     await expect(
-      page.getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' }),
-    ).toBeVisible()
-    await expect(page.getByText('Teil von „Sterbefall beim Standesamt anzeigen“')).toBeVisible()
+      page.getByRole("checkbox", {
+        name: "Sterbeurkunden in ausreichender Zahl bestellen",
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Teil von „Sterbefall beim Standesamt anzeigen“"),
+    ).toBeVisible();
 
     /*
      * Was niemand übernommen hat, steht hier nicht, es steht in "Alle". Dafür
@@ -925,65 +1154,81 @@ test('Trauerfall anlegen', async ({ page }) => {
      * Katalogaufgabe, die diese Rolle früher hatte, ist im vorigen Schritt
      * gelöscht worden.
      */
-    await gotoVerlaesslich(page, '/alle')
+    await gotoVerlaesslich(page, "/alle");
 
-    const unbesetzt = gespeichert(page, 'POST')
-    await page.getByRole('button', { name: 'Neue Aufgabe' }).click()
-    await page.getByLabel('Was ist zu tun?').fill('Nachlassverzeichnis erstellen')
-    await page.getByRole('button', { name: 'Aufgabe speichern' }).click()
-    await unbesetzt
-
-    const freigegeben = gespeichert(page, 'PATCH')
+    const unbesetzt = gespeichert(page, "POST");
+    await page.getByRole("button", { name: "Neue Aufgabe" }).click();
     await page
-      .getByRole('button', { name: /^Freigeben.*Nachlassverzeichnis erstellen/ })
-      .click()
-    await freigegeben
+      .getByLabel("Was ist zu tun?")
+      .fill("Nachlassverzeichnis erstellen");
+    await page.getByRole("button", { name: "Aufgabe speichern" }).click();
+    await unbesetzt;
 
-    await gotoVerlaesslich(page, '/')
+    const freigegeben = gespeichert(page, "PATCH");
+    await page
+      .getByRole("button", {
+        name: /^Freigeben.*Nachlassverzeichnis erstellen/,
+      })
+      .click();
+    await freigegeben;
+
+    await gotoVerlaesslich(page, "/");
 
     await expect(
-      page.getByRole('link', { name: /^Details.*Nachlassverzeichnis erstellen/ }),
-    ).toHaveCount(0)
-  })
+      page.getByRole("link", {
+        name: /^Details.*Nachlassverzeichnis erstellen/,
+      }),
+    ).toHaveCount(0);
+  });
 
-  await test.step('eine Reservierung lässt sich wieder lösen (§7)', async () => {
-    await gotoVerlaesslich(page, '/alle')
+  await test.step("eine Reservierung lässt sich wieder lösen (§7)", async () => {
+    await gotoVerlaesslich(page, "/alle");
 
-    const freigegeben = gespeichert(page, 'PATCH')
+    const freigegeben = gespeichert(page, "PATCH");
     await page
-      .getByRole('button', { name: /^Freigeben.*Sterbefall beim Standesamt anzeigen/ })
-      .click()
-    await freigegeben
+      .getByRole("button", {
+        name: /^Freigeben.*Sterbefall beim Standesamt anzeigen/,
+      })
+      .click();
+    await freigegeben;
 
     await expect(
-      page.getByRole('button', { name: /^Übernehmen.*Sterbefall beim Standesamt anzeigen/ }),
-    ).toBeVisible()
+      page.getByRole("button", {
+        name: /^Übernehmen.*Sterbefall beim Standesamt anzeigen/,
+      }),
+    ).toBeVisible();
 
     // Und damit ist sie von Start verschwunden. Die Unteraufgabe bleibt, denn
     // sie trägt ihre eigene Zuweisung.
-    await gotoVerlaesslich(page, '/')
+    await gotoVerlaesslich(page, "/");
     await expect(
-      page.getByText('Sterbefall beim Standesamt anzeigen', { exact: true }),
-    ).toHaveCount(0)
+      page.getByText("Sterbefall beim Standesamt anzeigen", { exact: true }),
+    ).toHaveCount(0);
     await expect(
-      page.getByRole('checkbox', { name: 'Sterbeurkunden in ausreichender Zahl bestellen' }),
-    ).toBeVisible()
-  })
+      page.getByRole("checkbox", {
+        name: "Sterbeurkunden in ausreichender Zahl bestellen",
+      }),
+    ).toBeVisible();
+  });
 
   await test.step('der Fall steht in Profil unter "Für wen?"', async () => {
-    await page.goto('/profil')
+    await page.goto("/profil");
 
     /*
      * "Für wen?" ist keine Überschrift mehr, sondern die Beschriftung einer
      * Zeile in der Gruppe "Fall" (Profil.tsx). Geprüft wird deshalb die
      * Gruppe und darin die Zeile, die den Namen trägt.
      */
-    await expect(page.getByRole('heading', { name: 'Fall', exact: true })).toBeVisible()
-    await expect(zeilen(page).filter({ hasText: 'Für wen?' })).toContainText('Hans Weber')
-  })
+    await expect(
+      page.getByRole("heading", { name: "Fall", exact: true }),
+    ).toBeVisible();
+    await expect(zeilen(page).filter({ hasText: "Für wen?" })).toContainText(
+      "Hans Weber",
+    );
+  });
 
-  await test.step('ein unbekannter Pfad landet auf der Startseite', async () => {
-    await page.goto('/irgendwas-das-es-nicht-gibt')
-    await expect(page).toHaveURL(/\/$/)
-  })
-})
+  await test.step("ein unbekannter Pfad landet auf der Startseite", async () => {
+    await page.goto("/irgendwas-das-es-nicht-gibt");
+    await expect(page).toHaveURL(/\/$/);
+  });
+});

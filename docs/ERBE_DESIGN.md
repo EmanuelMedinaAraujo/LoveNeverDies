@@ -43,13 +43,13 @@ eine Verweisstruktur auflösen muss.
 
 Der Export wird beim Übertragen ins Datenmodul normalisiert, und nur dort:
 
-| Im Export | Im Datenmodul |
-| --- | --- |
-| `Yes` / `No` | `Ja` / `Nein` |
-| `/n`, gelegentlich `n/` | Zeilenumbruch |
-| `(Eingabefeld zum Suchen)` als Fließtext | die Komponente aus §8 |
-| `(button um Aufgabe zu erstellen …)` als Fließtext | die Aktion aus §7 |
-| `ℹ …` als Geschwisterzeile | `info` am Knoten |
+| Im Export                                          | Im Datenmodul         |
+| -------------------------------------------------- | --------------------- |
+| `Yes` / `No`                                       | `Ja` / `Nein`         |
+| `/n`, gelegentlich `n/`                            | Zeilenumbruch         |
+| `(Eingabefeld zum Suchen)` als Fließtext           | die Komponente aus §8 |
+| `(button um Aufgabe zu erstellen …)` als Fließtext | die Aktion aus §7     |
+| `ℹ …` als Geschwisterzeile                         | `info` am Knoten      |
 
 **Genau eine Kette wird zusammengelegt**: `Wollen Sie das Erbe haben?` → einzige Antwort
 `Ja oder Nein` → Seite, die nur aus dem Hinweis über Schulden besteht → `Ja` / `Nein`.
@@ -144,16 +144,16 @@ still verwirft.
 
 ### Der Erbstatus
 
-| Ergebnis | Status |
-| --- | --- |
-| Sie sind Erbe. | **Erbe** |
-| Sie könnten nach der gesetzlichen Erbfolge Erbe sein. | **Wahrscheinlich Erbe** |
-| Sie sind wahrscheinlich kein Erbe. | **Wahrscheinlich kein Erbe** |
-| Sie sind kein Erbe. | **Kein Erbe** |
-| Sie wollen das Erbe nicht (Ausschlagung) | **Noch Erbe** |
-| Informationen zur Testamentsanfechtung | **Kein Erbe** |
-| Nach den Angaben lässt sich noch nicht sicher sagen … | kein Status |
-| Übrige (reine Auskünfte) | kein Status |
+| Ergebnis                                              | Status                       |
+| ----------------------------------------------------- | ---------------------------- |
+| Sie sind Erbe.                                        | **Erbe**                     |
+| Sie könnten nach der gesetzlichen Erbfolge Erbe sein. | **Wahrscheinlich Erbe**      |
+| Sie sind wahrscheinlich kein Erbe.                    | **Wahrscheinlich kein Erbe** |
+| Sie sind kein Erbe.                                   | **Kein Erbe**                |
+| Sie wollen das Erbe nicht (Ausschlagung)              | **Noch Erbe**                |
+| Informationen zur Testamentsanfechtung                | **Kein Erbe**                |
+| Nach den Angaben lässt sich noch nicht sicher sagen … | kein Status                  |
+| Übrige (reine Auskünfte)                              | kein Status                  |
 
 "Noch Erbe" bei der Ausschlagung ist keine Ungenauigkeit: Wer ausschlagen will, ist es bis
 zur wirksamen Ausschlagung noch, und genau deshalb läuft ihm eine Frist.
@@ -165,7 +165,7 @@ Der Status erscheint als eine Zeile in **Profil**, und nur die Person selbst sie
 Spätere Durchläufe überschreiben **nicht**. Sie zeigen ihr Ergebnis, und wenn es ein
 anderes ist als das gespeicherte, steht auf der Ergebnisseite, was bleibt:
 
-> Ihr gespeichertes Ergebnis bleibt: *Erbe*.
+> Ihr gespeichertes Ergebnis bleibt: _Erbe_.
 
 Daneben steht ein Knopf **"Gespeichertes Ergebnis ersetzen"**. Er ersetzt den ganzen
 Datensatz, nicht nur den Status.
@@ -184,16 +184,16 @@ eigenen Rechtsstand umschreibt. Der Knopf sagt beides laut.
 
 Drei Ergebnisse tragen einen Knopf **"Aufgabe erstellen"**:
 
-| Ergebnis | Aufgabe | Frist |
-| --- | --- | --- |
-| Testament abgeben | Testament beim Nachlassgericht abliefern | keine Tagesfrist (unverzüglich, § 2259 BGB) |
-| Ausschlagung | Erbe ausschlagen | 42 Tage ab **Kenntnis** (§ 1944 BGB) |
-| Testamentsanfechtung | Testament anfechten | 1 Jahr ab Kenntnis des Anfechtungsgrundes |
+| Ergebnis             | Aufgabe                                  | Frist                                       |
+| -------------------- | ---------------------------------------- | ------------------------------------------- |
+| Testament abgeben    | Testament beim Nachlassgericht abliefern | keine Tagesfrist (unverzüglich, § 2259 BGB) |
+| Ausschlagung         | Erbe ablehnen                            | 42 Tage ab **Kenntnis** (§ 1944 BGB)        |
+| Testamentsanfechtung | Testament anfechten                      | 1 Jahr ab Kenntnis des Anfechtungsgrundes   |
 
 Eine vierte hängt an keinem Ergebnis, sondern am Status "Erbe" auf der Erbe-Seite (§10):
 
-| Ort | Aufgabe | Frist |
-| --- | --- | --- |
+| Ort                                 | Aufgabe              | Frist                          |
+| ----------------------------------- | -------------------- | ------------------------------ |
 | Erbstatus "Erbe" → Erbschein → "Ja" | Erbschein beantragen | keine (§ 2353 BGB nennt keine) |
 
 **Alle vier sind privat** (`K_p`) und **auf die anlegende Person zugewiesen**.
