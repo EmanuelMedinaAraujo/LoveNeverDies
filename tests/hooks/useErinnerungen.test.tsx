@@ -18,7 +18,7 @@ import { NIEMAND } from '../../src/services/zuweisung.ts'
 const STERBEDATUM = '2026-05-12'
 
 /** Woran die Fristen hängen: das Sterbedatum, kein eigenes Kenntnisdatum (§8). */
-const BEZUG = { sterbedatum: STERBEDATUM, kenntnisAm: null }
+const BEZUG = { sterbedatum: STERBEDATUM, kenntnisAm: null, anfechtungKenntnisAm: null }
 
 /** Der 12. Mai 2026, morgens um sechs: lokale Zeit, wie ein Gerät sie sieht. */
 const JETZT = new Date(2026, 4, 12, 6)

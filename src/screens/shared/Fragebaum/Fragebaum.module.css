@@ -41,6 +41,23 @@
 }
 
 /*
+ * Der Hinweis an "Wollen Sie das Erbe haben?" (ERBE_DESIGN.md §2, §7): Er
+ * soll auffallen und zuerst gelesen werden, bevor jemand antwortet. Grün, weil
+ * `--farbe-akzent` in dieser App bereits die Grundfarbe der Palette ist (§12)
+ * und kein zweiter Ton dafür erfunden werden muss.
+ */
+.hinweisKasten {
+  background: color-mix(in srgb, var(--farbe-akzent) 12%, var(--farbe-karte));
+  border: 0.0625rem solid color-mix(in srgb, var(--farbe-akzent) 35%, transparent);
+  border-radius: var(--dichte-radius);
+  padding: var(--dichte-abstand);
+  color: var(--farbe-text);
+  font-size: var(--dichte-schrift-klein);
+  line-height: var(--typo-zeile-text);
+  margin: 0;
+}
+
+/*
  * Der Ergebnistext. `pre-wrap`, weil die Absätze aus der Inhaltsdatei kommen
  * und dort echte Umbrueche sind.
  */

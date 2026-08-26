@@ -4,6 +4,7 @@ import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
+import type { Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
 import { fristlage, heuteIso } from '../../../services/fristen.ts'
 import {
@@ -14,9 +15,10 @@ import {
 } from '../../../services/zuweisung.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Klapp } from '../../../ui/Klapp/Klapp.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
-import { Aufgabenzeile } from '../Bausteine.tsx'
+import { Aufgabenzeile, erledigtSchalter } from '../Bausteine.tsx'
 import stile from '../einfach.module.css'
 
 /**
@@ -221,6 +223,34 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
    */
   const heute = heuteIso()
 
+  /** Eine Zeile, gleich ob sie in der offenen oder der erledigten Gruppe steht. */
+  function zeile(knoten: Aufgabenknoten) {
+    const darfAendern = darfBearbeiten(knoten.aufgabe.assignee, ich.userId)
+
+    return (
+      <Aufgabenzeile
+        key={knoten.aufgabe.id}
+        knoten={knoten}
+        lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute)}
+        gesperrt={laeuft}
+        darfHaken={darfAbhaken(knoten.aufgabe.assignee, ich.userId)}
+        /*
+         * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Steht
+         * jemand anders darunter oder niemand, sagt die Zeile das,
+         * statt ein graues Kästchen ohne Grund zu zeigen.
+         */
+        zustaendig={
+          darfAendern
+            ? null
+            : istFrei(knoten.aufgabe.assignee)
+              ? 'Dafür ist noch niemand eingetragen. Öffnen Sie die Aufgabe, um sie zu übernehmen.'
+              : `Zuständig: ${zuweisungText(knoten.aufgabe.assignee, ich.userId)}`
+        }
+        aufHaken={(erledigt) => fuehreAus(() => hakeAb(knoten.aufgabe, erledigt))}
+      />
+    )
+  }
+
   return (
     <>
       <NeueAufgabe
@@ -279,34 +309,26 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
               </p>
             )
           ) : (
-            <ul className={stile.liste}>
-              {zustand.baum.map((knoten) => {
-                const darfAendern = darfBearbeiten(knoten.aufgabe.assignee, ich.userId)
+            // §7: Erledigte Aufgaben stehen am Ende der Liste und zu Anfang
+            // eingeklappt — nicht weg, nur nicht im Weg.
+            (() => {
+              const offene = zustand.baum.filter((knoten) => !knoten.erledigt)
+              const erledigte = zustand.baum.filter((knoten) => knoten.erledigt)
 
-                return (
-                  <Aufgabenzeile
-                    key={knoten.aufgabe.id}
-                    knoten={knoten}
-                    lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute)}
-                    gesperrt={laeuft}
-                    darfHaken={darfAbhaken(knoten.aufgabe.assignee, ich.userId)}
-                    /*
-                     * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Steht
-                     * jemand anders darunter oder niemand, sagt die Zeile das,
-                     * statt ein graues Kästchen ohne Grund zu zeigen.
-                     */
-                    zustaendig={
-                      darfAendern
-                        ? null
-                        : istFrei(knoten.aufgabe.assignee)
-                          ? 'Dafür ist noch niemand eingetragen. Öffnen Sie die Aufgabe, um sie zu übernehmen.'
-                          : `Zuständig: ${zuweisungText(knoten.aufgabe.assignee, ich.userId)}`
-                    }
-                    aufHaken={(erledigt) => fuehreAus(() => hakeAb(knoten.aufgabe, erledigt))}
-                  />
-                )
-              })}
-            </ul>
+              return (
+                <>
+                  {offene.length === 0 ? null : (
+                    <ul className={stile.liste}>{offene.map((knoten) => zeile(knoten))}</ul>
+                  )}
+
+                  {erledigte.length === 0 ? null : (
+                    <Klapp {...erledigtSchalter(erledigte.length)}>
+                      <ul className={stile.liste}>{erledigte.map((knoten) => zeile(knoten))}</ul>
+                    </Klapp>
+                  )}
+                </>
+              )
+            })()
           )}
         </>
       ) : null}

@@ -56,6 +56,8 @@ const stellePersoenlichenSchluesselBereit = vi.fn()
 const mutationPrivatAnlegen = vi.fn()
 const mutationKenntnisAnlegen = vi.fn()
 const mutationKenntnisAendern = vi.fn()
+const mutationAnfechtungKenntnisAnlegen = vi.fn()
+const mutationAnfechtungKenntnisAendern = vi.fn()
 const gibFuerAlleFreiDienst = vi.fn()
 const pruefeAbhaengigkeiten = vi.fn()
 
@@ -66,6 +68,8 @@ vi.mock('../../src/services/privatService.ts', () => ({
   mutationPrivatAnlegen: (...a: unknown[]) => mutationPrivatAnlegen(...a),
   mutationKenntnisAnlegen: (...a: unknown[]) => mutationKenntnisAnlegen(...a),
   mutationKenntnisAendern: (...a: unknown[]) => mutationKenntnisAendern(...a),
+  mutationAnfechtungKenntnisAnlegen: (...a: unknown[]) => mutationAnfechtungKenntnisAnlegen(...a),
+  mutationAnfechtungKenntnisAendern: (...a: unknown[]) => mutationAnfechtungKenntnisAendern(...a),
   gibFuerAlleFrei: (...a: unknown[]) => gibFuerAlleFreiDienst(...a),
   pruefeAbhaengigkeiten: (...a: unknown[]) => pruefeAbhaengigkeiten(...a),
 }))
@@ -192,6 +196,8 @@ beforeEach(() => {
   mutationPrivatAnlegen.mockResolvedValue({ op: 'anlegen' })
   mutationKenntnisAnlegen.mockResolvedValue({ op: 'anlegen', itemId: 'kenntnis-1' })
   mutationKenntnisAendern.mockResolvedValue({ op: 'aendern', itemId: 'kenntnis-1' })
+  mutationAnfechtungKenntnisAnlegen.mockResolvedValue({ op: 'anlegen', itemId: 'anfechtung-1' })
+  mutationAnfechtungKenntnisAendern.mockResolvedValue({ op: 'aendern', itemId: 'anfechtung-1' })
   gibFuerAlleFreiDienst.mockResolvedValue(undefined)
   pruefeAbhaengigkeiten.mockReturnValue(undefined)
   instanziiereKatalog.mockResolvedValue(0)
@@ -1096,8 +1102,12 @@ describe('Private Aufgaben (§3.7)', () => {
  */
 describe('Kenntnisdatum (§8, #12)', () => {
   /** Ein gelesenes Konfigurations-Item, so wie der Dienst es liefert. */
-  function konfiguration(id: string, kenntnisAm: string | null) {
-    return { id, kenntnisAm, dek: new Uint8Array([8]), kid: PRIVAT.kid }
+  function konfiguration(
+    id: string,
+    kenntnisAm: string | null,
+    anfechtungKenntnisAm: string | null = null,
+  ) {
+    return { id, kenntnisAm, anfechtungKenntnisAm, dek: new Uint8Array([8]), kid: PRIVAT.kid }
   }
 
   it('haelt es aus dem Aufgabenbaum heraus und gibt es als Fristbezug weiter', async () => {
@@ -1115,6 +1125,7 @@ describe('Kenntnisdatum (§8, #12)', () => {
       expect(result.current.fristbezug).toEqual({
         sterbedatum: FALL.sterbedatum,
         kenntnisAm: '2026-05-12',
+        anfechtungKenntnisAm: null,
       })
     })
 
@@ -1186,6 +1197,90 @@ describe('Kenntnisdatum (§8, #12)', () => {
     await waitFor(() => {
       expect(result.current.fristbezug.kenntnisAm).toBe('2026-06-02')
     })
+  })
+})
+
+/**
+ * Das eigene Anfechtungs-Kenntnisdatum (§8, D).
+ *
+ * Dasselbe Muster wie oben bei `setzeKenntnisAm`, nur ein eigenes Feld
+ * desselben Konfigurations-Items: Die Anfechtung hängt an einem anderen Tag
+ * als die Ausschlagung nach § 1944 BGB, und beide dürfen sich nicht
+ * gegenseitig überschreiben.
+ */
+describe('Anfechtungs-Kenntnisdatum (§8, D)', () => {
+  function konfiguration(
+    id: string,
+    kenntnisAm: string | null,
+    anfechtungKenntnisAm: string | null,
+  ) {
+    return { id, kenntnisAm, anfechtungKenntnisAm, dek: new Uint8Array([8]), kid: PRIVAT.kid }
+  }
+
+  it('gibt es getrennt vom Kenntnisdatum als Fristbezug weiter', async () => {
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [],
+      konfigurationen: [konfiguration('konfig-1', '2026-05-12', '2026-06-01')],
+      nachlass: [],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('konfig-1')] }))
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => {
+      expect(result.current.fristbezug).toEqual({
+        sterbedatum: FALL.sterbedatum,
+        kenntnisAm: '2026-05-12',
+        anfechtungKenntnisAm: '2026-06-01',
+      })
+    })
+  })
+
+  it('legt beim ersten Eintragen ein Item unter K_p an', async () => {
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => {
+      expect(result.current.zustand.status).toBe('bereit')
+    })
+
+    await act(async () => {
+      await result.current.setzeAnfechtungKenntnisAm('2026-05-12')
+    })
+
+    expect(stellePersoenlichenSchluesselBereit).toHaveBeenCalled()
+    expect(mutationAnfechtungKenntnisAnlegen).toHaveBeenCalledWith(FALL, PRIVAT, '2026-05-12')
+    expect(mutationAnfechtungKenntnisAendern).not.toHaveBeenCalled()
+    expect(mutiere).toHaveBeenCalledWith({ op: 'anlegen', itemId: 'anfechtung-1' })
+  })
+
+  it('aendert das vorhandene Item, statt ein zweites anzulegen', async () => {
+    const vorhanden = konfiguration('konfig-1', null, '2026-05-12')
+
+    ladePersoenlichenSchluessel.mockResolvedValue(PRIVAT)
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [],
+      konfigurationen: [vorhanden],
+      nachlass: [],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('konfig-1')] }))
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => {
+      expect(result.current.fristbezug.anfechtungKenntnisAm).toBe('2026-05-12')
+    })
+
+    await act(async () => {
+      await result.current.setzeAnfechtungKenntnisAm('2026-06-02')
+    })
+
+    expect(mutationAnfechtungKenntnisAendern).toHaveBeenCalledWith(vorhanden, '2026-06-02')
+    expect(mutationAnfechtungKenntnisAnlegen).not.toHaveBeenCalled()
+    // Und das Kenntnisdatum nach § 1944 BGB bleibt unberührt: andere Funktion,
+    // anderes Feld.
+    expect(mutationKenntnisAendern).not.toHaveBeenCalled()
   })
 })
 

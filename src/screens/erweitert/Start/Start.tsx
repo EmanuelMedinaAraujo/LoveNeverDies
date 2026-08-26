@@ -6,11 +6,13 @@ import { useCase } from '../../../hooks/useCase.ts'
 import type { Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
 import { fallBeschriftung } from '../../../services/fallbeschriftung.ts'
 import type { Fall, LesbarerFall } from '../../../services/fallService.ts'
+import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import { fristlage, fristText, heuteIso, type Fristlage } from '../../../services/fristen.ts'
-import { istZugewiesen, zuweisungText } from '../../../services/zuweisung.ts'
+import { darfAbhaken, istZugewiesen, zuweisungText } from '../../../services/zuweisung.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
-import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
+import { Klapp } from '../../../ui/Klapp/Klapp.tsx'
+import { Detailziel, Gruppe, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import { KeinFall } from '../../shared/KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
@@ -101,17 +103,33 @@ function meineAufgaben(baum: Aufgabenknoten[], userId: string): Eintrag[] {
   return eintraege
 }
 
+/**
+ * Die Beschriftung des Auf-/Zuklappers für erledigte Aufgaben (§7).
+ *
+ * Dieselbe kleine Funktion wie in `screens/einfach/Bausteine.tsx`: Beide
+ * Ansichten brauchen sie, aber es gibt keine gemeinsame Datei für die
+ * erweiterte Ansicht, aus der heraus man sie teilen könnte (§9).
+ */
+function erledigtSchalter(anzahl: number): { titel: string; offenText: string } {
+  const wort = anzahl === 1 ? 'erledigte Aufgabe' : 'erledigte Aufgaben'
+
+  return { titel: `${anzahl} ${wort} anzeigen`, offenText: `${anzahl} ${wort} ausblenden` }
+}
+
 /** Eine Zeile auf Start: abhaken, hineingehen, mehr nicht. */
 function Startzeile({
   eintrag,
   lage,
   gesperrt,
+  darfHaken,
   ichUserId,
   aufHaken,
 }: {
   eintrag: Eintrag
   lage: Fristlage
   gesperrt: boolean
+  /** §7: Bearbeiten darf nur, wem die Aufgabe zugewiesen ist. */
+  darfHaken: boolean
   ichUserId: string
   /** @returns ob die Änderung angehängt wurde. Sonst nimmt die Zeile sie zurück. */
   aufHaken: (erledigt: boolean) => Promise<boolean>
@@ -182,7 +200,7 @@ function Startzeile({
           <Checkbox
             abhaken
             checked={erledigt}
-            disabled={gesperrt}
+            disabled={gesperrt || !darfHaken}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label={aufgabe.titel}
             nurKaestchen
@@ -211,7 +229,15 @@ function Startzeile({
         )}
       </div>
 
-      <Detailziel ziel={`/aufgabe/${aufgabe.id}`} titel={aufgabe.titel} />
+      {/*
+        Die eine Aufgabe, die noch aus dem Katalog kommt (ADR-0001), hat keine
+        eigene Detailseite: Ihr Ergebnis steht im Fragebaum. Erkannt wird sie
+        an ihrer Herkunft, nicht am Titel (ERBE_DESIGN.md §9).
+      */}
+      <Detailziel
+        ziel={istSeedAufgabe(aufgabe.katalog) ? '/erbe/fragebaum' : `/aufgabe/${aufgabe.id}`}
+        titel={aufgabe.titel}
+      />
     </Zeile>
   )
 }
@@ -252,7 +278,57 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
   }
 
   const heute = heuteIso()
-  const eintraege = meineAufgaben(zustand.baum, ich.userId)
+
+  /*
+   * Die Fragebaum-Standardaufgabe steht immer oben, solange sie offen ist,
+   * unabhängig davon, ob sie dieser Person zugewiesen ist: Wer neu in der App
+   * sitzt, soll schnell auf den Fragebaum aufmerksam werden.
+   */
+  const seedKnoten = zustand.baum.find((knoten) => istSeedAufgabe(knoten.aufgabe.katalog)) ?? null
+  const seedOffen = seedKnoten !== null && !seedKnoten.erledigt
+
+  const persoenlich = meineAufgaben(zustand.baum, ich.userId)
+  // Ohne die Seed-Aufgabe: Sie steht oben für sich, nicht noch einmal in der
+  // persönlichen Liste darunter.
+  const persoenlichOhneSeed = persoenlich.filter(
+    (eintrag) => seedKnoten === null || eintrag.knoten.aufgabe.id !== seedKnoten.aufgabe.id,
+  )
+  const offenePersoenlich = persoenlichOhneSeed.filter((eintrag) => !eintrag.knoten.erledigt)
+  // §7: Erledigtes steht am Ende der Liste und zu Anfang eingeklappt.
+  const erledigtePersoenlich = persoenlichOhneSeed.filter((eintrag) => eintrag.knoten.erledigt)
+
+  /*
+   * "Weitere Aufgaben": ein Ausschnitt aus dem allgemeinen Bestand, ergänzt,
+   * solange die Seite durch persönliche Aufgaben noch nicht gut gefüllt ist.
+   */
+  const ZIEL_ANZAHL = 5
+  const bereitsGezeigt = new Set(persoenlichOhneSeed.map((eintrag) => eintrag.knoten.aufgabe.id))
+  if (seedKnoten !== null) {
+    bereitsGezeigt.add(seedKnoten.aufgabe.id)
+  }
+  const weitere =
+    offenePersoenlich.length >= ZIEL_ANZAHL
+      ? []
+      : zustand.baum
+          .filter((knoten) => !knoten.erledigt && !bereitsGezeigt.has(knoten.aufgabe.id))
+          .slice(0, ZIEL_ANZAHL - offenePersoenlich.length)
+
+  // Wirklich gar keine offene Aufgabe mehr, weder persönlich noch allgemein.
+  const allesErledigt = !seedOffen && offenePersoenlich.length === 0 && weitere.length === 0
+
+  function zeile(eintrag: Eintrag) {
+    return (
+      <Startzeile
+        key={eintrag.knoten.aufgabe.id}
+        eintrag={eintrag}
+        lage={fristlage(eintrag.knoten.aufgabe.katalog, fristbezug, heute)}
+        gesperrt={laeuft}
+        darfHaken={darfAbhaken(eintrag.knoten.aufgabe.assignee, ich.userId)}
+        ichUserId={ich.userId}
+        aufHaken={(erledigt: boolean) => fuehreAus(() => hakeAb(eintrag.knoten.aufgabe, erledigt))}
+      />
+    )
+  }
 
   return (
     <>
@@ -276,38 +352,37 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
         <Abgelehnt aenderungen={abgelehnt} aufBestaetigen={bestaetige} />
       )}
 
-      {eintraege.length === 0 ? (
+      {
         // Ein leerer Cache und ein laufender erster Abruf sind nicht dasselbe
-        // wie "Ihnen ist nichts zugewiesen" (§5).
+        // wie "keine offene Aufgabe" (§5).
         zustand.laedtNetz && zustand.aufgaben.length === 0 ? (
           <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
+        ) : allesErledigt && erledigtePersoenlich.length === 0 ? (
+          <p className={stile.hinweis}>Sie haben alle Aufgaben erledigt.</p>
         ) : (
-          /*
-            Ohne Link: "Alle Aufgaben" steht als Weg schon im Kopf dieses
-            Screens, und zwei gleich benannte Links auf derselben Seite sind für
-            eine Vorlesestimme zwei Ziele mit demselben Namen (§7).
-          */
-          <p className={stile.hinweis}>
-            Ihnen ist gerade nichts zugewiesen. Über „Alle Aufgaben" können Sie eine
-            übernehmen.
-          </p>
+          <>
+            {seedKnoten === null || !seedOffen ? null : (
+              <Liste>{zeile({ knoten: seedKnoten, unter: null })}</Liste>
+            )}
+
+            {offenePersoenlich.length === 0 ? null : (
+              <Liste>{offenePersoenlich.map((eintrag) => zeile(eintrag))}</Liste>
+            )}
+
+            {erledigtePersoenlich.length === 0 ? null : (
+              <Klapp {...erledigtSchalter(erledigtePersoenlich.length)}>
+                <Liste>{erledigtePersoenlich.map((eintrag) => zeile(eintrag))}</Liste>
+              </Klapp>
+            )}
+
+            {weitere.length === 0 ? null : (
+              <Gruppe titel="Weitere Aufgaben">
+                <Liste>{weitere.map((knoten) => zeile({ knoten, unter: null }))}</Liste>
+              </Gruppe>
+            )}
+          </>
         )
-      ) : (
-        <Liste>
-          {eintraege.map((eintrag) => (
-            <Startzeile
-              key={eintrag.knoten.aufgabe.id}
-              eintrag={eintrag}
-              lage={fristlage(eintrag.knoten.aufgabe.katalog, fristbezug, heute)}
-              gesperrt={laeuft}
-              ichUserId={ich.userId}
-              aufHaken={(erledigt: boolean) =>
-                fuehreAus(() => hakeAb(eintrag.knoten.aufgabe, erledigt))
-              }
-            />
-          ))}
-        </Liste>
-      )}
+      }
     </>
   )
 }

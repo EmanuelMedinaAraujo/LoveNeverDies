@@ -1,5 +1,6 @@
 import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { useEinloesung } from '../../../hooks/useKopplung.ts'
+import { useQrScanner } from '../../../hooks/useQrScanner.ts'
 import {
   formatiereKopplungscodeEingabe,
   KOPPLUNGSCODE_LAENGE,
@@ -28,6 +29,29 @@ export function Koppeln() {
 
   const [eingabe, setzeEingabe] = useState('')
   const [gewaehlterFall, setzeGewaehltenFall] = useState<string | null>(null)
+
+  /*
+   * Scannen ist eine Alternative zum Eintippen, keine zweite Baustelle: Der
+   * QR-Code trägt genau den Kopplungscode, den auch das Textfeld annimmt
+   * (§6, Punkt 5 der Kopplungs-Anforderungen). Zu, bis jemand ihn ausdrücklich
+   * anfordert, sonst hinge diese Seite an einer Kamera, die die meisten
+   * Besuche gar nicht brauchen.
+   */
+  const [scanAktiv, setzeScanAktiv] = useState(false)
+
+  function codeErkannt(rohwert: string) {
+    // Dieselbe Normalisierung wie beim Tippen, damit ein gescannter Code
+    // durch keine andere Prüfung läuft als ein eingetippter (§6). Der
+    // eigentliche Format- und Alphabet-Check sitzt in `loeseKopplungscodeEin`
+    // und trifft beide Wege gleichermaßen.
+    const formatiert = formatiereKopplungscodeEingabe(rohwert, { geloescht: false, vorher: '' })
+
+    setzeEingabe(formatiert)
+    setzeScanAktiv(false)
+    void einloesen(formatiert)
+  }
+
+  const { zustand: scanZustand, videoRef: scanVideoRef } = useQrScanner(scanAktiv, codeErkannt)
 
   /*
    * Getippt wird der Code, den Bindestrich setzt das Feld (§6, Schritt 4). Ob
@@ -208,6 +232,52 @@ export function Koppeln() {
             </p>
           ) : null}
         </form>
+      </Card>
+
+      <Card>
+        <h2 className={stile.abschnitt}>Oder Code scannen</h2>
+
+        {scanAktiv ? (
+          <>
+            {scanZustand.status === 'nicht-unterstuetzt' ? (
+              <p className={stile.hinweis} role="alert">
+                Scannen wird auf diesem Gerät nicht unterstützt, bitte Code eintippen.
+              </p>
+            ) : scanZustand.status === 'fehler' ? (
+              <p className={stile.hinweis} role="alert">
+                {scanZustand.nachricht}
+              </p>
+            ) : (
+              <>
+                {/*
+                  Reines Kamerabild ohne eigenen Inhalt: Was hier zu wissen ist,
+                  steht in der Statuszeile daneben (§7).
+                */}
+                <video
+                  ref={scanVideoRef}
+                  className={stile.video}
+                  autoPlay
+                  playsInline
+                  muted
+                  aria-hidden="true"
+                />
+                <p className={stile.hinweis} role="status">
+                  {scanZustand.status === 'startet'
+                    ? 'Kamera wird gestartet…'
+                    : 'Halten Sie den QR-Code vor die Kamera.'}
+                </p>
+              </>
+            )}
+
+            <Button variante="sekundaer" volleBreite onClick={() => setzeScanAktiv(false)}>
+              Scannen abbrechen
+            </Button>
+          </>
+        ) : (
+          <Button variante="sekundaer" volleBreite onClick={() => setzeScanAktiv(true)}>
+            Code scannen
+          </Button>
+        )}
       </Card>
     </main>
   )

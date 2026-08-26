@@ -226,7 +226,7 @@ describe('knotenZu', () => {
 })
 
 /** Woran die Fristen hängen: das Sterbedatum, kein eigenes Kenntnisdatum (§8). */
-const BEZUG = { sterbedatum: '2026-05-12', kenntnisAm: null }
+const BEZUG = { sterbedatum: '2026-05-12', kenntnisAm: null, anfechtungKenntnisAm: null }
 
 describe('sortiereNachFrist (§7)', () => {
   it('stellt die knappste Frist nach vorn und lässt fristenlose hinten', () => {

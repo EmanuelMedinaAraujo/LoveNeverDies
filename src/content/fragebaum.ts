@@ -69,6 +69,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n6' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n7' },
@@ -89,6 +90,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -113,6 +115,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n12' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n13' },
@@ -133,6 +136,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -140,6 +144,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n16' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n17' },
@@ -160,6 +165,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -176,6 +182,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n21' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n22' },
@@ -196,6 +203,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -220,6 +228,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n27' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n28' },
@@ -240,6 +249,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -247,6 +257,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n31' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n32' },
@@ -267,6 +278,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -292,6 +304,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n37' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n38' },
@@ -312,6 +325,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -336,6 +350,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n43' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n44' },
@@ -356,6 +371,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -363,6 +379,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n47' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n48' },
@@ -383,6 +400,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -487,6 +505,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     art: 'frage',
     text: 'Wollen Sie das Erbe haben?',
     hinweis: 'Zum Erbe können auch Schulden des Verstorbenen gehören. Daher können auf den Erben Kosten zukommen. Außerdem kann es bei angespannten Situationen zwischen Erben zu Streitigkeiten kommen, die vor Gericht enden können. Wenn man das Erbe nicht will, dann erhält man nichts - also auch keinen Pflichtteil.',
+    info: 'pflichtteil',
     antworten: [
       { text: 'Ja, ich will das Erbe', ziel: 'n62' },
       { text: 'Nein, ich will das Erbe nicht', ziel: 'n63' },
@@ -507,6 +526,7 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     status: 'noch-erbe',
     gericht: true,
     kenntnisdatum: true,
+    ausschlagungshinweis: true,
     antworten: [],
   },
   {
@@ -710,10 +730,12 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
   },
   {
     id: 'n87',
-    art: 'ergebnis',
-    text: 'Sie sind wahrscheinlich kein Erbe.',
-    status: 'wahrscheinlich-kein-erbe',
-    antworten: [],
+    art: 'frage',
+    text: 'Lebt Ihr Elternteil noch? (Relevant ist nur das Elternteil, das ein Geschwister des Verstorbenen ist)',
+    antworten: [
+      { text: 'Ja', ziel: 'n151' },
+      { text: 'Nein', ziel: 'n152' },
+    ],
   },
   {
     id: 'n88',
@@ -871,8 +893,8 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
   {
     id: 'n107',
     art: 'ergebnis',
-    text: 'Sie sind kein Erbe.',
-    status: 'kein-erbe',
+    text: 'Sie sind wahrscheinlich kein Erbe.',
+    status: 'wahrscheinlich-kein-erbe',
     antworten: [],
   },
   {
@@ -1212,6 +1234,21 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     text: 'Folgende Schritte sind relevant\nTestament unverzüglich beim zuständigen Nachlassgericht abgeben\nHinweis: Eine Nicht-Abgabe kann zu strafrechtlichen Folgen und Kosten für Sie führen.\nDie Frist zur Abgabe ist unverzüglich (ohne schuldhaftes Zögern).',
     aufgabe: 'testament',
     gericht: true,
+    antworten: [],
+  },
+  {
+    id: 'n151',
+    art: 'ergebnis',
+    text: 'Sie sind wahrscheinlich kein Erbe.',
+    status: 'wahrscheinlich-kein-erbe',
+    antworten: [],
+  },
+  {
+    id: 'n152',
+    art: 'ergebnis',
+    text: 'Sie könnten nach der gesetzlichen Erbfolge Erbe sein.',
+    info: 'erbschein',
+    status: 'wahrscheinlich-erbe',
     antworten: [],
   },
 ]

@@ -162,9 +162,10 @@ function aufgabendaten(
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
     gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
-    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null },
+    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null, anfechtungKenntnisAm: null },
     nachlass: [],
     setzeKenntnisAm: vi.fn().mockResolvedValue(undefined),
+    setzeAnfechtungKenntnisAm: vi.fn().mockResolvedValue(undefined),
     fragebaum: null,
     fragebaumGeladen: true,
     speichereFragebaum: vi.fn().mockResolvedValue(undefined),
@@ -208,7 +209,7 @@ function zeigeAusschlagung({
   useAufgaben.mockReturnValue(
     aufgabendaten({
       zustand: { status: 'bereit', aufgaben, uebersprungen: 0, ...NETZ },
-      fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm },
+      fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm, anfechtungKenntnisAm: null },
       setzeKenntnisAm,
     }),
   )

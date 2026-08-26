@@ -79,3 +79,11 @@
   gap: var(--dichte-abstand-klein);
   margin-top: var(--dichte-abstand);
 }
+
+.video {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--dichte-radius);
+  background: #000000;
+}

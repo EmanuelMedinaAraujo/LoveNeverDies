@@ -5,11 +5,13 @@ import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { sortiereNachFrist, type Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
+import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import { fristlage, fristText, heuteIso, type Fristlage } from '../../../services/fristen.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Klapp } from '../../../ui/Klapp/Klapp.tsx'
 import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
 import {
@@ -409,13 +411,34 @@ function Aufgabenzeile({
         </div>
       </div>
 
-      <Detailziel ziel={`/aufgabe/${aufgabe.id}`} titel={aufgabe.titel} />
+      {/*
+        Die eine Aufgabe, die noch aus dem Katalog kommt (ADR-0001), hat keine
+        eigene Detailseite: Ihr Ergebnis steht im Fragebaum. Erkannt wird sie
+        an ihrer Herkunft, nicht am Titel (ERBE_DESIGN.md §9).
+      */}
+      <Detailziel
+        ziel={istSeedAufgabe(aufgabe.katalog) ? '/erbe/fragebaum' : `/aufgabe/${aufgabe.id}`}
+        titel={aufgabe.titel}
+      />
     </Zeile>
   )
 }
 
 /** Wonach die Liste sortiert ist (§7, §8). */
 type Sortierung = 'reihenfolge' | 'frist'
+
+/**
+ * Die Beschriftung des Auf-/Zuklappers für erledigte Aufgaben (§7).
+ *
+ * Dieselbe kleine Funktion wie in `screens/erweitert/Start/Start.tsx` und in
+ * `screens/einfach/Bausteine.tsx`: Für die erweiterte Ansicht gibt es keine
+ * gemeinsame Datei, aus der heraus man sie teilen könnte (§9).
+ */
+function erledigtSchalter(anzahl: number): { titel: string; offenText: string } {
+  const wort = anzahl === 1 ? 'erledigte Aufgabe' : 'erledigte Aufgaben'
+
+  return { titel: `${anzahl} ${wort} anzeigen`, offenText: `${anzahl} ${wort} ausblenden` }
+}
 
 /**
  * Die Erinnerungen, sobald es welche zu planen gibt (§7).
@@ -505,6 +528,27 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
    * an zwei verschiedene Antworten in derselben Liste.
    */
   const heute = heuteIso()
+
+  /** Eine Zeile, gleich ob sie in der offenen oder der erledigten Gruppe steht. */
+  function zeile(knoten: Aufgabenknoten) {
+    return (
+      <Aufgabenzeile
+        key={knoten.aufgabe.id}
+        knoten={knoten}
+        lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute)}
+        gesperrt={laeuft}
+        ichUserId={ich.userId}
+        aufHaken={(erledigt) => fuehreAus(() => hakeAb(knoten.aufgabe, erledigt))}
+        aufSpeichern={(titel, beschreibung) =>
+          fuehreAus(() => schreibe(knoten.aufgabe, { titel, beschreibung }))
+        }
+        aufLoeschen={() => void fuehreAus(() => loesche(knoten.aufgabe))}
+        aufUebernehmen={() => void fuehreAus(() => uebernimm(knoten.aufgabe))}
+        aufFreigeben={() => void fuehreAus(() => gibFrei(knoten.aufgabe))}
+        aufFuerAlleSichtbar={() => void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe))}
+      />
+    )
+  }
 
   async function anlegen(ereignis: FormEvent) {
     ereignis.preventDefault()
@@ -638,30 +682,33 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
                 </select>
               </div>
 
-              <Liste>
-                {(sortierung === 'frist'
-                  ? sortiereNachFrist(zustand.baum, fristbezug, heute)
-                  : zustand.baum
-                ).map((knoten) => (
-                  <Aufgabenzeile
-                    key={knoten.aufgabe.id}
-                    knoten={knoten}
-                    lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute)}
-                    gesperrt={laeuft}
-                    ichUserId={ich.userId}
-                    aufHaken={(erledigt) => fuehreAus(() => hakeAb(knoten.aufgabe, erledigt))}
-                    aufSpeichern={(titel, beschreibung) =>
-                      fuehreAus(() => schreibe(knoten.aufgabe, { titel, beschreibung }))
-                    }
-                    aufLoeschen={() => void fuehreAus(() => loesche(knoten.aufgabe))}
-                    aufUebernehmen={() => void fuehreAus(() => uebernimm(knoten.aufgabe))}
-                    aufFreigeben={() => void fuehreAus(() => gibFrei(knoten.aufgabe))}
-                    aufFuerAlleSichtbar={() =>
-                      void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe))
-                    }
-                  />
-                ))}
-              </Liste>
+              {/*
+                §7: Erledigte Aufgaben stehen am Ende der Liste und zu Anfang
+                eingeklappt — unabhängig von der gewählten Sortierung, die
+                innerhalb jeder der beiden Gruppen weiterhin gilt.
+              */}
+              {(() => {
+                const sortiert =
+                  sortierung === 'frist'
+                    ? sortiereNachFrist(zustand.baum, fristbezug, heute)
+                    : zustand.baum
+                const offene = sortiert.filter((knoten) => !knoten.erledigt)
+                const erledigte = sortiert.filter((knoten) => knoten.erledigt)
+
+                return (
+                  <>
+                    {offene.length === 0 ? null : (
+                      <Liste>{offene.map((knoten) => zeile(knoten))}</Liste>
+                    )}
+
+                    {erledigte.length === 0 ? null : (
+                      <Klapp {...erledigtSchalter(erledigte.length)}>
+                        <Liste>{erledigte.map((knoten) => zeile(knoten))}</Liste>
+                      </Klapp>
+                    )}
+                  </>
+                )
+              })()}
             </>
           )}
 

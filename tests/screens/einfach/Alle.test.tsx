@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Aufgabendaten } from '../../../src/hooks/useAufgaben.ts'
 import type { Falldaten } from '../../../src/hooks/useCase.ts'
+import type { Katalogherkunft } from '../../../src/services/aufgabenService.ts'
 import { NIEMAND, personen } from '../../../src/services/zuweisung.ts'
 import { rendereMitProvidern } from '../harness.tsx'
 import { BERT, aufgabe, aufgabendaten, falldaten, mitAufgaben } from './fixtures.tsx'
@@ -142,5 +143,67 @@ describe('Alle (einfach)', () => {
       'href',
       '/aufgabe/item-1',
     )
+  })
+})
+
+/**
+ * Die Fragebaum-Standardaufgabe in "Alle" (ERBE_DESIGN.md §9).
+ *
+ * Sie hat keine eigene Detailseite: Ihr Ergebnis steht im Fragebaum. Der Weg
+ * hinein führt deshalb direkt dorthin statt zur Aufgaben-Detailseite.
+ */
+describe('Seed-Aufgabe in "Alle" (ERBE_DESIGN.md §9)', () => {
+  it('führt direkt in den Fragebaum statt in eine Detailseite', () => {
+    mitAufgaben(useAufgaben, [
+      aufgabe({
+        id: 'seed-1',
+        titel: 'Klären ob Sie Erbe sind',
+        katalog: { aufgabeId: 'erbenstellung-klaeren', fristTage: null, fristAb: null } as Katalogherkunft,
+      }),
+    ])
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByRole('link', { name: /Fragebaum starten/ })).toHaveAttribute(
+      'href',
+      '/erbe/fragebaum',
+    )
+  })
+})
+
+/** Erledigte Aufgaben in "Alle" (§7): ans Ende, zu Anfang eingeklappt. */
+describe('Erledigte Aufgaben in "Alle" (§7)', () => {
+  it('stehen hinter den offenen und sind zu Anfang eingeklappt', () => {
+    mitAufgaben(useAufgaben, [
+      aufgabe({ id: 'item-1', titel: 'Offene Aufgabe' }),
+      aufgabe({ id: 'item-2', titel: 'Erledigte Aufgabe', erledigt: true }),
+    ])
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByText('Offene Aufgabe')).toBeVisible()
+    expect(screen.queryByText('Erledigte Aufgabe')).toBeNull()
+    expect(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' })).toBeVisible()
+  })
+
+  it('zeigt sie nach einem Klick auf den Schalter', async () => {
+    mitAufgaben(useAufgaben, [
+      aufgabe({ id: 'item-1', titel: 'Offene Aufgabe' }),
+      aufgabe({ id: 'item-2', titel: 'Erledigte Aufgabe', erledigt: true }),
+    ])
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.click(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' }))
+
+    expect(screen.getByText('Erledigte Aufgabe')).toBeVisible()
+  })
+
+  it('lässt den Schalter ganz weg, wenn nichts erledigt ist', () => {
+    mitAufgaben(useAufgaben, [aufgabe({ id: 'item-1', titel: 'Offene Aufgabe' })])
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.queryByRole('button', { name: /erledigte Aufgabe/ })).toBeNull()
   })
 })

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { WURZEL } from '../../src/content/fragebaum.ts'
 import {
   BAUPLAENE,
+  aufgabenBeschreibung,
   ergebnisAus,
   infoText,
   istSeedAufgabe,
@@ -98,13 +99,15 @@ describe('Bauplaene (§7)', () => {
     }
   })
 
-  it('rechnet die Anfechtungsfrist ausdruecklich nicht', () => {
+  it('gibt der Anfechtung die Frist ab eigener Anfechtungskenntnis (D)', () => {
     // Ihr Jahr laeuft ab der Kenntnis des Anfechtungsgrundes, und das ist ein
     // anderer Tag als das `kenntnisAm` aus § 1944 BGB. Beides auf dasselbe Feld
-    // zu legen ergaebe ein Fristende, das plausibel aussieht und falsch ist.
-    expect(BAUPLAENE.anfechtung.katalog.fristTage).toBeNull()
-    expect(BAUPLAENE.anfechtung.katalog.fristAb).toBeNull()
+    // zu legen ergaebe ein Fristende, das plausibel aussieht und falsch ist;
+    // deshalb ein eigener Anker und kein `kenntnis`.
+    expect(BAUPLAENE.anfechtung.katalog.fristTage).toBe(365)
+    expect(BAUPLAENE.anfechtung.katalog.fristAb).toBe('anfechtungskenntnis')
     expect(BAUPLAENE.anfechtung.katalog.hinweis).toContain('ein Jahr')
+    expect(BAUPLAENE.anfechtung.katalog.hinweis).not.toContain('wird hier nicht ausgerechnet')
   })
 
   it('laesst das Testament fristenlos, weil das Gesetz keine Tagesfrist nennt', () => {
@@ -148,9 +151,19 @@ describe('Bauplaene (§7)', () => {
   })
 
   it('haengt von nichts ab: private Aufgaben sind Wurzelaufgaben (§3.7)', () => {
+    /*
+     * Geprueft wird `haengtAbVon`, nicht `unteraufgaben`: Die beiden Felder
+     * meinen Verschiedenes. `haengtAbVon` wuerde zu echten Zeilen im Bestand
+     * werden, und genau die darf eine private Aufgabe nicht haben — sie stuende
+     * unter einer geteilten Elternaufgabe, die es fuer alle anderen ohne dieses
+     * Kind gibt (§3.7, `privatService.ts` legt `parentId` fest auf `null`).
+     *
+     * `unteraufgaben` ist dagegen blosse Beschreibung: die Schritte, die zu
+     * dieser Aufgabe gehoeren, als Text an der Herkunft. Sie erzeugen keine
+     * Zeile und koennen die Invariante deshalb nicht verletzen.
+     */
     for (const bauplan of Object.values(BAUPLAENE)) {
       expect(bauplan.katalog.haengtAbVon).toEqual([])
-      expect(bauplan.katalog.unteraufgaben).toEqual([])
     }
   })
 })
@@ -184,6 +197,14 @@ describe('infoText (§5)', () => {
     for (const thema of ['erbschein', 'nachlassgericht'] as const) {
       expect(infoText(thema).text).toContain('ergänzt')
     }
+  })
+
+  it('liefert den vorliegenden Pflichtteil-Text fest, statt den Platzhalter (B)', () => {
+    const info = infoText('pflichtteil')
+
+    expect(info.frage).toBe('Was ist der Pflichtteil?')
+    expect(info.text).toBe('Der Pflichtteil ist ein Mindest-Betrag an Geld aus dem Erbe.')
+    expect(info.text).not.toContain('ergänzt')
   })
 })
 
@@ -261,5 +282,56 @@ describe('mitAbgeleitetemHaken (§9)', () => {
     const unveraendert = { erledigt: false, katalog: null }
 
     expect(mitAbgeleitetemHaken([unveraendert], null)[0]).toBe(unveraendert)
+  })
+})
+
+/**
+ * Was in einer Aufgabe aus dem Baum steht (ERBE_DESIGN.md §7).
+ *
+ * Die Anforderung ist wörtlich: "Die Informationen stehen immer über dem Button
+ * 'Aufgabe erstellen'. Genau diese Informationen müssen in die Aufgabe mit
+ * rein." Dazu die Schritte, die dafür zu tun sind.
+ */
+describe('aufgabenBeschreibung (§7)', () => {
+  it('stellt den gelesenen Ergebnistext voran', () => {
+    const gelesen = 'Sie wollen das Erbe nicht (Ausschlagung)\n1. Frist\nSechs Wochen.'
+    const beschreibung = aufgabenBeschreibung('ausschlagung', gelesen)
+
+    expect(beschreibung.startsWith(gelesen)).toBe(true)
+    expect(beschreibung).toContain(BAUPLAENE.ausschlagung.beschreibung)
+  })
+
+  it('bleibt bei der Bauplan-Beschreibung, wenn kein Text mitkommt', () => {
+    expect(aufgabenBeschreibung('testament')).toBe(BAUPLAENE.testament.beschreibung)
+  })
+
+  it('schreibt denselben Text nicht zweimal', () => {
+    const nur = BAUPLAENE.anfechtung.beschreibung
+
+    expect(aufgabenBeschreibung('anfechtung', nur)).toBe(nur)
+  })
+})
+
+describe('Schritte an den Aufgaben aus dem Baum (§7)', () => {
+  it('nennt zu jeder Vorlage, was dafür zu tun ist', () => {
+    for (const [name, bauplan] of Object.entries(BAUPLAENE)) {
+      expect(bauplan.katalog.unteraufgaben.length, name).toBeGreaterThan(0)
+
+      for (const schritt of bauplan.katalog.unteraufgaben) {
+        expect(schritt.trim(), name).not.toBe('')
+      }
+    }
+  })
+
+  it('lässt die Aufgaben mit Frist nach dem Tag des Fristbeginns fragen', () => {
+    // §8: Wo eine Frist zählt, muss der Tag erfragt werden, ab dem sie läuft.
+    for (const vorlage of ['ausschlagung', 'anfechtung'] as const) {
+      const { katalog } = BAUPLAENE[vorlage]
+
+      expect(katalog.fristTage, vorlage).not.toBeNull()
+      expect(katalog.unteraufgaben.some((schritt) => schritt.includes('Datum eintragen'))).toBe(
+        true,
+      )
+    }
   })
 })

@@ -8,6 +8,7 @@ import {
 } from '../../../services/kopplungService.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
+import { QrCode } from '../../../ui/QrCode/QrCode.tsx'
 import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import stile from './Beitreten.module.css'
 
@@ -39,6 +40,35 @@ const TEXTE: Record<Kopplungszweck, { titel: string; einleitung: string; erfolg:
   },
 }
 
+/**
+ * Ein QR-Code-Symbol, rein zur Kennzeichnung des Knopfs.
+ *
+ * `aria-hidden`, weil das gesprochene Label am Button selbst steht
+ * (`aria-label`): Ein Icon allein ist bei dieser Zielgruppe eine Vermutung,
+ * kein Wegweiser (§7, wie in `src/ui/Leiste/Symbole.tsx`).
+ */
+function SymbolQrCode() {
+  return (
+    <svg
+      width="1.5em"
+      height="1.5em"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <rect x="3.5" y="3.5" width="6" height="6" rx="1" />
+      <rect x="14.5" y="3.5" width="6" height="6" rx="1" />
+      <rect x="3.5" y="14.5" width="6" height="6" rx="1" />
+      <path d="M14.5 14.5h2.6M18.6 14.5h1.9M14.5 18.6h1.9M18.6 18.6h1.9M14.5 20.5h1.9M20.5 14.5v1.9M20.5 18.6v1.9" />
+    </svg>
+  )
+}
+
 /** "12:34 Uhr", oder nichts, wenn der Zeitstempel keiner ist. */
 function uhrzeit(zeitpunkt: string): string | null {
   const datum = new Date(zeitpunkt)
@@ -66,6 +96,15 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
    */
   const [abgelaufenerZeitpunkt, setzeAbgelaufenenZeitpunkt] = useState<string | null>(null)
   const abgelaufen = laeuftAbAm !== null && abgelaufenerZeitpunkt === laeuftAbAm
+
+  /*
+   * Der QR-Code ist zu, bis jemand ihn ausdrücklich anfordert (Punkt 5 der
+   * Kopplungs-Anforderungen). Er ersetzt das Vorlesen nicht, sondern bietet es
+   * nur als Alternative an, und ein Bildschirm, der ihn ungefragt zeigt, hat
+   * für jede Person, die den Code stattdessen am Telefon nennt, nur eine
+   * Fläche mehr auf dem Schirm.
+   */
+  const [qrOffen, setzeQrOffen] = useState(false)
 
   useEffect(() => {
     if (laeuftAbAm === null) {
@@ -167,6 +206,34 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
                   : `Er gilt bis ${uhrzeit(zustand.laeuftAbAm)} Uhr.`}
               </p>
             )}
+
+            {/*
+              Alternative zum Vorlesen: derselbe Code als QR-Code, zum
+              Scannen statt Abtippen. Zu, bis jemand ausdrücklich danach
+              fragt -- der Knopf trägt nur ein Symbol, das Label steht als
+              `aria-label` daran, sonst hörte eine blinde Person nur
+              "Schaltfläche" (§7).
+            */}
+            <div className={stile.qrKnopf}>
+              <Button
+                variante="sekundaer"
+                aria-expanded={qrOffen}
+                aria-label={qrOffen ? 'QR-Code verbergen' : 'QR-Code anzeigen'}
+                onClick={() => setzeQrOffen((vorher) => !vorher)}
+              >
+                <SymbolQrCode />
+              </Button>
+            </div>
+
+            {qrOffen ? (
+              <div className={stile.qrBereich}>
+                <QrCode wert={zustand.code} />
+                <p className={stile.hinweis}>
+                  Lassen Sie die andere Seite diesen QR-Code scannen, statt den Kopplungscode
+                  vorzulesen.
+                </p>
+              </div>
+            ) : null}
           </Card>
 
           <Card>
