@@ -23,6 +23,7 @@ import type {
 import type { Nachlassgericht } from '../types/gericht.ts'
 import type { Fragebaumergebnis, Katalogherkunft } from './aufgabenService'
 import { formatGerichtNotiz } from './gerichtService.ts'
+import type { Zugewiesene, Zuweisung } from './zuweisung.ts'
 
 const KNOTEN = new Map(FRAGEBAUM.map((knoten) => [knoten.id, knoten]))
 
@@ -260,6 +261,30 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
 }
 
 /**
+ * Der Bauplan für die private Seed-Aufgabe "Klären ob Sie Erbe sind",
+ * die auf den Fragebaum führt.
+ */
+export const SEED_BAUPLAN: Aufgabenbauplan = {
+  titel: 'Klären ob Sie Erbe sind',
+  beschreibung:
+    'Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch.',
+  katalog: {
+    aufgabeId: SEED_AUFGABE,
+    version: FRAGEBAUM_STAND,
+    fristTage: null,
+    fristAb: null,
+    zustaendigeStelle: '',
+    benoetigteDokumente: [],
+    unteraufgaben: [],
+    haengtAbVon: [],
+    hinweis:
+      'Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.',
+    kategorie: 'Erbe',
+    reihenfolge: 50,
+  },
+}
+
+/**
  * Die Beschreibung der Aufgabe, die an einem Ergebnis entsteht (ERBE_DESIGN.md
  * §7).
  *
@@ -337,24 +362,41 @@ export function notizAus(teile: {
 }
 
 /**
- * Setzt das abgeleitete "erledigt" der Seed-Aufgabe (ERBE_DESIGN.md §9).
+ * Setzt das abgeleitete "erledigt", den Status "privat" und die Zuweisung an die angemeldete Person
+ * für die Seed-Aufgabe "Klären ob Sie Erbe sind" (ERBE_DESIGN.md §9).
  *
- * Die Aufgabe ist geteilt, das Ergebnis des Fragebaums ist es nicht. Ein
- * gespeichertes Häkchen hakte sie deshalb für alle ab: Anna wäre fertig und
- * Bert, der den Baum nie gegangen ist, sähe seine Aufgabe erledigt.
- *
- * Abgeleitet und nirgends abgelegt, genau wie bei einer Aufgabe mit
- * Unteraufgaben (§7). Dass dieselbe geteilte Zeile jedem Mitglied etwas
- * anderes zeigt, ohne dass etwas divergiert, ist dieselbe Konstruktion, mit der
- * §8 die Fristen ab eigener Kenntnis löst.
+ * Die Aufgabe wird für jedes Mitglied privat ausgewertet und dem angemeldeten Benutzer zugewiesen,
+ * während das Ergebnis des Fragebaums privat bleibt.
  *
  * @param ergebnis das eigene Fragebaum-Ergebnis, oder `null`.
+ * @param ich die angemeldete Person, oder `null`.
  */
-export function mitAbgeleitetemHaken<T extends { erledigt: boolean; katalog: Katalogherkunft | null }>(
+export function mitAbgeleitetemHaken<
+  T extends {
+    erledigt: boolean
+    katalog: Katalogherkunft | null
+    privat?: boolean
+    assignee?: Zuweisung
+  },
+>(
   aufgaben: T[],
   ergebnis: Fragebaumergebnis | null,
-): T[] {
-  return aufgaben.map((aufgabe) =>
-    istSeedAufgabe(aufgabe.katalog) ? { ...aufgabe, erledigt: ergebnis !== null } : aufgabe,
-  )
+  ich?: Zugewiesene | null,
+): (T & { privat?: boolean; assignee?: Zuweisung })[] {
+  return aufgaben.map((aufgabe) => {
+    if (!istSeedAufgabe(aufgabe.katalog)) {
+      return aufgabe
+    }
+    return {
+      ...aufgabe,
+      erledigt: ergebnis !== null,
+      ...(ich && ich.userId !== ''
+        ? {
+            privat: true,
+            assignee: { typ: 'personen' as const, personen: [ich] },
+          }
+        : {}),
+    }
+  })
 }
+

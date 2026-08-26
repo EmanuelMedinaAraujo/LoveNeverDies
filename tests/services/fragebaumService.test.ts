@@ -13,6 +13,7 @@ import {
   statusText,
 } from '../../src/services/fragebaumService.ts'
 import type { Katalogherkunft } from '../../src/services/aufgabenService.ts'
+import { NIEMAND } from '../../src/services/zuweisung.ts'
 
 /**
  * Auswertung des Fragebaums (ERBE_DESIGN.md §6, §7).
@@ -283,7 +284,21 @@ describe('mitAbgeleitetemHaken (§9)', () => {
 
     expect(mitAbgeleitetemHaken([unveraendert], null)[0]).toBe(unveraendert)
   })
+
+  it('weist die Seed-Aufgabe der angemeldeten Person zu und markiert sie als privat', () => {
+    const ich = { userId: 'user_anna', name: 'Anna Müller' }
+    const [aufgabe] = mitAbgeleitetemHaken(
+      [{ erledigt: false, katalog: seed, privat: false, assignee: NIEMAND }],
+      null,
+      ich,
+    )
+
+    expect(aufgabe?.privat).toBe(true)
+    expect(aufgabe?.assignee).toEqual({ typ: 'personen', personen: [ich] })
+  })
 })
+
+
 
 /**
  * Was in einer Aufgabe aus dem Baum steht (ERBE_DESIGN.md §7).
