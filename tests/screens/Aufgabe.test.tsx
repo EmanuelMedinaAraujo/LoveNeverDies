@@ -396,11 +396,53 @@ describe('Aufgabendetail (§7, §8)', () => {
         /Hinweis: Bei persönlichem Erscheinen vereinbaren Sie vorher einen Termin beim Nachlassgericht./,
       ),
     ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'An welchem Tag haben Sie von dem Grund der möglichen Anfechtung erfahren? Ab diesem Tag laufen die 365 Tage dieser Frist. Das Datum sehen nur Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein anderes Ende.',
+      ),
+    ).toBeInTheDocument()
 
     // Alte Dokumenten- / Schritt-Texte sind gelöscht
     expect(
       screen.queryByText(/Datum eintragen, an dem Sie vom Anfechtungsgrund erfahren haben/),
     ).toBeNull()
+  })
+
+  it('nimmt das Anfechtungs-Kenntnisdatum auf der Testamentsanfechtung-Aufgabe entgegen', () => {
+    const setzeAnfechtungKenntnisAm = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({
+              titel: BAUPLAENE.anfechtung.titel,
+              beschreibung: BAUPLAENE.anfechtung.beschreibung,
+              katalog: BAUPLAENE.anfechtung.katalog,
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+        fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null, anfechtungKenntnisAm: null },
+        setzeAnfechtungKenntnisAm,
+      }),
+    )
+
+    zeigeDetail()
+
+    expect(
+      screen.getByText(
+        'An welchem Tag haben Sie von dem Grund der möglichen Anfechtung erfahren? Ab diesem Tag laufen die 365 Tage dieser Frist. Das Datum sehen nur Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein anderes Ende.',
+      ),
+    ).toBeVisible()
+
+    fireEvent.change(screen.getByLabelText('Tag Ihrer Kenntnis'), {
+      target: { value: '2026-05-12' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Kenntnisdatum speichern' }))
+
+    expect(setzeAnfechtungKenntnisAm).toHaveBeenCalledWith('2026-05-12')
   })
 
   it('zeigt bei der Ausschlagungs-Aufgabe die neuen einheitlichen Schritte und einklappbaren Abschnitte', () => {

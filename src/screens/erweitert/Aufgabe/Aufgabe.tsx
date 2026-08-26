@@ -1054,6 +1054,8 @@ function Kenntnisdatum({
   lage,
   gesperrt,
   aufSpeichern,
+  titel = 'Ihr Kenntnisdatum',
+  hinweis,
 }: {
   fristTage: number | null
   /** Das eingetragene Datum, oder `null`. */
@@ -1062,6 +1064,8 @@ function Kenntnisdatum({
   lage: Fristlage
   gesperrt: boolean
   aufSpeichern: (datum: string | null) => Promise<boolean>
+  titel?: string
+  hinweis?: string
 }) {
   const [eingabe, setzeEingabe] = useState(kenntnisAm ?? '')
   const [gespeichert, setzeGespeichert] = useState(kenntnisAm)
@@ -1079,13 +1083,12 @@ function Kenntnisdatum({
   }
 
   return (
-    <Card titel="Ihr Kenntnisdatum">
+    <Card titel={titel}>
       <p>
-        An welchem Tag haben Sie von der Erbschaft erfahren (bzw. an welchem Tag hat das
-        Nachlassgericht das Testament eröffnet)? Ab diesem Tag laufen
-        {fristTage === null ? ' die' : ` die ${fristTage}`} Tage dieser Frist. Das Datum sehen nur
-        Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein
-        anderes Ende.
+        {hinweis ??
+          `An welchem Tag haben Sie von der Erbschaft erfahren (bzw. an welchem Tag hat das Nachlassgericht das Testament eröffnet)? Ab diesem Tag laufen${
+            fristTage === null ? ' die' : ` die ${fristTage}`
+          } Tage dieser Frist. Das Datum sehen nur Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein anderes Ende.`}
       </p>
 
       {lage.art === 'datum' ? (
@@ -1160,6 +1163,8 @@ function Detail({
     gibFuerAlleFrei: () => void
     /** Legt das eigene Kenntnisdatum ab oder ändert es (§8, #12). */
     speichereKenntnisAm: (datum: string | null) => Promise<boolean>
+    /** Legt das eigene Anfechtungs-Kenntnisdatum ab oder ändert es (§8). */
+    speichereAnfechtungKenntnisAm: (datum: string | null) => Promise<boolean>
     /** Setzt die selbst gewählte Frist dieser Aufgabe, oder entfernt sie (§7). */
     speichereFrist: (datum: string | null) => Promise<boolean>
     /** Benennt eine selbst angelegte Aufgabe um (§7). */
@@ -1334,14 +1339,26 @@ function Detail({
         selbst angelegte ohne Rechtsgrundlage. Gesperrt ist sie wie alles
         andere, was die Aufgabe ändert: Bearbeiten darf, wem sie zugewiesen ist.
       */}
-      <Eigenefrist
-        fristAm={aufgabe.fristAm}
-        gesetzlich={gesetzlicheFrist}
-        laeuft={aktionen.gesperrt}
-        darfAendern={darfAendern}
-        zustaendig={zustaendig}
-        aufSpeichern={aktionen.speichereFrist}
-      />
+      {istAnfechtungAufgabe(aufgabe) ? (
+        <Kenntnisdatum
+          titel="Frist"
+          hinweis="An welchem Tag haben Sie von dem Grund der möglichen Anfechtung erfahren? Ab diesem Tag laufen die 365 Tage dieser Frist. Das Datum sehen nur Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein anderes Ende."
+          fristTage={aufgabe.katalog?.fristTage ?? 365}
+          kenntnisAm={fristbezug.anfechtungKenntnisAm}
+          lage={lage}
+          gesperrt={aktionen.gesperrt}
+          aufSpeichern={aktionen.speichereAnfechtungKenntnisAm}
+        />
+      ) : (
+        <Eigenefrist
+          fristAm={aufgabe.fristAm}
+          gesetzlich={gesetzlicheFrist}
+          laeuft={aktionen.gesperrt}
+          darfAendern={darfAendern}
+          zustaendig={zustaendig}
+          aufSpeichern={aktionen.speichereFrist}
+        />
+      )}
 
       {/*
         §8: Nur bei den Fristen, die an der eigenen Kenntnis hängen. Bei allen
@@ -1568,6 +1585,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     gibFuerAlleFrei,
     fristbezug,
     setzeKenntnisAm,
+    setzeAnfechtungKenntnisAm,
   } = useAufgaben(fall)
 
   const navigate = useNavigate()
@@ -1746,6 +1764,8 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
             fuehreAus(() => legeAn(titel, knoten.aufgabe.id, false, angaben)),
           gibFuerAlleFrei: () => void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe)),
           speichereKenntnisAm: (datum) => fuehreAus(() => setzeKenntnisAm(datum)),
+          speichereAnfechtungKenntnisAm: (datum) =>
+            fuehreAus(() => setzeAnfechtungKenntnisAm(datum)),
           speichereFrist: (datum) =>
             fuehreAus(() => schreibe(knoten.aufgabe, { fristAm: datum })),
           speichereTitel: (titel) => fuehreAus(() => schreibe(knoten.aufgabe, { titel })),
