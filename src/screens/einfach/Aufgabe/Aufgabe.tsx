@@ -33,6 +33,8 @@ import {
   GerichtNachschlagen,
   istGerichtStelle,
 } from '../../shared/Gericht/GerichtNachschlagen.tsx'
+import { aktualisiereNotizMitGericht } from '../../../services/gerichtService.ts'
+import type { Nachlassgericht } from '../../../types/gericht.ts'
 import { Dokumente } from '../../shared/Dokumente/Dokumente.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
@@ -117,7 +119,17 @@ function ZumFragebaum() {
  * sich wie eine Rechtsberatung, und die gibt diese App nicht. Was bleibt, ist
  * das, wonach jemand handelt — Frist, Stelle, Dokumente, Hinweis.
  */
-function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
+function Angaben({
+  aufgabe,
+  lage,
+  aufGerichtGefunden,
+  gesperrt,
+}: {
+  aufgabe: Aufgabendatensatz
+  lage: Fristlage
+  aufGerichtGefunden?: (gericht: Nachlassgericht, plz: string) => Promise<void>
+  gesperrt?: boolean
+}) {
   const katalog = aufgabe.katalog
 
   if (katalog === null) {
@@ -150,7 +162,13 @@ function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlag
           <Angabe was="Dorthin geht es">
             <div>
               <span>{katalog.zustaendigeStelle}</span>
-              {istGerichtStelle(katalog.zustaendigeStelle) ? <GerichtNachschlagen /> : null}
+              {istGerichtStelle(katalog.zustaendigeStelle) ? (
+                <GerichtNachschlagen
+                  initialNotiz={aufgabe.notizen}
+                  aufGerichtGefunden={aufGerichtGefunden}
+                  gesperrt={gesperrt}
+                />
+              ) : null}
             </div>
           </Angabe>
         )}
@@ -442,6 +460,12 @@ function Detail({
     }
   }
 
+  async function speichereGerichtNotiz(gericht: Nachlassgericht, plz: string) {
+    const neueNotizen = aktualisiereNotizMitGericht(notizen, gericht, plz)
+    setzeNotizen(neueNotizen)
+    await aktionen.schreibeNotizen(neueNotizen)
+  }
+
   /*
    * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Gesperrt sind das
    * Häkchen, die Notizen, neue Unteraufgaben und das Löschen, nicht das Lesen
@@ -527,7 +551,12 @@ function Detail({
       */}
       {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
 
-      <Angaben aufgabe={aufgabe} lage={lage} />
+      <Angaben
+        aufgabe={aufgabe}
+        lage={lage}
+        aufGerichtGefunden={speichereGerichtNotiz}
+        gesperrt={aktionen.gesperrt || !darfAendern}
+      />
 
       {/*
         §8: Nur bei den Fristen, die an der eigenen Kenntnis hängen. Bei allen

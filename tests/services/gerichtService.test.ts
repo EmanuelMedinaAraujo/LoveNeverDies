@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  aktualisiereNotizMitGericht,
+  extrahierePlzAusNotiz,
   findeNachlassgericht,
   formatGerichtNotiz,
 } from '../../src/services/gerichtService.ts'
@@ -90,4 +92,77 @@ describe('gerichtService', () => {
       expect(notiz).toContain('Internet: https://amtsgericht-heilbronn.justiz-bw.de')
     })
   })
+
+  describe('extrahierePlzAusNotiz', () => {
+    it('extrahiert PLZ aus formatierter Gerichtsnotiz', () => {
+      const notiz = 'Zuständiges Nachlassgericht (PLZ 74199):\nAmtsgericht Heilbronn'
+      expect(extrahierePlzAusNotiz(notiz)).toBe('74199')
+    })
+
+    it('extrahiert PLZ aus Wohnort-Angabe', () => {
+      expect(extrahierePlzAusNotiz('Letzter Wohnort (PLZ): 80331')).toBe('80331')
+      expect(extrahierePlzAusNotiz('Letzter Wohnort (PLZ) 01067 → Amtsgericht Dresden')).toBe('01067')
+    })
+
+    it('gibt null zurück, wenn keine PLZ in den Notizen vorhanden ist', () => {
+      expect(extrahierePlzAusNotiz('')).toBeNull()
+      expect(extrahierePlzAusNotiz('Einfache Notiz ohne Postleitzahl')).toBeNull()
+    })
+  })
+
+  describe('aktualisiereNotizMitGericht', () => {
+    const gerichtHeilbronn = {
+      id: 1,
+      name: 'Amtsgericht Heilbronn',
+      lieferanschrift: 'Knorrstr. 1, 74074 Heilbronn',
+      postanschrift: null,
+      telefon: '07131 64-1',
+      fax: null,
+      internet: null,
+      email: null,
+    }
+
+    const gerichtMuenchen = {
+      id: 2,
+      name: 'Amtsgericht München',
+      lieferanschrift: 'Pacellistraße 5, 80333 München',
+      postanschrift: null,
+      telefon: '089 5597-01',
+      fax: null,
+      internet: null,
+      email: null,
+    }
+
+    it('erstellt neue Notiz bei zuvor leerer Notiz', () => {
+      const notiz = aktualisiereNotizMitGericht('', gerichtHeilbronn, '74199')
+      expect(notiz).toContain('Zuständiges Nachlassgericht (PLZ 74199):')
+      expect(notiz).toContain('Amtsgericht Heilbronn')
+    })
+
+    it('ersetzt bestehenden Gerichtsblock und behält weitere Abschnitte', () => {
+      const alt = [
+        'Zuständiges Nachlassgericht (PLZ 74199):',
+        'Amtsgericht Heilbronn',
+        'Lieferanschrift: Knorrstr. 1, 74074 Heilbronn',
+        '',
+        'Vom Anfechtungsgrund erfahren am: 2026-05-12',
+        'Die Frist beträgt ein Jahr ab diesem Tag.',
+      ].join('\n')
+
+      const neu = aktualisiereNotizMitGericht(alt, gerichtMuenchen, '80331')
+      expect(neu).toContain('Zuständiges Nachlassgericht (PLZ 80331):')
+      expect(neu).toContain('Amtsgericht München')
+      expect(neu).not.toContain('74199')
+      expect(neu).not.toContain('Amtsgericht Heilbronn')
+      expect(neu).toContain('Vom Anfechtungsgrund erfahren am: 2026-05-12')
+    })
+
+    it('fügt Gerichtsangabe vor bestehenden manuellen Notizen ein', () => {
+      const alt = 'Dokumente liegen im Schrank bei den Eltern.'
+      const neu = aktualisiereNotizMitGericht(alt, gerichtHeilbronn, '74199')
+      expect(neu).toContain('Zuständiges Nachlassgericht (PLZ 74199):')
+      expect(neu).toContain('Dokumente liegen im Schrank bei den Eltern.')
+    })
+  })
 })
+
