@@ -301,19 +301,48 @@ describe('Aufgabendetail (§7, §8)', () => {
 
     zeigeDetail()
 
-    // Neue Verfahrensinformationen in "Das gilt dafür"
-    expect(screen.getByText('Wie beantragen Sie einen Erbschein?')).toBeVisible()
-    expect(screen.getByText('Beim Notar oder beim Nachlassgericht')).toBeVisible()
+    // Zuständige Stelle als Titel der Card, kein "Das gilt dafür"
+    expect(screen.getByRole('heading', { name: 'Zuständige Stelle' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
+
+    // Neue Verfahrensinformationen
+    expect(screen.getByText('Wie beantrage ich einen Erbschein?')).toBeVisible()
+    expect(screen.getByText('Zwei Möglichkeiten:')).toBeVisible()
+    expect(screen.getByText('Über ein Notariat:')).toBeVisible()
+    expect(screen.getByText('Über ein Notariat:')).toHaveClass(/gruen/)
+    expect(screen.getByText('telefonisch oder online Termin vereinbaren')).toBeVisible()
+    expect(screen.getByText('Antrag und notwendigen Dokumente mitbringen')).toBeVisible()
     expect(
       screen.getByText(
-        'Anrufen oder online Termin vereinbaren - die Stellen erklären Ihnen die weiteren Schritte',
+        'der Notar nimmt die eidesstattliche Versicherung entgegen und leitet den Antrag an das Nachlassgericht weiter',
       ),
     ).toBeVisible()
+    expect(screen.getAllByText('das Nachlassgericht wird sich bei Ihnen melden')).toHaveLength(2)
+
+    expect(screen.getByText('Über das Nachlassgericht:')).toBeVisible()
+    expect(screen.getByText('Über das Nachlassgericht:')).toHaveClass(/gruen/)
+    expect(screen.getByText('Termin telefonisch vereinbaren')).toBeVisible()
+    expect(
+      screen.getByText(
+        'den schriftlichen Antrag und die notwendigen Dokumente zum persönlichen Termin mitbringen',
+      ),
+    ).toBeVisible()
+    expect(
+      screen.getByText(
+        'beim Termin werden Sie eine eidesstattliche Versicherung abgeben, welche bestätigt, dass der Inhalt der oben genannten Dokumente der Wahrheit entspricht',
+      ),
+    ).toBeVisible()
+
     expect(screen.getByText('Notar oder Nachlassgericht:')).toBeVisible()
     expect(
-      screen.getByText(/Sie erhalten schneller und innerhalb der Frist einen Termin/),
+      screen.getByText(/Sie erhalten schneller einen Termin/),
     ).toBeVisible()
+    expect(screen.queryByText(/und innerhalb der Frist/)).toBeNull()
     expect(screen.getByText(/Ihnen fallen keine zusätzlichen Kosten an/)).toBeVisible()
+
+    // Alte Texte sind nicht mehr vorhanden
+    expect(screen.queryByText('Wie beantragen Sie einen Erbschein?')).toBeNull()
+    expect(screen.queryByText('Beim Notar oder beim Nachlassgericht')).toBeNull()
 
     // Einklappbare Abschnitte für die anderen Informationen
     expect(screen.getByText('1. Was ist ein Erbschein?')).toBeVisible()

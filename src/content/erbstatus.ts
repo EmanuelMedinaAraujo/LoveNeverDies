@@ -57,20 +57,39 @@ export const ERBSCHEIN_FRAGE = 'Möchten Sie einen Erbschein beantragen?'
  * "Ja" gesagt hat, braucht genau sie als Nächstes.
  */
 export const ERBSCHEIN_ANTRAG: Infotext = {
-  titel: 'Wie beantragen Sie einen Erbschein?',
+  titel: 'Wie beantrage ich einen Erbschein?',
   abschnitte: [
+    {
+      art: 'absatz',
+      text: 'Zwei Möglichkeiten:\n[gruen:Über ein Notariat:]',
+    },
     {
       art: 'punkte',
       punkte: [
-        'Beim Notar oder beim Nachlassgericht',
-        'Anrufen oder online Termin vereinbaren - die Stellen erklären Ihnen die weiteren Schritte',
+        'telefonisch oder online Termin vereinbaren',
+        'Antrag und notwendigen Dokumente mitbringen',
+        'der Notar nimmt die eidesstattliche Versicherung entgegen und leitet den Antrag an das Nachlassgericht weiter',
+        'das Nachlassgericht wird sich bei Ihnen melden',
+      ],
+    },
+    {
+      art: 'absatz',
+      text: '[gruen:Über das Nachlassgericht:]',
+    },
+    {
+      art: 'punkte',
+      punkte: [
+        'Termin telefonisch vereinbaren',
+        'den schriftlichen Antrag und die notwendigen Dokumente zum persönlichen Termin mitbringen',
+        'beim Termin werden Sie eine eidesstattliche Versicherung abgeben, welche bestätigt, dass der Inhalt der oben genannten Dokumente der Wahrheit entspricht',
+        'das Nachlassgericht wird sich bei Ihnen melden',
       ],
     },
     { art: 'zwischentitel', text: 'Notar oder Nachlassgericht:' },
     {
       art: 'punkte',
       punkte: [
-        'Notar: Sie erhalten schneller und innerhalb der Frist einen Termin',
+        'Notar: Sie erhalten schneller einen Termin',
         'Nachlassgericht: Ihnen fallen keine zusätzlichen Kosten an',
       ],
     },
