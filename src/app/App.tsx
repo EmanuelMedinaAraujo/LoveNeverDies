@@ -165,8 +165,13 @@ export function App() {
           <Rahmen>{einfach ? <AlleEinfach /> : <Alle />}</Rahmen>
         }
       />
-      {/* Das ganzseitige Aufgabendetail (§7). */}
-      <Route path="/aufgabe/:id" element={einfach ? <AufgabeEinfach /> : <Aufgabe />} />
+      {/* Das Aufgabendetail (§7). */}
+      <Route
+        path="/aufgabe/:id"
+        element={
+          <Rahmen>{einfach ? <AufgabeEinfach /> : <Aufgabe />}</Rahmen>
+        }
+      />
       {/*
         Der Fragebaum steht ausserhalb des Rahmens (ERBE_DESIGN.md §3): Er ist
         ein linearer Ablauf mit genau einem nächsten Schritt, wie Todesfall,
