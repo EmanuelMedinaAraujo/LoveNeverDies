@@ -504,6 +504,58 @@ function Angaben({
     )
   }
 
+  if (istErbscheinAufgabe(aufgabe)) {
+    return (
+      <Card titel="Zuständige Stelle">
+        <div className={stile.angaben}>
+          {katalog.zustaendigeStelle === '' ? null : (
+            <div>
+              <span className={stile.zustaendigeStelle}>{katalog.zustaendigeStelle}</span>
+              {istGerichtStelle(katalog.zustaendigeStelle) ? (
+                <GerichtNachschlagen
+                  initialNotiz={aufgabe.notizen}
+                  aufGerichtGefunden={aufGerichtGefunden}
+                  gesperrt={gesperrt}
+                />
+              ) : null}
+            </div>
+          )}
+          <div className={stile.prozedurText}>
+            <p style={{ margin: 0 }}>
+              <strong>Wie beantrage ich einen Erbschein?</strong>
+            </p>
+            <p style={{ margin: 'var(--dichte-abstand-klein) 0 0 0' }}>
+              Zwei Möglichkeiten:
+            </p>
+            <p className={stile.gruen} style={{ margin: 'var(--dichte-abstand-klein) 0 0 0' }}>
+              Über ein Notariat:
+            </p>
+            <ul className={stile.punkte}>
+              <li>telefonisch oder online Termin vereinbaren</li>
+              <li>Antrag und notwendigen Dokumente mitbringen</li>
+              <li>der Notar nimmt die eidesstattliche Versicherung entgegen und leitet den Antrag an das Nachlassgericht weiter</li>
+              <li>das Nachlassgericht wird sich bei Ihnen melden</li>
+            </ul>
+            <p className={stile.gruen} style={{ margin: 'var(--dichte-abstand-klein) 0 0 0' }}>
+              Über das Nachlassgericht:
+            </p>
+            <ul className={stile.punkte}>
+              <li>Termin telefonisch vereinbaren</li>
+              <li>den schriftlichen Antrag und die notwendigen Dokumente zum persönlichen Termin mitbringen</li>
+              <li>beim Termin werden Sie eine eidesstattliche Versicherung abgeben, welche bestätigt, dass der Inhalt der oben genannten Dokumente der Wahrheit entspricht</li>
+              <li>das Nachlassgericht wird sich bei Ihnen melden</li>
+            </ul>
+            <p style={{ margin: 'var(--dichte-abstand-klein) 0 0 0' }}>
+              <strong>Notar oder Nachlassgericht:</strong><br />
+              <strong>Notar:</strong> Sie erhalten schneller einen Termin<br />
+              <strong>Nachlassgericht:</strong> Ihnen fallen keine zusätzlichen Kosten an
+            </p>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   const schritte = katalog.unteraufgaben.filter((eintrag) => eintrag.trim() !== '')
 
   return (
@@ -557,22 +609,7 @@ function Angaben({
           </Angabe>
         )}
 
-        {istErbscheinAufgabe(aufgabe) ? (
-          <>
-            <Angabe was="Wie beantragen Sie einen Erbschein?">
-              <ul className={stile.punkte}>
-                <li>Beim Notar oder beim Nachlassgericht</li>
-                <li>Anrufen oder online Termin vereinbaren - die Stellen erklären Ihnen die weiteren Schritte</li>
-              </ul>
-            </Angabe>
-            <Angabe was="Notar oder Nachlassgericht:">
-              <p className={stile.prozedurText}>
-                <strong>Notar:</strong> Sie erhalten schneller und innerhalb der Frist einen Termin<br />
-                <strong>Nachlassgericht:</strong> Ihnen fallen keine zusätzlichen Kosten an
-              </p>
-            </Angabe>
-          </>
-        ) : istAnfechtungAufgabe(aufgabe) || istAusschlagungAufgabe(aufgabe) ? null : (
+        {istAnfechtungAufgabe(aufgabe) || istAusschlagungAufgabe(aufgabe) || istErbscheinAufgabe(aufgabe) ? null : (
           <>
             {dokumente.length === 0 ? null : (
               <Angabe was="Benötigte Dokumente">
