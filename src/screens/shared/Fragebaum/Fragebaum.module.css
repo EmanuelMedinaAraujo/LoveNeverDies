@@ -132,6 +132,24 @@
   width: 100%;
 }
 
+/*
+ * Eingabe und Knopf der Gerichtssuche in einer Zeile (§7). Umbruch statt
+ * Ueberlauf, sobald die Schrift gross gestellt ist.
+ */
+.sucheZeile {
+  display: flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.sucheZeile .eingabe {
+  flex: 1;
+  min-width: 8rem;
+  width: auto;
+}
+
 .eingabe {
   width: 100%;
   padding: var(--dichte-abstand-klein);
