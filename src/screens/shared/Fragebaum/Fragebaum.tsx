@@ -714,9 +714,12 @@ function Ergebnisseite({
 }
 
 function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
+  const navigate = useNavigate()
   const location = useLocation()
   const pfad = (location.state as Pfadstatus)?.pfad
   const knoten = knotenMit(knotenId)
+  const [abbrechenOffen, setzeAbbrechenOffen] = useState(false)
+  const dialogRef = useRef<HTMLDivElement | null>(null)
 
   /*
    * Der Sync-Stream hängt hier und nicht an der Ergebnisseite (§6).
@@ -732,6 +735,21 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
    * denselben einen Stream und ist bis zur letzten Antwort längst warm.
    */
   const aufgaben = useAufgaben(fall)
+
+  useEffect(() => {
+    if (!abbrechenOffen) {
+      return
+    }
+
+    function onKeyDown(ereignis: KeyboardEvent) {
+      if (ereignis.key === 'Escape') {
+        setzeAbbrechenOffen(false)
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [abbrechenOffen])
 
   /*
    * Ohne Pfad im `state` gibt es keinen Durchlauf, zu dem diese Seite gehört:
@@ -750,13 +768,61 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
         gar keiner, und der Screen liegt nicht im `Rahmen` -- wer hier landete,
         kam nur mit dem Browser wieder heraus.
       */}
-      <Zurueck ziel="/erbe" />
+      <div className={stile.navigation}>
+        <Zurueck ziel="/erbe" />
+        <Button
+          variante="text"
+          className={stile.abbrechenKnopf}
+          onClick={() => setzeAbbrechenOffen(true)}
+        >
+          Abbrechen
+        </Button>
+      </div>
 
       {knoten.art === 'frage' ? (
         <Frageseite knoten={knoten} fall={fall} pfad={pfad} aufgaben={aufgaben} />
       ) : (
         <Ergebnisseite knoten={knoten} fall={fall} pfad={pfad} aufgaben={aufgaben} />
       )}
+
+      {abbrechenOffen ? (
+        <div
+          className={stile.dialogHintergrund}
+          onClick={(ereignis) => {
+            if (ereignis.target === ereignis.currentTarget) {
+              setzeAbbrechenOffen(false)
+            }
+          }}
+        >
+          <div
+            ref={dialogRef}
+            className={stile.dialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="abbrechen-dialog-titel"
+          >
+            <h2 id="abbrechen-dialog-titel" className={stile.dialogTitel}>
+              Fragebaum abbrechen?
+            </h2>
+            <p className={stile.dialogText}>
+              Möchten Sie die Befragung wirklich abbrechen? Ihr bisheriger Fortschritt wird nicht
+              gespeichert.
+            </p>
+            <div className={stile.dialogAktionen}>
+              <Button volleBreite onClick={() => navigate('/erbe')}>
+                Ja, abbrechen
+              </Button>
+              <Button
+                variante="sekundaer"
+                volleBreite
+                onClick={() => setzeAbbrechenOffen(false)}
+              >
+                Nein, weiter ausfüllen
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   )
 }

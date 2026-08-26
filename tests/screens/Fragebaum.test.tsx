@@ -653,3 +653,73 @@ describe('Einfache Ansicht (§4)', () => {
     expect(screen.getByText(/Über ein Notariat/)).toBeInTheDocument()
   })
 })
+
+describe('Abbrechen-Button und Bestätigungs-Popup', () => {
+  it('zeigt auf einer Frageseite einen Abbrechen-Button', () => {
+    zeige('/erbe/fragebaum')
+
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeInTheDocument()
+  })
+
+  it('zeigt auf einer Ergebnisseite einen Abbrechen-Button', () => {
+    zeige('/erbe/fragebaum/n6', { pfad: ERBE_PFAD })
+
+    expect(screen.getByRole('button', { name: 'Abbrechen' })).toBeInTheDocument()
+  })
+
+  it('öffnet bei Klick auf "Abbrechen" das Bestätigungs-Popup', async () => {
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await nutzer.click(screen.getByRole('button', { name: 'Abbrechen' }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Fragebaum abbrechen?' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/Möchten Sie die Befragung wirklich abbrechen/),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ja, abbrechen' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Nein, weiter ausfüllen' }),
+    ).toBeInTheDocument()
+  })
+
+  it('schließt das Popup bei Klick auf "Nein, weiter ausfüllen" und bleibt auf der aktuellen Seite', async () => {
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum')
+
+    await nutzer.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    await nutzer.click(screen.getByRole('button', { name: 'Nein, weiter ausfüllen' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sind Sie Erbe?' })).toBeInTheDocument()
+  })
+
+  it('navigiert bei Klick auf "Ja, abbrechen" zur Erbe-Seite', async () => {
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum')
+
+    await nutzer.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Ja, abbrechen' }))
+
+    expect(screen.getByText('Erbe-Seite')).toBeInTheDocument()
+  })
+
+  it('schließt das Popup beim Drücken der Escape-Taste', async () => {
+    const nutzer = userEvent.setup()
+    zeige('/erbe/fragebaum')
+
+    await nutzer.click(screen.getByRole('button', { name: 'Abbrechen' }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+
+    await nutzer.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+})
+
