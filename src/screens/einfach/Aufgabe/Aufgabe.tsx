@@ -669,7 +669,7 @@ function Detail({
       </Abschnitt>
 
       {/*
-        §7: "Dokument einfach abfotografieren": Die Sterbeurkunde gehört an die
+        §7: "Dokument abfotografieren": Die Sterbeurkunde gehört an die
         Aufgabe, für die sie gebraucht wird.
       */}
       <Dokumente

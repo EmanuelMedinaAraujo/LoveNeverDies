@@ -1,7 +1,7 @@
 /**
  * Dokumente aufnehmen, ansehen und löschen (DESIGN.md §7, §3.1, §5).
  *
- * §7: "Dokument einfach abfotografieren". Man hält die Sterbeurkunde vor die
+ * §7: "Dokument abfotografieren". Man hält die Sterbeurkunde vor die
  * Kamera, sie landet verschlüsselt am Aufgabendetail und lässt sich später
  * wieder ansehen.
  *
