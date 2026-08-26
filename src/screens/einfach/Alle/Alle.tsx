@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react'
-import { Navigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -93,12 +93,15 @@ function Erinnerungshinweis({ erinnerungen }: { erinnerungen: Erinnerungsdaten }
 function NeueAufgabe({
   gesperrt,
   aufAnlegen,
+  anfangsOffen = false,
 }: {
   gesperrt: boolean
   /** `false`, wenn nichts gespeichert wurde. Das Formular bleibt dann offen. */
   aufAnlegen: (titel: string, nurFuerMich: boolean) => Promise<boolean>
+  /** Formular beim ersten Rendern schon öffnen (z.B. von `?neu=1`). */
+  anfangsOffen?: boolean
 }) {
-  const [offen, setzeOffen] = useState(false)
+  const [offen, setzeOffen] = useState(anfangsOffen)
   const [titel, setzeTitel] = useState('')
   const [nurFuerMich, setzeNurFuerMich] = useState(false)
 
@@ -251,11 +254,27 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
     )
   }
 
+  /*
+   * Der Query-Parameter `?neu=1` öffnet das Anlege-Formular beim Laden der
+   * Seite — so springt der Nachlass-Screen hierher und öffnet das Formular
+   * in einem Schritt. Der Parameter wird sofort aus der URL entfernt.
+   */
+  const [suchParams, setzeSuchParams] = useSearchParams()
+  const [anfangsOffen] = useState(() => suchParams.get('neu') === '1')
+
+  useEffect(() => {
+    if (suchParams.has('neu')) {
+      suchParams.delete('neu')
+      setzeSuchParams(suchParams, { replace: true })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <>
       <NeueAufgabe
         gesperrt={laeuft}
         aufAnlegen={(titel, nurFuerMich) => fuehreAus(() => legeAn(titel, null, nurFuerMich))}
+        anfangsOffen={anfangsOffen}
       />
 
       {fehler === null ? null : (

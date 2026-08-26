@@ -68,6 +68,12 @@ describe('Alle (einfach)', () => {
     expect(screen.getByLabelText('Was ist zu tun?')).toBeVisible()
   })
 
+  it('öffnet das Formular direkt beim Laden, wenn ?neu=1 übergeben wird', () => {
+    rendereMitProvidern(<Alle />, { pfad: '/alle?neu=1' })
+
+    expect(screen.getByLabelText('Was ist zu tun?')).toBeVisible()
+  })
+
   it('legt eine Aufgabe an und schließt danach wieder zu', async () => {
     const daten = mitAufgaben(useAufgaben, [aufgabe()])
 
