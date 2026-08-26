@@ -20,7 +20,7 @@
  * zu legen ergäbe für zwei verschiedene Fristen dasselbe Datum und damit ein
  * Fristende, das für die eine oder die andere falsch ist.
  */
-export type Fristanker = 'sterbedatum' | 'kenntnis' | 'anfechtungskenntnis'
+export type Fristanker = 'sterbedatum' | 'kenntnis' | 'anfechtungskenntnis' | 'unverzueglich'
 
 /**
  * Eine Katalogaufgabe, so wie sie eingecheckt ist.

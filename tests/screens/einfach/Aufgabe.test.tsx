@@ -116,6 +116,22 @@ describe('Aufgabe (einfach)', () => {
     )
   })
 
+  it('zeigt bei einer unverzüglichen Frist den Fristtext und die Gerichtsermittlung', () => {
+    mitDetail([
+      aufgabe({
+        katalog: herkunft({
+          fristTage: null,
+          fristAb: 'unverzueglich',
+          zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
+        }),
+      }),
+    ])
+
+    expect(screen.getByText('Frist: unverzüglich')).toBeVisible()
+    expect(screen.getByText('unverzüglich (ohne schuldhaftes Zögern)')).toBeVisible()
+    expect(screen.getByText('Nachlassgericht (Amtsgericht)')).toBeVisible()
+  })
+
   it('hakt die Aufgabe ab', async () => {
     const daten = mitDetail([aufgabe({ katalog: herkunft() })])
 

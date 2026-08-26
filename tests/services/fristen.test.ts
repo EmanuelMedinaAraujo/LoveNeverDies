@@ -94,11 +94,19 @@ describe('fristlage (§8)', () => {
   })
 
   it('erfindet auch dann keine, wenn nur eines der beiden Felder fehlt', () => {
-    expect(fristlage(herkunft({ fristTage: null }), bezug('2026-05-12'), '2026-05-12')).toEqual({
+    expect(fristlage(herkunft({ fristTage: null, fristAb: 'sterbedatum' }), bezug('2026-05-12'), '2026-05-12')).toEqual({
       art: 'keine',
     })
     expect(fristlage(herkunft({ fristAb: null }), bezug('2026-05-12'), '2026-05-12')).toEqual({
       art: 'keine',
+    })
+  })
+
+  it('gibt bei fristAb unverzueglich die Lage unverzueglich', () => {
+    const testament = herkunft({ fristTage: null, fristAb: 'unverzueglich' })
+
+    expect(fristlage(testament, bezug('2026-05-12'), '2026-05-12')).toEqual({
+      art: 'unverzueglich',
     })
   })
 
@@ -305,6 +313,10 @@ describe('fristText (§7)', () => {
     expect(fristText({ art: 'ab-kenntnis' })).toBe('Frist ab Ihrer Kenntnis')
   })
 
+  it('sagt bei einer Frist unverzüglich, dass sie unverzüglich ist', () => {
+    expect(fristText({ art: 'unverzueglich' })).toBe('unverzüglich')
+  })
+
   it('schweigt, wo es keine Frist gibt', () => {
     expect(fristText({ art: 'keine' })).toBeNull()
   })
@@ -313,13 +325,16 @@ describe('fristText (§7)', () => {
 describe('vergleicheNachFrist (§7)', () => {
   const frueh: Fristlage = { art: 'datum', ende: '2026-05-15', restTage: 3 }
   const spaet: Fristlage = { art: 'datum', ende: '2026-06-23', restTage: 42 }
+  const unverzueglich: Fristlage = { art: 'unverzueglich' }
 
   it('stellt die knappste Frist nach vorn', () => {
+    expect(vergleicheNachFrist(unverzueglich, frueh)).toBeLessThan(0)
     expect(vergleicheNachFrist(frueh, spaet)).toBeLessThan(0)
     expect(vergleicheNachFrist(spaet, frueh)).toBeGreaterThan(0)
   })
 
   it('stellt Aufgaben mit Frist vor Aufgaben ohne', () => {
+    expect(vergleicheNachFrist(unverzueglich, { art: 'keine' })).toBeLessThan(0)
     expect(vergleicheNachFrist(spaet, { art: 'keine' })).toBeLessThan(0)
     expect(vergleicheNachFrist({ art: 'ab-kenntnis' }, { art: 'keine' })).toBeLessThan(0)
     expect(vergleicheNachFrist(spaet, { art: 'ab-kenntnis' })).toBeLessThan(0)
@@ -327,6 +342,7 @@ describe('vergleicheNachFrist (§7)', () => {
 
   it('lässt Gleiches gleich und damit die bisherige Reihenfolge stehen', () => {
     expect(vergleicheNachFrist({ art: 'keine' }, { art: 'keine' })).toBe(0)
+    expect(vergleicheNachFrist(unverzueglich, { art: 'unverzueglich' })).toBe(0)
     expect(vergleicheNachFrist(frueh, { ...frueh })).toBe(0)
   })
 })

@@ -9,6 +9,7 @@ import type { Aufgabe as Aufgabendatensatz, Katalogherkunft } from '../../src/se
 import { baueBaum } from '../../src/services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 import { BENUTZER, rendereMitProvidern } from './harness.tsx'
+import { BAUPLAENE } from '../../src/services/fragebaumService.ts'
 import { ALLE, NIEMAND, personen } from '../../src/services/zuweisung.ts'
 
 const useCase = vi.fn<() => Falldaten>()
@@ -267,6 +268,32 @@ describe('Aufgabendetail (§7, §8)', () => {
     expect(screen.getByText('Frist ab Ihrer Kenntnis')).toBeVisible()
     expect(screen.getByText(/Diese Frist läuft ab/)).toBeVisible()
     expect(screen.queryByText(/endet am/)).toBeNull()
+  })
+
+  it('zeigt bei der Testament-Aufgabe die Frist unverzüglich und die Ermittlung des Gerichts', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({
+              titel: BAUPLAENE.testament.titel,
+              beschreibung: BAUPLAENE.testament.beschreibung,
+              katalog: BAUPLAENE.testament.katalog,
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    expect(screen.getByText('unverzüglich')).toBeVisible()
+    expect(screen.getByText('unverzüglich (ohne schuldhaftes Zögern)')).toBeVisible()
+    expect(screen.getByText('Nachlassgericht (Amtsgericht)')).toBeVisible()
+    expect(screen.getByLabelText('Postleitzahl für Gerichtssuche')).toBeVisible()
   })
 
   it('zeigt zu einer selbst angelegten Aufgabe keine erfundenen Rechtsangaben', () => {

@@ -386,7 +386,8 @@ function herkunftAus(wert: unknown): Katalogherkunft | null {
     fristAb:
       felder.fristAb === 'sterbedatum' ||
       felder.fristAb === 'kenntnis' ||
-      felder.fristAb === 'anfechtungskenntnis'
+      felder.fristAb === 'anfechtungskenntnis' ||
+      felder.fristAb === 'unverzueglich'
         ? felder.fristAb
         : null,
     zustaendigeStelle: alsText(felder.zustaendigeStelle),
