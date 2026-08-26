@@ -76,9 +76,8 @@ export type Fragebaumknoten = {
   /**
    * Ein Hinweis unter der Frage.
    *
-   * Steht heute an genau einer Frage, "Wollen Sie das Erbe haben?": Im Export
-   * war der Hinweis eine eigene Seite hinter einer Kette mit nur einer Antwort
-   * (ERBE_DESIGN.md §2).
+   * Steht an "Wollen Sie das Erbe haben?" (Schulden-Hinweis) und an
+   * "Ich bin {person}s …" (Rechtlicher Hinweis/Disclaimer).
    */
   hinweis?: string
   /** Ein `ℹ`-Knopf im Kopf der Seite, der eine Erläuterung aufklappt. */

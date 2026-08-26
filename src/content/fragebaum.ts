@@ -543,6 +543,8 @@ export const FRAGEBAUM: Fragebaumknoten[] = [
     id: 'n65',
     art: 'frage',
     text: 'Ich bin {person}s …',
+    hinweis:
+      'Die Ergebnisse der folgenden Fragen dienen ausschließlich der allgemeinen Information und Orientierung. Sie stellen keine Rechtsberatung dar und ersetzen nicht die individuelle Prüfung durch einen Anwalt oder Notar.',
     antworten: [
       { text: 'Ehegatte oder eingetragener Lebenspartner/in', ziel: 'n66' },
       { text: 'Kind', ziel: 'n67' },

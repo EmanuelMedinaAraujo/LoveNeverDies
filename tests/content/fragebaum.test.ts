@@ -269,4 +269,14 @@ describe('Fragebaum-Inhalt (ERBE_DESIGN.md §2)', () => {
       expect(knoten.ausschlagungshinweis, knoten.id).toBe(true)
     }
   })
+
+  it('zeigt den rechtlichen Hinweis vor den Verwandtschaftsfragen an "Ich bin {person}s …"', () => {
+    const knoten = FRAGEBAUM.find((k) => k.id === 'n65')
+
+    expect(knoten).toBeDefined()
+    expect(knoten?.text).toBe('Ich bin {person}s …')
+    expect(knoten?.hinweis).toBe(
+      'Die Ergebnisse der folgenden Fragen dienen ausschließlich der allgemeinen Information und Orientierung. Sie stellen keine Rechtsberatung dar und ersetzen nicht die individuelle Prüfung durch einen Anwalt oder Notar.',
+    )
+  })
 })
