@@ -47,11 +47,11 @@
  * und kein zweiter Ton dafür erfunden werden muss.
  */
 .hinweisKasten {
-  background: color-mix(in srgb, var(--farbe-akzent) 12%, var(--farbe-karte));
-  border: 0.0625rem solid color-mix(in srgb, var(--farbe-akzent) 35%, transparent);
+  background: var(--farbe-akzent);
+  border: 0.0625rem solid var(--farbe-akzent);
   border-radius: var(--dichte-radius);
   padding: var(--dichte-abstand);
-  color: var(--farbe-text);
+  color: var(--farbe-auf-akzent);
   font-size: var(--dichte-schrift-klein);
   line-height: var(--typo-zeile-text);
   margin: 0;
