@@ -108,27 +108,47 @@
 }
 
 /*
- * Titel links, Badges rechts, mit Umbruch bei grosser Textskalierung. Der
- * Titel bekommt `min-width: 0`, damit er sich kuerzen laesst, statt die Badges
- * aus der Zeile zu schieben; die Badges geben nicht nach, sie sind kurz und
- * ihre Aussage haengt an jedem Wort ("noch 2 Tage").
+ * Titel links, Badges rechts. Wer von beiden nachgibt, wenn es eng wird,
+ * entscheidet diese Zeile: erst die Badges, dann der Titel.
+ *
+ * Vorher gab nur der Titel nach. Er hatte `flex: 1` — und das heisst
+ * `flex-basis: 0`: Seine eigene Textbreite zaehlte gar nicht mit, er nahm
+ * einfach, was uebrig blieb. Die Badges nahmen sich derweil ihre volle Breite,
+ * und auf einem Telefon blieben fuer "Erbe ausschlagen" achtzig Pixel uebrig,
+ * waehrend zwei Pillen daneben zweihundert belegten. Jetzt bringt der Titel
+ * seine Textbreite mit (`flex-basis: auto`), die Badges schrumpfen mit dem
+ * hundertfachen Gewicht und geben damit praktisch immer zuerst nach.
+ *
+ * Kein `flex-wrap` mehr: Wenn die Badges nachgeben, stapeln sie sich in sich
+ * selbst (siehe `.badges`), und der Titel behaelt seine Zeile. Die ganze
+ * Badge-Gruppe unter den Titel zu werfen, wuerde sie an den linken Rand
+ * setzen, wo keine zweite Zeile sie erwartet.
  */
 .titelzeile {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 0 var(--dichte-abstand-klein);
+  gap: var(--dichte-abstand-klein);
 }
 
 .titelzeile > :first-child {
   min-width: 0;
-  flex: 1;
+  flex: 1 1 auto;
 }
 
+/*
+ * Die Badges am rechten Rand, nebeneinander solange sie nebeneinander passen.
+ * Passen sie nicht, stapeln sie sich — und zwar nach oben (`wrap-reverse`):
+ * Die Frist steht in der Vorlage vor dem Hinweis, und beim Stapeln soll sie
+ * deshalb unter ihm landen und nicht ueber ihm. Ein einzelnes Badge merkt von
+ * alldem nichts.
+ *
+ * Die Gruppe faellt nie unter die Breite ihres breitesten Badges: `min-width`
+ * bleibt `auto`, und eine Frist soll sich nie ueber zwei Zeilen verteilen.
+ */
 .badges {
   display: flex;
-  flex-wrap: wrap;
+  flex: 0 100 auto;
+  flex-wrap: wrap-reverse;
   align-items: center;
   justify-content: flex-end;
   gap: var(--raster-1);
