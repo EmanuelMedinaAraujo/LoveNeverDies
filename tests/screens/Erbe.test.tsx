@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FallZustand } from '../../src/hooks/useCase.ts'
@@ -13,7 +13,10 @@ import { rendereMitProvidern } from './harness.tsx'
 const navigiere = vi.fn()
 const mockLoescheVorsorgefall = vi.fn()
 const mockLegeItemAn = vi.fn()
+const mockAendereItem = vi.fn()
+const mockSpeichereAntwort = vi.fn()
 const mockLoescheItem = vi.fn()
+const mockLegeEigeneFrageAn = vi.fn()
 const mockVerteileShares = vi.fn()
 const mockBestaetigeTodesfall = vi.fn()
 const mockOeffneTresor = vi.fn()
@@ -109,6 +112,9 @@ describe('Erbe Screen (§3.5, §7)', () => {
     navigiere.mockClear()
     mockLoescheVorsorgefall.mockClear()
     mockLegeItemAn.mockClear()
+    mockAendereItem.mockClear()
+    mockSpeichereAntwort.mockReset()
+    mockSpeichereAntwort.mockResolvedValue(undefined)
     mockLoescheItem.mockClear()
 
     mockVerteileShares.mockReset()
@@ -129,6 +135,9 @@ describe('Erbe Screen (§3.5, §7)', () => {
       istPreparer: true,
       resplitPending: false,
       legeItemAn: mockLegeItemAn,
+      aendereItem: mockAendereItem,
+      speichereAntwort: mockSpeichereAntwort,
+      legeEigeneFrageAn: mockLegeEigeneFrageAn,
       loescheItem: mockLoescheItem,
       verteileShares: mockVerteileShares,
       resplitLaeuft: false,
@@ -156,7 +165,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
     expect(screen.getByRole('heading', { name: 'Erbe & Tresor' })).toBeVisible()
     expect(screen.getByText('Versiegelt')).toBeVisible()
     expect(
-      screen.getByText(/Der Tresor ist versiegelt, kann aber noch von niemandem geöffnet werden/),
+      screen.getByText(/Der Tresor ist versiegelt. Im Tresor befinden sich Ihre Antworten./),
     ).toBeVisible()
     expect(screen.getByRole('button', { name: 'Angehörige einladen' })).toBeVisible()
   })
@@ -199,6 +208,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
       id: 'item-1',
       titel: 'Testament',
       inhalt: 'Liegt im Bankschließfach.',
+      frageId: null,
       dek: new Uint8Array(32),
       geaendertAm: '2026-08-24T12:00:00Z',
     }
@@ -211,6 +221,72 @@ describe('Erbe Screen (§3.5, §7)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '"Testament" löschen' }))
     expect(mockLoescheItem).toHaveBeenCalledWith(item)
+  })
+
+  it('stellt die Vorsorgefragen auch im Tresor und hält die Antworten aus der Liste heraus', async () => {
+    const { VORSORGEFRAGEN } = await import('../../src/content/vorsorgefragen.ts')
+
+    mockTresor.items = [
+      {
+        id: 'item-1',
+        titel: 'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+        inhalt: 'Im Bankschließfach.',
+        frageId: 'testament',
+        dek: new Uint8Array(32),
+        geaendertAm: '2026-08-24T12:00:00Z',
+      },
+      {
+        id: 'item-2',
+        titel: 'Bankverbindung',
+        inhalt: 'DE123456789',
+        frageId: null,
+        dek: new Uint8Array(32),
+        geaendertAm: '2026-08-24T12:00:00Z',
+      },
+    ]
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByRole('heading', { name: 'Ihre Vorsorgefragen' })).toBeVisible()
+    expect(screen.getByText(`1 von ${VORSORGEFRAGEN.length} beantwortet`)).toBeVisible()
+
+    // Die Antwort steht in ihrem Feld, nicht ein zweites Mal in der Liste
+    // darunter: Dort steht ausschliesslich, was frei angelegt wurde.
+    expect(screen.getByDisplayValue('Im Bankschließfach.')).toBeVisible()
+    expect(screen.getByText('Bankverbindung')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /"Haben Sie ein Testament/ })).toBeNull()
+    expect(screen.getByText('1 Eintrag')).toBeVisible()
+  })
+
+  it('ändert eine Antwort im Tresor über dieselbe Kennung', async () => {
+    mockTresor.items = [
+      {
+        id: 'item-1',
+        titel: 'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+        inhalt: 'Im Schrank.',
+        frageId: 'testament',
+        dek: new Uint8Array(32),
+        geaendertAm: '2026-08-24T12:00:00Z',
+      },
+    ]
+
+    rendereMitProvidern(<Erbe />)
+
+    const feld = screen.getByDisplayValue('Im Schrank.')
+    await userEvent.clear(feld)
+    await userEvent.type(feld, 'Im Bankschließfach.')
+
+    // Die Schaltfläche neben genau diesem Feld, nicht die vierte von acht: Eine
+    // Frage, ein Formular.
+    const formular = feld.closest('form')
+    if (formular === null) throw new Error('Das Formular der Frage fehlt.')
+    await userEvent.click(within(formular).getByRole('button', { name: 'Speichern' }))
+
+    expect(mockSpeichereAntwort).toHaveBeenCalledWith(
+      'testament',
+      'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+      'Im Bankschließfach.',
+    )
   })
 
   it('bietet dem Preparer das Löschen der gesamten Vorsorge mit Bestätigung', async () => {
@@ -271,7 +347,66 @@ describe('Erbe Screen (§3.5, §7)', () => {
     expect(screen.queryByRole('button', { name: 'Inhalt in Tresor legen' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Vorsorge löschen' })).toBeNull()
   })
+  it('zeigt der vorsorgenden Person keine Todesbestätigung', () => {
+    mockTodesfall.k = 2
+    mockTodesfall.kannFreigeben = true
+
+    rendereMitProvidern(<Erbe />)
+
+    // Der eigene Tod ist nichts, was die vorsorgende Person freigibt (§3.5).
+    expect(screen.queryByRole('heading', { name: 'Todesfall bestätigen' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Todesfall bestätigen' })).toBeNull()
+  })
+
+  it('legt im Tresor eine selbst gestellte Frage an', async () => {
+    rendereMitProvidern(<Erbe />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Eigene Frage hinzufügen' }))
+    await userEvent.type(screen.getByLabelText('Ihre eigene Frage'), 'Wo liegt der Ersatzschlüssel?')
+    await userEvent.click(screen.getByRole('button', { name: 'Frage hinzufügen' }))
+
+    expect(mockLegeEigeneFrageAn).toHaveBeenCalledWith('Wo liegt der Ersatzschlüssel?')
+  })
+
+  it('zählt selbst gestellte Fragen im Fortschritt mit', () => {
+    mockTresor.items = [
+      {
+        id: 'item-9',
+        titel: 'Wo liegt der Ersatzschlüssel?',
+        inhalt: 'Bei Frau Weber.',
+        frageId: 'eigen-0199-abc',
+        dek: new Uint8Array([9]),
+        geaendertAm: '2026-08-24T12:00:00Z',
+      },
+    ]
+
+    rendereMitProvidern(<Erbe />)
+
+    // Acht gelieferte plus eine eigene, davon die eine beantwortet.
+    expect(screen.getByText('1 von 9 beantwortet')).toBeVisible()
+  })
+
+  it('führt eine selbst gestellte Frage nicht zusätzlich unter den freien Einträgen', () => {
+    mockTresor.items = [
+      {
+        id: 'item-9',
+        titel: 'Wo liegt der Ersatzschlüssel?',
+        inhalt: 'Bei Frau Weber.',
+        frageId: 'eigen-0199-abc',
+        dek: new Uint8Array([9]),
+        geaendertAm: '2026-08-24T12:00:00Z',
+      },
+    ]
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByRole('heading', { name: 'Weitere Tresor-Inhalte' })).toBeVisible()
+    // Die Frage steht oben bei den Fragen und nicht ein zweites Mal darunter.
+    expect(screen.getByText('Hier steht noch nichts außer Ihren Antworten oben.')).toBeVisible()
+  })
+
   it('zeigt den Freigabestand des Falls', () => {
+    mockTresor.istPreparer = false
     mockTodesfall.k = 2
     mockTodesfall.freigaben = [
       {
@@ -290,6 +425,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
   })
 
   it('bestätigt den Todesfall erst nach dem Bestätigungsdialog', async () => {
+    mockTresor.istPreparer = false
     mockTodesfall.k = 1
     mockTodesfall.kannFreigeben = true
     mockBestaetigeTodesfall.mockResolvedValue(undefined)
@@ -308,6 +444,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
   })
 
   it('bietet die Bestätigung nicht an, wenn dieses Gerät keinen Schlüsselanteil hält', () => {
+    mockTresor.istPreparer = false
     mockTodesfall.kannFreigeben = false
 
     rendereMitProvidern(<Erbe />)
@@ -316,6 +453,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
   })
 
   it('sagt es, wenn die eigene Bestätigung schon steht', () => {
+    mockTresor.istPreparer = false
     mockTodesfall.k = 1
     mockTodesfall.kannFreigeben = true
     mockTodesfall.eigeneFreigabe = true
@@ -330,6 +468,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
   })
 
   it('öffnet den Tresor mit Sterbedatum, sobald die Schwelle erreicht ist', async () => {
+    mockTresor.istPreparer = false
     mockTodesfall.k = 1
     mockTodesfall.schwelleErreicht = true
     mockOeffneTresor.mockResolvedValue(undefined)
@@ -344,6 +483,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
   })
 
   it('benennt die Person, deren Schlüsselanteil scheitert, und bittet um einen zweiten Versuch', () => {
+    mockTresor.istPreparer = false
     mockTodesfall.k = 2
     mockTodesfall.schwelleErreicht = true
     mockTodesfall.fehler = 'Es liegen 1 brauchbare Freigaben vor, nötig sind 2.'

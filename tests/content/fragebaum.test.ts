@@ -221,6 +221,17 @@ describe('Fragebaum-Inhalt (ERBE_DESIGN.md §2)', () => {
     expect(reste).toEqual([])
   })
 
+  it('schliesst jede Fettauszeichnung und laesst sie in ihrer Zeile (§2)', () => {
+    // `**fett**` ist die einzige Auszeichnung in diesen Texten, und der Screen
+    // loest sie zeilenweise auf. Ein vergessenes zweites Sternchenpaar stuende
+    // roh auf der Seite, ein ueber einen Umbruch gezogenes bliebe unerkannt.
+    const kaputt = FRAGEBAUM.filter((knoten) =>
+      knoten.text.split('\n').some((zeile) => (zeile.split('**').length - 1) % 2 !== 0),
+    ).map((knoten) => knoten.id)
+
+    expect(kaputt).toEqual([])
+  })
+
   it('legt die Kette "Ja oder Nein" zusammen (§2)', () => {
     const wollen = FRAGEBAUM.filter((knoten) => knoten.text === 'Wollen Sie das Erbe haben?')
 
