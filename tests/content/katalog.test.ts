@@ -50,4 +50,40 @@ describe('catalog.de.json (§8)', () => {
       expect(text, aufgabe.id).not.toContain('§')
     }
   })
+
+  it('enthält die automatisch zu erstellenden Aufgaben für den Todesfall', () => {
+    const aufgaben = katalog().aufgaben
+    expect(aufgaben.map((a) => a.id)).toEqual([
+      'totenschein-erstellen',
+      'sterbeurkunde-beantragen',
+      'bestattungsunternehmen-kontaktieren',
+      'tresor-des-vorsorgenden-oeffnen',
+      'erbenstellung-klaeren',
+    ])
+
+    const totenschein = aufgaben.find((a) => a.id === 'totenschein-erstellen')
+    expect(totenschein?.titel).toBe('Totenschein erstellen')
+    expect(totenschein?.unteraufgaben).toEqual(['Arzt kontaktieren'])
+
+    const sterbeurkunde = aufgaben.find((a) => a.id === 'sterbeurkunde-beantragen')
+    expect(sterbeurkunde?.titel).toBe('Sterbeurkunde beantragen')
+    expect(sterbeurkunde?.hinweis).toBe('Übernimmt oft das Bestattungsunternehmen')
+    expect(sterbeurkunde?.benoetigteDokumente).toEqual([
+      'Totenschein',
+      'Personalausweis des Verstorbenen',
+      'Geburtsurkunde des Verstorbenen',
+      'Heiratsurkunde (Familienbuch/Stammbuch)',
+      'Ggf. Sterbeurkunde des Partners/Scheidungsurteil mit Rechtskraftvermerk',
+    ])
+    expect(sterbeurkunde?.unteraufgaben).toEqual(['Beim Standesamt einreichen'])
+
+    const bestattung = aufgaben.find((a) => a.id === 'bestattungsunternehmen-kontaktieren')
+    expect(bestattung?.titel).toBe('Bestattungsunternehmen kontaktieren')
+
+    const tresor = aufgaben.find((a) => a.id === 'tresor-des-vorsorgenden-oeffnen')
+    expect(tresor?.titel).toBe('Tresor des Vorsorgenden öffnen und die Fragen')
+
+    const erbe = aufgaben.find((a) => a.id === 'erbenstellung-klaeren')
+    expect(erbe?.titel).toBe('Klären ob Sie Erbe sind')
+  })
 })

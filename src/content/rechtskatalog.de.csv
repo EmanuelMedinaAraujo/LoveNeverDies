@@ -19,4 +19,8 @@
 # Paragraph im Aufgabendetail sieht aus wie eine Rechtsberatung, und die
 # gibt diese App nicht.
 id,titel,kurzbeschreibung,frist_tage,frist_ab,zustaendige_stelle,benoetigte_dokumente,subtasks,depends_on,hinweis,kategorie,reihenfolge
-erbenstellung-klaeren,Klären ob Sie Erbe sind,"Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch.",,,,,,,Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.,Erbe,10
+totenschein-erstellen,Totenschein erstellen,"Eine Ärztin oder ein Arzt stellt den Totenschein (ärztliche Todesbescheinigung) aus.",,,Ärztin oder Arzt,,Arzt kontaktieren,,,Sofort,10
+sterbeurkunde-beantragen,Sterbeurkunde beantragen,"Das Standesamt beurkundet den Sterbefall und stellt die Sterbeurkunden aus.",,,Standesamt,Totenschein;Personalausweis des Verstorbenen;Geburtsurkunde des Verstorbenen;Heiratsurkunde (Familienbuch/Stammbuch);Ggf. Sterbeurkunde des Partners/Scheidungsurteil mit Rechtskraftvermerk,Beim Standesamt einreichen,,Übernimmt oft das Bestattungsunternehmen,Sofort,20
+bestattungsunternehmen-kontaktieren,Bestattungsunternehmen kontaktieren,"Das Bestattungsunternehmen übernimmt Überführung, Bestattung und weitere Formalitäten.",,,Bestattungsunternehmen,,,,,Sofort,30
+tresor-des-vorsorgenden-oeffnen,Tresor des Vorsorgenden öffnen und die Fragen,"Den Tresor des Vorsorgenden öffnen und die hinterlegten Fragen und Informationen einsehen.",,,,,,,,Sofort,40
+erbenstellung-klaeren,Klären ob Sie Erbe sind,"Ob Sie erben, entscheidet darüber, was als Nächstes zu tun ist und welche Fristen für Sie laufen. Der Fragebaum führt Sie in wenigen Schritten hindurch.",,,,,,,Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.,Erbe,50

@@ -1,8 +1,74 @@
 {
   "sprache": "de",
   "stand": "2026-08",
-  "version": "2026-08+2a5f3283",
+  "version": "2026-08+37dc188f",
   "aufgaben": [
+    {
+      "id": "totenschein-erstellen",
+      "titel": "Totenschein erstellen",
+      "kurzbeschreibung": "Eine Ärztin oder ein Arzt stellt den Totenschein (ärztliche Todesbescheinigung) aus.",
+      "fristTage": null,
+      "fristAb": null,
+      "zustaendigeStelle": "Ärztin oder Arzt",
+      "benoetigteDokumente": [],
+      "unteraufgaben": [
+        "Arzt kontaktieren"
+      ],
+      "haengtAbVon": [],
+      "hinweis": "",
+      "kategorie": "Sofort",
+      "reihenfolge": 10
+    },
+    {
+      "id": "sterbeurkunde-beantragen",
+      "titel": "Sterbeurkunde beantragen",
+      "kurzbeschreibung": "Das Standesamt beurkundet den Sterbefall und stellt die Sterbeurkunden aus.",
+      "fristTage": null,
+      "fristAb": null,
+      "zustaendigeStelle": "Standesamt",
+      "benoetigteDokumente": [
+        "Totenschein",
+        "Personalausweis des Verstorbenen",
+        "Geburtsurkunde des Verstorbenen",
+        "Heiratsurkunde (Familienbuch/Stammbuch)",
+        "Ggf. Sterbeurkunde des Partners/Scheidungsurteil mit Rechtskraftvermerk"
+      ],
+      "unteraufgaben": [
+        "Beim Standesamt einreichen"
+      ],
+      "haengtAbVon": [],
+      "hinweis": "Übernimmt oft das Bestattungsunternehmen",
+      "kategorie": "Sofort",
+      "reihenfolge": 20
+    },
+    {
+      "id": "bestattungsunternehmen-kontaktieren",
+      "titel": "Bestattungsunternehmen kontaktieren",
+      "kurzbeschreibung": "Das Bestattungsunternehmen übernimmt Überführung, Bestattung und weitere Formalitäten.",
+      "fristTage": null,
+      "fristAb": null,
+      "zustaendigeStelle": "Bestattungsunternehmen",
+      "benoetigteDokumente": [],
+      "unteraufgaben": [],
+      "haengtAbVon": [],
+      "hinweis": "",
+      "kategorie": "Sofort",
+      "reihenfolge": 30
+    },
+    {
+      "id": "tresor-des-vorsorgenden-oeffnen",
+      "titel": "Tresor des Vorsorgenden öffnen und die Fragen",
+      "kurzbeschreibung": "Den Tresor des Vorsorgenden öffnen und die hinterlegten Fragen und Informationen einsehen.",
+      "fristTage": null,
+      "fristAb": null,
+      "zustaendigeStelle": "",
+      "benoetigteDokumente": [],
+      "unteraufgaben": [],
+      "haengtAbVon": [],
+      "hinweis": "",
+      "kategorie": "Sofort",
+      "reihenfolge": 40
+    },
     {
       "id": "erbenstellung-klaeren",
       "titel": "Klären ob Sie Erbe sind",
@@ -15,7 +81,7 @@
       "haengtAbVon": [],
       "hinweis": "Ihre Antworten und das Ergebnis sehen nur Sie. Angehörige im selben Fall gehen den Fragebaum jeweils für sich.",
       "kategorie": "Erbe",
-      "reihenfolge": 10
+      "reihenfolge": 50
     }
   ]
 }
