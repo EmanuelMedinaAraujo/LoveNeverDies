@@ -27,7 +27,7 @@ export const ERBSCHEIN: Infotext = {
       art: 'punkte',
       punkte: [
         'Grundbuchamt (Immobilien und Grundstücke)',
-        'Um über Konten des Verstorbenen zu verfügen (außer es bestand eine Vollmacht bereits vor dem Tod)',
+        'Um über Konten des Verstorbenen zu verfügen',
         'Handelsregister',
         'Um bestimmte Verträge zu kündigen',
         'Um Versicherungen zu kündigen',
@@ -36,7 +36,11 @@ export const ERBSCHEIN: Infotext = {
     { art: 'zwischentitel', text: '3. Nicht nötig wenn:' },
     {
       art: 'punkte',
-      punkte: ['Erbvertrag vorliegt', 'Notariell beurkundetes Testament'],
+      punkte: [
+        'Erbvertrag vorliegt',
+        'Notariell beurkundetes Testament',
+        'eine Vollmacht bereits vor dem Tod vorlag ([rot:Hinweis:] Nicht ausreichend für das Grundbuchamt)',
+      ],
     },
     { art: 'zwischentitel', text: '4. Kosten' },
     {
