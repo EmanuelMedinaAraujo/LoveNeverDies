@@ -40,6 +40,15 @@ export type TresorItem = {
   id: string
   titel: string
   inhalt: string
+  /**
+   * Die Vorsorgefrage, deren Antwort hier steht, oder `null` für einen frei
+   * angelegten Eintrag (`content/vorsorgefragen.ts`).
+   *
+   * Der Screen unterscheidet daran zwei Dinge, die sonst gleich aussähen: eine
+   * Antwort, die zu ihrer Frage gehört und mit ihr angezeigt und geändert wird,
+   * und eine Notiz, die für sich steht.
+   */
+  frageId: string | null
   dek: Uint8Array
   geaendertAm: string
 }
@@ -48,6 +57,8 @@ export type TresorItemPayload = {
   typ: 'tresor'
   titel: string
   inhalt: string
+  /** Fehlt bei jedem frei angelegten Eintrag und bei allem, was vor den Fragen entstand. */
+  frageId?: string
 }
 
 /**
@@ -160,6 +171,7 @@ export async function mutationTresorAnlegen(
   kv: Uint8Array,
   titel: string,
   inhalt: string,
+  frageId?: string,
 ): Promise<Mutation> {
   const gekuerzterTitel = titel.trim()
   if (gekuerzterTitel === '') {
@@ -173,6 +185,7 @@ export async function mutationTresorAnlegen(
     typ: 'tresor',
     titel: gekuerzterTitel,
     inhalt: inhalt.trim(),
+    ...(frageId === undefined ? {} : { frageId }),
   }
 
   const [verschluesselterPayload, wrappedDek] = await Promise.all([
@@ -194,10 +207,68 @@ export async function mutationTresorAnlegen(
 }
 
 /**
+ * Erzeugt eine Mutation, die Titel und Inhalt eines Tresor-Items ersetzt.
+ *
+ * Der DEK bleibt derselbe (§3.1) und wird deshalb nicht mitgeschickt: Ein Edit
+ * kostet genau eine Spalte (`core/sync/queue.ts`). Aus demselben Grund steht
+ * die Frage-Kennung hier noch einmal im Payload — sie ist kein Feld, das
+ * jemand bearbeitet, fiele aber beim ersten Ändern heraus, und die Antwort
+ * stünde danach als frei angelegte Notiz neben ihrer wieder leeren Frage.
+ */
+export async function mutationTresorAendern(
+  item: TresorItem,
+  titel: string,
+  inhalt: string,
+): Promise<Mutation> {
+  const gekuerzterTitel = titel.trim()
+  if (gekuerzterTitel === '') {
+    throw new TresorDienstFehler('Ein Tresor-Eintrag braucht einen Titel.')
+  }
+
+  const payload: TresorItemPayload = {
+    typ: 'tresor',
+    titel: gekuerzterTitel,
+    inhalt: inhalt.trim(),
+    ...(item.frageId === null ? {} : { frageId: item.frageId }),
+  }
+
+  return {
+    op: 'aendern',
+    itemId: item.id,
+    payload: await verschluessele(item.dek, textBytes(JSON.stringify(payload))),
+    ts: Date.now(),
+  }
+}
+
+/**
  * Erzeugt eine Mutation zum Löschen eines Tresor-Items (Tombstone).
  */
 export function mutationTresorLoeschen(itemId: string): Mutation {
   return { op: 'loeschen', itemId, ts: Date.now() }
+}
+
+/**
+ * Die Antwort auf eine Vorsorgefrage, oder `null`, solange keine dasteht.
+ *
+ * Bei mehreren Zeilen zu derselben Frage gewinnt die zuletzt geänderte. Das
+ * kommt vor: Zwei Geräte, beide offline, beide beantworten dieselbe Frage —
+ * das sind zwei Items mit zwei Kennungen, und LWW greift nur innerhalb einer.
+ * Angezeigt wird dann die jüngere Auskunft, und geändert wird ebenfalls sie.
+ */
+export function antwortZuFrage(items: TresorItem[], frageId: string): TresorItem | null {
+  let jueng: TresorItem | null = null
+
+  for (const item of items) {
+    if (item.frageId !== frageId) {
+      continue
+    }
+
+    if (jueng === null || item.geaendertAm > jueng.geaendertAm) {
+      jueng = item
+    }
+  }
+
+  return jueng
 }
 
 /**
@@ -224,6 +295,7 @@ export async function tresorItemsAusZeilen(
           id: zeile.id,
           titel: json.titel,
           inhalt: typeof json.inhalt === 'string' ? json.inhalt : '',
+          frageId: typeof json.frageId === 'string' ? json.frageId : null,
           dek,
           geaendertAm: zeile.geaendertAm,
         })

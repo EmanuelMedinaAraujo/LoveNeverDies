@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react'
+import { screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { FallZustand } from '../../src/hooks/useCase.ts'
@@ -13,6 +13,8 @@ import { rendereMitProvidern } from './harness.tsx'
 const navigiere = vi.fn()
 const mockLoescheVorsorgefall = vi.fn()
 const mockLegeItemAn = vi.fn()
+const mockAendereItem = vi.fn()
+const mockSpeichereAntwort = vi.fn()
 const mockLoescheItem = vi.fn()
 const mockVerteileShares = vi.fn()
 const mockBestaetigeTodesfall = vi.fn()
@@ -109,6 +111,9 @@ describe('Erbe Screen (§3.5, §7)', () => {
     navigiere.mockClear()
     mockLoescheVorsorgefall.mockClear()
     mockLegeItemAn.mockClear()
+    mockAendereItem.mockClear()
+    mockSpeichereAntwort.mockReset()
+    mockSpeichereAntwort.mockResolvedValue(undefined)
     mockLoescheItem.mockClear()
 
     mockVerteileShares.mockReset()
@@ -129,6 +134,8 @@ describe('Erbe Screen (§3.5, §7)', () => {
       istPreparer: true,
       resplitPending: false,
       legeItemAn: mockLegeItemAn,
+      aendereItem: mockAendereItem,
+      speichereAntwort: mockSpeichereAntwort,
       loescheItem: mockLoescheItem,
       verteileShares: mockVerteileShares,
       resplitLaeuft: false,
@@ -199,6 +206,7 @@ describe('Erbe Screen (§3.5, §7)', () => {
       id: 'item-1',
       titel: 'Testament',
       inhalt: 'Liegt im Bankschließfach.',
+      frageId: null,
       dek: new Uint8Array(32),
       geaendertAm: '2026-08-24T12:00:00Z',
     }
@@ -211,6 +219,72 @@ describe('Erbe Screen (§3.5, §7)', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '"Testament" löschen' }))
     expect(mockLoescheItem).toHaveBeenCalledWith(item)
+  })
+
+  it('stellt die Vorsorgefragen auch im Tresor und hält die Antworten aus der Liste heraus', async () => {
+    const { VORSORGEFRAGEN } = await import('../../src/content/vorsorgefragen.ts')
+
+    mockTresor.items = [
+      {
+        id: 'item-1',
+        titel: 'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+        inhalt: 'Im Bankschließfach.',
+        frageId: 'testament',
+        dek: new Uint8Array(32),
+        geaendertAm: '2026-08-24T12:00:00Z',
+      },
+      {
+        id: 'item-2',
+        titel: 'Bankverbindung',
+        inhalt: 'DE123456789',
+        frageId: null,
+        dek: new Uint8Array(32),
+        geaendertAm: '2026-08-24T12:00:00Z',
+      },
+    ]
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.getByRole('heading', { name: 'Ihre Vorsorgefragen' })).toBeVisible()
+    expect(screen.getByText(`1 von ${VORSORGEFRAGEN.length} beantwortet`)).toBeVisible()
+
+    // Die Antwort steht in ihrem Feld, nicht ein zweites Mal in der Liste
+    // darunter: Dort steht ausschliesslich, was frei angelegt wurde.
+    expect(screen.getByDisplayValue('Im Bankschließfach.')).toBeVisible()
+    expect(screen.getByText('Bankverbindung')).toBeVisible()
+    expect(screen.queryByRole('button', { name: /"Haben Sie ein Testament/ })).toBeNull()
+    expect(screen.getByText('1 Eintrag')).toBeVisible()
+  })
+
+  it('ändert eine Antwort im Tresor über dieselbe Kennung', async () => {
+    mockTresor.items = [
+      {
+        id: 'item-1',
+        titel: 'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+        inhalt: 'Im Schrank.',
+        frageId: 'testament',
+        dek: new Uint8Array(32),
+        geaendertAm: '2026-08-24T12:00:00Z',
+      },
+    ]
+
+    rendereMitProvidern(<Erbe />)
+
+    const feld = screen.getByDisplayValue('Im Schrank.')
+    await userEvent.clear(feld)
+    await userEvent.type(feld, 'Im Bankschließfach.')
+
+    // Die Schaltfläche neben genau diesem Feld, nicht die vierte von acht: Eine
+    // Frage, ein Formular.
+    const formular = feld.closest('form')
+    if (formular === null) throw new Error('Das Formular der Frage fehlt.')
+    await userEvent.click(within(formular).getByRole('button', { name: 'Speichern' }))
+
+    expect(mockSpeichereAntwort).toHaveBeenCalledWith(
+      'testament',
+      'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+      'Im Bankschließfach.',
+    )
   })
 
   it('bietet dem Preparer das Löschen der gesamten Vorsorge mit Bestätigung', async () => {
