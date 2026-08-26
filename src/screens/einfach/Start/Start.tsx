@@ -139,7 +139,15 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
   const persoenlichOhneSeed = persoenlich.filter(
     (eintrag) => seedKnoten === null || eintrag.knoten.aufgabe.id !== seedKnoten.aufgabe.id,
   )
-  const offenePersoenlich = persoenlichOhneSeed.filter((eintrag) => !eintrag.knoten.erledigt)
+  /*
+   * §7: Auf Start steht nur, was jetzt getan werden kann. Eine Aufgabe, die
+   * auf eine andere wartet, ist hier eine Zeile, an der man nichts machen
+   * kann — und die Aufforderung, doch erst die andere zu suchen. Sie steht
+   * weiterhin unter "Alle", mit ihrem "Zuerst: …" davor.
+   */
+  const offenePersoenlich = persoenlichOhneSeed.filter(
+    (eintrag) => !eintrag.knoten.erledigt && eintrag.knoten.blockiertVon.length === 0,
+  )
   // §7: Erledigtes steht am Ende der Liste und zu Anfang eingeklappt — nicht
   // weg, nur nicht im Weg.
   const erledigtePersoenlich = persoenlichOhneSeed.filter((eintrag) => eintrag.knoten.erledigt)
@@ -158,11 +166,24 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
     offenePersoenlich.length >= ZIEL_ANZAHL
       ? []
       : zustand.baum
-          .filter((knoten) => !knoten.erledigt && !bereitsGezeigt.has(knoten.aufgabe.id))
+          .filter(
+            (knoten) =>
+              !knoten.erledigt &&
+              knoten.blockiertVon.length === 0 &&
+              !bereitsGezeigt.has(knoten.aufgabe.id),
+          )
           .slice(0, ZIEL_ANZAHL - offenePersoenlich.length)
 
   // Wirklich gar keine offene Aufgabe mehr, weder persönlich noch allgemein.
   const allesErledigt = !seedOffen && offenePersoenlich.length === 0 && weitere.length === 0
+
+  /*
+   * Nichts zu tun ist nicht dasselbe wie fertig: Wenn hier nur deshalb keine
+   * Zeile steht, weil jede offene Aufgabe noch auf eine andere wartet, wäre
+   * "Sie haben alle Aufgaben erledigt" schlicht falsch.
+   */
+  const wartetNoch =
+    allesErledigt && zustand.baum.some((knoten) => !knoten.erledigt && knoten.blockiertVon.length > 0)
 
   function zeile(eintrag: Eintrag) {
     return (
@@ -210,7 +231,11 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
         zustand.laedtNetz && zustand.aufgaben.length === 0 ? (
           <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
         ) : allesErledigt && erledigtePersoenlich.length === 0 ? (
-          <p className={stile.hinweis}>Sie haben alle Aufgaben erledigt.</p>
+          <p className={stile.hinweis}>
+            {wartetNoch
+              ? 'Gerade ist nichts zu tun: Die offenen Aufgaben warten noch auf andere. Unter „Alle“ sehen Sie, worauf.'
+              : 'Sie haben alle Aufgaben erledigt.'}
+          </p>
         ) : (
           <>
             {seedKnoten === null || !seedOffen ? null : (

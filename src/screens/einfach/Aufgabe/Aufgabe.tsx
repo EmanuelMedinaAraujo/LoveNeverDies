@@ -16,6 +16,7 @@ import {
 } from '../../../services/fristen.ts'
 import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import {
+  ALLE,
   NIEMAND,
   darfAbhaken,
   darfBearbeiten,
@@ -637,6 +638,25 @@ function Detail({
               onClick={() => aktionen.weiseZu(mitPerson(aufgabe.assignee, ich))}
             >
               Ich übernehme das
+            </Button>
+          )}
+
+          {/*
+            §7: "Alle" ist ein eigener Zuweisungswert und keine Liste aller
+            Namen — fuer die Aufgabe, die die Familie gemeinsam traegt und bei
+            der niemand ein Namensschild braucht. In der erweiterten Ansicht
+            steht dafuer ein Kaestchen in der Zuweisungsliste; hier ist es der
+            zweite Knopf neben dem eigenen, damit es dieselbe eine Handbewegung
+            bleibt.
+          */}
+          {aufgabe.assignee.art === 'alle' ? null : (
+            <Button
+              volleBreite
+              variante="sekundaer"
+              disabled={aktionen.gesperrt}
+              onClick={() => aktionen.weiseZu(ALLE)}
+            >
+              Alle übernehmen das
             </Button>
           )}
 

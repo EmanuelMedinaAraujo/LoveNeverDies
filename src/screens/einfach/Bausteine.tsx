@@ -49,7 +49,7 @@ export function Fristzeile({ lage }: { lage: Fristlage }) {
   )
 }
 
-/** Der Winkel am Ende von „Aufgabe öffnen“. */
+/** Der Winkel am Ende von „Öffnen“. */
 function Winkel() {
   return (
     <svg
@@ -70,7 +70,7 @@ function Winkel() {
 /**
  * Eine Aufgabe in der Liste: abhaken, hineingehen, mehr nicht.
  *
- * Hineingehen tut die ganze Zeile: "Aufgabe oeffnen" legt seine
+ * Hineingehen tut die ganze Zeile: "Oeffnen" legt seine
  * Trefferflaeche ueber sie. Das Haekchen liegt darueber und faengt seinen Tipp
  * vorher ab, und die Beschriftung des Haekchens laesst Tipps durch
  * (`nurKaestchen`). Damit gilt in der ganzen Liste dieselbe Regel: Das
@@ -136,20 +136,48 @@ export function Aufgabenzeile({
 
   return (
     <li className={stile.eintrag}>
-      {istBlatt ? (
-        <Checkbox
-          abhaken
-          checked={erledigt}
-          disabled={gesperrt || !darfHaken}
-          onChange={(ereignis) => void haken(ereignis.target.checked)}
-          label={aufgabe.titel}
-          nurKaestchen
-        />
-      ) : (
-        <p className={[stile.titel, giltAlsErledigt ? stile.fertig : null].filter(Boolean).join(' ')}>
-          {aufgabe.titel}
-        </p>
-      )}
+      {/*
+        Titel und Weg hinein stehen nebeneinander: Der Link steht damit dort,
+        wo der Daumen ohnehin schon ist, und die Zeile bleibt eine Zeile,
+        statt unter jedem Titel noch eine eigene Reihe zu bekommen.
+      */}
+      <div className={stile.kopfzeile}>
+        {istBlatt ? (
+          <Checkbox
+            className={stile.kopftitel}
+            abhaken
+            checked={erledigt}
+            disabled={gesperrt || !darfHaken}
+            onChange={(ereignis) => void haken(ereignis.target.checked)}
+            label={aufgabe.titel}
+            nurKaestchen
+          />
+        ) : (
+          <p
+            className={[stile.titel, stile.kopftitel, giltAlsErledigt ? stile.fertig : null]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            {aufgabe.titel}
+          </p>
+        )}
+
+        {/*
+          Die eine Aufgabe, die noch aus dem Katalog kommt (ADR-0001), hat keine
+          eigene Detailseite: Ihr Ergebnis steht im Fragebaum, nicht in einem
+          Titel- und Beschreibungsfeld. Erkannt wird sie an ihrer Herkunft und
+          nicht am Titel, damit eine umbenannte Aufgabe den Weg dorthin nicht
+          verliert (§7, ERBE_DESIGN.md §9).
+        */}
+        <Link
+          className={stile.weiter}
+          to={istSeedAufgabe(aufgabe.katalog) ? '/erbe/fragebaum' : `/aufgabe/${aufgabe.id}`}
+        >
+          {istSeedAufgabe(aufgabe.katalog) ? 'Fragebaum starten' : 'Öffnen'}
+          <span className="nur-vorlesen">: „{aufgabe.titel}“</span>
+          <Winkel />
+        </Link>
+      </div>
 
       {unter === null ? null : <p className={stile.hinweis}>Gehört zu „{unter}“</p>}
 
@@ -175,21 +203,6 @@ export function Aufgabenzeile({
         </p>
       )}
 
-      {/*
-        Die eine Aufgabe, die noch aus dem Katalog kommt (ADR-0001), hat keine
-        eigene Detailseite: Ihr Ergebnis steht im Fragebaum, nicht in einem
-        Titel- und Beschreibungsfeld. Erkannt wird sie an ihrer Herkunft und
-        nicht am Titel, damit eine umbenannte Aufgabe den Weg dorthin nicht
-        verliert (§7, ERBE_DESIGN.md §9).
-      */}
-      <Link
-        className={stile.weiter}
-        to={istSeedAufgabe(aufgabe.katalog) ? '/erbe/fragebaum' : `/aufgabe/${aufgabe.id}`}
-      >
-        {istSeedAufgabe(aufgabe.katalog) ? 'Fragebaum starten' : 'Aufgabe öffnen'}
-        <span className="nur-vorlesen">: „{aufgabe.titel}“</span>
-        <Winkel />
-      </Link>
     </li>
   )
 }
