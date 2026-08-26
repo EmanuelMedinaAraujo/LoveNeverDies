@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
+import { useAutospeichern, type Speicherstand } from '../../../hooks/useAutospeichern.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import type { Aufgabe as Aufgabendatensatz } from '../../../services/aufgabenService.ts'
 import { knotenZu, type Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
@@ -456,6 +457,36 @@ function Angaben({
   )
 }
 
+/** Das Kreuz, das ein Feld wieder leert. */
+function Kreuz() {
+  return (
+    <svg
+      className={stile.kreuz}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="m6 6 12 12M18 6 6 18" />
+    </svg>
+  )
+}
+
+/** Was unter einem Feld steht, das von selbst speichert. */
+function Speichermeldung({ stand }: { stand: Speicherstand }) {
+  if (stand === 'ruht') {
+    return null
+  }
+
+  return (
+    <p className={stile.hinweis} role="status">
+      {stand === 'wartet' ? 'Wird gespeichert…' : 'Gespeichert.'}
+    </p>
+  )
+}
+
 /**
  * Das eigene Kenntnisdatum (§8, #12).
  *
@@ -492,10 +523,15 @@ function Kenntnisdatum({
     setzeEingabe(kenntnisAm ?? '')
   }
 
-  async function speichere(ereignis: FormEvent) {
-    ereignis.preventDefault()
-    await aufSpeichern(eingabe === '' ? null : eingabe)
-  }
+  /*
+    Speichert von selbst. Eine Schaltfläche unter dem Feld war hier die
+    schlechteste Stelle im ganzen Screen: Auf dem Telefon steht sie unter der
+    aufgeklappten Datumsauswahl, und wer den Tag gewählt hat und weiterscrollt,
+    hat seine Frist nicht eingetragen (§8).
+  */
+  const stand = useAutospeichern(eingabe, kenntnisAm ?? '', gesperrt, () => {
+    void aufSpeichern(eingabe === '' ? null : eingabe)
+  })
 
   return (
     <Abschnitt titel="Wann haben Sie davon erfahren?">
@@ -510,9 +546,10 @@ function Kenntnisdatum({
         </p>
       ) : null}
 
-      <form className={stile.formular} onSubmit={(ereignis) => void speichere(ereignis)}>
-        <div className={stile.feld}>
-          <label htmlFor="kenntnis-am">Tag Ihrer Kenntnis</label>
+      <div className={stile.feld}>
+        <label htmlFor="kenntnis-am">Tag Ihrer Kenntnis</label>
+
+        <div className={stile.fristzeile}>
           {/*
             `max`: Ein Kenntnisdatum in der Zukunft gibt es nicht, und ein
             vertipptes Jahr ergäbe eine Frist, die viel später endet als die
@@ -526,29 +563,35 @@ function Kenntnisdatum({
             max={heuteIso()}
             onChange={(ereignis) => setzeEingabe(ereignis.target.value)}
           />
-        </div>
 
-        <div className={stile.knoepfe}>
-          <Button
-            type="submit"
-            volleBreite
-            disabled={gesperrt || eingabe === (kenntnisAm ?? '')}
-          >
-            Datum speichern
-          </Button>
-
-          {kenntnisAm === null ? null : (
+          {/*
+            Das Kreuz statt einer zweiten Schaltfläche darunter: Das Feld
+            leeren geht auf jedem Telefon anders und auf manchem gar nicht,
+            und die Stelle dafür gehört an dieses eine Feld.
+          */}
+          {eingabe === '' ? null : (
             <Button
-              volleBreite
-              variante="sekundaer"
+              variante="text"
+              className={stile.entfernen}
               disabled={gesperrt}
-              onClick={() => void aufSpeichern(null)}
+              vorleseText="Datum entfernen"
+              onClick={() => {
+                setzeEingabe('')
+
+                // Nur, wenn wirklich etwas gespeichert ist: Ein halb
+                // getipptes Datum wegzunehmen ist keine Änderung.
+                if (kenntnisAm !== null) {
+                  void aufSpeichern(null)
+                }
+              }}
             >
-              Datum entfernen
+              <Kreuz />
             </Button>
           )}
         </div>
-      </form>
+      </div>
+
+      <Speichermeldung stand={stand} />
     </Abschnitt>
   )
 }

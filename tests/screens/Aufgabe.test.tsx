@@ -408,7 +408,7 @@ describe('Aufgabendetail (§7, §8)', () => {
     ).toBeNull()
   })
 
-  it('nimmt das Anfechtungs-Kenntnisdatum auf der Testamentsanfechtung-Aufgabe entgegen', () => {
+  it('nimmt das Anfechtungs-Kenntnisdatum auf der Testamentsanfechtung-Aufgabe entgegen', async () => {
     const setzeAnfechtungKenntnisAm = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(
       aufgabendaten({
@@ -437,12 +437,16 @@ describe('Aufgabendetail (§7, §8)', () => {
       ),
     ).toBeVisible()
 
+    // Speichert von selbst: Die Schaltfläche unter dem Feld gibt es nicht mehr.
+    expect(screen.queryByRole('button', { name: 'Kenntnisdatum speichern' })).toBeNull()
+
     fireEvent.change(screen.getByLabelText('Tag Ihrer Kenntnis'), {
       target: { value: '2026-05-12' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Kenntnisdatum speichern' }))
 
-    expect(setzeAnfechtungKenntnisAm).toHaveBeenCalledWith('2026-05-12')
+    await waitFor(() => expect(setzeAnfechtungKenntnisAm).toHaveBeenCalledWith('2026-05-12'), {
+      timeout: 3000,
+    })
   })
 
   it('zeigt bei der Ausschlagungs-Aufgabe die neuen einheitlichen Schritte und einklappbaren Abschnitte', () => {
@@ -1470,16 +1474,17 @@ describe('Kenntnisdatum (§8, #12)', () => {
     expect(screen.getByText('noch 42 Tage')).toBeVisible()
   })
 
-  it('nimmt das Datum entgegen und gibt es an den Hook weiter', () => {
+  it('nimmt das Datum entgegen und gibt es von selbst an den Hook weiter', async () => {
     const setzeKenntnisAm = vi.fn().mockResolvedValue(undefined)
     zeigeAusschlagung({ setzeKenntnisAm })
 
     fireEvent.change(screen.getByLabelText('Tag Ihrer Kenntnis'), {
       target: { value: '2026-05-12' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Kenntnisdatum speichern' }))
 
-    expect(setzeKenntnisAm).toHaveBeenCalledWith('2026-05-12')
+    await waitFor(() => expect(setzeKenntnisAm).toHaveBeenCalledWith('2026-05-12'), {
+      timeout: 3000,
+    })
   })
 
   it('rechnet das Fristende, sobald das Datum eingetragen ist', () => {
@@ -1507,7 +1512,7 @@ describe('Kenntnisdatum (§8, #12)', () => {
     expect(sohn).not.toBe(bruder)
   })
 
-  it('laesst auch jemanden eintragen, dem die Aufgabe nicht zugewiesen ist', () => {
+  it('laesst auch jemanden eintragen, dem die Aufgabe nicht zugewiesen ist', async () => {
     /*
      * §7 sperrt das Bearbeiten der Aufgabe, nicht das eigene Kenntnisdatum.
      * Wer es erst nach einer Übernahme eintragen dürfte, sähe seine eigene
@@ -1528,17 +1533,30 @@ describe('Kenntnisdatum (§8, #12)', () => {
     fireEvent.change(screen.getByLabelText('Tag Ihrer Kenntnis'), {
       target: { value: '2026-05-12' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Kenntnisdatum speichern' }))
 
-    expect(setzeKenntnisAm).toHaveBeenCalledWith('2026-05-12')
+    await waitFor(() => expect(setzeKenntnisAm).toHaveBeenCalledWith('2026-05-12'), {
+      timeout: 3000,
+    })
   })
 
-  it('entfernt ein eingetragenes Datum wieder', () => {
+  it('entfernt ein eingetragenes Datum über das Kreuz in der Zeile', async () => {
     const setzeKenntnisAm = vi.fn().mockResolvedValue(undefined)
     zeigeAusschlagung({ kenntnisAm: heute(), setzeKenntnisAm })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Datum entfernen' }))
+    const kreuz = screen.getByRole('button', { name: 'Datum entfernen' })
+
+    // In derselben Zeile wie das Feld, nicht als eigener Kasten darunter.
+    expect(kreuz.parentElement).toContainElement(screen.getByLabelText('Tag Ihrer Kenntnis'))
+
+    await userEvent.click(kreuz)
 
     expect(setzeKenntnisAm).toHaveBeenCalledWith(null)
+    expect(screen.getByLabelText('Tag Ihrer Kenntnis')).toHaveValue('')
+  })
+
+  it('zeigt das Kreuz erst, wenn ein Datum eingetragen ist', () => {
+    zeigeAusschlagung({ kenntnisAm: null })
+
+    expect(screen.queryByRole('button', { name: 'Datum entfernen' })).toBeNull()
   })
 })
