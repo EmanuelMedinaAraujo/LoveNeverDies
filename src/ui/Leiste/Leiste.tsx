@@ -82,9 +82,46 @@ type LeisteProps = {
   freigabeNoetig?: boolean
   /** Ohne Fall ist die App gesperrt (§7): „Erbe" und „Alle" stehen still. */
   ohneFall?: boolean
+  /**
+   * §3.5: Der aktive Fall ist der eigene Vorsorgefall. Dann steht „Nachlass"
+   * an erster Stelle und „Start" gar nicht.
+   *
+   * Die Entscheidung trifft `Rahmen` über `istVorsorgende` und nicht diese
+   * Datei: Die Leiste liegt in `src/ui` und weiß nichts über Fälle (§9).
+   */
+  vorsorge?: boolean
 }
 
-export function Leiste({ freigabeNoetig = false, ohneFall = false }: LeisteProps) {
+export function Leiste({
+  freigabeNoetig = false,
+  ohneFall = false,
+  vorsorge = false,
+}: LeisteProps) {
+  const profil = (
+    <Tab
+      zu="/profil"
+      beschriftung="Profil"
+      symbol={<SymbolProfil />}
+      hinweis={freigabeNoetig ? 'Freigabe nötig' : undefined}
+    />
+  )
+
+  /*
+   * Im Vorsorgefall gibt es keinen gesperrten Zustand zu bedenken: `vorsorge`
+   * setzt einen lesbaren Fall mit `K_v` voraus, und ohne Fall gibt es keinen.
+   */
+  if (vorsorge) {
+    return (
+      <nav className={stile.leiste} aria-label="Hauptbereiche">
+        <ul className={stile.tabs}>
+          <Tab zu="/nachlass" beschriftung="Nachlass" symbol={<SymbolErbe />} />
+          <Tab zu="/alle" beschriftung="Alle" symbol={<SymbolAlle />} />
+          {profil}
+        </ul>
+      </nav>
+    )
+  }
+
   return (
     <nav className={stile.leiste} aria-label="Hauptbereiche">
       <ul className={stile.tabs}>
@@ -102,13 +139,9 @@ export function Leiste({ freigabeNoetig = false, ohneFall = false }: LeisteProps
           <Tab zu="/erbe" beschriftung="Erbe" symbol={<SymbolErbe />} />
         )}
 
-        <Tab
-          zu="/profil"
-          beschriftung="Profil"
-          symbol={<SymbolProfil />}
-          hinweis={freigabeNoetig ? 'Freigabe nötig' : undefined}
-        />
+        {profil}
       </ul>
     </nav>
   )
 }
+

@@ -708,6 +708,62 @@ describe('Aufgabendetail (§7, §8)', () => {
     )
   })
 
+  describe('Titel (§7, §3.5)', () => {
+    /** Eine selbst angelegte Aufgabe: ohne Herkunft aus dem Rechtskatalog. */
+    function eigene(titel = 'Neue Aufgabe') {
+      return aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [aufgabe({ titel, katalog: null })],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      })
+    }
+
+    it('benennt eine selbst angelegte Aufgabe um', async () => {
+      /*
+       * §3.5: „Aufgabe erstellen" legt mit einem vorläufigen Titel an und
+       * führt unmittelbar hierher. Ohne dieses Feld hiesse die Aufgabe für
+       * immer „Neue Aufgabe".
+       */
+      const schreibe = vi.fn().mockResolvedValue(undefined)
+      useAufgaben.mockReturnValue({ ...eigene(), schreibe })
+
+      zeigeDetail()
+
+      const feld = screen.getByLabelText('Titel')
+      await userEvent.clear(feld)
+      await userEvent.type(feld, 'Den Kater versorgen')
+      await userEvent.click(screen.getByRole('button', { name: 'Titel speichern' }))
+
+      expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
+        titel: 'Den Kater versorgen',
+      })
+    })
+
+    it('lässt einen Titel aus lauter Leerzeichen gar nicht erst abschicken', async () => {
+      // Der Dienst wiese ihn ab, und die Meldung landete weit weg vom Feld (§5).
+      const schreibe = vi.fn()
+      useAufgaben.mockReturnValue({ ...eigene(), schreibe })
+
+      zeigeDetail()
+
+      await userEvent.clear(screen.getByLabelText('Titel'))
+      await userEvent.type(screen.getByLabelText('Titel'), '   ')
+
+      expect(screen.getByRole('button', { name: 'Titel speichern' })).toBeDisabled()
+      expect(schreibe).not.toHaveBeenCalled()
+    })
+
+    it('bietet den Titel einer Katalogaufgabe nicht zum Ändern an', () => {
+      // Er ist Rechtstext und steht in der Inhaltsschicht (§8).
+      zeigeDetail()
+
+      expect(screen.queryByLabelText('Titel')).toBeNull()
+    })
+  })
+
   describe('Selbst gesetzte Frist (§7)', () => {
     /** Ein Kalendertag, so viele Tage nach heute. */
     function inTagen(tage: number): string {

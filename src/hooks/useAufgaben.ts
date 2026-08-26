@@ -171,7 +171,7 @@ export type Aufgabendaten = {
     parentId?: string | null,
     nurFuerMich?: boolean,
     angaben?: Neuangaben,
-  ) => Promise<void>
+  ) => Promise<string>
   schreibe: (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => Promise<void>
   /**
    * Das Haekchen setzen oder wegnehmen (§7).
@@ -664,7 +664,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       parentId: string | null = null,
       nurFuerMich = false,
       angaben: Neuangaben = {},
-    ) => {
+    ): Promise<string> => {
       /*
        * §7: Wer etwas aufschreibt, ist damit eingetragen — etwas selbst zu
        * notieren *ist* die Ansage "ich mache das". Ohne Anmeldung gibt es
@@ -673,8 +673,9 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       const wer = ich.userId === '' ? null : ich
 
       if (!nurFuerMich) {
-        mutiere(await mutationAnlegen(fall, titel, parentId, wer, angaben))
-        return
+        const mutation = await mutationAnlegen(fall, titel, parentId, wer, angaben)
+        mutiere(mutation)
+        return mutation.itemId
       }
 
       /*
@@ -689,15 +690,15 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
         )
       }
 
-      mutiere(
-        await mutationPrivatAnlegen(
-          fall,
-          await holePersoenlichenSchluessel(),
-          titel,
-          wer,
-          angaben,
-        ),
+      const mutation = await mutationPrivatAnlegen(
+        fall,
+        await holePersoenlichenSchluessel(),
+        titel,
+        wer,
+        angaben,
       )
+      mutiere(mutation)
+      return mutation.itemId
     },
     [fall, holePersoenlichenSchluessel, ich, mutiere],
   )

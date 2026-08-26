@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../../core/auth/authProvider.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import {
@@ -9,7 +10,7 @@ import {
 } from '../../../hooks/useAnsichtsmodus.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
-import type { LesbarerFall } from '../../../services/fallService.ts'
+import { istVorsorgende, type LesbarerFall } from '../../../services/fallService.ts'
 import { statusText } from '../../../services/fragebaumService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
@@ -149,9 +150,97 @@ function Ansichtseinstellungen() {
   )
 }
 
+/**
+ * Die Vorsorge samt Tresor löschen (DESIGN.md §3.5, §5).
+ *
+ * Sie steht dort, wo bei allen anderen „Fall verlassen" steht, und sieht
+ * genauso aus: Es ist die entsprechende Handlung für die eine Person, die
+ * ihren Fall nicht verlassen kann.
+ *
+ * Mit Rückfrage, und die Rückfrage nennt den Namen. „Wirklich löschen?" ist
+ * eine Frage, die man wegtippt; „Die Vorsorge für Anna Müller samt allen
+ * hinterlegten Angaben löschen?" ist eine, die man liest. Zurück kommt davon
+ * nichts: Der Tresorschlüssel liegt nur auf den Geräten dieser Person, und
+ * mit dem Fall geht auch er.
+ */
+function Vorsorgeloeschen({
+  personName,
+  onLoeschen,
+}: {
+  personName: string
+  onLoeschen: () => Promise<void>
+}) {
+  const navigate = useNavigate()
+
+  const [bestaetigung, setzeBestaetigung] = useState(false)
+  const [laeuft, setzeLaeuft] = useState(false)
+  const [fehler, setzeFehler] = useState<string | null>(null)
+
+  async function loeschen() {
+    setzeLaeuft(true)
+    setzeFehler(null)
+
+    try {
+      await onLoeschen()
+      navigate('/', { replace: true })
+    } catch (ursache) {
+      setzeFehler(alsNachricht(ursache))
+      setzeLaeuft(false)
+    }
+  }
+
+  if (!bestaetigung) {
+    return (
+      <Zeile>
+        <Button
+          variante="text"
+          className={stile.gefahr}
+          onClick={() => {
+            setzeBestaetigung(true)
+            setzeFehler(null)
+          }}
+        >
+          Vorsorge löschen
+        </Button>
+      </Zeile>
+    )
+  }
+
+  return (
+    <Zeile className={stile.frage}>
+      <p>
+        Die Vorsorge für „{personName}“ samt allen hinterlegten Angaben wirklich löschen? Das
+        lässt sich nicht rückgängig machen.
+      </p>
+
+      {fehler === null ? null : (
+        <p className={stile.meta} role="alert">
+          {fehler}
+        </p>
+      )}
+
+      <div className={stile.knoepfe}>
+        <Button variante="primaer" disabled={laeuft} onClick={() => void loeschen()}>
+          {laeuft ? 'Wird gelöscht…' : 'Ja, Vorsorge löschen'}
+        </Button>
+        <Button
+          variante="sekundaer"
+          disabled={laeuft}
+          onClick={() => {
+            setzeBestaetigung(false)
+            setzeFehler(null)
+          }}
+        >
+          Abbrechen
+        </Button>
+      </div>
+    </Zeile>
+  )
+}
+
 export function Profil() {
   const { zustand, abmelden } = useAuth()
-  const { zustand: fall, verlasseFall } = useCase()
+  const { zustand: fall, verlasseFall, loescheVorsorgefall } = useCase()
   const benutzer = zustand.status === 'angemeldet' ? zustand.benutzer : null
 
   const [bestaetigung, setzeBestaetigung] = useState(false)
@@ -181,13 +270,14 @@ export function Profil() {
     fall.aktiver.zustand === 'lesbar' &&
     fall.aktiver.status === 'vorsorge'
 
-  const istVersiegelterVorsorgePreparer =
-    istVorsorge &&
-    fall.status === 'bereit' &&
-    fall.aktiver.zustand === 'lesbar' &&
-    fall.aktiver.vaultCommitment !== null &&
-    benutzer !== null &&
-    fall.aktiver.preparerId === benutzer.id
+  /*
+   * §3.5: Der eigene Vorsorgefall. Wer ihn angelegt hat, kann ihn nicht
+   * verlassen — `K_v` liegt nur auf seinen Geräten, und ein Fall ohne
+   * vorsorgende Person wäre ein Tresor, den niemand mehr füllen und niemand
+   * mehr öffnen kann. Löschen kann er ihn, und das steht hier: Es ist die
+   * zweite endgültige Kontoaktion, und beide gehören an dieselbe Stelle.
+   */
+  const vorsorgende = fall.status === 'bereit' && istVorsorgende(fall.aktiver)
 
   return (
     <main className={stile.seite}>
@@ -270,7 +360,9 @@ export function Profil() {
               <span className={stile.rechts}>{fuerWen}</span>
             </Zeile>
             {trauerfall === null ? null : <Erbstatuszeile fall={trauerfall} />}
-            {istVorsorge ? <Navizeile titel="Nachlass-Tresor" ziel="/erbe" /> : null}
+            {istVorsorge ? (
+              <Navizeile titel="Nachlass" ziel={vorsorgende ? '/nachlass' : '/erbe'} />
+            ) : null}
           </Liste>
         </Gruppe>
       )}
@@ -334,16 +426,24 @@ export function Profil() {
       {fall.status === 'bereit' && fall.aktiver.zustand === 'lesbar' ? (
         <Gruppe
           fussnote={
-            istVersiegelterVorsorgePreparer
-              ? 'Als Ersteller dieses versiegelten Vorsorgefalls können Sie ihn nicht verlassen. Löschen können Sie ihn im Tab Erbe.'
+            vorsorgende
+              ? 'Als vorsorgende Person können Sie diesen Fall nicht verlassen: Der Tresorschlüssel liegt nur auf Ihren Geräten. Löschen können Sie ihn — mit allem, was darin liegt.'
               : 'Danach haben Sie keinen Zugriff mehr auf die Aufgaben und Daten dieses Falls.'
           }
         >
           <Liste>
-            {istVersiegelterVorsorgePreparer ? (
-              <Zeile>
-                <span className={stile.aus}>Fall verlassen</span>
-              </Zeile>
+            {/*
+              §3.5: Die vorsorgende Person löscht statt zu verlassen. Beide
+              Wege stehen in derselben Gruppe, weil sie dasselbe beantworten —
+              „Ich möchte hier raus" — und weil zwei Gruppen mit je einer Zeile
+              am Ende einer Einstellungsliste wie zwei verschiedene Fälle
+              aussähen.
+            */}
+            {vorsorgende ? (
+              <Vorsorgeloeschen
+                personName={fuerWen ?? ''}
+                onLoeschen={() => loescheVorsorgefall(fall.aktiver.id)}
+              />
             ) : bestaetigung ? (
               <Zeile className={stile.frage}>
                 <p>Den Fall für „{fuerWen}“ wirklich verlassen?</p>

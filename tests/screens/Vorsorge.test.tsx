@@ -44,7 +44,7 @@ describe('Vorsorge Screen (§2, §3.5)', () => {
     expect(eingabe).toHaveValue(BENUTZER.anzeigename)
   })
 
-  it('legt Vorsorgefall an und leitet zu /erbe weiter', async () => {
+  it('legt Vorsorgefall an und leitet zu /nachlass weiter', async () => {
     mockLegeVorsorgefallAn.mockResolvedValue(undefined)
     rendereMitProvidern(<Vorsorge />)
 
@@ -57,7 +57,7 @@ describe('Vorsorge Screen (§2, §3.5)', () => {
     expect(mockLegeVorsorgefallAn).toHaveBeenCalledWith({
       personName: 'Maximilian Mustermann',
     })
-    expect(navigiere).toHaveBeenCalledWith('/erbe', { replace: true })
+    expect(navigiere).toHaveBeenCalledWith('/nachlass', { replace: true })
   })
 
   it('zeigt Fehlermeldung bei Fehlschlag', async () => {

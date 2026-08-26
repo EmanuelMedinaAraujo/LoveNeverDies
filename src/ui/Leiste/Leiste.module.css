@@ -56,7 +56,11 @@
 .zelle {
   display: flex;
   flex: 1 1 0;
-  /* Vier gleich breite Zellen, auch wenn „Profil" laenger ist als „Erbe". */
+  /*
+   * Gleich breite Zellen, auch wenn „Profil" laenger ist als „Erbe" — und
+   * gleich breite auch dann, wenn es drei sind statt vier (§3.5: im
+   * Vorsorgefall entfaellt „Start").
+   */
   min-width: 0;
 }
 

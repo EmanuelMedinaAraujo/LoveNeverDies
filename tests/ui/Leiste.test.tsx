@@ -60,6 +60,36 @@ describe('Leiste', () => {
     expect(screen.getByRole('link', { name: 'Erbe' })).toHaveAttribute('aria-current', 'page')
   })
 
+  it('zeigt im Vorsorgefall Nachlass · Alle · Profil, ohne Start (§3.5)', () => {
+    /*
+     * Wer für sich selbst vorsorgt, hat keine zugewiesenen Aufgaben: „Start"
+     * wäre dort auf Dauer der Satz "Für Sie ist gerade nichts eingetragen".
+     */
+    rendere({ vorsorge: true })
+
+    const leiste = screen.getByRole('navigation', { name: 'Hauptbereiche' })
+    const beschriftungen = within(leiste)
+      .getAllByRole('link')
+      .map((tab) => tab.textContent)
+
+    expect(beschriftungen).toEqual(['Nachlass', 'Alle', 'Profil'])
+    expect(screen.getByRole('link', { name: 'Nachlass' })).toHaveAttribute('href', '/nachlass')
+    expect(screen.queryByRole('link', { name: 'Erbe' })).toBeNull()
+  })
+
+  it('markiert den Nachlass-Tab auch auf seinen Unterseiten', () => {
+    // Ohne `end`: `/nachlass/checkliste/fragen` gehört sichtbar dazu.
+    rendere({ vorsorge: true }, '/nachlass/checkliste/fragen')
+
+    expect(screen.getByRole('link', { name: 'Nachlass' })).toHaveAttribute('aria-current', 'page')
+  })
+
+  it('trägt den Freigabe-Hinweis auch im Vorsorgefall am Profil-Tab (§3.6)', () => {
+    rendere({ vorsorge: true, freigabeNoetig: true })
+
+    expect(screen.getByRole('link', { name: 'Profil, Freigabe nötig' })).toBeVisible()
+  })
+
   it('trägt den Freigabe-Hinweis am Profil-Tab (§3.6)', () => {
     rendere({ freigabeNoetig: true })
 

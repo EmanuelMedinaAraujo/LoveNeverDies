@@ -17,7 +17,20 @@ vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
 
 const { Rahmen } = await import('../../src/app/Rahmen.tsx')
 
-const LESBAR = { zustand: 'lesbar', id: 'fall-1' } as unknown as LesbarerFall
+const LESBAR = {
+  zustand: 'lesbar',
+  id: 'fall-1',
+  status: 'trauerfall',
+  kv: null,
+} as unknown as LesbarerFall
+
+/** §3.5: Der eigene Vorsorgefall — `K_v` liegt auf diesem Gerät. */
+const VORSORGE = {
+  zustand: 'lesbar',
+  id: 'fall-3',
+  status: 'vorsorge',
+  kv: new Uint8Array([1]),
+} as unknown as LesbarerFall
 const GESPERRT = { zustand: 'gesperrt' as const, id: 'fall-2', grund: 'Kein Schlüssel.' }
 
 function falldaten(zustand: Falldaten['zustand']): Falldaten {
@@ -75,6 +88,22 @@ describe('Rahmen', () => {
     rendere()
 
     expect(screen.queryByText(/Freigabe nötig/)).toBeNull()
+  })
+
+  it('gibt der vorsorgenden Person die dreiteilige Leiste (§3.5)', () => {
+    /*
+     * Die Entscheidung fällt hier und nicht in der Leiste: `istVorsorgende`
+     * liegt in `services`, und `ui` darf `services` nicht importieren (§9).
+     */
+    useCase.mockReturnValue(
+      falldaten({ status: 'bereit', faelle: [VORSORGE], aktiver: VORSORGE }),
+    )
+
+    rendere()
+
+    expect(screen.getByRole('link', { name: 'Nachlass' })).toHaveAttribute('href', '/nachlass')
+    expect(screen.queryByRole('link', { name: 'Start' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Erbe' })).toBeNull()
   })
 
   it('stellt Erbe und Alle still, solange es keinen Fall gibt (§7)', () => {

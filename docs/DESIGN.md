@@ -293,37 +293,55 @@ Tresor kaskadierend entfernt. Träte er aus, zeigte `preparer_id` weiter auf ihn
 immer, und der Tresor wäre ein Datenblock, den niemand mehr öffnen und niemand mehr
 loswerden kann.
 
-#### Die Vorsorgefragen
+#### Die Nachlass-Checkliste
 
-Ein Vorsorgefall hat keine Aufgaben: kein Sterbedatum, kein Rechtskatalog (§2). Was der
-vorsorgenden Person auf "Meine Aufgaben" begegnete, wäre sonst für immer der Satz "Für Sie
-ist gerade nichts eingetragen" — richtig und nutzlos.
+Ein Vorsorgefall hat keine Aufgabenliste aus dem Rechtskatalog: kein Sterbedatum, kein
+Katalog (§2). Was der vorsorgenden Person auf "Meine Aufgaben" begegnete, wäre für immer der
+Satz "Für Sie ist gerade nichts eingetragen" — richtig und nutzlos. Sie bekommt deshalb einen
+eigenen Tab, "Nachlass", und "Start" gar nicht (§7).
 
-An dieser Stelle stehen deshalb die acht Fragen aus `content/vorsorgefragen.ts`: wo die
-Papiere liegen, ob es eine postmortale Vollmacht gibt, welche Verträge laufen, was mit der
-Bestattung sein soll. Der Wortlaut kommt von den Juristinnen und bleibt wörtlich (§8). Eine
-Frage, ein Feld, eine Schaltfläche: Wer eine Frage beantwortet und die übrigen sieben offen
-lässt, hat gespeichert.
+Der Tab selbst beantwortet zuerst die Frage, die vor allen anderen steht: Was passiert mit
+dem, was ich hier eintrage? Darauf antwortet der Tresor-Status — versiegelt, und ohne
+Angehörige kann ihn niemand öffnen; die Einladung steht direkt darunter, weil hier der Grund
+dafür sichtbar wird (§6). Erst danach kommen die beiden Wege: eine Aufgabe erstellen und die
+Nachlass-Checkliste.
+
+**Aufgaben in einem Vorsorgefall** sind keine gesetzlichen Pflichten mit Frist und Behörde,
+sondern Bitten an die Angehörigen — den Kater versorgen, die Nachbarin anrufen. Sie liegen
+unter `K_c` wie jede andere Aufgabe und sind ab dem ersten Tag für alle im Fall sichtbar; das
+ist der Unterschied zum Tresor. "Aufgabe erstellen" öffnet direkt das vollständige
+Aufgaben-Formular im Dialog (§7), wo Titel, Beschreibung, Frist und "Nur für mich" in einem Zug
+eingetragen werden. Selbst angelegte Aufgaben lassen sich im Detail jederzeit umbenennen.
+
+**Die Checkliste** sind die acht Fragen aus `content/vorsorgefragen.ts`: wo die Papiere
+liegen, welche Verträge laufen, ob es ein Testament und eine Vorsorgevollmacht gibt, welche
+Online-Konten bestehen, was mit der Bestattung sein soll. Der Wortlaut kommt von den
+Juristinnen und bleibt wörtlich (§8). Vor dem Formular steht eine Seite, die sagt, was eine
+Nachlass-Checkliste überhaupt ist: Wer ohne Vorwarnung auf ein Feld für Passwörter stösst,
+sieht ein Amtsformular; wer vorher gelesen hat, wozu es gut ist, sieht eine Entlastung für die
+eigenen Angehörigen.
+
+**Gespeichert wird ohne Knopf.** Eine Antwort geht in den Tresor, sobald ihr Feld den Fokus
+verliert, und spätestens zwei Sekunden nach dem letzten Tastendruck — wer die letzte Antwort
+tippt und das Telefon weglegt, verlässt das Feld nie. Acht Fragen mit acht Speichern-Knöpfen
+wären acht Gelegenheiten, einen zu übersehen, und eine getippte, nicht abgeschickte Antwort
+sieht aus wie eine gespeicherte. Automatisch heisst dabei nicht stillschweigend: Unter jedem
+Feld steht, ob die Antwort offen ist, geschrieben wird oder liegt, und im Fehlerfall bleibt
+die Meldung samt einem zweiten Versuch stehen (§5).
 
 Eine Antwort ist ein Tresor-Item wie jedes andere — DEK unter `K_v`, `in_vault = true` — mit
-einer Frage-Kennung im Payload. Die Kennung ist der Unterschied zwischen einer Antwort und
-einer frei angelegten Notiz: Sie hält eine Frage bei genau einer Zeile, sodass das zweite
-Speichern ändert und nicht ein zweites Mal anlegt, und sie bleibt stabil, wenn die
-Juristinnen den Wortlaut später ändern.
+einer Frage-Kennung im Payload. Die Kennung hält eine Frage bei genau einer Zeile, sodass das
+zweite Speichern ändert und nicht ein zweites Mal anlegt, und sie bleibt stabil, wenn die
+Juristinnen den Wortlaut später ändern. Unter den Fragen stehen die freien Einträge: alles,
+wonach nicht gefragt wird — eine Bankverbindung, der Ort des Zweitschlüssels, ein Brief. Sie
+tragen keine Frage-Kennung, und genau daran hält `freieEintraege` sie auseinander.
 
-Dieselben Fragen stehen im Tab Erbe, über den frei angelegten Inhalten: Der Tresor ist der
-Ort, an dem man nachsieht, was man hinterlegt hat. Angehörige sehen sie nicht — ohne `K_v`
-gibt es nichts zu beantworten und nichts zu lesen.
-
-Unter den acht gelieferten Fragen stellt die vorsorgende Person eigene. Eine selbst gestellte
-Frage ist dieselbe Tresorzeile wie eine beantwortete gelieferte, nur trägt ihr Titel den
-Wortlaut der Frage statt einer Kopie aus der Inhaltsdatei; ihre Kennung beginnt mit `eigen-`.
-Daran hängt alles Weitere: Der Fragenblock sammelt sie über das Präfix ein, `antwortZuFrage`
-findet ihre Antwort wie jede andere, und "Weitere Tresor-Inhalte" lässt sie draussen, weil
-dort nur steht, was keine Frage-Kennung hat. Die Zeile entsteht schon beim Stellen der Frage
-und nicht erst mit der ersten Antwort — sonst wäre eine notierte, aber noch offene Frage beim
-nächsten Öffnen der App wieder verschwunden. Löschen lässt sich nur eine selbst gestellte
-Frage, und nur nach Rückfrage: Die acht gelieferten bleiben stehen.
+Hinter der Testamentfrage hängt ein Erklärtext, "So verfassen Sie ein Testament". Er steht
+dort und nicht als eigener Punkt in der Liste: Wer sein Testament längst im Ordner hat, soll
+ihn nicht wegblättern müssen. Am Ende des Formulars führt ein Weg in die Übersicht: alle
+Fragen mit ihren Antworten, zum Lesen und nicht zum Ändern, die offenen ausdrücklich als
+offen benannt. Eine Übersicht, aus der die Lücken verschwinden, sagt "acht Antworten", wo drei
+stehen.
 
 Die Todesbestätigung steht im Tab Erbe ausschliesslich bei den Angehörigen. `k` zählt
 Angehörige ohne den Preparer (§3.5); die vorsorgende Person konnte ihren eigenen Tod nie
@@ -904,14 +922,31 @@ lesen kann.
 
 ### Navigation
 
-Untere Leiste: Start · Erbe · Alle · Profil
+Untere Leiste:
+- **Trauerfall / Angehörige eines Vorsorgefalls:** `Start · Erbe · Alle · Profil`
+- **Vorsorgende Person (eigener Vorsorgefall):** `Nachlass · Alle · Profil`
 
-| Tab    | Inhalt                                                                                     |
-| ------ | ------------------------------------------------------------------------------------------ |
-| Start  | H1 "Meine Aufgaben", nur die dem angemeldeten Nutzer zugewiesenen Aufgaben                 |
-| Erbe   | Vorsorge / Nachlass-Tresor, Freigabestatus, "Todesfall bestätigen"                         |
-| Alle   | Alle Aufgaben des Falls                                                                    |
-| Profil | Name, Angehörige, Fallwechsel ("Für wen?"), Geräte, Ansicht, Textgröße, Darstellung, Fall verlassen |
+| Tab      | Inhalt                                                                                     |
+| -------- | ------------------------------------------------------------------------------------------ |
+| Start    | H1 "Meine Aufgaben", nur die dem angemeldeten Nutzer zugewiesenen Aufgaben (nur Trauerfall) |
+| Nachlass | Tresor-Status, Einladung, Wege zu "Aufgabe erstellen" und "Nachlass-Checkliste" (nur Vorsorge) |
+| Erbe     | Angehörige: Freigabestatus, "Todesfall bestätigen". Trauerfall: Erbstatus, Nachlass-Tresor |
+| Alle     | Alle Aufgaben des Falls                                                                    |
+| Profil   | Name, Angehörige, Fallwechsel ("Für wen?"), Geräte, Ansicht, Textgröße, Darstellung, Fall verlassen / Vorsorge löschen |
+
+Der Nachlass-Bereich umfasst folgende Routen:
+
+| Route                             | Zweck                                                                   |
+| --------------------------------- | ----------------------------------------------------------------------- |
+| `/nachlass`                       | Hauptseite: Status, Einladung, Wege zu Aufgabe und Checkliste          |
+| `/nachlass/checkliste`            | Einführung: Was eine Nachlass-Checkliste ist und wozu sie dient         |
+| `/nachlass/checkliste/fragen`     | Das Formular: acht Fragen, darunter freie Tresor-Einträge               |
+| `/nachlass/checkliste/testament`  | "So verfassen Sie ein Testament"                                        |
+| `/nachlass/checkliste/uebersicht` | Alle Fragen mit ihren Antworten, zum Lesen                              |
+
+Nur `/nachlass` steht im `Rahmen` und trägt die untere Leiste. Die übrigen vier sind
+lineare Abläufe mit genau einem nächsten Schritt — wie Todesfall, Koppeln und der
+Fragebaum — und stehen ohne sie, mit dem Weg zurück oben links.
 
 ### Onboarding
 
