@@ -15,7 +15,11 @@ import { useTresor } from '../../../hooks/useTresor.ts'
 import type { Aufgabe, Fragebaumergebnis } from '../../../services/aufgabenService.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
 import { BAUPLAENE, knoten, statusText } from '../../../services/fragebaumService.ts'
-import { antwortZuFrage, type TresorItem } from '../../../services/tresorService.ts'
+import {
+  antwortZuFrage,
+  eigeneFragen,
+  type TresorItem,
+} from '../../../services/tresorService.ts'
 import type { Infotext } from '../../../types/infotext.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
@@ -372,6 +376,7 @@ function VorsorgeTresor({
     resplitPending,
     legeItemAn,
     speichereAntwort,
+    legeEigeneFrageAn,
     loescheItem,
     verteileShares,
     resplitLaeuft,
@@ -406,9 +411,21 @@ function VorsorgeTresor({
    * ihre Frage und ohne Feld zum Ändern.
    */
   const freieItems = items.filter((item) => item.frageId === null)
-  const beantwortet = VORSORGEFRAGEN.filter(
-    (frage) => antwortZuFrage(items, frage.id) !== null,
-  ).length
+
+  /*
+   * Gezaehlt werden die gelieferten Fragen und die selbst gestellten zusammen.
+   * "3 von 8" neben elf Fragen waere eine Auskunft ueber eine Liste, die so
+   * nicht auf dem Bildschirm steht.
+   *
+   * Eine selbst gestellte Frage gilt als beantwortet, sobald etwas im Feld
+   * steht: Ihre Zeile entsteht schon beim Stellen der Frage, ihr blosses
+   * Dasein sagt also nichts darueber, ob jemand sie beantwortet hat.
+   */
+  const eigene = eigeneFragen(items)
+  const gesamt = VORSORGEFRAGEN.length + eigene.length
+  const beantwortet =
+    VORSORGEFRAGEN.filter((frage) => antwortZuFrage(items, frage.id) !== null).length +
+    eigene.filter((item) => item.inhalt !== '').length
 
   return (
     <>
@@ -421,8 +438,9 @@ function VorsorgeTresor({
         {schwelle.n === 0 ? (
           <>
             <p className={stile.warnung}>
-              Der Tresor ist versiegelt, kann aber noch von niemandem geöffnet werden. Bitte laden
-              Sie Angehörige ein, damit der Tresor im Ernstfall freigegeben werden kann.
+              Der Tresor ist versiegelt. Im Tresor befinden sich Ihre Antworten. Der Tresor kann
+              nach Ihrem Tod nur von Ihren Angehörigen geöffnet werde. Bitte laden Sie Angehörige
+              ein, damit diese im Ernstfall auf Ihre Antworten Zugriefen können.
             </p>
             <Button volleBreite onClick={() => navigate('/koppeln')}>
               Angehörige einladen
@@ -464,7 +482,16 @@ function VorsorgeTresor({
         ) : null}
       </Card>
 
-      <Todesfallfreigabe fall={fall} onFallAktualisieren={onFallAktualisieren} />
+      {/*
+        Die Todesbestaetigung steht nur bei den Angehoerigen (§3.5, §7).
+        Die vorsorgende Person kann ihren eigenen Tod nicht freigeben: `k`
+        zaehlt ausschliesslich Angehoerige, und der Knopf war fuer sie ohnehin
+        immer gesperrt. Was blieb, war ein Kasten ueber die eigene Beerdigung
+        auf dem Weg zu den eigenen Unterlagen.
+      */}
+      {istPreparer ? null : (
+        <Todesfallfreigabe fall={fall} onFallAktualisieren={onFallAktualisieren} />
+      )}
 
       {istPreparer ? (
         <>
@@ -479,7 +506,7 @@ function VorsorgeTresor({
             <div className={stile.statusKopf}>
               <h2 className={stile.abschnitt}>Ihre Vorsorgefragen</h2>
               <Badge lage="ruhig">
-                {beantwortet} von {VORSORGEFRAGEN.length} beantwortet
+                {beantwortet} von {gesamt} beantwortet
               </Badge>
             </div>
             <p className={stile.hinweis}>
@@ -488,7 +515,12 @@ function VorsorgeTresor({
             </p>
           </Card>
 
-          <Vorsorgefragen items={items} onSpeichern={speichereAntwort} />
+          <Vorsorgefragen
+            items={items}
+            onSpeichern={speichereAntwort}
+            onFrageAnlegen={legeEigeneFrageAn}
+            onFrageLoeschen={loescheItem}
+          />
 
           <TresorInhalte items={freieItems} onNeu={legeItemAn} onLoeschen={loescheItem} />
 

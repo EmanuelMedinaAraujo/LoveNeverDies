@@ -23,6 +23,8 @@ import { rendereMitProvidern } from './harness.tsx'
  */
 
 const speichereAntwort = vi.fn<Tresordaten['speichereAntwort']>()
+const legeEigeneFrageAn = vi.fn<Tresordaten['legeEigeneFrageAn']>()
+const loescheItem = vi.fn<Tresordaten['loescheItem']>()
 
 let falldaten: Falldaten
 let tresordaten: Tresordaten
@@ -110,6 +112,10 @@ describe('Vorsorgefragen auf dem ersten Screen (§3.5, §7)', () => {
   beforeEach(() => {
     speichereAntwort.mockReset()
     speichereAntwort.mockResolvedValue(undefined)
+    legeEigeneFrageAn.mockReset()
+    legeEigeneFrageAn.mockResolvedValue(undefined)
+    loescheItem.mockReset()
+    loescheItem.mockResolvedValue(undefined)
     aufgabenZustand = 'bereit'
 
     falldaten = {
@@ -129,7 +135,8 @@ describe('Vorsorgefragen auf dem ersten Screen (§3.5, §7)', () => {
       legeItemAn: vi.fn(),
       aendereItem: vi.fn(),
       speichereAntwort,
-      loescheItem: vi.fn(),
+      legeEigeneFrageAn,
+      loescheItem: loescheItem,
       verteileShares: vi.fn(),
       resplitLaeuft: false,
       resplitFehler: null,
@@ -234,6 +241,101 @@ describe('Vorsorgefragen auf dem ersten Screen (§3.5, §7)', () => {
     for (const frage of VORSORGEFRAGEN) {
       expect(screen.getByLabelText(beschriftung(frage.frage))).toBeVisible()
     }
+  })
+
+  it('legt eine selbst gestellte Frage an', async () => {
+    rendereMitProvidern(<Start />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Eigene Frage hinzufügen' }))
+    await userEvent.type(
+      screen.getByLabelText('Ihre eigene Frage'),
+      'Wo liegt der Zweitschlüssel?',
+    )
+    await userEvent.click(screen.getByRole('button', { name: 'Frage hinzufügen' }))
+
+    expect(legeEigeneFrageAn).toHaveBeenCalledWith('Wo liegt der Zweitschlüssel?')
+  })
+
+  it('legt keine leere Frage an', async () => {
+    rendereMitProvidern(<Start />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Eigene Frage hinzufügen' }))
+    await userEvent.type(screen.getByLabelText('Ihre eigene Frage'), '   ')
+
+    expect(screen.getByRole('button', { name: 'Frage hinzufügen' })).toBeDisabled()
+  })
+
+  it('stellt eine selbst gestellte Frage wie eine gelieferte, mit ihrer Antwort', () => {
+    tresordaten.items = [
+      antwort({
+        id: 'item-9',
+        titel: 'Wo liegt der Zweitschlüssel?',
+        inhalt: 'Bei Frau Weber nebenan.',
+        frageId: 'eigen-0199-abc',
+      }),
+    ]
+
+    rendereMitProvidern(<Start />)
+
+    const feld = screen.getByLabelText('Wo liegt der Zweitschlüssel?')
+    expect(feld).toHaveValue('Bei Frau Weber nebenan.')
+
+    // Dieselbe Form wie bei den acht: ein Feld, ein Knopf, ein Formular.
+    const formular = feld.closest('form')
+    if (formular === null) throw new Error('Das Formular der eigenen Frage fehlt.')
+    expect(within(formular).getByRole('button', { name: 'Speichern' })).toBeVisible()
+  })
+
+  it('ändert die Antwort auf eine selbst gestellte Frage unter deren Kennung', async () => {
+    tresordaten.items = [
+      antwort({
+        id: 'item-9',
+        titel: 'Wo liegt der Zweitschlüssel?',
+        inhalt: 'Bei Frau Weber.',
+        frageId: 'eigen-0199-abc',
+      }),
+    ]
+
+    rendereMitProvidern(<Start />)
+
+    const feld = screen.getByLabelText('Wo liegt der Zweitschlüssel?')
+    await userEvent.clear(feld)
+    await userEvent.type(feld, 'Beim Hausmeister.')
+
+    const formular = feld.closest('form')
+    if (formular === null) throw new Error('Das Formular der eigenen Frage fehlt.')
+    await userEvent.click(within(formular).getByRole('button', { name: 'Speichern' }))
+
+    expect(speichereAntwort).toHaveBeenCalledWith(
+      'eigen-0199-abc',
+      'Wo liegt der Zweitschlüssel?',
+      'Beim Hausmeister.',
+    )
+  })
+
+  it('löscht eine selbst gestellte Frage erst nach Rückfrage', async () => {
+    const eigene = antwort({
+      id: 'item-9',
+      titel: 'Wo liegt der Zweitschlüssel?',
+      inhalt: 'Bei Frau Weber.',
+      frageId: 'eigen-0199-abc',
+    })
+    tresordaten.items = [eigene]
+
+    rendereMitProvidern(<Start />)
+
+    await userEvent.click(screen.getByRole('button', { name: /Eigene Frage .* löschen/ }))
+    expect(loescheItem).not.toHaveBeenCalled()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ja, Frage löschen' }))
+    expect(loescheItem).toHaveBeenCalledWith(eigene)
+  })
+
+  it('lässt die gelieferten Fragen nicht löschen', () => {
+    rendereMitProvidern(<Start />)
+
+    // Ohne eigene Frage steht kein einziger Löschknopf auf dem Screen.
+    expect(screen.queryAllByRole('button', { name: /Frage löschen/ })).toHaveLength(0)
   })
 
   it('wartet auf den Sync-Stream, bevor die Fragen dastehen', () => {

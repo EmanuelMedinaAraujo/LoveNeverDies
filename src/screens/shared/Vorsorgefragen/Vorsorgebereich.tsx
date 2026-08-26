@@ -27,7 +27,12 @@ import stile from './Vorsorgefragen.module.css'
 export function Vorsorgebereich({ fall }: { fall: LesbarerFall }) {
   const { aktualisiere } = useCase()
   const { zustand, zeilen, mutiere } = useAufgaben(fall)
-  const { items, istPreparer, speichereAntwort } = useTresor(fall, zeilen, mutiere, aktualisiere)
+  const { items, istPreparer, speichereAntwort, legeEigeneFrageAn, loescheItem } = useTresor(
+    fall,
+    zeilen,
+    mutiere,
+    aktualisiere,
+  )
 
   if (zustand.status === 'laedt') {
     return (
@@ -59,7 +64,12 @@ export function Vorsorgebereich({ fall }: { fall: LesbarerFall }) {
         </p>
       </Card>
 
-      <Vorsorgefragen items={items} onSpeichern={speichereAntwort} />
+      <Vorsorgefragen
+        items={items}
+        onSpeichern={speichereAntwort}
+        onFrageAnlegen={legeEigeneFrageAn}
+        onFrageLoeschen={loescheItem}
+      />
     </>
   )
 }

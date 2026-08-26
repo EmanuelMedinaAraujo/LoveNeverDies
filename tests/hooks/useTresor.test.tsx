@@ -195,6 +195,67 @@ describe('useTresor Hook (§3.5)', () => {
     expect(mutation.itemId).toBe('item-1')
   })
 
+  it('legt eine selbst gestellte Frage ohne Antwort im Tresor an', async () => {
+    const fall = erstelleFall()
+    const mutiere = vi.fn()
+
+    const { result } = renderHook(() => useTresor(fall, [], mutiere, vi.fn()))
+
+    await result.current.legeEigeneFrageAn('Wo liegt der Zweitschlüssel?')
+
+    expect(mutiere).toHaveBeenCalledTimes(1)
+    const [mutation] = mutiere.mock.calls[0] as [
+      { op: string; imTresor?: boolean; wrappedDek: Uint8Array; payload: Uint8Array },
+    ]
+    expect(mutation.op).toBe('anlegen')
+    expect(mutation.imTresor).toBe(true)
+
+    const { entpackeDek } = await import('../../src/core/crypto/dek.ts')
+    const { entschluessele } = await import('../../src/core/crypto/aead.ts')
+    const { bytesText } = await import('../../src/core/crypto/bytes.ts')
+    if (fall.kv === null) throw new Error('kv fehlt')
+    const dek = await entpackeDek(fall.kv, mutation.wrappedDek)
+    const klartext = JSON.parse(bytesText(await entschluessele(dek, mutation.payload))) as {
+      frageId?: string
+      titel: string
+      inhalt: string
+    }
+
+    // Der Wortlaut der Frage steht im Titel, die Antwort ist noch leer.
+    expect(klartext.titel).toBe('Wo liegt der Zweitschlüssel?')
+    expect(klartext.inhalt).toBe('')
+    expect(klartext.frageId).toMatch(/^eigen-/)
+  })
+
+  it('gibt zwei selbst gestellten Fragen zwei Kennungen', async () => {
+    const fall = erstelleFall()
+    const mutiere = vi.fn()
+    const { result } = renderHook(() => useTresor(fall, [], mutiere, vi.fn()))
+
+    await result.current.legeEigeneFrageAn('Erste Frage?')
+    await result.current.legeEigeneFrageAn('Zweite Frage?')
+
+    const { entpackeDek } = await import('../../src/core/crypto/dek.ts')
+    const { entschluessele } = await import('../../src/core/crypto/aead.ts')
+    const { bytesText } = await import('../../src/core/crypto/bytes.ts')
+    if (fall.kv === null) throw new Error('kv fehlt')
+    const kv = fall.kv
+
+    const kennungen = await Promise.all(
+      mutiere.mock.calls.map(async ([mutation]) => {
+        const m = mutation as { wrappedDek: Uint8Array; payload: Uint8Array }
+        const dek = await entpackeDek(kv, m.wrappedDek)
+        return (
+          JSON.parse(bytesText(await entschluessele(dek, m.payload))) as { frageId?: string }
+        ).frageId
+      }),
+    )
+
+    // Sonst überschriebe die zweite Frage die Antwort auf die erste.
+    expect(kennungen).toHaveLength(2)
+    expect(kennungen[0]).not.toBe(kennungen[1])
+  })
+
   it('zeigt den korrekten Schwellwert basierend auf vaultN und vaultK', () => {
     const { result: r0 } = renderHook(() =>
       useTresor(erstelleFall({ vaultN: 0, vaultK: null }), [], vi.fn(), vi.fn()),
