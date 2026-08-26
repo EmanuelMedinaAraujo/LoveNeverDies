@@ -87,6 +87,7 @@ export default defineConfig(({ mode }) => {
           // Der Ciphertext-Cache liegt in IndexedDB (§5), nicht im Service
           // Worker. Hier wird ausschließlich die App-Hülle vorgehalten.
           navigateFallback: 'index.html',
+          navigateFallbackDenylist: [/^\/legal\//],
           cleanupOutdatedCaches: true,
         },
       }),
