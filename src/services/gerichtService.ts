@@ -93,3 +93,59 @@ export function formatGerichtNotiz(gericht: Nachlassgericht, plz: string): strin
 
   return zeilen.join('\n')
 }
+
+/**
+ * Extrahiert eine 5-stellige Postleitzahl aus einer Notiz, falls vorhanden.
+ */
+export function extrahierePlzAusNotiz(notiz: string): string | null {
+  if (!notiz) {
+    return null
+  }
+
+  const matchGericht = notiz.match(/Zuständiges Nachlassgericht \(PLZ\s*(\d{5})\)/i)
+  if (matchGericht?.[1]) {
+    return matchGericht[1]
+  }
+
+  const matchWohnort = notiz.match(/Letzter Wohnort \(PLZ\)[:\s→]+(\d{5})/i)
+  if (matchWohnort?.[1]) {
+    return matchWohnort[1]
+  }
+
+  const matchPlz = notiz.match(/\bPLZ[:\s]+(\d{5})\b/i)
+  if (matchPlz?.[1]) {
+    return matchPlz[1]
+  }
+
+  return null
+}
+
+/**
+ * Aktualisiert oder fügt die Kontaktdaten eines Nachlassgerichts in die Notizen ein.
+ * Bereits vorhandene Gerichtsangaben werden ersetzt, andere Notizen bleiben erhalten.
+ */
+export function aktualisiereNotizMitGericht(
+  bisherigeNotiz: string,
+  gericht: Nachlassgericht,
+  plz: string,
+): string {
+  const neueGerichtNotiz = formatGerichtNotiz(gericht, plz)
+  const getrimmt = bisherigeNotiz.trim()
+
+  if (getrimmt === '') {
+    return neueGerichtNotiz
+  }
+
+  const gerichtMuster = /Zuständiges Nachlassgericht \(PLZ\s*\d{5}\):[\s\S]*?(?=(\n\s*\n|\n(?:Vom Anfechtungsgrund|Letzter Wohnort)|$))/i
+  if (gerichtMuster.test(getrimmt)) {
+    return getrimmt.replace(gerichtMuster, neueGerichtNotiz).trim()
+  }
+
+  const wohnortMuster = /Letzter Wohnort \(PLZ\)[\s\S]*?(?=(\n\s*\n|\n(?:Vom Anfechtungsgrund|Zuständiges Nachlassgericht)|$))/i
+  if (wohnortMuster.test(getrimmt)) {
+    return getrimmt.replace(wohnortMuster, neueGerichtNotiz).trim()
+  }
+
+  return `${neueGerichtNotiz}\n\n${getrimmt}`
+}
+

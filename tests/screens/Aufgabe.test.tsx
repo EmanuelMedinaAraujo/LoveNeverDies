@@ -286,6 +286,71 @@ describe('Aufgabendetail (§7, §8)', () => {
     expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
   })
 
+  it('zeigt Nachlassgerichtssuche ausgeklappt und persistiert gefundene Gerichte in den Notizen', async () => {
+    const schreibe = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        schreibe,
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({
+              katalog: herkunft({
+                zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
+              }),
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    const eingabe = screen.getByPlaceholderText(/PLZ z\. B\./i)
+    expect(eingabe).toBeVisible()
+
+    await userEvent.type(eingabe, '74199')
+
+    expect(screen.getByRole('heading', { name: 'Amtsgericht Heilbronn' })).toBeVisible()
+    expect(schreibe).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item-1' }),
+      expect.objectContaining({
+        notizen: expect.stringContaining('Amtsgericht Heilbronn'),
+      }),
+    )
+  })
+
+  it('persistiert bei ungültiger PLZ oder Nicht-Wohngebiet nichts in den Notizen', async () => {
+    const schreibe = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        schreibe,
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({
+              katalog: herkunft({
+                zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
+              }),
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    const eingabe = screen.getByPlaceholderText(/PLZ z\. B\./i)
+    await userEvent.type(eingabe, '01053')
+
+    expect(screen.getByText(/Postfach oder Großempfänger/i)).toBeVisible()
+    expect(schreibe).not.toHaveBeenCalled()
+  })
+
   it('lässt ein Blatt direkt abhaken', async () => {
     const hakeAb = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(aufgabendaten({ hakeAb }))
