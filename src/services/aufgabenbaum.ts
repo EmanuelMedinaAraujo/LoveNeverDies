@@ -26,7 +26,7 @@ import { fristlage, vergleicheNachFrist, type Fristbezug } from './fristen'
 /** Eine Wurzelaufgabe mit allem, was sich über sie ableiten lässt. */
 export type Aufgabenknoten = {
   aufgabe: Aufgabe
-  /** Eine Ebene tief, in der Reihenfolge der Liste. */
+  /** Eine Ebene tief: Katalogschritte zuerst, danach in Anlagereihenfolge. */
   unteraufgaben: Aufgabe[]
   /** Ob diese Aufgabe ein eigenes Häkchen bekommt, nur Blätter tun das (§7). */
   istBlatt: boolean
@@ -42,6 +42,43 @@ export type Aufgabenknoten = {
    * schlechtere Fehler.
    */
   blockiertVon: Aufgabe[]
+}
+
+/**
+ * Die Reihenfolge der Unteraufgaben: Katalog zuerst, danach die Anlagezeit.
+ *
+ * Eine neu hinzugefügte Unteraufgabe steht damit immer unter den vorhandenen
+ * und nie zwischen ihnen. Das ist keine Kleinigkeit: Wer eine Aufgabe in
+ * Schritte zerlegt, schreibt sie in der Reihenfolge auf, in der er sie tun
+ * will, und eine Liste, die den vierten Schritt an die zweite Stelle setzt,
+ * behauptet eine Reihenfolge, die niemand gemeint hat.
+ *
+ * Die Sortierung steht hier und nicht bloss weiter oben in `useAufgaben`:
+ * Dort sortiert `nachReihenfolge` die flache Liste, und was für Wurzelaufgaben
+ * richtig ist, muss innerhalb einer Elternaufgabe nicht dasselbe ergeben.
+ * Ausdrücklich hier, damit die Zusage an der Stelle steht, an der die Kinder
+ * entstehen.
+ *
+ * `id` ist eine UUIDv7 für getippte Aufgaben und eine abgeleitete UUIDv5 für
+ * Katalogaufgaben (§8). Deshalb entscheidet erst die Katalogreihenfolge und
+ * nur unter Gleichen die ID: Zwischen zwei Katalogschritten sagt die UUIDv5
+ * nichts, sie ist ein HMAC.
+ */
+function nachUnterreihenfolge(links: Aufgabe, rechts: Aufgabe): number {
+  const hier = links.katalog?.reihenfolge
+  const dort = rechts.katalog?.reihenfolge
+
+  if (hier !== undefined && dort !== undefined) {
+    return hier === dort ? 0 : hier - dort
+  }
+
+  // Nur eine aus dem Katalog: Sie stand vor der ersten getippten da und bleibt
+  // davor. Keine von beiden: die Anlagezeit im Präfix der UUIDv7 (§5).
+  if (hier !== dort) {
+    return hier === undefined ? 1 : -1
+  }
+
+  return links.id < rechts.id ? -1 : links.id > rechts.id ? 1 : 0
 }
 
 /** Ob diese Aufgabe als erledigt gilt: bei Blättern gespeichert, sonst abgeleitet. */
@@ -78,6 +115,10 @@ export function baueBaum(aufgaben: Aufgabe[]): Aufgabenknoten[] {
     if (istKind(aufgabe) && aufgabe.parentId !== null) {
       kinderVon.set(aufgabe.parentId, [...(kinderVon.get(aufgabe.parentId) ?? []), aufgabe])
     }
+  }
+
+  for (const kinder of kinderVon.values()) {
+    kinder.sort(nachUnterreihenfolge)
   }
 
   const wurzeln = aufgaben.filter((aufgabe) => !istKind(aufgabe))

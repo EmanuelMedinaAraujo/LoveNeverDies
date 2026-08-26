@@ -62,6 +62,9 @@ vi.mock('../../src/screens/shared/Beitreten/Beitreten.tsx', () => ({
 vi.mock('../../src/screens/shared/Koppeln/Koppeln.tsx', () => ({
   Koppeln: () => <p>Codeeingabe</p>,
 }))
+vi.mock('../../src/screens/shared/Konto/Konto.tsx', () => ({
+  Konto: () => <p>Kontoeinstellungen</p>,
+}))
 
 /*
  * Die untere Leiste steht unter den vier Hauptscreens (§7). Was sie zeigt,
@@ -246,6 +249,17 @@ describe('Routen', () => {
 
     expect(screen.getByText('Aufgabendetail')).toBeVisible()
     expect(screen.getByRole('navigation', { name: 'Hauptbereiche' })).toBeVisible()
+  })
+
+  it('fuehrt /konto zu den Kontoeinstellungen, ohne untere Leiste', () => {
+    /*
+     * Clerks Oberflaeche bringt eine eigene Navigation mit. Zwei Navigationen
+     * auf einem Bildschirm geben auf dieselbe Frage zwei Antworten (§7).
+     */
+    rendere(ANGEMELDET, '/konto')
+
+    expect(screen.getByText('Kontoeinstellungen')).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'Hauptbereiche' })).toBeNull()
   })
 
   it('leitet unbekannte Pfade auf die Startseite', () => {

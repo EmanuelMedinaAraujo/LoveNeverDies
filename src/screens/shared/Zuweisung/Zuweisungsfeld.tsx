@@ -68,7 +68,12 @@ export function Zuweisungsfeld({
         <span className={stile.zeichen} aria-hidden="true">
           {frei ? <SymbolFrei /> : zuweisung.art === 'alle' ? <SymbolAlleLeute /> : <SymbolPerson />}
         </span>
-        <span className="nur-vorlesen">Zuständig: </span>
+        {/*
+          Der vorgelesene Zusatz steht nur, wo er etwas ergaenzt: "Niemand
+          zugewiesen" ist schon ein ganzer Satz, und "Zustaendig: Niemand
+          zugewiesen" sagt dasselbe zweimal.
+        */}
+        {frei ? null : <span className="nur-vorlesen">Zuständig: </span>}
         <span className={stile.name}>{zuweisungText(zuweisung, ich.userId)}</span>
       </p>
 

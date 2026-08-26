@@ -15,6 +15,7 @@ import { Anmelden } from '../screens/shared/Anmelden/Anmelden.tsx'
 import { Beitreten } from '../screens/shared/Beitreten/Beitreten.tsx'
 import { Erbe } from '../screens/shared/Erbe/Erbe.tsx'
 import { Fragebaum } from '../screens/shared/Fragebaum/Fragebaum.tsx'
+import { Konto } from '../screens/shared/Konto/Konto.tsx'
 import { Koppeln } from '../screens/shared/Koppeln/Koppeln.tsx'
 import { Nachlass } from '../screens/shared/Nachlass/Nachlass.tsx'
 import { Ansichtswahl } from '../screens/shared/Onboarding/Ansichtswahl.tsx'
@@ -202,6 +203,12 @@ export function App() {
       <Route path="/beitreten" element={<Beitreten zweck="join" />} />
       <Route path="/geraet-freischalten" element={<Beitreten zweck="device" />} />
       <Route path="/koppeln" element={<Koppeln />} />
+      {/*
+        Die Kontoeinstellungen, ganzseitig und ohne Leiste: Clerks Oberfläche
+        bringt eine eigene Navigation mit, und zwei Navigationen auf einem
+        Bildschirm geben auf dieselbe Frage zwei Antworten (§7).
+      */}
+      <Route path="/konto" element={<Konto />} />
       <Route
         path="/profil"
         element={

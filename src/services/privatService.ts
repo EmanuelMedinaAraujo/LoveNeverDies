@@ -225,14 +225,22 @@ export async function uebergebePersoenlichenSchluessel(
 /**
  * Was eine private Aufgabe ausser dem Titel mitbekommen kann.
  *
- * Drei Felder und ausdrücklich nicht `parentId` oder `dependsOn`: Die beiden
+ * Vier Felder und ausdrücklich nicht `parentId` oder `dependsOn`: Die beiden
  * Strukturregeln aus §3.7 bleiben Tatsachen ohne Parameter (siehe unten).
- * Gebraucht werden die drei von den Aufgaben aus dem Fragebaum, die ihre
- * Rechtsangaben selbst tragen müssen (ERBE_DESIGN.md §7).
+ * Gebraucht werden drei davon von den Aufgaben aus dem Fragebaum, die ihre
+ * Rechtsangaben selbst tragen müssen (ERBE_DESIGN.md §7); die Frist kommt aus
+ * dem Formular, in dem auch der Titel entsteht.
  */
 export type Privatinhalt = {
   beschreibung?: string
   notizen?: string
+  /**
+   * Die selbst gesetzte Frist als ISO `YYYY-MM-DD`, oder `null` (§7).
+   *
+   * Sie gehört auch bei einer privaten Aufgabe zur Aufgabe und nicht zur
+   * Person -- nur sieht die Aufgabe hier ohnehin niemand sonst.
+   */
+  fristAm?: string | null
   /**
    * Die Herkunftsangabe (§8). Bei einer Aufgabe aus dem Fragebaum steht hier
    * dessen Vorlage, nicht ein Katalogeintrag: Der Katalog kennt sie nicht.
@@ -270,7 +278,7 @@ export async function mutationPrivatAnlegen(
       parentId: null,
       dependsOn: [],
       assignee: wer === null ? NIEMAND : personen([wer]),
-      fristAm: null,
+      fristAm: inhalt.fristAm ?? null,
       katalog: inhalt.katalog ?? null,
     },
   )

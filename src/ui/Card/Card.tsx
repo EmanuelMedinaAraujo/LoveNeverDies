@@ -13,13 +13,28 @@ type CardProps = ComponentPropsWithoutRef<'section'> & {
    * groesste Text darin.
    */
   titel?: ReactNode
+  /**
+   * Was rechts neben dem Titel steht: ein Badge, oder die eine Aktion, die zu
+   * dieser Karte gehoert.
+   *
+   * Rechts neben dem Titel und nicht unter dem Inhalt, weil eine Aktion, die
+   * eine Liste ergaenzt, am Anfang der Liste zu finden sein muss und nicht
+   * hinter ihr. Auf einem Telefon steht "hinter der Liste" naemlich unter dem
+   * unteren Bildschirmrand, sobald die Liste laenger als drei Zeilen ist.
+   */
+  neben?: ReactNode
 }
 
 /** Flaeche fuer zusammengehoerende Inhalte. Masse und Farben aus den Tokens (§7, §12). */
-export function Card({ titel, className, children, ...rest }: CardProps) {
+export function Card({ titel, neben, className, children, ...rest }: CardProps) {
   return (
     <section className={[stile.card, className].filter(Boolean).join(' ')} {...rest}>
-      {titel === undefined ? null : <h2 className={stile.titel}>{titel}</h2>}
+      {titel === undefined && neben === undefined ? null : (
+        <div className={[stile.kopf, neben === undefined ? null : stile.mitAktion].filter(Boolean).join(' ')}>
+          {titel === undefined ? null : <h2 className={stile.titel}>{titel}</h2>}
+          {neben}
+        </div>
+      )}
       {children}
     </section>
   )

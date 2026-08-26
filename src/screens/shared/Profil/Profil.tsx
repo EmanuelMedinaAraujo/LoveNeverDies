@@ -150,13 +150,15 @@ function Ansichtseinstellungen() {
 }
 
 export function Profil() {
-  const { zustand } = useAuth()
+  const { zustand, abmelden } = useAuth()
   const { zustand: fall, verlasseFall } = useCase()
   const benutzer = zustand.status === 'angemeldet' ? zustand.benutzer : null
 
   const [bestaetigung, setzeBestaetigung] = useState(false)
   const [wirdVerlassen, setzeWirdVerlassen] = useState(false)
   const [fehler, setzeFehler] = useState<string | null>(null)
+  const [wirdAbgemeldet, setzeWirdAbgemeldet] = useState(false)
+  const [abmeldefehler, setzeAbmeldefehler] = useState<string | null>(null)
 
   const fuerWen =
     fall.status === 'bereit' && fall.aktiver.zustand === 'lesbar' ? fall.aktiver.personName : null
@@ -192,19 +194,69 @@ export function Profil() {
       <h1>Profil</h1>
 
       {benutzer === null ? null : (
-        <Gruppe titel="Sie">
+        <Gruppe
+          titel="Sie"
+          fussnote="E-Mail-Adresse, Passwort und Name gehören zur Anmeldung. Ihre Aufgaben und Dokumente hängen an diesem Gerät und nicht daran."
+        >
           <Liste>
-            <Zeile>
-              {/*
-                Name und E-Mail sind bei einer Anmeldung ohne Profilnamen
-                dasselbe. Dann steht die Zeile einmal da und nicht zweimal.
-              */}
-              <div className={stile.wert}>
-                <span>{benutzer.anzeigename}</span>
-                {benutzer.email === null || benutzer.email === benutzer.anzeigename ? null : (
-                  <span className={stile.meta}>{benutzer.email}</span>
-                )}
-              </div>
+            {/*
+              Der eigene Name war bis hierher die einzige Zeile in diesem
+              Screen, die dastand, ohne irgendwohin zu führen — und
+              ausgerechnet dort tippt jeder zuerst hin, der seine E-Mail-Adresse
+              oder sein Passwort ändern will. Jetzt führt sie dorthin.
+
+              Name und E-Mail sind bei einer Anmeldung ohne Profilnamen
+              dasselbe. Dann steht die Zeile einmal da und nicht zweimal.
+            */}
+            <Navizeile
+              titel={benutzer.anzeigename}
+              meta={
+                benutzer.email === null || benutzer.email === benutzer.anzeigename
+                  ? undefined
+                  : benutzer.email
+              }
+              ziel="/konto"
+              vorleseText=": Konto und Anmeldung ändern"
+            />
+
+            {/*
+              §7: Abmelden ist kein Fallwechsel und kein "Fall verlassen". Es
+              nimmt nichts weg — der Fall, die Aufgaben und die Schlüssel
+              dieses Geräts bleiben, wo sie sind (§3.6). Es beendet nur diese
+              Sitzung, damit sich jemand anderes anmelden kann: die Tochter auf
+              dem Telefon der Mutter, oder dieselbe Person mit einem zweiten
+              Konto.
+
+              Ohne Rückfrage, weil nichts verloren geht: Wer sich versehentlich
+              abmeldet, meldet sich wieder an. Ein Dialog vor einer Handlung,
+              die man in zehn Sekunden rückgängig macht, ist eine Hürde ohne
+              Gegenwert — die Rückfragen in dieser App gehören dem, was nicht
+              zurückkommt (§5).
+            */}
+            <Zeile className={abmeldefehler === null ? undefined : stile.frage}>
+              <Button
+                variante="text"
+                disabled={wirdAbgemeldet}
+                onClick={async () => {
+                  try {
+                    setzeWirdAbgemeldet(true)
+                    setzeAbmeldefehler(null)
+                    await abmelden()
+                  } catch (err) {
+                    setzeAbmeldefehler(alsNachricht(err))
+                  } finally {
+                    setzeWirdAbgemeldet(false)
+                  }
+                }}
+              >
+                {wirdAbgemeldet ? 'Sie werden abgemeldet…' : 'Abmelden'}
+              </Button>
+
+              {abmeldefehler === null ? null : (
+                <p className={stile.meta} role="alert">
+                  {abmeldefehler}
+                </p>
+              )}
             </Zeile>
           </Liste>
         </Gruppe>

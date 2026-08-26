@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
 import { alsNachricht } from '../../../core/fehler.ts'
-import { useAufgaben } from '../../../hooks/useAufgaben.ts'
+import { useAufgaben, type Neuangaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { sortiereNachFrist, type Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
@@ -11,6 +11,7 @@ import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
+import { Dialog } from '../../../ui/Dialog/Dialog.tsx'
 import { Klapp } from '../../../ui/Klapp/Klapp.tsx'
 import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
@@ -34,6 +35,14 @@ import stile from './Alle.module.css'
  * Aufgabendetail, einen Fingertipp weiter. Vier Schaltflächen unter jeder von
  * zwanzig Zeilen sind vier Gelegenheiten, in einer Liste etwas zu löschen,
  * das man nur ansehen wollte.
+ *
+ * Angelegt wird hinter einem Plus oben rechts, in einem Dialog. Das Formular
+ * stand vorher als Karte über der Liste — ein Feld, ein Schalter, ein Satz
+ * Erklärung und eine Schaltfläche, jedes Mal, wenn jemand diesen Screen
+ * öffnete, und geöffnet wird er, um nachzusehen, was zu tun ist. Im Dialog ist
+ * dafür Platz für mehr als den Titel: Beschreibung, Frist und Zuständigkeit
+ * sind Angaben, die man beim Aufschreiben im Kopf hat und die man sonst
+ * zweimal sucht.
  *
  * Die Liste zeigt Wurzelaufgaben: Unteraufgaben stehen im Aufgabendetail,
  * unter der Aufgabe, zu der sie gehören (§7); hier zählt nur, wie viele davon
@@ -163,41 +172,53 @@ function Aufgabenzeile({
     <Zeile className={blockiert ? stile.wartet : undefined}>
       <div className={stile.spalte}>
         {/*
-          Kein Kästchen, wo niemand abhaken darf (§7): Ein graues ist eine
-          Einladung, die nicht gilt. Wer zuständig ist, steht in der Zeile
-          darunter, und der Weg dahin führt über die Aufgabe selbst.
+          Titel links, Badges rechts. Vorher standen sie in der Metazeile
+          darunter, vor "0/1 erledigt" und "Sie", und wanderten damit von Zeile
+          zu Zeile: In einer Liste, in der jede zweite Aufgabe eine Frist trägt
+          und jede dritte privat ist, stand das rote Badge mal an dritter, mal
+          an erster Stelle. Am rechten Rand steht es in jeder Zeile an
+          derselben Stelle, und wer die Liste nach Fristen durchsieht, liest
+          eine Spalte statt zwanzig verschiedener Positionen.
         */}
-        {istBlatt && darfHaken ? (
-          <Checkbox
-            abhaken
-            checked={erledigt}
-            disabled={gesperrt}
-            onChange={(ereignis) => void haken(ereignis.target.checked)}
-            label={aufgabe.titel}
-            nurKaestchen
-          />
-        ) : (
-          <p
-            className={[stile.titelohne, giltAlsErledigt ? stile.fertig : null]
-              .filter(Boolean)
-              .join(' ')}
-          >
-            {aufgabe.titel}
-          </p>
-        )}
-
-        <p className={stile.meta}>
-          {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
-
+        <div className={stile.titelzeile}>
           {/*
-            §3.7: Eine private Aufgabe sieht sonst aus wie jede andere, und
-            genau das ist die Gefahr: Wer nicht sieht, dass die Geschwister sie
-            nicht sehen, schreibt dort etwas hinein, das er für geteilt hält.
+            Kein Kästchen, wo niemand abhaken darf (§7): Ein graues ist eine
+            Einladung, die nicht gilt. Wer zuständig ist, steht in der Zeile
+            darunter, und der Weg dahin führt über die Aufgabe selbst.
           */}
-          {aufgabe.privat ? <Badge lage="hinweis">Nur für mich</Badge> : null}
+          {istBlatt && darfHaken ? (
+            <Checkbox
+              abhaken
+              checked={erledigt}
+              disabled={gesperrt}
+              onChange={(ereignis) => void haken(ereignis.target.checked)}
+              label={aufgabe.titel}
+              nurKaestchen
+            />
+          ) : (
+            <p
+              className={[stile.titelohne, giltAlsErledigt ? stile.fertig : null]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              {aufgabe.titel}
+            </p>
+          )}
 
-          {meta}
-        </p>
+          <p className={stile.badges}>
+            {badge === null ? null : <Badge lage={badgelage(lage)}>{badge}</Badge>}
+
+            {/*
+              §3.7: Eine private Aufgabe sieht sonst aus wie jede andere, und
+              genau das ist die Gefahr: Wer nicht sieht, dass die Geschwister
+              sie nicht sehen, schreibt dort etwas hinein, das er für geteilt
+              hält.
+            */}
+            {aufgabe.privat ? <Badge lage="hinweis">Nur für mich</Badge> : null}
+          </p>
+        </div>
+
+        <p className={stile.meta}>{meta}</p>
       </div>
 
       {/*
@@ -264,6 +285,195 @@ function Erinnerungshinweis({ erinnerungen }: { erinnerungen: Erinnerungsdaten }
   ) : null
 }
 
+/** Das Plus rechts neben dem Seitentitel: „hier kommt eine dazu". */
+function Plus() {
+  return (
+    <svg
+      className={stile.plus}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <path d="M12 5v14M5 12h14" />
+    </svg>
+  )
+}
+
+/**
+ * Der Seitenkopf: der Titel, rechts daneben Platz für genau eine Aktion.
+ *
+ * Er steht in einer eigenen Komponente, weil dieser Screen ihn an drei Stellen
+ * zeigt — mit Liste, mit Fehlermeldung, mit gesperrtem Fall — und nur in der
+ * ersten etwas darin steht. Ein `h1`, der an zwei von drei Stellen fehlte,
+ * wäre für eine Vorlesestimme eine Seite ohne Überschrift.
+ */
+function Kopf({ aktion }: { aktion?: ReactNode }) {
+  return (
+    <div className={stile.kopf}>
+      <h1>Alle Aufgaben</h1>
+      {aktion}
+    </div>
+  )
+}
+
+/**
+ * Das Formular zum Anlegen, in einem Dialog (§7).
+ *
+ * Vorher stand es als Karte über der Liste: ein Feld, ein Schalter, ein Satz
+ * Erklärung und eine Schaltfläche, jedes Mal, wenn jemand diesen Screen
+ * öffnete — und geöffnet wird er, um nachzusehen, was zu tun ist. Jetzt steht
+ * dort ein Plus, und wer es antippt, bekommt das ganze Formular statt nur des
+ * Titelfelds: Beschreibung, Frist und Zuständigkeit sind Angaben, die man
+ * beim Aufschreiben im Kopf hat und die man sonst zweimal sucht — einmal beim
+ * Anlegen, einmal im Detail.
+ *
+ * Speichern steht oben rechts *und* am Ende des Formulars. Oben, weil dort
+ * jedes Telefon es hat und weil es erreichbar bleibt, sobald jemand nach unten
+ * scrollt; unten, weil wer von oben nach unten ausfüllt, unten aufhört und
+ * nicht wieder hochsehen soll.
+ */
+function NeueAufgabe({
+  gesperrt,
+  aufSchliessen,
+  aufAnlegen,
+}: {
+  gesperrt: boolean
+  aufSchliessen: () => void
+  /** `false`, wenn nichts gespeichert wurde. Der Dialog bleibt dann offen. */
+  aufAnlegen: (titel: string, nurFuerMich: boolean, angaben: Neuangaben) => Promise<boolean>
+}) {
+  const [titel, setzeTitel] = useState('')
+  const [beschreibung, setzeBeschreibung] = useState('')
+  const [fristAm, setzeFristAm] = useState('')
+  const [nurFuerMich, setzeNurFuerMich] = useState(false)
+
+  /*
+   * `required` allein liesse einen Titel aus lauter Leerzeichen durch; der
+   * Dienst weist ihn dann ab, und die Meldung landet weit weg von diesem Feld.
+   * Was nicht gespeichert werden kann, lässt sich hier gar nicht erst
+   * abschicken.
+   */
+  const bereit = !gesperrt && titel.trim() !== ''
+
+  async function anlegen(ereignis: FormEvent) {
+    ereignis.preventDefault()
+
+    const gespeichert = await aufAnlegen(titel, nurFuerMich, {
+      beschreibung: beschreibung.trim(),
+      fristAm: fristAm === '' ? null : fristAm,
+    })
+
+    if (gespeichert) {
+      aufSchliessen()
+    }
+  }
+
+  /*
+   * Die Schaltfläche oben steht ausserhalb des `form` und findet es über
+   * `form={…}`: Ein zweites Formular um sie herum wäre ein zweites Ziel für
+   * die Eingabetaste, und der Dialog hätte dann zwei Wege zu speichern, von
+   * denen einer die Felder nicht kennt.
+   */
+  const formularId = 'neue-aufgabe-formular'
+
+  return (
+    <Dialog
+      titel="Neue Aufgabe"
+      aufSchliessen={aufSchliessen}
+      kopfaktion={
+        <Button variante="text" type="submit" form={formularId} disabled={!bereit}>
+          Speichern
+        </Button>
+      }
+    >
+      <form
+        id={formularId}
+        className={stile.formular}
+        onSubmit={(ereignis) => void anlegen(ereignis)}
+      >
+        <div className={stile.feld}>
+          <label htmlFor="neue-aufgabe">Was ist zu tun?</label>
+          <input
+            id="neue-aufgabe"
+            className={stile.eingabe}
+            value={titel}
+            onChange={(ereignis) => setzeTitel(ereignis.target.value)}
+            required
+            autoFocus
+          />
+        </div>
+
+        <div className={stile.feld}>
+          <label htmlFor="neue-aufgabe-beschreibung">Beschreibung (optional)</label>
+          <textarea
+            id="neue-aufgabe-beschreibung"
+            className={stile.eingabe}
+            rows={3}
+            value={beschreibung}
+            onChange={(ereignis) => setzeBeschreibung(ereignis.target.value)}
+          />
+        </div>
+
+        {/*
+          §7: Eine Frist lässt sich für jede Aufgabe eintragen, auch für eine
+          selbst angelegte ohne Rechtsgrundlage. Sie gehört der Aufgabe und
+          nicht der Person: Alle Mitglieder des Falls sehen dasselbe Datum.
+        */}
+        <div className={stile.feld}>
+          <label htmlFor="neue-aufgabe-frist">Erledigt bis (optional)</label>
+          <input
+            id="neue-aufgabe-frist"
+            type="date"
+            className={stile.eingabe}
+            value={fristAm}
+            onChange={(ereignis) => setzeFristAm(ereignis.target.value)}
+          />
+        </div>
+
+        {/*
+          §7: "ein Schalter 'Nur für mich' auf der Aufgabe" — und genau einer.
+          Daneben stand bis hierher noch "Ich übernehme das", und zwei Haken
+          untereinander lasen sich wie zwei Fragen zu derselben Sache: Wer
+          sieht das, und wem gehört es? Die zweite stellt sich beim Anlegen
+          nicht. Wer etwas aufschreibt, meint sich selbst; die Aufgabe ist
+          damit eingetragen, und in der Aufgabe selbst steht der Weg, sie
+          wieder freizugeben (§7).
+
+          Er steht beim Anlegen und nicht danach: Umgekehrt ginge es nicht,
+          denn eine geteilte Aufgabe nachträglich privat zu machen hiesse, sie
+          den anderen wieder wegzunehmen, und gesehen haben sie sie längst (§5).
+        */}
+        <Checkbox
+          checked={nurFuerMich}
+          onChange={(ereignis) => setzeNurFuerMich(ereignis.target.checked)}
+          label="Nur für mich"
+        />
+
+        {/*
+          §3.7: Der erklärende Satz steht nur beim angehakten Schalter. Dass
+          eine Aufgabe alle Mitglieder des Falls sehen, ist der Normalfall und
+          braucht keine Ansage; dass eine Aufgabe *niemand sonst* sieht, ist
+          genau die Auskunft, ohne die jemand dort etwas hineinschreibt, das er
+          für geteilt hält.
+        */}
+        {nurFuerMich ? (
+          <p className={stile.hinweis}>
+            Diese Aufgabe sehen nur Sie, auf Ihren eigenen Geräten. Sie können sie später für
+            alle sichtbar machen.
+          </p>
+        ) : null}
+
+        <Button type="submit" volleBreite disabled={!bereit}>
+          Aufgabe speichern
+        </Button>
+      </form>
+    </Dialog>
+  )
+}
+
 function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
   const {
     zustand,
@@ -286,8 +496,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
    */
   const mitFristen = fall.status !== 'vorsorge'
 
-  const [neuerTitel, setzeNeuerTitel] = useState('')
-  const [nurFuerMich, setzeNurFuerMich] = useState(false)
+  const [legtAn, setzeLegtAn] = useState(false)
   const [sortierung, setzeSortierung] = useState<Sortierung>('reihenfolge')
   const [laeuft, setzeLaeuft] = useState(false)
   const [fehler, setzeFehler] = useState<string | null>(null)
@@ -335,61 +544,36 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
     )
   }
 
-  async function anlegen(ereignis: FormEvent) {
-    ereignis.preventDefault()
-
-    const titel = neuerTitel
-
-    if (await fuehreAus(() => legeAn(titel, null, nurFuerMich))) {
-      setzeNeuerTitel('')
-      /*
-       * Der Schalter fällt mit zurück. Er ist eine Angabe zu dieser einen
-       * Aufgabe und keine Einstellung: Stünde er stehen, wäre die nächste
-       * Aufgabe unbemerkt ebenfalls privat, und niemand sähe sie: die eine
-       * Verwechslung, die §3.7 teuer bezahlt.
-       */
-      setzeNurFuerMich(false)
-    }
-  }
-
   return (
     <>
-      <Card>
-        <form className={stile.formular} onSubmit={(ereignis) => void anlegen(ereignis)}>
-          <div className={stile.feld}>
-            <label htmlFor="neue-aufgabe">Neue Aufgabe</label>
-            <input
-              id="neue-aufgabe"
-              className={stile.eingabe}
-              value={neuerTitel}
-              onChange={(ereignis) => setzeNeuerTitel(ereignis.target.value)}
-              required
-            />
-          </div>
-
-          {/*
-            §7: "ein Schalter 'Nur für mich' auf der Aufgabe". Er steht beim
-            Anlegen und nicht danach: Umgekehrt ginge es nicht, denn eine
-            geteilte Aufgabe nachträglich privat zu machen hiesse, sie den
-            anderen wieder wegzunehmen, und gesehen haben sie sie längst (§5).
-          */}
-          <Checkbox
-            checked={nurFuerMich}
-            onChange={(ereignis) => setzeNurFuerMich(ereignis.target.checked)}
-            label="Nur für mich"
-          />
-
-          <p className={stile.hinweis}>
-            {nurFuerMich
-              ? 'Diese Aufgabe sehen nur Sie, auf Ihren eigenen Geräten. Sie können sie später für alle sichtbar machen.'
-              : 'Diese Aufgabe sehen alle Mitglieder des Falls.'}
-          </p>
-
-          <Button type="submit" volleBreite disabled={laeuft || neuerTitel.trim() === ''}>
-            Aufgabe hinzufügen
+      {/*
+        §7: Der Weg zum Anlegen steht oben rechts im Seitenkopf und nicht als
+        Karte über der Liste. Wer diesen Screen öffnet, will fast immer sehen,
+        was zu tun ist, und nicht etwas hinzufügen; ein Plus kostet dabei eine
+        Zeile Höhe, ein Formular kostet den halben Bildschirm.
+      */}
+      <Kopf
+        aktion={
+          <Button
+            variante="text"
+            className={stile.plusknopf}
+            onClick={() => setzeLegtAn(true)}
+            vorleseText="Neue Aufgabe"
+          >
+            <Plus />
           </Button>
-        </form>
-      </Card>
+        }
+      />
+
+      {legtAn ? (
+        <NeueAufgabe
+          gesperrt={laeuft}
+          aufSchliessen={() => setzeLegtAn(false)}
+          aufAnlegen={(titel, nurFuerMich, angaben) =>
+            fuehreAus(() => legeAn(titel, null, nurFuerMich, angaben))
+          }
+        />
+      ) : null}
 
       {fehler === null ? null : (
         <p className={stile.hinweis} role="alert">
@@ -523,6 +707,7 @@ export function Alle() {
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
       <main className={stile.seite}>
+        <Kopf />
         <Ladeanzeige text={fallLadeText(zustand.status)} />
       </main>
     )
@@ -534,20 +719,28 @@ export function Alle() {
     return <Navigate to="/" replace />
   }
 
+  /*
+   * Der Kopf steht in den beiden Fehlerzweigen ohne Aktion und im Regelfall
+   * mit: Ein Plus über einer Meldung, dass die Aufgaben nicht abrufbar sind,
+   * wäre eine Einladung, etwas zu schreiben, das gerade nirgends hinkommt.
+   * Deshalb bringt der `Aufgabenbereich` seinen Kopf selbst mit.
+   */
   return (
     <main className={stile.seite}>
-      <div className={stile.kopf}>
-        <h1>Alle Aufgaben</h1>
-      </div>
-
       {zustand.status === 'fehler' ? (
-        <p className={stile.hinweis} role="alert">
-          Ihre Aufgaben sind gerade nicht abrufbar. {zustand.nachricht}
-        </p>
+        <>
+          <Kopf />
+          <p className={stile.hinweis} role="alert">
+            Ihre Aufgaben sind gerade nicht abrufbar. {zustand.nachricht}
+          </p>
+        </>
       ) : zustand.aktiver.zustand === 'gesperrt' ? (
-        <p className={stile.hinweis} role="alert">
-          Dieser Fall ist auf diesem Gerät gesperrt. {zustand.aktiver.grund}
-        </p>
+        <>
+          <Kopf />
+          <p className={stile.hinweis} role="alert">
+            Dieser Fall ist auf diesem Gerät gesperrt. {zustand.aktiver.grund}
+          </p>
+        </>
       ) : (
         <Aufgabenbereich fall={zustand.aktiver} />
       )}
