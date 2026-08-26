@@ -275,7 +275,7 @@ describe('Fragebaum-Inhalt (ERBE_DESIGN.md §2)', () => {
 
     expect(knoten).toBeDefined()
     expect(knoten?.text).toBe('Ich bin {person}s …')
-    expect(knoten?.hinweis).toBe(
+    expect(knoten?.disclaimer).toBe(
       'Die Ergebnisse der folgenden Fragen dienen ausschließlich der allgemeinen Information und Orientierung. Sie stellen keine Rechtsberatung dar und ersetzen nicht die individuelle Prüfung durch einen Anwalt oder Notar.',
     )
   })
