@@ -254,6 +254,11 @@
   line-height: var(--dichte-zeilenhoehe);
 }
 
+.prozedurText {
+  margin: 0;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
 .zustaendigeStelle {
   display: inline-block;
   font-size: var(--dichte-schrift-mittel);
@@ -268,6 +273,17 @@
  */
 .gruen {
   color: var(--farbe-akzent);
+}
+
+.rot {
+  color: var(--farbe-frist-abgelaufen-text);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.hinweisText {
+  color: var(--farbe-text);
+  line-height: var(--dichte-zeilenhoehe);
+  margin: 0;
 }
 
 .beschreibung {
