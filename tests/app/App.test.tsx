@@ -241,6 +241,13 @@ describe('Routen', () => {
     expect(screen.getByText('Profilseite')).toBeVisible()
   })
 
+  it('fuehrt /aufgabe/:id zum Aufgabendetail mit unterer Leiste', () => {
+    rendere(ANGEMELDET, '/aufgabe/item-1')
+
+    expect(screen.getByText('Aufgabendetail')).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Hauptbereiche' })).toBeVisible()
+  })
+
   it('leitet unbekannte Pfade auf die Startseite', () => {
     rendere(ANGEMELDET, '/gibt-es-nicht')
 
