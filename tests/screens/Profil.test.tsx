@@ -211,7 +211,7 @@ describe('Profil', () => {
     ).toHaveAttribute('href', '/geraet-freischalten')
   })
 
-  it('schaltet ein bereits freigeschaltetes Geraet nicht noch einmal frei', () => {
+  it('versteckt die Freischaltung bei einem bereits freigeschalteten Geraet', () => {
     // Wer einen Fall liest, ist freigeschaltet und bekommt neue Faelle
     // ohnehin mit; der Weg waere eine Aufforderung ohne Gegenstand.
     useCase.mockReturnValue(falldaten({ status: 'bereit', faelle: [LESBAR], aktiver: LESBAR }))
@@ -219,7 +219,7 @@ describe('Profil', () => {
     rendereMitProvidern(<Profil />)
 
     expect(screen.queryByRole('link', { name: 'Dieses Gerät freischalten lassen' })).toBeNull()
-    expect(screen.getByText('Dieses Gerät freischalten lassen')).toBeVisible()
+    expect(screen.queryByText('Dieses Gerät freischalten lassen')).toBeNull()
   })
 
   it('zeigt den Freigabe-Badge an den Geraeten, sobald ein Fall gesperrt ist', () => {
