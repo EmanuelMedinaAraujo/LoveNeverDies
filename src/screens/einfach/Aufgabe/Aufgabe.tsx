@@ -16,13 +16,8 @@ import {
 } from '../../../services/fristen.ts'
 import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import {
-  NIEMAND,
   darfAbhaken,
   darfBearbeiten,
-  istFrei,
-  istZugewiesen,
-  mitPerson,
-  zuweisungText,
   type Zugewiesene,
   type Zuweisung,
 } from '../../../services/zuweisung.ts'
@@ -38,6 +33,7 @@ import type { Nachlassgericht } from '../../../types/gericht.ts'
 import { Dokumente } from '../../shared/Dokumente/Dokumente.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
+import { Zuweisungsfeld } from '../../shared/Zuweisung/Zuweisungsfeld.tsx'
 import { Fristzeile } from '../Bausteine.tsx'
 import stile from '../einfach.module.css'
 import type { InhaltZeile } from '../../../core/db/inhalte.ts'
@@ -48,10 +44,10 @@ import type { InhaltZeile } from '../../../core/db/inhalte.ts'
  * Ganzseitig wie drüben, mit demselben Weg hinein und demselben Weg zurück.
  * Weniger steht darauf, und das Weniger ist ausgewählt und nicht gekürzt:
  *
- * - **Die Zuständigkeit ist zwei Verben lang.** "Übernehmen" und "Freigeben",
- *   und darüber ein Satz, wer eingetragen ist. Die Namensliste mit Häkchen aus
- *   der erweiterten Ansicht verteilt Arbeit in einer Familie; wer hier sitzt,
- *   nimmt sich eine Aufgabe oder gibt sie ab.
+ * - **Die Zuständigkeit ist dasselbe Feld wie drüben, nur grösser gesetzt.**
+ *   Wer eingetragen ist, steht über den Schaltflächen statt daneben, und die
+ *   gehen über die volle Breite: Zwei kleine Kästen nebeneinander sind auf
+ *   diesem Screen kein Angebot, sondern eine Hürde.
  * - **Unteraufgaben ohne eigene Wege.** Sie werden hier abgehakt und hier
  *   gelöscht; die erweiterte Ansicht verlinkt von jeder in ihr eigenes Detail,
  *   und das ist genau die verschachtelte Navigation, auf die §7 hier
@@ -368,13 +364,21 @@ function Unteraufgabenzeile({
 
   return (
     <li className={stile.eintrag}>
-      <Checkbox
-        abhaken
-        checked={erledigt}
-        disabled={gesperrt || !darfHaken}
-        onChange={(ereignis) => void haken(ereignis.target.checked)}
-        label={unteraufgabe.titel}
-      />
+      {/*
+        Wer nicht abhaken darf, sieht kein Kästchen: Ein graues ist eine
+        Einladung, die nicht gilt.
+      */}
+      {darfHaken ? (
+        <Checkbox
+          abhaken
+          checked={erledigt}
+          disabled={gesperrt}
+          onChange={(ereignis) => void haken(ereignis.target.checked)}
+          label={unteraufgabe.titel}
+        />
+      ) : (
+        <p className={erledigt ? stile.fertig : stile.titel}>{unteraufgabe.titel}</p>
+      )}
 
       {darfAendern ? (
         <Button
@@ -437,22 +441,6 @@ function Detail({
     setzeNotizen(aufgabe.notizen)
   }
 
-  const [eigenesHaken, setzeEigenesHaken] = useState(aufgabe.erledigt)
-  const [zuletztGesehen, setzeZuletztGesehen] = useState(aufgabe.erledigt)
-
-  if (zuletztGesehen !== aufgabe.erledigt) {
-    setzeZuletztGesehen(aufgabe.erledigt)
-    setzeEigenesHaken(aufgabe.erledigt)
-  }
-
-  async function haken(gewuenscht: boolean) {
-    setzeEigenesHaken(gewuenscht)
-
-    if (!(await aktionen.hakeAb(aufgabe, gewuenscht))) {
-      setzeEigenesHaken(aufgabe.erledigt)
-    }
-  }
-
   async function speichereNotizen(ereignis: FormEvent) {
     ereignis.preventDefault()
     await aktionen.schreibeNotizen(notizen)
@@ -473,12 +461,11 @@ function Detail({
   }
 
   /*
-   * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Gesperrt sind das
-   * Häkchen, die Notizen, neue Unteraufgaben und das Löschen, nicht das Lesen
-   * und nicht die Zuständigkeit selbst.
+   * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Gesperrt sind die
+   * Notizen, neue Schritte und das Löschen, nicht das Lesen und nicht die
+   * Zuständigkeit selbst.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ich.userId)
-  const darfHaken = darfAbhaken(aufgabe.assignee, ich.userId)
 
   return (
     <>
@@ -516,13 +503,9 @@ function Detail({
               : 'Offen, solange Sie den Fragebaum nicht durchlaufen haben. Das entscheidet jede:r für sich.'}
           </p>
         ) : istBlatt ? (
-          <Checkbox
-            abhaken
-            checked={eigenesHaken}
-            disabled={aktionen.gesperrt || !darfHaken}
-            onChange={(ereignis) => void haken(ereignis.target.checked)}
-            label="Diese Aufgabe ist erledigt"
-          />
+          <p className={stile.hinweis} role="status">
+            {aufgabe.erledigt ? 'Erledigt.' : 'Offen. Abhaken können Sie sie in der Liste.'}
+          </p>
         ) : (
           /*
            * §7: Eine Aufgabe mit Unteraufgaben hat kein eigenes Häkchen. Sie
@@ -534,18 +517,6 @@ function Detail({
               : `Offen: ${unteraufgaben.filter((unter) => unter.erledigt).length} von ${
                   unteraufgaben.length
                 } Schritten erledigt.`}
-          </p>
-        )}
-
-        {darfAendern ? null : istFrei(aufgabe.assignee) ? (
-          <p className={stile.hinweis}>
-            Diese Aufgabe ist niemandem zugewiesen. Haken Sie sie ab, tragen Sie sich damit
-            ein. Zum Ändern übernehmen Sie sie weiter unten.
-          </p>
-        ) : (
-          <p className={stile.hinweis}>
-            Diese Aufgabe ist Ihnen nicht zugewiesen. Lesen können Sie alles; zum Ändern
-            übernehmen Sie sie weiter unten.
           </p>
         )}
       </div>
@@ -627,30 +598,13 @@ function Detail({
         freigeben kann, blockiert eine gesetzliche Frist.
       */}
       <Abschnitt titel="Wer kümmert sich?">
-        <p role="status">{zuweisungText(aufgabe.assignee, ich.userId)}</p>
-
-        <div className={stile.knoepfe}>
-          {istZugewiesen(aufgabe.assignee, ich.userId) ? null : (
-            <Button
-              volleBreite
-              disabled={aktionen.gesperrt}
-              onClick={() => aktionen.weiseZu(mitPerson(aufgabe.assignee, ich))}
-            >
-              Ich übernehme das
-            </Button>
-          )}
-
-          {istFrei(aufgabe.assignee) ? null : (
-            <Button
-              volleBreite
-              variante="sekundaer"
-              disabled={aktionen.gesperrt}
-              onClick={() => aktionen.weiseZu(NIEMAND)}
-            >
-              Freigeben
-            </Button>
-          )}
-        </div>
+        <Zuweisungsfeld
+          gross
+          zuweisung={aufgabe.assignee}
+          ich={ich}
+          gesperrt={aktionen.gesperrt}
+          aufSetzen={aktionen.weiseZu}
+        />
       </Abschnitt>
 
       <Abschnitt titel="Schritte">

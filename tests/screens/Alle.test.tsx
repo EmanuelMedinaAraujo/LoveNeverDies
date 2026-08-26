@@ -925,7 +925,9 @@ describe('Zuweisung', () => {
 
     rendereMitProvidern(<Alle />)
 
-    expect(screen.getByRole('checkbox', { name: /Sterbeurkunde beantragen/ })).toBeDisabled()
+    // Kein graues Kästchen, sondern gar keines: Der Titel steht als Text da.
+    expect(screen.queryByRole('checkbox', { name: /Sterbeurkunde beantragen/ })).toBeNull()
+    expect(screen.getByText('Sterbeurkunde beantragen')).toBeVisible()
     expect(screen.queryByRole('button', { name: /^Ändern/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Löschen/ })).toBeNull()
   })

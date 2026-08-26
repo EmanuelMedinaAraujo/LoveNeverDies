@@ -117,14 +117,15 @@ describe('Alle (einfach)', () => {
     expect(daten.hakeAb).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), true)
   })
 
-  it('sagt bei einer fremden Aufgabe, warum das Kästchen ruht (§7)', () => {
-    // "Bearbeiten darf nur, wem sie zugewiesen ist." Ein graues Kästchen ohne
-    // Grund sähe aus wie ein Fehler der App.
+  it('zeigt bei einer fremden Aufgabe kein Kästchen und sagt, wem sie gehört (§7)', () => {
+    // "Bearbeiten darf nur, wem sie zugewiesen ist." Ein graues Kästchen wäre
+    // eine Einladung, die nicht gilt; der Titel allein sagt dasselbe.
     mitAufgaben(useAufgaben, [aufgabe({ titel: 'Berts Aufgabe', assignee: personen([BERT]) })])
 
     rendereMitProvidern(<Alle />)
 
-    expect(screen.getByRole('checkbox', { name: 'Berts Aufgabe' })).toBeDisabled()
+    expect(screen.queryByRole('checkbox', { name: 'Berts Aufgabe' })).toBeNull()
+    expect(screen.getByText('Berts Aufgabe')).toBeVisible()
     expect(screen.getByText('Zuständig: Bert Müller')).toBeVisible()
   })
 

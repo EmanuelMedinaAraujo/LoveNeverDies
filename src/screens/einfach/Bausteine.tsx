@@ -136,11 +136,15 @@ export function Aufgabenzeile({
 
   return (
     <li className={stile.eintrag}>
-      {istBlatt ? (
+      {/*
+        Kein Kästchen, wo niemand abhaken darf (§7): Ein graues ist eine
+        Einladung, die nicht gilt. Wer zuständig ist, sagt die Zeile darunter.
+      */}
+      {istBlatt && darfHaken ? (
         <Checkbox
           abhaken
           checked={erledigt}
-          disabled={gesperrt || !darfHaken}
+          disabled={gesperrt}
           onChange={(ereignis) => void haken(ereignis.target.checked)}
           label={aufgabe.titel}
           nurKaestchen

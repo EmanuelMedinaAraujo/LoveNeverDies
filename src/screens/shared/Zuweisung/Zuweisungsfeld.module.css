@@ -1,28 +1,99 @@
-.feld {
+/*
+ * Auskunft und Handgriff in einer Zeile (§7).
+ *
+ * Der Umbruch ist derselbe wie ueberall: Bei grosser Schrift rutschen die
+ * Schaltflaechen unter den Namen, statt ihn zu quetschen. Die Masse kommen aus
+ * den Tokens, also waechst die Zeile in der einfachen Ansicht von selbst mit.
+ */
+.zeile {
   display: flex;
-  flex-direction: column;
-  gap: var(--dichte-abstand-klein);
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dichte-abstand-klein) var(--dichte-abstand);
 }
 
-/* Wie ueberall: nebeneinander, aber mit Umbruch bei grosser Schrift (§7). */
+/* Der Name mit seinem Zeichen davor. */
+.wer {
+  display: flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+
+  margin: 0;
+  /* Er darf schrumpfen, damit die Schaltflaechen daneben ganz bleiben. */
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.name {
+  font-weight: var(--typo-gewicht-betont);
+  line-height: var(--dichte-zeilenhoehe);
+  /* Ein langer Name bricht um, statt die Zeile aufzureissen. */
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Das Zeichen sitzt in einem Kreis in der Akzentfarbe: Er traegt den Zustand
+ * so weit, dass man ihn beim Durchblaettern erkennt, ohne den Namen zu lesen.
+ */
+.zeichen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+
+  width: 2.25em;
+  height: 2.25em;
+  border-radius: var(--radius-voll);
+  border: 0.0625rem solid transparent;
+  background: var(--farbe-akzent);
+  color: var(--farbe-auf-akzent);
+}
+
+/*
+ * Niemand eingetragen: eine offene Stelle und keine Person. Der gestrichelte
+ * Rand sagt das schon vor dem Wort "Niemand", und der zurueckgenommene Text
+ * nimmt der Zeile das Gewicht, das eine echte Zuweisung hat.
+ */
+.offen .zeichen {
+  background: none;
+  border-color: var(--farbe-kartenrand);
+  border-style: dashed;
+  color: var(--farbe-text-sekundaer);
+}
+
+.offen .name {
+  color: var(--farbe-text-sekundaer);
+  font-weight: var(--typo-gewicht-text);
+}
+
 .aktionen {
   display: flex;
   flex-wrap: wrap;
   gap: var(--dichte-abstand-klein);
 }
 
-.auswahl {
-  display: flex;
+/*
+ * Die einfache Ansicht (§7): untereinander, und die Schaltflaechen ueber die
+ * volle Breite. Ein Ziel, das man nicht verfehlen kann, ist hier mehr wert als
+ * eine kompakte Zeile.
+ */
+.gross {
   flex-direction: column;
+  align-items: stretch;
   gap: var(--dichte-abstand-klein);
-
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 
-.legende {
-  padding: 0;
-  color: var(--farbe-text-sekundaer);
-  font-size: var(--dichte-schrift-klein);
+.gross .aktionen {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+/*
+ * Untereinander ist die Hauptachse senkrecht, und `flex-basis: 8rem` waere
+ * dort keine Mindestbreite mehr, sondern eine Mindesthoehe: Der Name bekaeme
+ * acht Zentimeter Luft unter sich.
+ */
+.gross .wer {
+  flex: none;
 }
