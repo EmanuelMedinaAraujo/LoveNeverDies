@@ -204,19 +204,26 @@ function Gerichtssuche({
         <label htmlFor="fragebaum-plz">
           Wo war der letzte Wohnort der verstorbenen Person? (Postleitzahl)
         </label>
-        <input
-          id="fragebaum-plz"
-          className={stile.eingabe}
-          inputMode="numeric"
-          value={plz}
-          onChange={(ereignis) => handlePlzChange(ereignis.target.value)}
-          placeholder="z. B. 74199"
-          maxLength={5}
-        />
+        {/*
+          Eingabe und Knopf stehen nebeneinander: Der Knopf gehoert zu dieser
+          einen Eingabe, und eine eigene Zeile darunter liest sich wie ein
+          Schritt weiter. Bei grosser Schrift bricht die Zeile um (§7).
+        */}
+        <div className={stile.sucheZeile}>
+          <input
+            id="fragebaum-plz"
+            className={stile.eingabe}
+            inputMode="numeric"
+            value={plz}
+            onChange={(ereignis) => handlePlzChange(ereignis.target.value)}
+            placeholder="z. B. 74199"
+            maxLength={5}
+          />
+          <Button variante="sekundaer" onClick={() => suche(plz)}>
+            Gericht suchen
+          </Button>
+        </div>
       </div>
-      <Button variante="sekundaer" onClick={() => suche(plz)}>
-        Gericht suchen
-      </Button>
 
       {ergebnis?.status === 'gefunden' ? <Gerichtskarte gericht={ergebnis.gericht} /> : null}
 

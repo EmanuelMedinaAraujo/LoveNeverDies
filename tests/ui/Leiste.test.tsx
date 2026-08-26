@@ -20,7 +20,7 @@ function rendere(props: Parameters<typeof Leiste>[0] = {}, pfad = '/') {
 }
 
 describe('Leiste', () => {
-  it('zeigt Start · Erbe · Alle · Profil in dieser Reihenfolge (§7)', () => {
+  it('zeigt Start · Alle · Erbe · Profil in dieser Reihenfolge (§7)', () => {
     rendere()
 
     const leiste = screen.getByRole('navigation', { name: 'Hauptbereiche' })
@@ -29,7 +29,7 @@ describe('Leiste', () => {
       .map((tab) => tab.textContent)
 
 
-    expect(beschriftungen).toEqual(['Start', 'Erbe', 'Alle', 'Profil'])
+    expect(beschriftungen).toEqual(['Start', 'Alle', 'Erbe', 'Profil'])
   })
 
   it('führt zu den vier Hauptscreens', () => {
