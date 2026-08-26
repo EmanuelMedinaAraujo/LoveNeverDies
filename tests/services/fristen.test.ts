@@ -214,13 +214,38 @@ describe('fristlage (§8)', () => {
       })
     })
 
-    it('tritt an die Stelle einer Frist, die ohne Kenntnisdatum kein Ende hat', () => {
+    it('bleibt bei einer Frist ab eigener Kenntnis aussen vor', () => {
+      // Die Ausschlagung hat nur ein Datum, und das ist das eigene
+      // Kenntnisdatum: Ohne es bleibt die Aufgabe "ab Kenntnis", statt ein
+      // selbst notierter Tag ein Ende vorzutäuschen, das nicht das gesetzliche
+      // ist.
       const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })
 
       expect(fristlage(ausschlagung, bezug('2026-05-12'), '2026-05-12', '2026-05-20')).toEqual({
-        art: 'datum',
-        ende: '2026-05-20',
-        restTage: 8,
+        art: 'ab-kenntnis',
+      })
+    })
+
+    it('verdeckt ein gerechnetes Ende ab eigener Kenntnis nicht', () => {
+      // Kenntnis am 12. Mai + 42 Tage = 23. Juni 2026. Der frühere selbst
+      // notierte Tag ändert daran nichts: Gezeigt wird die gesetzliche Frist.
+      const ausschlagung = herkunft({ fristTage: 42, fristAb: 'kenntnis' })
+
+      expect(
+        fristlage(
+          ausschlagung,
+          { sterbedatum: '2026-05-12', kenntnisAm: '2026-05-12', anfechtungKenntnisAm: null },
+          '2026-05-12',
+          '2026-05-20',
+        ),
+      ).toEqual({ art: 'datum', ende: '2026-06-23', restTage: 42 })
+    })
+
+    it('bleibt auch bei der Anfechtungsfrist aussen vor', () => {
+      const anfechtung = herkunft({ fristTage: 365, fristAb: 'anfechtungskenntnis' })
+
+      expect(fristlage(anfechtung, bezug('2026-05-12'), '2026-05-12', '2026-05-20')).toEqual({
+        art: 'ab-kenntnis',
       })
     })
 

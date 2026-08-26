@@ -1338,6 +1338,10 @@ function Detail({
         §7: Eine Frist lässt sich für jede Aufgabe eintragen, auch für eine
         selbst angelegte ohne Rechtsgrundlage. Gesperrt ist sie wie alles
         andere, was die Aufgabe ändert: Bearbeiten darf, wem sie zugewiesen ist.
+
+        Nicht bei einer Frist ab eigener Kenntnis: Dort bestimmt allein das
+        Kenntnisdatum darunter das Ende, und ein zweites Datum daneben wäre bei
+        der Ausschlagung die Frage, welche der beiden Zahlen nun gilt (§8).
       */}
       {istAnfechtungAufgabe(aufgabe) ? (
         <Kenntnisdatum
@@ -1349,7 +1353,7 @@ function Detail({
           gesperrt={aktionen.gesperrt}
           aufSpeichern={aktionen.speichereAnfechtungKenntnisAm}
         />
-      ) : (
+      ) : aufgabe.katalog?.fristAb === 'kenntnis' ? null : (
         <Eigenefrist
           fristAm={aufgabe.fristAm}
           gesetzlich={gesetzlicheFrist}
