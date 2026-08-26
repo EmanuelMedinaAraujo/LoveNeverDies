@@ -115,6 +115,38 @@
         font-size: 0.9rem;
       }
 
+      .nav-zurueck {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        color: var(--accent);
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .nav-zurueck:hover {
+        text-decoration: underline;
+      }
+
+      .nav-zurueck svg {
+        width: 1.25em;
+        height: 1.25em;
+        flex: none;
+      }
+
+      .zurueck-oben {
+        margin-bottom: 1.5rem;
+      }
+
+      .zurueck-unten {
+        margin-top: 2.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border);
+      }
+
       .todo-box {
         background-color: var(--todo-bg);
         border: 1px solid var(--todo-border);
@@ -133,6 +165,15 @@
   </head>
   <body>
     <main>
+      <div class="zurueck-oben">
+        <a href="/" onclick="if (window.history.length > 1) { window.history.back(); return false; }" class="nav-zurueck">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 19 8 12l7-7" />
+          </svg>
+          Zurück
+        </a>
+      </div>
+
       <header>
         <div class="brand">Code&Clause</div>
         <h1>Datenschutzerklärung</h1>
@@ -188,30 +229,25 @@
       <p>Es bestehen Risiken für die betroffene Person, diese können sein:</p>
       <p>Trotz Ende-zu-Ende-Verschlüsselung und strengen Cybersecurity-Maßnahmen – die das Risiko externer Serverangriffe drastisch minimieren – verbleiben spezifische Risiken für die betroffenen Personen, die sich vor allem auf die Endgeräteebene und den Faktor Mensch verlagern: Bei einem physischen Verlust des entsperrten Smartphones, Infektionen durch Malware oder zu schwachen Passwörtern können Unbefugte dennoch Zugriff auf die hochsensiblen Nachlass- und Ausweisdaten erlangen. Zudem bestehen Risiken durch versehentliche Fehlbedienungen der Nutzenden bei den Berechtigungs- und Freigabeeinstellungen im App-Netzwerk sowie durch unvermeidbare System-Metadaten (wie IP-Adressen), die systembedingt nicht Ende-zu-Ende verschlüsselt werden können und theoretisch Raum für Standort- und Nutzungsprofile bieten.</p>
 
-      <h2>7. Auftragsverarbeiter</h2>
+      <h2>7. Auftragsverarbeiter und Drittanbieter (Clerk &amp; Supabase)</h2>
       <p>Zur Erbringung unserer Dienste und zur Bereitstellung der technischen Infrastruktur setzen wir externe Dienstleister (Auftragsverarbeiter gemäß Art. 28 DSGVO) ein:</p>
 
-      <h3>Clerk (Benutzerauthentifizierung)</h3>
-      <p><strong>Dienstanbieter:</strong> Clerk / Entertainment, Inc., USA</p>
-      <p><strong>Zweck:</strong> Benutzerauthentifizierung, Sitzungsverwaltung und Kontosicherheit.</p>
-      <p><strong>Verarbeitete Daten:</strong> Name, E-Mail-Adresse, IP-Adressen, Gerätedaten.</p>
-      <!-- TODO(legal): Abschluss des Auftragsverarbeitungsvertrags (AVV / DPA) mit Clerk bestätigen -->
-      <!-- TODO(legal): Rechtsgrundlage für Drittlandübermittlung USA (EU-US Data Privacy Framework Zertifizierung bzw. Standardvertragsklauseln / SCC) prüfen und bestätigen -->
-      <div class="todo-box">
-        <div class="todo-title">Hinweis für die Rechtsabteilung (Clerk)</div>
-        Bitte Abschluss des Auftragsverarbeitungsvertrags (AVV/DPA) mit Clerk bestätigen sowie Rechtsgrundlage für den US-Datentransfer (EU-US Data Privacy Framework / Standardvertragsklauseln) freigeben.
-      </div>
+      <h3>1. Beschreibung und Umfang der Datenverarbeitung</h3>
+      <p>Wir nutzen in unserer App den Dienst „Clerk“ des Anbieters Clerk Inc., mit Sitz in 660 King St, San Francisco, CA, 94107 USA und den Dienst „Supabase“ von der Firma Supabase, Inc., mit dem Sitz in 3500 S Dupont Hwy, Dover, DE 19901, United States. Diese Dienste werden von uns eingesetzt, um die Benutzerregistrierung zu steuern.</p>
+      <p>Dabei findet eine strikt getrennte Verarbeitung Ihrer personenbezogenen Daten statt:</p>
+      <ul>
+        <li><strong>Anwendungsdaten:</strong> Alle inhaltlichen Nutzungsdaten der App werden ausschließlich auf Servern in Frankfurt am Main (Deutschland) verarbeitet und verbleiben innerhalb der Europäischen Union.</li>
+        <li><strong>E-Mail-Adressen:</strong> Zur eindeutigen Identifikation, Verifizierung und Verwaltung Ihres Nutzer-Accounts wird Ihre E-Mail-Adresse an Server des Anbieters in den USA übertragen und dort verarbeitet.</li>
+      </ul>
 
-      <h3>Supabase (Anwendungsdatenbank)</h3>
-      <p><strong>Dienstanbieter:</strong> Supabase, Inc., USA</p>
-      <p><strong>Zweck:</strong> Bereitstellung der Datenbankinfrastruktur und serverseitigen Datenspeicherung.</p>
-      <p><strong>Verarbeitete Daten:</strong> Anwendungs- und Kontodaten (inklusive verschlüsselter Datensätze).</p>
-      <!-- TODO(legal): Abschluss des Auftragsverarbeitungsvertrags (AVV / DPA) mit Supabase bestätigen -->
-      <!-- TODO(legal): Rechtsgrundlage für Drittlandübermittlung USA (EU-US Data Privacy Framework Zertifizierung bzw. Standardvertragsklauseln / SCC) prüfen und bestätigen -->
-      <div class="todo-box">
-        <div class="todo-title">Hinweis für die Rechtsabteilung (Supabase)</div>
-        Bitte Abschluss des Auftragsverarbeitungsvertrags (AVV/DPA) mit Supabase bestätigen sowie Rechtsgrundlage für den US-Datentransfer (EU-US Data Privacy Framework / Standardvertragsklauseln) freigeben.
-      </div>
+      <h3>2. Rechtsgrundlage der Datenverarbeitung</h3>
+      <p>Die Verarbeitung der Anwendungsdaten und die Übermittlung der E-Mail-Adresse erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung und vorvertragliche Maßnahmen), da die Bereitstellung des Nutzerkontos und die damit verbundenen App-Funktionen ohne diese Identifikation technisch nicht möglich sind.</p>
+
+      <h3>3. Drittlandstransfer (USA)</h3>
+      <p>Da die E-Mail-Adressen auf Servern in den USA verarbeitet werden, liegt ein sogenannter Drittlandstransfer vor. Die Absicherung dieses Datenzugriffs erfolgt über die Zertifizierung des Anbieters unter dem EU-US Data Privacy Framework, wodurch ein der DSGVO entsprechendes, angemessenes Datenschutzniveau gewährleistet wird.</p>
+
+      <h3>4. Speicherdauer</h3>
+      <p>Die Daten werden gelöscht, sobald sie für die Erreichung des Zweckes ihrer Erhebung nicht mehr erforderlich sind. Für Ihre E-Mail-Adresse und die Profildaten ist dies dann der Fall, wenn Sie Ihr Nutzerkonto in der App dauerhaft löschen und keine gesetzlichen Aufbewahrungspflichten entgegenstehen.</p>
 
       <h2>8. Rechte der betroffenen Personen</h2>
       <p>Als betroffene Person stehen Ihnen nach der DSGVO folgende Rechte zu:</p>
@@ -220,6 +256,15 @@
         <li><strong>Weitere Rechte:</strong> Der/die Einwilligende besitzt auch das Recht der Löschung, der Sperrung, der Berichtigung und der Übertragbarkeit der Daten, sowie der Auskunft über die Datenverarbeitung.</li>
       </ul>
       <p>Die Geltendmachung dieser Rechte sowie der Widerruf einer Einwilligung ist an folgende E-Mail-Adresse zu richten: <a href="mailto:codeandclause17@gmail.com">codeandclause17@gmail.com</a></p>
+
+      <div class="zurueck-unten">
+        <a href="/" onclick="if (window.history.length > 1) { window.history.back(); return false; }" class="nav-zurueck">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 19 8 12l7-7" />
+          </svg>
+          Zurück
+        </a>
+      </div>
     </main>
   </body>
 </html>
