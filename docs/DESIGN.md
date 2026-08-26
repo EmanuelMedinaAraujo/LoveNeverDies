@@ -293,6 +293,28 @@ Tresor kaskadierend entfernt. Träte er aus, zeigte `preparer_id` weiter auf ihn
 immer, und der Tresor wäre ein Datenblock, den niemand mehr öffnen und niemand mehr
 loswerden kann.
 
+#### Die Vorsorgefragen
+
+Ein Vorsorgefall hat keine Aufgaben: kein Sterbedatum, kein Rechtskatalog (§2). Was der
+vorsorgenden Person auf "Meine Aufgaben" begegnete, wäre sonst für immer der Satz "Für Sie
+ist gerade nichts eingetragen" — richtig und nutzlos.
+
+An dieser Stelle stehen deshalb die acht Fragen aus `content/vorsorgefragen.ts`: wo die
+Papiere liegen, ob es eine postmortale Vollmacht gibt, welche Verträge laufen, was mit der
+Bestattung sein soll. Der Wortlaut kommt von den Juristinnen und bleibt wörtlich (§8). Eine
+Frage, ein Feld, eine Schaltfläche: Wer eine Frage beantwortet und die übrigen sieben offen
+lässt, hat gespeichert.
+
+Eine Antwort ist ein Tresor-Item wie jedes andere — DEK unter `K_v`, `in_vault = true` — mit
+einer Frage-Kennung im Payload. Die Kennung ist der Unterschied zwischen einer Antwort und
+einer frei angelegten Notiz: Sie hält eine Frage bei genau einer Zeile, sodass das zweite
+Speichern ändert und nicht ein zweites Mal anlegt, und sie bleibt stabil, wenn die
+Juristinnen den Wortlaut später ändern.
+
+Dieselben Fragen stehen im Tab Erbe, über den frei angelegten Inhalten: Der Tresor ist der
+Ort, an dem man nachsieht, was man hinterlegt hat. Angehörige sehen sie nicht — ohne `K_v`
+gibt es nichts zu beantworten und nichts zu lesen.
+
 #### Warum der Zähler nichts auslöst
 
 Ein Mitglied kann jederzeit einen unbrauchbaren Share hochladen, korrekt signiert und mit

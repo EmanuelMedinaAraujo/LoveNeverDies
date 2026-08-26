@@ -25,7 +25,9 @@ import type { Mutation } from '../core/sync/queue.ts'
 import { alsNachricht } from '../core/fehler.ts'
 import type { LesbarerFall } from '../services/fallService.ts'
 import {
+  antwortZuFrage,
   berechneTresorSchwelle,
+  mutationTresorAendern,
   mutationTresorAnlegen,
   mutationTresorLoeschen,
   tresorItemsAusZeilen,
@@ -44,6 +46,17 @@ export type Tresordaten = {
   /** Ob der Server eine Neuverteilung offen hat. */
   resplitPending: boolean
   legeItemAn: (titel: string, inhalt: string) => Promise<void>
+  aendereItem: (item: TresorItem, titel: string, inhalt: string) => Promise<void>
+  /**
+   * Legt die Antwort auf eine Vorsorgefrage ab oder ersetzt sie
+   * (`content/vorsorgefragen.ts`).
+   *
+   * Eine Frage, eine Zeile: Steht schon eine Antwort da, wird sie geändert und
+   * nicht ein zweites Mal angelegt. Sonst stünde dieselbe Frage nach dem
+   * zweiten Speichern doppelt im Tresor, und die Angehörigen läsen zwei
+   * Auskünfte ohne Hinweis darauf, welche die spätere ist.
+   */
+  speichereAntwort: (frageId: string, frage: string, antwort: string) => Promise<void>
   loescheItem: (item: TresorItem) => Promise<void>
   /**
    * Verteilt die Shares von Hand neu.
@@ -221,6 +234,37 @@ export function useTresor(
     [fall.id, kv, mutiere],
   )
 
+  const aendereItem = useCallback(
+    async (item: TresorItem, titel: string, inhalt: string) => {
+      mutiere(await mutationTresorAendern(item, titel, inhalt))
+    },
+    [mutiere],
+  )
+
+  const speichereAntwort = useCallback(
+    async (frageId: string, frage: string, antwort: string) => {
+      if (kv === null) {
+        throw new TresorDienstFehler('Ohne Tresorschlüssel kann keine Antwort gespeichert werden.')
+      }
+
+      const vorhanden = antwortZuFrage(items, frageId)
+
+      /*
+       * Der Titel wird bei jedem Speichern mitgeschrieben, auch bei einer
+       * Änderung: Ändern die Juristinnen den Wortlaut einer Frage, trägt die
+       * Zeile beim nächsten Speichern den neuen. Angezeigt wird ohnehin der
+       * Wortlaut aus der Inhaltsdatei; der Titel im Payload ist die Auskunft
+       * für alles, was den Tresor ohne diese App liest.
+       */
+      mutiere(
+        vorhanden === null
+          ? await mutationTresorAnlegen(fall.id, kv, frage, antwort, frageId)
+          : await mutationTresorAendern(vorhanden, frage, antwort),
+      )
+    },
+    [fall.id, items, kv, mutiere],
+  )
+
   const loescheItem = useCallback(
     async (item: TresorItem) => {
       mutiere(mutationTresorLoeschen(item.id))
@@ -247,17 +291,21 @@ export function useTresor(
       istPreparer,
       resplitPending: fall.vaultResplitPending,
       legeItemAn,
+      aendereItem,
+      speichereAntwort,
       loescheItem,
       verteileShares,
       resplitLaeuft,
       resplitFehler,
     }),
     [
+      aendereItem,
       fall.vaultResplitPending,
       istPreparer,
       items,
       legeItemAn,
       loescheItem,
+      speichereAntwort,
       resplitFehler,
       resplitLaeuft,
       schwelle,

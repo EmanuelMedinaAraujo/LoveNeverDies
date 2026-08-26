@@ -10,10 +10,13 @@ import type { InhaltZeile } from '../../src/core/db/inhalte'
 import type { MitgliederTabelle, MitgliedZeile } from '../../src/core/db/mitglieder'
 import type { ResplitShareInput, TresorTabelle } from '../../src/core/db/tresor'
 import {
+  antwortZuFrage,
   berechneTresorSchwelle,
+  mutationTresorAendern,
   mutationTresorAnlegen,
   tresorItemsAusZeilen,
   verteileShares,
+  type TresorItem,
 } from '../../src/services/tresorService'
 
 function mockDb() {
@@ -282,6 +285,109 @@ describe('Tresor-Inhalte (§3.5)', () => {
       titel: 'Bankkonto',
       inhalt: 'IBAN: DE123456789',
     })
+  })
+
+  it('trägt die Frage-Kennung durch das Verschlüsseln und wieder heraus', async () => {
+    const kv = erzeugeAesSchluessel()
+    const fallId = 'fall-1'
+
+    const mutation = await mutationTresorAnlegen(
+      fallId,
+      kv,
+      'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+      'Im Bankschließfach.',
+      'testament',
+    )
+    if (mutation.op !== 'anlegen') throw new Error('Muss anlegen sein')
+
+    const zeile: InhaltZeile = {
+      id: mutation.itemId,
+      fallId,
+      seq: 1,
+      art: 'item',
+      geloescht: false,
+      imTresor: true,
+      kid: `vault_${fallId}`,
+      wrappedDek: mutation.wrappedDek,
+      payload: mutation.payload,
+      geaendertAm: '2026-08-24T12:00:00Z',
+    }
+
+    const [item] = await tresorItemsAusZeilen([zeile], kv)
+    if (item === undefined) throw new Error('Das Item fehlt.')
+    expect(item.frageId).toBe('testament')
+
+    // Ein frei angelegter Eintrag hat keine: `null`, nicht `undefined`.
+    const frei = await mutationTresorAnlegen(fallId, kv, 'Bankkonto', 'DE123')
+    if (frei.op !== 'anlegen') throw new Error('Muss anlegen sein')
+    const [freiesItem] = await tresorItemsAusZeilen(
+      [{ ...zeile, id: frei.itemId, wrappedDek: frei.wrappedDek, payload: frei.payload }],
+      kv,
+    )
+    expect(freiesItem?.frageId).toBeNull()
+  })
+
+  it('behält beim Ändern den DEK und die Frage-Kennung', async () => {
+    const kv = erzeugeAesSchluessel()
+    const fallId = 'fall-1'
+
+    const angelegt = await mutationTresorAnlegen(
+      fallId,
+      kv,
+      'Haben Sie ein Testament?',
+      'Im Schrank.',
+      'testament',
+    )
+    if (angelegt.op !== 'anlegen') throw new Error('Muss anlegen sein')
+
+    const zeile: InhaltZeile = {
+      id: angelegt.itemId,
+      fallId,
+      seq: 1,
+      art: 'item',
+      geloescht: false,
+      imTresor: true,
+      kid: `vault_${fallId}`,
+      wrappedDek: angelegt.wrappedDek,
+      payload: angelegt.payload,
+      geaendertAm: '2026-08-24T12:00:00Z',
+    }
+
+    const [item] = await tresorItemsAusZeilen([zeile], kv)
+    if (item === undefined) throw new Error('Das Item fehlt.')
+
+    const geaendert = await mutationTresorAendern(item, item.titel, 'Im Bankschließfach.')
+    expect(geaendert.op).toBe('aendern')
+    if (geaendert.op !== 'aendern') throw new Error('Muss aendern sein')
+    expect(geaendert.itemId).toBe(angelegt.itemId)
+
+    // Derselbe `wrappedDek` wie vorher: Ein Edit kostet genau eine Spalte (§5).
+    const [nachher] = await tresorItemsAusZeilen(
+      [{ ...zeile, payload: geaendert.payload, geaendertAm: '2026-08-25T09:00:00Z' }],
+      kv,
+    )
+    expect(nachher?.inhalt).toBe('Im Bankschließfach.')
+    expect(nachher?.frageId).toBe('testament')
+  })
+
+  it('nimmt bei zwei Antworten auf dieselbe Frage die jüngere', () => {
+    const basis: TresorItem = {
+      id: 'item-1',
+      titel: 'Haben Sie ein Testament?',
+      inhalt: 'Im Schrank.',
+      frageId: 'testament',
+      dek: new Uint8Array(32),
+      geaendertAm: '2026-08-24T12:00:00Z',
+    }
+
+    const items: TresorItem[] = [
+      basis,
+      { ...basis, id: 'item-2', inhalt: 'Im Bankschließfach.', geaendertAm: '2026-08-25T09:00:00Z' },
+      { ...basis, id: 'item-3', frageId: null, inhalt: 'Etwas anderes.' },
+    ]
+
+    expect(antwortZuFrage(items, 'testament')?.id).toBe('item-2')
+    expect(antwortZuFrage(items, 'bestattung')).toBeNull()
   })
 
   it('lässt sich mit einem falschen K_v nicht entschlüsseln und wird verworfen', async () => {

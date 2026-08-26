@@ -6,6 +6,7 @@ import {
   ERBSCHEIN,
   ERBSCHEIN_FRAGE,
 } from '../../../content/erbstatus.ts'
+import { VORSORGEFRAGEN } from '../../../content/vorsorgefragen.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
@@ -14,13 +15,14 @@ import { useTresor } from '../../../hooks/useTresor.ts'
 import type { Aufgabe, Fragebaumergebnis } from '../../../services/aufgabenService.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
 import { BAUPLAENE, knoten, statusText } from '../../../services/fragebaumService.ts'
-import type { TresorItem } from '../../../services/tresorService.ts'
+import { antwortZuFrage, type TresorItem } from '../../../services/tresorService.ts'
 import type { Infotext } from '../../../types/infotext.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
+import { Vorsorgefragen } from '../Vorsorgefragen/Vorsorgefragen.tsx'
 import stile from './Erbe.module.css'
 import { SymbolPerson, SymbolPersonen, SymbolPfeil, SymbolUrkunde } from './Symbole.tsx'
 
@@ -67,7 +69,7 @@ function TresorInhalte({
   return (
     <Card>
       <div className={stile.statusKopf}>
-        <h2 className={stile.abschnitt}>Tresor-Inhalte</h2>
+        <h2 className={stile.abschnitt}>Weitere Tresor-Inhalte</h2>
         <Badge lage="ruhig">{items.length} {items.length === 1 ? 'Eintrag' : 'Einträge'}</Badge>
       </div>
 
@@ -77,7 +79,7 @@ function TresorInhalte({
       </p>
 
       {items.length === 0 ? (
-        <p className={stile.hinweis}>Der Tresor ist noch leer.</p>
+        <p className={stile.hinweis}>Hier steht noch nichts außer Ihren Antworten oben.</p>
       ) : (
         <ul className={stile.liste}>
           {items.map((item) => (
@@ -369,6 +371,7 @@ function VorsorgeTresor({
     istPreparer,
     resplitPending,
     legeItemAn,
+    speichereAntwort,
     loescheItem,
     verteileShares,
     resplitLaeuft,
@@ -396,6 +399,16 @@ function VorsorgeTresor({
   if (aufgabenZustand.status === 'laedt') {
     return <Ladeanzeige text="Tresor wird geladen..." />
   }
+
+  /*
+   * Die Antworten auf die Vorsorgefragen stehen in ihrem eigenen Block; unter
+   * "Weitere Tresor-Inhalte" hätten sie ein zweites Mal dagestanden, dort ohne
+   * ihre Frage und ohne Feld zum Ändern.
+   */
+  const freieItems = items.filter((item) => item.frageId === null)
+  const beantwortet = VORSORGEFRAGEN.filter(
+    (frage) => antwortZuFrage(items, frage.id) !== null,
+  ).length
 
   return (
     <>
@@ -455,7 +468,29 @@ function VorsorgeTresor({
 
       {istPreparer ? (
         <>
-          <TresorInhalte items={items} onNeu={legeItemAn} onLoeschen={loescheItem} />
+          {/*
+            Dieselben Fragen wie auf dem ersten Screen, und dieselben Antworten
+            (§3.5). Sie stehen hier ein zweites Mal, weil der Tresor der Ort
+            ist, an dem man nachsieht, was man hinterlegt hat: Wer eine Auskunft
+            ändern will, sucht sie dort, wo sie liegt, und nicht in einem
+            Formular auf der Startseite.
+          */}
+          <Card>
+            <div className={stile.statusKopf}>
+              <h2 className={stile.abschnitt}>Ihre Vorsorgefragen</h2>
+              <Badge lage="ruhig">
+                {beantwortet} von {VORSORGEFRAGEN.length} beantwortet
+              </Badge>
+            </div>
+            <p className={stile.hinweis}>
+              Ihre Antworten liegen verschlüsselt im Tresor. Sie können sie hier jederzeit
+              ändern; gespeichert wird jede Antwort für sich.
+            </p>
+          </Card>
+
+          <Vorsorgefragen items={items} onSpeichern={speichereAntwort} />
+
+          <TresorInhalte items={freieItems} onNeu={legeItemAn} onLoeschen={loescheItem} />
 
           <Card>
             <h2 className={stile.abschnitt}>Vorsorge beenden</h2>
