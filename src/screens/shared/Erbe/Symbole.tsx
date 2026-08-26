@@ -52,12 +52,3 @@ export function SymbolPerson() {
     </svg>
   )
 }
-
-/** Der Pfeil am Status: zeigt nach unten, aufgeklappt nach oben. */
-export function SymbolPfeil() {
-  return (
-    <svg {...gemeinsam} width="1.25em" height="1.25em">
-      <path d="m7 10 5 5 5-5" />
-    </svg>
-  )
-}

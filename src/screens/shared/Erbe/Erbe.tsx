@@ -28,7 +28,7 @@ import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
 import { Vorsorgefragen } from '../Vorsorgefragen/Vorsorgefragen.tsx'
 import stile from './Erbe.module.css'
-import { SymbolPerson, SymbolPersonen, SymbolPfeil, SymbolUrkunde } from './Symbole.tsx'
+import { SymbolPerson, SymbolPersonen, SymbolUrkunde } from './Symbole.tsx'
 
 function Ladeanzeige({ text }: { text: string }) {
   return (
@@ -597,7 +597,6 @@ function VorsorgeTresor({
  * Erläuterung schließen.
  */
 type Erbeansicht =
-  | 'zu'
   | 'wahl'
   | 'erbschein'
   | 'stellung'
@@ -734,10 +733,6 @@ function Erbewege({
   vorhandene: Aufgabe | null
   onAnlegen: () => Promise<void>
 }) {
-  if (ansicht === 'zu') {
-    return null
-  }
-
   if (ansicht === 'wahl') {
     return (
       <div className={stile.wege}>
@@ -790,36 +785,6 @@ function Erbewege({
 }
 
 /**
- * Der Status als Schaltfläche (§10).
- *
- * Das Wort "Erbe" ist der Knopf, und der Pfeil daneben sagt, dass es einer
- * ist: Eine Pille, die sich nur beim Antippen als Knopf herausstellt, findet
- * niemand, der sie nicht sucht. Die Trefferfläche ist die aus §7 und nicht die
- * Höhe der Pille.
- */
-function Erbeschalter({ offen, onSchalten }: { offen: boolean; onSchalten: () => void }) {
-  return (
-    <button
-      type="button"
-      className={stile.statusKnopf}
-      aria-expanded={offen}
-      onClick={onSchalten}
-    >
-      {/*
-        Der Name der Schaltfläche ist genau das sichtbare Wort. Ein Zusatz zum
-        Vorlesen ("mehr dazu") stünde neben dem, was `aria-expanded` ohnehin
-        ansagt — "Erbe, Schaltfläche, reduziert" —, und WCAG 2.5.3 will den
-        sichtbaren Text im Namen und nicht bloss darin enthalten.
-      */}
-      <Badge lage="hinweis">{statusText('erbe')}</Badge>
-      <span className={offen ? stile.pfeilOffen : stile.pfeil}>
-        <SymbolPfeil />
-      </span>
-    </button>
-  )
-}
-
-/**
  * Der Erbstatus dieser Person und der Weg in den Fragebaum
  * (ERBE_DESIGN.md §10).
  *
@@ -832,7 +797,7 @@ function Erbstatus({ fall }: { fall: LesbarerFall }) {
   const { zustand, fragebaum, fragebaumGeladen, fragebaumAufgabe, legeFragebaumAufgabeAn } =
     useAufgaben(fall)
   const navigate = useNavigate()
-  const [ansicht, setzeAnsicht] = useState<Erbeansicht>('zu')
+  const [ansicht, setzeAnsicht] = useState<Erbeansicht>('wahl')
 
   /*
    * Gewartet wird auf `fragebaumGeladen` und nicht bloss auf den Bestand.
@@ -860,12 +825,7 @@ function Erbstatus({ fall }: { fall: LesbarerFall }) {
     <Card>
       <div className={stile.statusKopf}>
         <h2 className={stile.abschnitt}>Ihr Erbstatus</h2>
-        {fragebaum === null || fragebaum.status === null ? null : istErbe ? (
-          <Erbeschalter
-            offen={ansicht !== 'zu'}
-            onSchalten={() => setzeAnsicht(ansicht === 'zu' ? 'wahl' : 'zu')}
-          />
-        ) : (
+        {fragebaum === null || fragebaum.status === null ? null : (
           <Badge lage="hinweis">{statusText(fragebaum.status)}</Badge>
         )}
       </div>
