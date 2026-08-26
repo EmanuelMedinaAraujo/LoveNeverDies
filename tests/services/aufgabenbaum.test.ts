@@ -55,6 +55,54 @@ function herkunft(ueberschreibung: Partial<Katalogherkunft> = {}): Katalogherkun
 }
 
 describe('baueBaum (§7)', () => {
+  it('haengt eine neue Unteraufgabe unter die vorhandenen und nicht zwischen sie', () => {
+    /*
+     * Wer eine Aufgabe in Schritte zerlegt, schreibt sie in der Reihenfolge
+     * auf, in der er sie tun will. Eine Liste, die den dritten Schritt an die
+     * erste Stelle setzt, behauptet eine Reihenfolge, die niemand gemeint hat.
+     *
+     * Die IDs sind UUIDv7 (§5): Die groessere ist die juengere. Hier stehen
+     * sie absichtlich verkehrt herum in der Eingabe.
+     */
+    const eltern = aufgabe({ id: 'eltern' })
+    const spaet = aufgabe({ id: '0199-c', titel: 'Zuletzt notiert', parentId: 'eltern' })
+    const frueh = aufgabe({ id: '0199-a', titel: 'Zuerst notiert', parentId: 'eltern' })
+
+    const [knoten] = baueBaum([eltern, spaet, frueh])
+
+    expect(knoten?.unteraufgaben.map((eins) => eins.titel)).toEqual([
+      'Zuerst notiert',
+      'Zuletzt notiert',
+    ])
+  })
+
+  it('laesst die Schritte aus dem Katalog vor den selbst notierten stehen (§8)', () => {
+    // Die UUIDv5 einer Katalogaufgabe ist ein HMAC und sagt ueber die
+    // Reihenfolge nichts; die Katalogreihenfolge tut es.
+    const eltern = aufgabe({ id: 'eltern' })
+    const getippt = aufgabe({ id: '0199-a', titel: 'Selbst notiert', parentId: 'eltern' })
+    const zweiter = aufgabe({
+      id: 'ffff-b',
+      titel: 'Katalogschritt zwei',
+      parentId: 'eltern',
+      katalog: herkunft({ reihenfolge: 20 }),
+    })
+    const erster = aufgabe({
+      id: 'ffff-a',
+      titel: 'Katalogschritt eins',
+      parentId: 'eltern',
+      katalog: herkunft({ reihenfolge: 10 }),
+    })
+
+    const [knoten] = baueBaum([eltern, getippt, zweiter, erster])
+
+    expect(knoten?.unteraufgaben.map((eins) => eins.titel)).toEqual([
+      'Katalogschritt eins',
+      'Katalogschritt zwei',
+      'Selbst notiert',
+    ])
+  })
+
   it('hängt Unteraufgaben unter ihre Elternaufgabe und nicht in die Liste', () => {
     const eltern = aufgabe({ id: 'eltern' })
     const kind = aufgabe({ id: 'kind', titel: 'Sterbeurkunden bestellen', parentId: 'eltern' })

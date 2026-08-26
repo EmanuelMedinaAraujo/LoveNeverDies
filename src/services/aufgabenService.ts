@@ -708,6 +708,20 @@ export async function aufgabenAusZeilen(
 }
 
 /**
+ * Was eine neue Aufgabe ausser ihrem Titel schon mitbringen darf (§7).
+ *
+ * Zwei Felder und ausdrücklich nicht `notizen`, `dependsOn` oder `erledigt`:
+ * Eine Aufgabe, die man gerade erst aufschreibt, ist nicht erledigt, hängt von
+ * nichts ab, und Notizen entstehen beim Arbeiten und nicht beim Anlegen. Was
+ * hier fehlt, fehlt deshalb, nicht aus Versehen.
+ */
+export type Neuinhalt = {
+  beschreibung?: string
+  /** Die selbst gesetzte Frist als ISO `YYYY-MM-DD`, oder `null` (§7). */
+  fristAm?: string | null
+}
+
+/**
  * Eine neue Aufgabe: eigener DEK, Payload darunter, DEK unter `K_c`.
  *
  * Die ID entsteht hier und nicht auf dem Server: eine clientseitige UUIDv7
@@ -719,23 +733,30 @@ export async function aufgabenAusZeilen(
  * Aufgabe, die man nach dem Tippen erst noch übernehmen müsste, um ihren Titel
  * zu korrigieren, wäre eine Hürde ohne Zweck. `null` lässt sie frei; so kommen
  * die Aufgaben der Juristinnen in den Fall (§8).
+ *
+ * @param inhalt was ausser dem Titel schon feststeht. Die Angaben kommen aus
+ * demselben Formular wie er (§7) und gehören deshalb in dieselbe Mutation:
+ * Anlegen und gleich darauf ändern wären zwei Einträge in der Queue, von denen
+ * der zweite offline eine Weile fehlt — und in dieser Weile stünde die Aufgabe
+ * bei den Geschwistern ohne die Frist da, wegen der sie angelegt wurde.
  */
 export async function mutationAnlegen(
   fall: Fallschluessel,
   titel: string,
   parentId: string | null = null,
   wer: Zugewiesene | null = null,
+  inhalt: Neuinhalt = {},
 ): Promise<Mutation> {
   const { id, wrappedDek, payload } = await verschluesselterInhalt(fall, uuidv7(), {
     typ: 'aufgabe',
     titel: pruefeTitel(titel),
-    beschreibung: '',
+    beschreibung: inhalt.beschreibung ?? '',
     erledigt: false,
     notizen: '',
     parentId,
     dependsOn: [],
     assignee: wer === null ? NIEMAND : personen([wer]),
-    fristAm: null,
+    fristAm: inhalt.fristAm ?? null,
     katalog: null,
   })
 

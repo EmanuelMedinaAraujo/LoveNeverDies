@@ -167,18 +167,84 @@ describe('Alle', () => {
     expect(screen.getByText(/Hier ist noch nichts/)).toBeVisible()
   })
 
-  it('legt eine Aufgabe an und leert danach das Feld', async () => {
+  it('legt eine Aufgabe im Dialog hinter dem Plus an und schliesst ihn danach', async () => {
     const legeAn = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(aufgabendaten({ legeAn }))
 
     rendereMitProvidern(<Alle />)
 
-    const feld = screen.getByLabelText('Neue Aufgabe')
-    await userEvent.type(feld, 'Konten kündigen')
-    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe hinzufügen' }))
+    // Solange niemand das Plus antippt, steht ueber der Liste kein Formular:
+    // Wer diesen Screen oeffnet, will nachsehen und nicht hinzufuegen.
+    expect(screen.queryByRole('dialog')).toBeNull()
 
-    await waitFor(() => expect(legeAn).toHaveBeenCalledWith('Konten kündigen', null, false))
-    expect(feld).toHaveValue('')
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Konten kündigen')
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() =>
+      expect(legeAn).toHaveBeenCalledWith('Konten kündigen', null, false, {
+        beschreibung: '',
+        fristAm: null,
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('nimmt im Dialog mehr auf als den Titel (§7)', async () => {
+    const legeAn = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(aufgabendaten({ legeAn }))
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Konten kündigen')
+    await userEvent.type(
+      screen.getByLabelText('Beschreibung (optional)'),
+      'Sparkasse und Bausparvertrag',
+    )
+    await userEvent.type(screen.getByLabelText('Erledigt bis (optional)'), '2026-09-30')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe speichern' }))
+
+    await waitFor(() =>
+      expect(legeAn).toHaveBeenCalledWith('Konten kündigen', null, false, {
+        beschreibung: 'Sparkasse und Bausparvertrag',
+        fristAm: '2026-09-30',
+      }),
+    )
+  })
+
+  it('stellt genau einen Schalter neben die Felder (§3.7)', async () => {
+    /*
+     * "Ich übernehme das" stand daneben, und zwei Haken untereinander lasen
+     * sich wie zwei Fragen zu derselben Sache: Wer sieht das, und wem gehört
+     * es? Die zweite stellt sich beim Anlegen nicht — wer etwas aufschreibt,
+     * ist damit eingetragen (§7).
+     */
+    useAufgaben.mockReturnValue(aufgabendaten())
+
+    rendereMitProvidern(<Alle />)
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).getAllByRole('checkbox')).toHaveLength(1)
+    expect(within(dialog).getByRole('checkbox', { name: 'Nur für mich' })).toBeVisible()
+  })
+
+  it('schliesst den Dialog ueber das Kreuz, ohne etwas anzulegen', async () => {
+    const legeAn = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(aufgabendaten({ legeAn }))
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Doch nicht')
+    await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(legeAn).not.toHaveBeenCalled()
   })
 
   it('hakt eine Aufgabe ab', async () => {
@@ -341,13 +407,15 @@ describe('Alle', () => {
 
     rendereMitProvidern(<Alle />)
 
-    await userEvent.type(screen.getByLabelText('Neue Aufgabe'), 'Etwas')
-    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe hinzufügen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Etwas')
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Die Aufgabe war nicht anzulegen.')
-    // Der eingetippte Titel bleibt stehen: Er ist nirgends gespeichert, und ein
-    // geleertes Feld wäre der stille Verlust, den §5 ausschließt.
-    expect(screen.getByLabelText('Neue Aufgabe')).toHaveValue('Etwas')
+    // Der Dialog bleibt offen und der eingetippte Titel stehen: Er ist nirgends
+    // gespeichert, und ein geschlossener Dialog wäre der stille Verlust, den
+    // §5 ausschließt.
+    expect(screen.getByLabelText('Was ist zu tun?')).toHaveValue('Etwas')
   })
 
   it('laesst einen Titel aus lauter Leerzeichen gar nicht erst abschicken', async () => {
@@ -358,14 +426,18 @@ describe('Alle', () => {
 
     rendereMitProvidern(<Alle />)
 
-    const hinzufuegen = screen.getByRole('button', { name: 'Aufgabe hinzufügen' })
-    expect(hinzufuegen).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
 
-    await userEvent.type(screen.getByLabelText('Neue Aufgabe'), '   ')
-    expect(hinzufuegen).toBeDisabled()
+    const speichern = screen.getByRole('button', { name: 'Aufgabe speichern' })
+    expect(speichern).toBeDisabled()
+    // Oben und unten dieselbe Sperre: Es sind zwei Wege zu einer Handlung.
+    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
 
-    await userEvent.type(screen.getByLabelText('Neue Aufgabe'), 'Etwas')
-    expect(hinzufuegen).toBeEnabled()
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), '   ')
+    expect(speichern).toBeDisabled()
+
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Etwas')
+    expect(speichern).toBeEnabled()
   })
 
   it('bietet in der Liste keine Aktion an, sondern nur den Weg ins Detail (§7)', () => {
@@ -420,7 +492,9 @@ describe('Alle', () => {
     rendereMitProvidern(<Alle />)
 
     expect(screen.getByRole('alert')).toHaveTextContent('Kein Schlüssel.')
-    expect(screen.queryByLabelText('Neue Aufgabe')).toBeNull()
+    // Kein Plus ueber einer Meldung, dass gerade nichts geht: Es waere eine
+    // Einladung, etwas zu schreiben, das nirgends hinkommt.
+    expect(screen.queryByRole('button', { name: 'Neue Aufgabe' })).toBeNull()
   })
 
   it('zeigt an, solange der Fall selbst noch geladen wird', () => {
@@ -429,7 +503,10 @@ describe('Alle', () => {
     rendereMitProvidern(<Alle />)
 
     expect(screen.getByRole('status')).toHaveTextContent('Ihre Daten werden geladen')
-    expect(screen.queryByRole('heading', { name: 'Alle Aufgaben' })).toBeNull()
+    // Die Ueberschrift steht auch hier: Eine Seite ohne sie waere fuer eine
+    // Vorlesestimme eine Seite ohne Namen.
+    expect(screen.getByRole('heading', { name: 'Alle Aufgaben' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Neue Aufgabe' })).toBeNull()
   })
 
   it('schickt zur Startseite, wer ohne Fall hereinkommt', () => {
@@ -439,7 +516,7 @@ describe('Alle', () => {
     rendereMitProvidern(<Alle />)
 
     expect(screen.queryByRole('heading', { name: 'Alle Aufgaben' })).toBeNull()
-    expect(screen.queryByLabelText('Neue Aufgabe')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Neue Aufgabe' })).toBeNull()
   })
 
   it('zeigt an, solange die Aufgaben geladen werden', () => {
@@ -662,6 +739,29 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
     expect(screen.getByText('noch 3 Tage')).toBeVisible()
   })
 
+  it('stellt die Badges neben den Titel und nicht in die Metazeile', () => {
+    /*
+     * §7: In der Metazeile wanderten sie von Zeile zu Zeile — mal an erster,
+     * mal an dritter Stelle, je nachdem, ob die Aufgabe eine Frist hat und ob
+     * sie privat ist. Am rechten Rand des Titels stehen sie in jeder Zeile an
+     * derselben Stelle, und wer die Liste nach Fristen durchsieht, liest eine
+     * Spalte.
+     */
+    zeige([aufgabe({ katalog: herkunft(), privat: true })])
+
+    const badge = screen.getByText('noch 3 Tage')
+    const titel = screen.getByText('Sterbeurkunde beantragen')
+
+    // Beide in derselben Zeile: der Titel links, die Badges rechts daneben.
+    const titelzeile = titel.closest('label')?.parentElement ?? titel.parentElement
+    expect(titelzeile).not.toBeNull()
+    expect(titelzeile).toContainElement(badge)
+    expect(titelzeile).toContainElement(screen.getByText('Nur für mich'))
+
+    // Und nicht mehr in der Metazeile, in der "Sie" steht.
+    expect(screen.getByText('Sie')).not.toContainElement(badge)
+  })
+
   it('erfindet keine Frist, wo der Katalog keine nennt', () => {
     zeige([aufgabe()])
 
@@ -867,12 +967,16 @@ describe('Private Aufgaben (§3.7)', () => {
 
     rendereMitProvidern(<Alle />)
 
-    await userEvent.type(screen.getByLabelText('Neue Aufgabe'), 'Erbausschlagung erwägen')
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Erbausschlagung erwägen')
     await userEvent.click(screen.getByRole('checkbox', { name: 'Nur für mich' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe hinzufügen' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
     await waitFor(() =>
-      expect(legeAn).toHaveBeenCalledWith('Erbausschlagung erwägen', null, true),
+      expect(legeAn).toHaveBeenCalledWith('Erbausschlagung erwägen', null, true, {
+        beschreibung: '',
+        fristAm: null,
+      }),
     )
   })
 
@@ -880,27 +984,40 @@ describe('Private Aufgaben (§3.7)', () => {
     /*
      * Er ist eine Angabe zu dieser einen Aufgabe und keine Einstellung. Bliebe
      * er stehen, wäre die nächste Aufgabe unbemerkt ebenfalls privat, und
-     * niemand sähe sie: die eine Verwechslung, die §3.7 teuer bezahlt.
+     * niemand sähe sie: die eine Verwechslung, die §3.7 teuer bezahlt. Der
+     * Dialog schliesst nach dem Speichern; der nächste beginnt bei null, weil
+     * das Formular mit ihm entsteht und vergeht.
      */
     useAufgaben.mockReturnValue(aufgabendaten({ legeAn: vi.fn().mockResolvedValue(undefined) }))
 
     rendereMitProvidern(<Alle />)
 
-    const schalter = screen.getByRole('checkbox', { name: 'Nur für mich' })
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Erbausschlagung erwägen')
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Nur für mich' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
 
-    await userEvent.type(screen.getByLabelText('Neue Aufgabe'), 'Erbausschlagung erwägen')
-    await userEvent.click(schalter)
-    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe hinzufügen' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
 
-    await waitFor(() => expect(schalter).not.toBeChecked())
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+    expect(screen.getByRole('checkbox', { name: 'Nur für mich' })).not.toBeChecked()
+    expect(screen.getByLabelText('Was ist zu tun?')).toHaveValue('')
   })
 
-  it('sagt, wer die Aufgabe sehen wird', async () => {
+  it('sagt es erst, wenn die Aufgabe wirklich privat wird (§3.7)', async () => {
+    /*
+     * Dass eine Aufgabe alle Mitglieder des Falls sehen, ist der Normalfall
+     * und braucht keine Ansage. Dass eine Aufgabe *niemand sonst* sieht, ist
+     * genau die Auskunft, ohne die jemand dort etwas hineinschreibt, das er
+     * für geteilt hält.
+     */
     useAufgaben.mockReturnValue(aufgabendaten())
 
     rendereMitProvidern(<Alle />)
 
-    expect(screen.getByText(/sehen alle Mitglieder des Falls/)).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Aufgabe' }))
+
+    expect(screen.queryByText(/sehen alle Mitglieder des Falls/)).toBeNull()
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Nur für mich' }))
 

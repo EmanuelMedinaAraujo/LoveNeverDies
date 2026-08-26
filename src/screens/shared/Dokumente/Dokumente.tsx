@@ -121,6 +121,7 @@ export function Dokumente({
   zeilen,
   aktualisiere,
   darfAendern,
+  zustaendig,
   flach = false,
 }: {
   fall: Fallschluessel
@@ -135,6 +136,8 @@ export function Dokumente({
    * darf auch die Sterbeurkunde sehen, die daran hängt.
    */
   darfAendern: boolean
+  /** Wem die Aufgabe gehört, für den Hinweissatz beim Antippen. */
+  zustaendig?: string
   /**
    * §7: Die einfache Ansicht kennt keine Kästen. Der Abschnitt steht dann als
    * blanke Fläche unter einer Haarlinie, und die Zeilen darin ebenso. Ein
@@ -149,6 +152,7 @@ export function Dokumente({
   const [laeuft, setzeLaeuft] = useState<null | 'aufnehmen' | 'oeffnen' | 'loeschen'>(null)
   const [fehler, setzeFehler] = useState<string | null>(null)
   const [ansicht, setzeAnsicht] = useState<Ansicht | null>(null)
+  const [gefragt, setzeGefragt] = useState(false)
 
   const meine = useMemo(
     () => dokumente.filter((dokument) => dokument.aufgabeId === aufgabeId),
@@ -213,21 +217,30 @@ export function Dokumente({
 
   const inhalt = (
     <>
-      <label className={[stile.aufnahme, zu ? stile.gesperrt : null].filter(Boolean).join(' ')}>
-        {laeuft === 'aufnehmen'
-          ? 'Wird verschlüsselt und hochgeladen…'
-          : 'Dokument abfotografieren'}
-        <input
-          className={stile.feld}
-          type="file"
-          accept="image/*,application/pdf"
-          // Auf dem Telefon die Rückkamera (§7). Ein Rechner ohne Kamera
-          // ignoriert das Attribut und zeigt den Dateidialog.
-          capture="environment"
-          disabled={zu}
-          onChange={(ereignis) => void aufnehmen(ereignis)}
-        />
-      </label>
+      <div
+        className={stile.aufnahmeHuelle}
+        onClick={() => {
+          if (!darfAendern) {
+            setzeGefragt(true)
+          }
+        }}
+      >
+        <label className={[stile.aufnahme, zu ? stile.gesperrt : null].filter(Boolean).join(' ')}>
+          {laeuft === 'aufnehmen'
+            ? 'Wird verschlüsselt und hochgeladen…'
+            : 'Dokument abfotografieren'}
+          <input
+            className={stile.feld}
+            type="file"
+            accept="image/*,application/pdf"
+            // Auf dem Telefon die Rückkamera (§7). Ein Rechner ohne Kamera
+            // ignoriert das Attribut und zeigt den Dateidialog.
+            capture="environment"
+            disabled={zu}
+            onChange={(ereignis) => void aufnehmen(ereignis)}
+          />
+        </label>
+      </div>
 
       {online ? null : (
         <p className={stile.hinweis} role="status">
@@ -236,12 +249,13 @@ export function Dokumente({
         </p>
       )}
 
-      {darfAendern || !online ? null : (
-        <p className={stile.hinweis}>
-          Ansehen können Sie alles. Zum Aufnehmen und Löschen übernehmen Sie oben die
-          Zuständigkeit.
+      {gefragt && !darfAendern && online ? (
+        <p className={stile.warnung} role="alert">
+          {zustaendig && zustaendig !== 'Niemand zugewiesen'
+            ? `Zuständig: ${zustaendig}. Zum Bearbeiten übernehmen Sie die Aufgabe unter „Zuständigkeit“.`
+            : 'Weisen Sie sich die Aufgabe erst zu, um sie zu bearbeiten.'}
         </p>
-      )}
+      ) : null}
 
       {fehler === null ? null : (
         <p className={stile.hinweis} role="alert">

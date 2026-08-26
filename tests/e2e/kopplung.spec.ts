@@ -100,8 +100,9 @@ test('Angehörige einladen: beide Seiten sehen denselben Prüfcode', async ({ br
       await trauerfallAnlegen(anna, 'Margarete Vogt', '2024-06-02')
 
       await anna.getByRole('navigation', { name: 'Hauptbereiche' }).getByRole('link', { name: 'Alle' }).click()
-      await anna.getByLabel('Neue Aufgabe').fill('Grabstein aussuchen')
-      await anna.getByRole('button', { name: 'Aufgabe hinzufügen' }).click()
+      await anna.getByRole('button', { name: 'Neue Aufgabe' }).click()
+      await anna.getByLabel('Was ist zu tun?').fill('Grabstein aussuchen')
+      await anna.getByRole('button', { name: 'Aufgabe speichern' }).click()
 
       await expect(anna.getByRole('checkbox', { name: 'Grabstein aussuchen' })).toBeVisible()
     })

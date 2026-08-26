@@ -173,7 +173,9 @@ describe('zuweisungText', () => {
   })
 
   it('sagt bei einer freien Aufgabe, dass sie frei ist', () => {
-    expect(zuweisungText(NIEMAND, ICH.userId)).toBe('Niemand')
+    // Ein ganzer Satz: In einer Liste steht das Wort dort, wo bei jeder
+    // anderen Zeile ein Name steht, und wird als einer gelesen (§7).
+    expect(zuweisungText(NIEMAND, ICH.userId)).toBe('Niemand zugewiesen')
   })
 
   it('behilft sich, wenn der Name einer Person nicht bekannt ist', () => {
