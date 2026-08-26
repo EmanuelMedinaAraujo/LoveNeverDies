@@ -744,7 +744,7 @@ function Detail({
       </Gruppe>
 
       {/*
-        §7: "Dokument einfach abfotografieren": Die Sterbeurkunde gehört an die
+        §7: "Dokument abfotografieren": Die Sterbeurkunde gehört an die
         Aufgabe, für die sie gebraucht wird, und nicht in eine Ablage irgendwo
         sonst in der App.
       */}

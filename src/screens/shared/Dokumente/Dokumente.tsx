@@ -12,7 +12,7 @@ import stile from './Dokumente.module.css'
 /**
  * Die Dokumente einer Aufgabe (DESIGN.md §7).
  *
- * §7 benennt die Aktion wörtlich: "Dokument einfach abfotografieren". Genau so
+ * §7 benennt die Aktion wörtlich: "Dokument abfotografieren". Genau so
  * heißt sie hier, und dahinter liegt ein `<input type="file"
  * capture="environment">`: Auf dem Telefon öffnet das die Kamera, auf dem
  * Rechner den Dateiauswahldialog. Zwei Wege für dieselbe Handlung wären zwei
@@ -217,7 +217,7 @@ export function Dokumente({
       <label className={[stile.aufnahme, zu ? stile.gesperrt : null].filter(Boolean).join(' ')}>
         {laeuft === 'aufnehmen'
           ? 'Wird verschlüsselt und hochgeladen…'
-          : 'Dokument einfach abfotografieren'}
+          : 'Dokument abfotografieren'}
         <input
           className={stile.feld}
           type="file"

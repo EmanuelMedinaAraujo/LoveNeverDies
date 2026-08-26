@@ -88,7 +88,7 @@ describe('Dokumente (§7)', () => {
   it('benennt die Aufnahme so, wie §7 sie benennt, und öffnet die Kamera', () => {
     rendere()
 
-    const feld = screen.getByLabelText('Dokument einfach abfotografieren')
+    const feld = screen.getByLabelText('Dokument abfotografieren')
 
     expect(feld).toHaveAttribute('type', 'file')
     expect(feld).toHaveAttribute('capture', 'environment')
@@ -97,7 +97,7 @@ describe('Dokumente (§7)', () => {
   it('reicht die gewählte Datei mit ihrer Aufgabe weiter', async () => {
     const wert = rendere()
 
-    await userEvent.upload(screen.getByLabelText('Dokument einfach abfotografieren'), datei())
+    await userEvent.upload(screen.getByLabelText('Dokument abfotografieren'), datei())
 
     await waitFor(() => expect(wert.nimmAuf).toHaveBeenCalledTimes(1))
     expect(vi.mocked(wert.nimmAuf).mock.calls[0]?.[1]).toBe('item-1')
@@ -106,7 +106,7 @@ describe('Dokumente (§7)', () => {
   it('sperrt die Aufnahme ohne Verbindung und sagt, warum', () => {
     rendere({ online: false })
 
-    expect(screen.getByLabelText('Dokument einfach abfotografieren')).toBeDisabled()
+    expect(screen.getByLabelText('Dokument abfotografieren')).toBeDisabled()
     expect(screen.getByText(/Ohne Verbindung lässt sich kein Dokument aufnehmen/)).toBeVisible()
   })
 
@@ -115,7 +115,7 @@ describe('Dokumente (§7)', () => {
       nimmAuf: vi.fn().mockRejectedValue(new Error('Mehr als 15 MB nimmt die App nicht an.')),
     })
 
-    await userEvent.upload(screen.getByLabelText('Dokument einfach abfotografieren'), datei())
+    await userEvent.upload(screen.getByLabelText('Dokument abfotografieren'), datei())
 
     expect(await screen.findByRole('alert')).toHaveTextContent(/Mehr als 15 MB/)
     expect(wert.nimmAuf).toHaveBeenCalled()
@@ -183,7 +183,7 @@ describe('Dokumente (§7)', () => {
   it('lässt eine fremde Aufgabe ansehen, aber nicht aufnehmen oder löschen', () => {
     rendere({ dokumente: [dokument()] }, false)
 
-    expect(screen.getByLabelText('Dokument einfach abfotografieren')).toBeDisabled()
+    expect(screen.getByLabelText('Dokument abfotografieren')).toBeDisabled()
     expect(screen.getByRole('button', { name: /Ansehen/ })).toBeEnabled()
     expect(screen.queryByRole('button', { name: /^Löschen/ })).not.toBeInTheDocument()
   })

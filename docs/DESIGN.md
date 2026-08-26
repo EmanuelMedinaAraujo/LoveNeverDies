@@ -1049,8 +1049,7 @@ Alles Weitere in `ERBE_DESIGN.md`, die Entscheidungen in ADR-0001 und ADR-0002.
 Pro Datei ein zufälliger DEK, clientseitig AES-256-GCM, hochgeladen als eine
 Storage-Datei. Maximal 15 MB, keine Chunks. Die Verschlüsselung läuft außerhalb des
 Main-Threads, damit die Oberfläche nicht einfriert. Aufnahme direkt aus der App über
-`<input type="file" capture="environment">`, in der UI benannt als "Dokument einfach
-abfotografieren".
+`<input type="file" capture="environment">`, in der UI benannt als "Dokument abfotografieren".
 
 **Löschen entfernt auch die Datei.** Der Client löscht das Storage-Objekt beim Setzen des
 Tombstones; ein serverseitiger Aufräumjob entfernt nach 7 Tagen alles, was zu einem
