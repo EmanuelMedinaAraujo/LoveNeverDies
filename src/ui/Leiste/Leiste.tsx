@@ -50,38 +50,12 @@ function Tab({ zu, genau = false, beschriftung, symbol, hinweis }: TabProps) {
   )
 }
 
-/**
- * Ein Tab ohne Ziel.
- *
- * Ohne Fall ist die App gesperrt (§7): „Erbe" und „Alle" führen dann nirgendwo
- * hin. Sie verschwinden trotzdem nicht, denn eine Leiste, die ihre Plätze
- * wechselt, ist keine Leiste. Sie stehen gedämpft da und sagen es an, statt
- * einen Tipp entgegenzunehmen und auf demselben Screen zu enden.
- */
-function StummerTab({ beschriftung, symbol }: { beschriftung: string; symbol: ReactNode }) {
-  return (
-    <li className={stile.zelle}>
-      <span
-        className={[stile.tab, stile.stumm].join(' ')}
-        role="link"
-        aria-disabled="true"
-        aria-label={`${beschriftung}, erst mit einem Fall verfügbar`}
-      >
-        <span className={stile.symbol}>{symbol}</span>
-        <span className={stile.beschriftung}>{beschriftung}</span>
-      </span>
-    </li>
-  )
-}
-
 type LeisteProps = {
   /**
    * §3.6: Dieses Gerät wartet auf seine Freigabe. Der Hinweis gehört an den
    * Profil-Tab, weil die Freigabe dort geschieht.
    */
   freigabeNoetig?: boolean
-  /** Ohne Fall ist die App gesperrt (§7): „Erbe" und „Alle" stehen still. */
-  ohneFall?: boolean
   /**
    * §3.5: Der aktive Fall ist der eigene Vorsorgefall. Dann steht „Nachlass"
    * an erster Stelle und „Start" gar nicht.
@@ -92,11 +66,7 @@ type LeisteProps = {
   vorsorge?: boolean
 }
 
-export function Leiste({
-  freigabeNoetig = false,
-  ohneFall = false,
-  vorsorge = false,
-}: LeisteProps) {
+export function Leiste({ freigabeNoetig = false, vorsorge = false }: LeisteProps) {
   const profil = (
     <Tab
       zu="/profil"
@@ -106,10 +76,6 @@ export function Leiste({
     />
   )
 
-  /*
-   * Im Vorsorgefall gibt es keinen gesperrten Zustand zu bedenken: `vorsorge`
-   * setzt einen lesbaren Fall mit `K_v` voraus, und ohne Fall gibt es keinen.
-   */
   if (vorsorge) {
     return (
       <nav className={stile.leiste} aria-label="Hauptbereiche">
@@ -126,19 +92,8 @@ export function Leiste({
     <nav className={stile.leiste} aria-label="Hauptbereiche">
       <ul className={stile.tabs}>
         <Tab zu="/" genau beschriftung="Start" symbol={<SymbolStart />} />
-
-        {ohneFall ? (
-          <StummerTab beschriftung="Alle" symbol={<SymbolAlle />} />
-        ) : (
-          <Tab zu="/alle" beschriftung="Alle" symbol={<SymbolAlle />} />
-        )}
-
-        {ohneFall ? (
-          <StummerTab beschriftung="Erbe" symbol={<SymbolErbe />} />
-        ) : (
-          <Tab zu="/erbe" beschriftung="Erbe" symbol={<SymbolErbe />} />
-        )}
-
+        <Tab zu="/alle" beschriftung="Alle" symbol={<SymbolAlle />} />
+        <Tab zu="/erbe" beschriftung="Erbe" symbol={<SymbolErbe />} />
         {profil}
       </ul>
     </nav>

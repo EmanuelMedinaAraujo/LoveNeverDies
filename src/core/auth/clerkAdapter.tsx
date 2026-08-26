@@ -44,14 +44,28 @@ function ClerkZustandBruecke({ children }: { children: ReactNode }) {
       status: 'angemeldet',
       benutzer: {
         id: user.id,
-        // Clerk laesst beide Namensfelder leer, wenn sich jemand nur mit einer
-        // E-Mail-Adresse registriert. Dann ist die Adresse der Anzeigename;
-        // ein leerer Name waere in §6 ("Anna Mueller zum Fall hinzufuegen?")
-        // schlimmer als eine E-Mail-Adresse.
+        /*
+         * Nur der Name, den die Person hinterlegt hat, und keine Ersatzangabe.
+         *
+         * Clerk laesst beide Namensfelder leer, wenn sich jemand nur mit einer
+         * E-Mail-Adresse registriert — und bei „Mit Apple anmelden" auch dann,
+         * wenn Apple den Namen nur beim ersten Mal mitschickt. Frueher stand
+         * dann die Adresse als Anzeigename da, und weil sie von hier aus in
+         * `profiles`, in die Vorsorge-Anlage und in jedes Kopplungsangebot
+         * wandert, fragte §6 danach, ob
+         * `k7f3x9a2b1@privaterelay.appleid.com` zum Fall hinzugefuegt werden
+         * soll. Das ist keine Identitaet, an der jemand am Telefon
+         * wiedererkennt, wen er hereinlaesst.
+         *
+         * `fullName` ist Clerks Zusammensetzung aus Vor- und Nachname; steht
+         * nur eines von beiden da, setzt der zweite Zweig es selbst zusammen.
+         */
         anzeigename:
           user.fullName?.trim() ||
-          user.primaryEmailAddress?.emailAddress ||
-          'Unbenannt',
+          [user.firstName, user.lastName]
+            .map((teil) => teil?.trim() ?? '')
+            .filter((teil) => teil !== '')
+            .join(' '),
         email: user.primaryEmailAddress?.emailAddress ?? null,
       },
     }

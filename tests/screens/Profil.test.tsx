@@ -157,17 +157,31 @@ describe('Profil', () => {
     expect(screen.queryByText('Für wen?')).toBeNull()
   })
 
-  it('zeigt die Geraete und traegt keinen eigenen Weg zurueck mehr (§7)', () => {
+  it('zeigt die Geraete und traegt mit Fall keinen eigenen Weg zurueck (§7)', () => {
     /*
      * Der Weg zurück ist der Start-Tab in der unteren Leiste. Er steht auf
      * jedem Hauptscreen an derselben Stelle, und das ist mehr wert als ein
      * „Zurück", das je nach Screen woanders sitzt.
      */
+    useCase.mockReturnValue(falldaten({ status: 'bereit', faelle: [LESBAR], aktiver: LESBAR }))
+
     rendereMitProvidern(<Profil />)
 
     expect(screen.getByRole('heading', { name: 'Geräte' })).toBeVisible()
     expect(screen.getByText('Geräteliste')).toBeVisible()
     expect(screen.queryByRole('link', { name: 'Zurück' })).toBeNull()
+  })
+
+  it('traegt ohne Fall einen Weg zurueck, weil dann keine Leiste dasteht (§7)', () => {
+    /*
+     * Ohne Fall laesst der Rahmen die untere Leiste weg (`app/Rahmen.tsx`):
+     * Auf dem Willkommen-Screen fuehrten zwei ihrer vier Plaetze nirgendwohin.
+     * Profil ist dann ueber die Zeile am Fuss jenes Screens erreichbar — und
+     * braucht selbst einen Weg zurueck, sonst endet der Weg hier.
+     */
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/')
   })
 
   it('laesst jedes Mitglied einladen, sobald ein Fall lesbar ist', () => {

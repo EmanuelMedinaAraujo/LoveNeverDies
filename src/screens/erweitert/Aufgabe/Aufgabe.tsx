@@ -21,6 +21,7 @@ import {
   istAnfechtungAufgabe,
   istAusschlagungAufgabe,
   istErbscheinAufgabe,
+  istTotenscheinAufgabe,
   istSeedAufgabe,
   stammtAus,
 } from '../../../services/fragebaumService.ts'
@@ -486,6 +487,26 @@ function Angaben({
   }
 
   const schritte = katalog.unteraufgaben.filter((eintrag) => eintrag.trim() !== '')
+
+  /*
+   * „Totenschein erstellen" trägt in diesem Kasten nur ihren einen Schritt.
+   * Warum gerade sie: `services/fragebaumService.ts`.
+   */
+  if (istTotenscheinAufgabe(aufgabe)) {
+    return schritte.length === 0 ? null : (
+      <Card titel="Das gilt dafür">
+        <dl className={stile.angaben}>
+          <Angabe was="Diese Schritte gehören dazu">
+            <ol className={stile.punkte}>
+              {schritte.map((schritt) => (
+                <li key={schritt}>{schritt}</li>
+              ))}
+            </ol>
+          </Angabe>
+        </dl>
+      </Card>
+    )
+  }
 
   return (
     <Card titel="Das gilt dafür">

@@ -11,10 +11,12 @@ import {
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { istVorsorgende, type LesbarerFall } from '../../../services/fallService.ts'
+import { personenname } from '../../../services/personenname.ts'
 import { statusText } from '../../../services/fragebaumService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Gruppe, Liste, Navizeile, Zeile } from '../../../ui/Liste/Liste.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import { Geraeteliste } from './Geraeteliste.tsx'
 import stile from './Profil.module.css'
 
@@ -279,8 +281,19 @@ export function Profil() {
    */
   const vorsorgende = fall.status === 'bereit' && istVorsorgende(fall.aktiver)
 
+  /*
+   * Ohne Fall steht keine untere Leiste unter dem Screen (§7,
+   * `app/Rahmen.tsx`), und Profil ist dann der einzige Screen, der nicht der
+   * Willkommen-Screen ist. Der Weg zurueck steht deshalb genau dort, wo er auf
+   * den linearen Screens steht — und nur dann: Mit Leiste waere er eine zweite
+   * Navigation mit einer anderen Antwort auf dieselbe Frage.
+   */
+  const ohneFall = fall.status === 'kein-fall'
+
   return (
     <main className={stile.seite}>
+      {ohneFall ? <Zurueck ziel="/" /> : null}
+
       <h1>Profil</h1>
 
       {benutzer === null ? null : (
@@ -295,16 +308,15 @@ export function Profil() {
               ausgerechnet dort tippt jeder zuerst hin, der seine E-Mail-Adresse
               oder sein Passwort ändern will. Jetzt führt sie dorthin.
 
-              Name und E-Mail sind bei einer Anmeldung ohne Profilnamen
-              dasselbe. Dann steht die Zeile einmal da und nicht zweimal.
+              Ohne hinterlegten Namen steht dort die Aufforderung, ihn zu
+              ergaenzen, und nicht die E-Mail-Adresse: Sie steht in der Zeile
+              darunter, und ein zweites Mal als Name gaebe sie fuer einen aus
+              (`core/auth/clerkAdapter.tsx`). Die Zeile fuehrt genau dorthin,
+              wo sich der Name eintragen laesst.
             */}
             <Navizeile
-              titel={benutzer.anzeigename}
-              meta={
-                benutzer.email === null || benutzer.email === benutzer.anzeigename
-                  ? undefined
-                  : benutzer.email
-              }
+              titel={personenname(benutzer.anzeigename, 'Namen ergänzen')}
+              meta={benutzer.email ?? undefined}
               ziel="/konto"
               vorleseText=": Konto und Anmeldung ändern"
             />
