@@ -408,11 +408,7 @@ export function Profil() {
             neuen Fall ohnehin mit — der Weg bliebe eine Aufforderung ohne
             Gegenstand.
           */}
-          {kannTeilen ? (
-            <Zeile>
-              <span className={stile.aus}>Dieses Gerät freischalten lassen</span>
-            </Zeile>
-          ) : (
+          {kannTeilen ? null : (
             <Navizeile titel="Dieses Gerät freischalten lassen" ziel="/geraet-freischalten" />
           )}
           {kannTeilen ? (
