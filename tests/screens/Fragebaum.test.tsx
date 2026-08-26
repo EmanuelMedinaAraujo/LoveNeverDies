@@ -578,6 +578,18 @@ describe('Hinweis bei Ausschlagung (C)', () => {
   })
 })
 
+describe('Rechtlicher Hinweis bei Verwandtschaftsfragen', () => {
+  it('zeigt den rechtlichen Hinweis auf der Frage "Ich bin {person}s …"', () => {
+    zeige('/erbe/fragebaum/n65', { pfad: ['n0', 'n57', 'n65'] })
+
+    expect(
+      screen.getByText(
+        'Die Ergebnisse der folgenden Fragen dienen ausschließlich der allgemeinen Information und Orientierung. Sie stellen keine Rechtsberatung dar und ersetzen nicht die individuelle Prüfung durch einen Anwalt oder Notar.',
+      ),
+    ).toBeInTheDocument()
+  })
+})
+
 describe('Einfache Ansicht (§4)', () => {
   it('kürzt einen langen Ergebnistext, ohne ihn umzuformulieren', async () => {
     const nutzer = userEvent.setup()
