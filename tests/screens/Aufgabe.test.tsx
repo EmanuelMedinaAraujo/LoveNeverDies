@@ -102,6 +102,7 @@ function aufgabe(ueberschreibung: Partial<Aufgabendatensatz> = {}): Aufgabendate
     parentId: null,
     dependsOn: [],
     assignee: personen([{ userId: BENUTZER.id, name: BENUTZER.anzeigename }]),
+    fristAm: null,
     katalog: herkunft(),
     dek: new Uint8Array([9]),
     kid: LESBAR.kid,
@@ -544,6 +545,95 @@ describe('Aufgabendetail (§7, §8)', () => {
 
     expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
       notizen: 'Termin am Montag',
+    })
+  })
+
+  describe('Selbst gesetzte Frist (§7)', () => {
+    /** Ein Kalendertag, so viele Tage nach heute. */
+    function inTagen(tage: number): string {
+      const tag = new Date()
+      tag.setDate(tag.getDate() + tage)
+
+      const monat = `${tag.getMonth() + 1}`.padStart(2, '0')
+
+      return `${tag.getFullYear()}-${monat}-${`${tag.getDate()}`.padStart(2, '0')}`
+    }
+
+    it('speichert ein eingetragenes Datum an der Aufgabe', async () => {
+      const schreibe = vi.fn().mockResolvedValue(undefined)
+      useAufgaben.mockReturnValue(aufgabendaten({ schreibe }))
+
+      zeigeDetail()
+
+      fireEvent.change(screen.getByLabelText('Erledigt bis'), {
+        target: { value: '2026-06-30' },
+      })
+      await userEvent.click(screen.getByRole('button', { name: 'Frist speichern' }))
+
+      expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
+        fristAm: '2026-06-30',
+      })
+    })
+
+    it('entfernt eine eingetragene Frist wieder', async () => {
+      const schreibe = vi.fn().mockResolvedValue(undefined)
+      useAufgaben.mockReturnValue(
+        aufgabendaten({
+          zustand: {
+            status: 'bereit',
+            aufgaben: [aufgabe({ fristAm: inTagen(1) })],
+            uebersprungen: 0,
+            ...NETZ,
+          },
+          schreibe,
+        }),
+      )
+
+      zeigeDetail()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Frist entfernen' }))
+
+      expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
+        fristAm: null,
+      })
+    })
+
+    it('zeigt die eigene Frist im Badge, wenn sie früher endet als die gesetzliche', () => {
+      // Gesetzlich sind es drei Tage ab dem Sterbedatum (siehe `herkunft`).
+      useAufgaben.mockReturnValue(
+        aufgabendaten({
+          zustand: {
+            status: 'bereit',
+            aufgaben: [aufgabe({ fristAm: inTagen(1) })],
+            uebersprungen: 0,
+            ...NETZ,
+          },
+        }),
+      )
+
+      zeigeDetail()
+
+      expect(screen.getByText('noch 1 Tag')).toBeVisible()
+    })
+
+    it('lässt die gesetzliche Frist von einem späteren eigenen Datum nicht verdecken', () => {
+      // §8: Ein selbst eingetragener Tag im nächsten Monat darf eine
+      // gesetzliche Frist nicht vom Bildschirm nehmen.
+      useAufgaben.mockReturnValue(
+        aufgabendaten({
+          zustand: {
+            status: 'bereit',
+            aufgaben: [aufgabe({ fristAm: inTagen(60) })],
+            uebersprungen: 0,
+            ...NETZ,
+          },
+        }),
+      )
+
+      zeigeDetail()
+
+      expect(screen.getByText('noch 3 Tage')).toBeVisible()
+      expect(screen.getByText(/gilt schon eine gesetzliche Frist/)).toBeVisible()
     })
   })
 

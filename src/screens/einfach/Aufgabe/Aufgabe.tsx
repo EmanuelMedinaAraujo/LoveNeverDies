@@ -427,7 +427,7 @@ function Detail({
   }
 }) {
   const { aufgabe, unteraufgaben, istBlatt, erledigt, blockiertVon } = knoten
-  const lage = fristlage(aufgabe.katalog, fristbezug, heuteIso())
+  const lage = fristlage(aufgabe.katalog, fristbezug, heuteIso(), aufgabe.fristAm)
 
   const [notizen, setzeNotizen] = useState(aufgabe.notizen)
   const [gespeicherteNotizen, setzeGespeicherteNotizen] = useState(aufgabe.notizen)

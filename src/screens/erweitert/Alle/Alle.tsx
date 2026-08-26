@@ -327,7 +327,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
       <Aufgabenzeile
         key={knoten.aufgabe.id}
         knoten={knoten}
-        lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute)}
+        lage={fristlage(knoten.aufgabe.katalog, fristbezug, heute, knoten.aufgabe.fristAm)}
         gesperrt={laeuft}
         ichUserId={ich.userId}
         aufHaken={(erledigt) => fuehreAus(() => hakeAb(knoten.aufgabe, erledigt))}
