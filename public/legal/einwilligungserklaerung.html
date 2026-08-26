@@ -115,6 +115,38 @@
         font-size: 0.9rem;
       }
 
+      .nav-zurueck {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-height: 44px;
+        color: var(--accent);
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .nav-zurueck:hover {
+        text-decoration: underline;
+      }
+
+      .nav-zurueck svg {
+        width: 1.25em;
+        height: 1.25em;
+        flex: none;
+      }
+
+      .zurueck-oben {
+        margin-bottom: 1.5rem;
+      }
+
+      .zurueck-unten {
+        margin-top: 2.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border);
+      }
+
       .info-box {
         background-color: var(--card-bg);
         border: 1px solid var(--border);
@@ -126,6 +158,15 @@
   </head>
   <body>
     <main>
+      <div class="zurueck-oben">
+        <a href="/" onclick="if (window.history.length > 1) { window.history.back(); return false; }" class="nav-zurueck">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 19 8 12l7-7" />
+          </svg>
+          Zurück
+        </a>
+      </div>
+
       <header>
         <div class="brand">Code&Clause</div>
         <h1>Einwilligungserklärung in die Verarbeitung personenbezogener Daten gemäß DSGVO</h1>
@@ -191,6 +232,15 @@
 
       <h2>Freiwillige Zustimmung</h2>
       <p>Hiermit stimme ich der Erhebung und Verarbeitung meiner personenbezogenen Daten durch Code&Clause zur Erstellung und Nutzung meines Nutzerkontos, zur Bereitstellung der Netzwerk- und Aufgabenfunktionen sowie zur sicheren Verwaltung meiner Vorsorge- und Nachlassdaten freiwillig zu. Eine ordnungsgemäße Belehrung darüber, dass ich diese Einwilligung jederzeit mit Wirkung für die Zukunft widerrufen kann und welche funktionalen Einschränkungen ein Widerruf mit sich bringt, hat stattgefunden.</p>
+
+      <div class="zurueck-unten">
+        <a href="/" onclick="if (window.history.length > 1) { window.history.back(); return false; }" class="nav-zurueck">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 19 8 12l7-7" />
+          </svg>
+          Zurück
+        </a>
+      </div>
     </main>
   </body>
 </html>
