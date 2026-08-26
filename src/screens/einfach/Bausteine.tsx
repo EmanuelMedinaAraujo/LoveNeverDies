@@ -24,13 +24,15 @@ export function Fristzeile({ lage }: { lage: Fristlage }) {
   }
 
   const klasse =
-    lage.art !== 'datum'
-      ? stile.frist
-      : lage.restTage < 0
-        ? [stile.frist, stile.abgelaufen].join(' ')
-        : lage.restTage <= 3
-          ? [stile.frist, stile.knapp].join(' ')
-          : stile.frist
+    lage.art === 'unverzueglich'
+      ? [stile.frist, stile.knapp].join(' ')
+      : lage.art !== 'datum'
+        ? stile.frist
+        : lage.restTage < 0
+          ? [stile.frist, stile.abgelaufen].join(' ')
+          : lage.restTage <= 3
+            ? [stile.frist, stile.knapp].join(' ')
+            : stile.frist
 
   /*
    * Bei einer Frist ab der eigenen Kenntnis ist der Text schon ein ganzer
@@ -38,7 +40,11 @@ export function Fristzeile({ lage }: { lage: Fristlage }) {
    */
   return (
     <p className={klasse}>
-      {lage.art === 'datum' ? `Frist: ${datumText(lage.ende)}, ${text}` : text}
+      {lage.art === 'datum'
+        ? `Frist: ${datumText(lage.ende)}, ${text}`
+        : lage.art === 'unverzueglich'
+          ? `Frist: ${text}`
+          : text}
     </p>
   )
 }
