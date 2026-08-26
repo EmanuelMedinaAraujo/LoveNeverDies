@@ -76,10 +76,15 @@ export type Fragebaumknoten = {
   /**
    * Ein Hinweis unter der Frage.
    *
-   * Steht an "Wollen Sie das Erbe haben?" (Schulden-Hinweis) und an
-   * "Ich bin {person}s …" (Rechtlicher Hinweis/Disclaimer).
+   * Steht an "Wollen Sie das Erbe haben?" (Schulden-Hinweis).
    */
   hinweis?: string
+  /**
+   * Ein rechtlicher Hinweis / Disclaimer als modales Overlay vor der Beantwortung.
+   *
+   * Steht vor den Verwandtschaftsfragen an "Ich bin {person}s …".
+   */
+  disclaimer?: string
   /** Ein `ℹ`-Knopf im Kopf der Seite, der eine Erläuterung aufklappt. */
   info?: Infothema
   /** Diese Seite bietet an, die Aufgabe anzulegen (ERBE_DESIGN.md §7). */

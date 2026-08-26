@@ -189,3 +189,51 @@
   gap: var(--dichte-abstand-klein);
   flex-wrap: wrap;
 }
+
+/*
+ * Das rechtliche Hinweis-Overlay vor sensiblen Fragen (z. B. Verwandtschaftsgrad).
+ *
+ * Liegt modal über der Frageseite, damit der Hinweis bewusst wahrgenommen und
+ * bestätigt werden muss, bevor eine Antwort gewählt werden kann.
+ */
+.overlayHintergrund {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(0.25rem);
+  -webkit-backdrop-filter: blur(0.25rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dichte-abstand);
+  z-index: 1000;
+}
+
+.overlayKarte {
+  background: var(--farbe-karte);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  padding: var(--dichte-abstand-gross);
+  max-width: 28rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.25);
+}
+
+.overlayTitel {
+  margin: 0;
+  font-size: var(--dichte-schrift-mittel);
+  font-weight: var(--typo-gewicht-titel);
+  line-height: var(--typo-zeile-titel);
+  color: var(--farbe-text);
+}
+
+.overlayText {
+  margin: 0;
+  font-size: var(--dichte-schrift);
+  line-height: var(--typo-zeile-text);
+  color: var(--farbe-text);
+}
+
