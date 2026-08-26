@@ -273,6 +273,7 @@ function Frageseite({
   const [plz, setzePlz] = useState('')
   const [gericht, setzeGericht] = useState<Nachlassgericht | null>(null)
   const [fehler, setzeFehler] = useState<string | null>(null)
+  const [disclaimerGesehen, setzeDisclaimerGesehen] = useState(false)
 
   const text = knoten.text.replaceAll('{person}', fall.personName)
   /*
@@ -366,6 +367,31 @@ function Frageseite({
           </li>
         ))}
       </ul>
+
+      {knoten.disclaimer !== undefined && !disclaimerGesehen ? (
+        <div
+          className={stile.overlayHintergrund}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="disclaimer-titel"
+          aria-describedby="disclaimer-text"
+        >
+          <div className={stile.overlayKarte}>
+            <h2 id="disclaimer-titel" className={stile.overlayTitel}>
+              Rechtlicher Hinweis
+            </h2>
+            <p id="disclaimer-text" className={stile.overlayText}>
+              {knoten.disclaimer}
+            </p>
+            <Button
+              volleBreite
+              onClick={() => setzeDisclaimerGesehen(true)}
+            >
+              Verstanden
+            </Button>
+          </div>
+        </div>
+      ) : null}
     </>
   )
 }
