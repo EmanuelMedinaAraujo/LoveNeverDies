@@ -7,6 +7,7 @@ import type { Falldaten } from '../../src/hooks/useCase.ts'
 import type { Aufgabe, Fragebaumergebnis } from '../../src/services/aufgabenService.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 import { AuthKontextProvider } from '../../src/core/auth/authProvider.ts'
+import { alleKnoten } from '../../src/services/fragebaumService.ts'
 import { authWert } from './harness.tsx'
 
 /**
@@ -568,18 +569,24 @@ describe('Aufgaben aus dem Baum (§7)', () => {
 })
 
 describe('Infoknoten (§5)', () => {
-  it('klappt die Erläuterung an Ort und Stelle auf', async () => {
-    const nutzer = userEvent.setup()
+  it('zeigt auf n59 keinen Erbschein-Infoknopf', () => {
     zeige('/erbe/fragebaum/n59', { pfad: ['n0', 'n50', 'n57', 'n58', 'n59'] })
 
-    const knopf = screen.getByRole('button', { name: /Was ist ein Erbschein/ })
+    expect(
+      screen.queryByRole('button', { name: /Was ist ein Erbschein/ }),
+    ).not.toBeInTheDocument()
+  })
 
-    expect(knopf).toHaveAttribute('aria-expanded', 'false')
+  it('zeigt am Ergebnis der gesetzlichen Erbfolge keinen Erbschein-Infoknopf', () => {
+    zeige('/erbe/fragebaum/n66', { pfad: ['n0', 'n50', 'n57', 'n65', 'n66'] })
 
-    await nutzer.click(knopf)
+    expect(
+      screen.queryByRole('button', { name: /Was ist ein Erbschein/ }),
+    ).not.toBeInTheDocument()
+  })
 
-    expect(knopf).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText(/ergänzt/)).toBeInTheDocument()
+  it('trägt an keinem Knoten mehr das Infothema Erbschein', () => {
+    expect(alleKnoten().filter((knoten) => knoten.info === 'erbschein')).toEqual([])
   })
 
   it('zeigt auf Frage n1 kein Was ist das Nachlassgericht', () => {
