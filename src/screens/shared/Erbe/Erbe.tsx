@@ -587,40 +587,48 @@ export function Erbe() {
       {fall.status === 'vorsorge' ? (
         <VorsorgeAngehoerige fall={fall} onFallAktualisieren={onFallAktualisieren} />
       ) : (
-        <>
-          <Erbstatus fall={fall} />
-
-          {/*
-            §3.5: Die ganze Karte führt in den geöffneten Tresor. Vorher stand
-            hier ein Satz, der auf einen anderen Tab verwies -- der Inhalt, den
-            die vorsorgende Person hinterlegt hat, war nirgends zu sehen.
-
-            Nur bei einem Fall, der aus einer Vorsorge hervorgegangen ist:
-            `preparerId` steht ausschließlich dort (siehe die Spalte in
-            `faelle`, "nur bei Vorsorge"). Ein Trauerfall, der direkt angelegt
-            wurde, hatte nie einen Tresor, und eine Karte, die zu einem
-            Screen führt, der nur "Versiegelt, 0 von 0" melden könnte, wäre
-            keine Auskunft, sondern eine Enttäuschung, einen Fingertipp weiter.
-          */}
-          {fall.preparerId === null ? null : (
-            <Link className={stile.karte} to="/erbe/tresor">
-              <Card>
-                <div className={stile.statusKopf}>
-                  <h2 className={stile.abschnitt}>Nachlass-Tresor</h2>
-                  <Badge lage="ruhig">Trauerfall</Badge>
-                </div>
-                <p className={stile.hinweis}>
-                  Was {fall.personName} hinterlegt hat: Zugänge, Unterlagen, persönliche
-                  Nachrichten. Tippen Sie, um es zu lesen.
-                </p>
-              </Card>
-            </Link>
-          )}
-
-          <ErneutDurchlaufen />
-        </>
+        <TrauerfallErbe fall={fall} />
       )}
     </main>
+  )
+}
+
+function TrauerfallErbe({ fall }: { fall: LesbarerFall }) {
+  const { fragebaum, fragebaumGeladen } = useAufgaben(fall)
+
+  return (
+    <>
+      <Erbstatus fall={fall} />
+
+      {/*
+        §3.5: Die ganze Karte führt in den geöffneten Tresor. Vorher stand
+        hier ein Satz, der auf einen anderen Tab verwies -- der Inhalt, den
+        die vorsorgende Person hinterlegt hat, war nirgends zu sehen.
+
+        Nur bei einem Fall, der aus einer Vorsorge hervorgegangen ist:
+        `preparerId` steht ausschließlich dort (siehe die Spalte in
+        `faelle`, "nur bei Vorsorge"). Ein Trauerfall, der direkt angelegt
+        wurde, hatte nie einen Tresor, und eine Karte, die zu einem
+        Screen führt, der nur "Versiegelt, 0 von 0" melden könnte, wäre
+        keine Auskunft, sondern eine Enttäuschung, einen Fingertipp weiter.
+      */}
+      {fall.preparerId === null ? null : (
+        <Link className={stile.karte} to="/erbe/tresor">
+          <Card>
+            <div className={stile.statusKopf}>
+              <h2 className={stile.abschnitt}>Nachlass-Tresor</h2>
+              <Badge lage="ruhig">Trauerfall</Badge>
+            </div>
+            <p className={stile.hinweis}>
+              Was {fall.personName} hinterlegt hat: Zugänge, Unterlagen, persönliche
+              Nachrichten. Tippen Sie, um es zu lesen.
+            </p>
+          </Card>
+        </Link>
+      )}
+
+      {fragebaumGeladen && fragebaum !== null ? <ErneutDurchlaufen /> : null}
+    </>
   )
 }
 

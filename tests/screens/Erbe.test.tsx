@@ -376,11 +376,25 @@ describe('Erbstatus im Trauerfall (ERBE_DESIGN.md §10)', () => {
     expect(screen.queryByRole('button', { name: 'Fragebaum starten' })).not.toBeInTheDocument()
   })
 
-  it('bietet den erneuten Durchlauf ganz unten an', () => {
+  it('bietet den erneuten Durchlauf erst an, wenn ein Ergebnis vorliegt', () => {
     trauerfall()
 
+    // Ohne gespeichertes Ergebnis: Nur "Fragebaum starten"
     rendereMitProvidern(<Erbe />)
+    expect(screen.getByRole('button', { name: 'Fragebaum starten' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Fragebaum erneut durchlaufen' }),
+    ).not.toBeInTheDocument()
 
+    // Mit gespeichertem Ergebnis: "Fragebaum erneut durchlaufen"
+    mockFragebaum.mockReturnValue({
+      knotenId: 'n6',
+      pfad: ['n0', 'n1', 'n2', 'n3', 'n4', 'n6'],
+      status: 'erbe',
+      am: '2026-08-25T10:00:00.000Z',
+    })
+
+    rendereMitProvidern(<Erbe />)
     expect(
       screen.getByRole('button', { name: 'Fragebaum erneut durchlaufen' }),
     ).toBeInTheDocument()
