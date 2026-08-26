@@ -140,7 +140,7 @@ describe('Alle (einfach)', () => {
   it('führt mit einem Verb ins Aufgabendetail (§7)', () => {
     rendereMitProvidern(<Alle />)
 
-    expect(screen.getByRole('link', { name: /Aufgabe öffnen/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Öffnen/ })).toHaveAttribute(
       'href',
       '/aufgabe/item-1',
     )

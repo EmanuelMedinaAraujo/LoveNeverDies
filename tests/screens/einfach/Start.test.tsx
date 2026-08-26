@@ -121,7 +121,7 @@ describe('Start (einfach)', () => {
      */
     rendereMitProvidern(<Start />)
 
-    expect(screen.getByRole('link', { name: /Aufgabe öffnen/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Öffnen/ })).toHaveAttribute(
       'href',
       '/aufgabe/item-1',
     )

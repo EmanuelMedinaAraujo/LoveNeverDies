@@ -98,6 +98,22 @@
   border-block-start: 0.0625rem solid var(--farbe-kartenrand);
 }
 
+/*
+ * Haekchen samt Titel und der Weg hinein stehen in einer Zeile: Der Link sitzt
+ * rechts am Rand, der Titel nimmt den Rest und darf umbrechen (`min-width: 0`,
+ * sonst schoebe ein langer Titel den Link aus der Zeile).
+ */
+.kopfzeile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--dichte-abstand-klein);
+}
+
+.kopftitel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 /* Der Titel einer Aufgabe, die kein eigenes Haekchen hat (§7). */
 .titel {
   font-size: var(--dichte-schrift);
@@ -147,6 +163,7 @@
   align-items: center;
   gap: var(--raster-2);
   align-self: flex-start;
+  flex: none;
 
   min-height: var(--ziel-mindestmass);
   color: var(--farbe-akzent);
