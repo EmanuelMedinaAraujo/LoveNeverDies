@@ -71,6 +71,14 @@
   margin: 0;
 }
 
+.zustaendigeStelle {
+  display: inline-block;
+  font-size: var(--dichte-schrift-mittel);
+  font-weight: var(--typo-gewicht-betont);
+  color: var(--farbe-text);
+  margin-bottom: var(--dichte-abstand-klein);
+}
+
 .liste {
   display: flex;
   flex-direction: column;

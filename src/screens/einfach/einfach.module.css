@@ -254,6 +254,14 @@
   line-height: var(--dichte-zeilenhoehe);
 }
 
+.zustaendigeStelle {
+  display: inline-block;
+  font-size: var(--dichte-schrift-mittel);
+  font-weight: var(--typo-gewicht-betont);
+  color: var(--farbe-text);
+  margin-bottom: var(--dichte-abstand-klein);
+}
+
 /*
  * Die Beschreibung einer Aufgabe. `pre-wrap` aus demselben Grund wie drueben:
  * Eine gegliederte Beschreibung soll gegliedert bleiben (ERBE_DESIGN.md §10).

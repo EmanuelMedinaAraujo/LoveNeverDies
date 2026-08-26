@@ -8,3 +8,22 @@
   flex-direction: column;
   gap: var(--dichte-abstand-klein);
 }
+
+.knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pfeil {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  transition: transform 150ms ease-out;
+}
+
+.pfeilOffen {
+  transform: rotate(180deg);
+}

@@ -121,6 +121,28 @@
   align-items: flex-start;
 }
 
+.klappKnopf {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+  font-size: var(--dichte-schrift-mittel);
+  font-weight: var(--typo-gewicht-betont);
+  color: var(--farbe-akzent);
+  text-align: left;
+  cursor: pointer;
+}
+
+.klappPfeil {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex-shrink: 0;
+  transition: transform 150ms ease-out;
+}
+
+.klappPfeilOffen {
+  transform: rotate(180deg);
+}
+
 .klappInhalt {
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
