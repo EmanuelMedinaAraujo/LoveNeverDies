@@ -437,11 +437,13 @@ function Kenntnisdatum({
   lage,
   gesperrt,
   aufSpeichern,
+  hinweis,
 }: {
   kenntnisAm: string | null
   lage: Fristlage
   gesperrt: boolean
   aufSpeichern: (datum: string | null) => Promise<boolean>
+  hinweis?: string
 }) {
   const [eingabe, setzeEingabe] = useState(kenntnisAm ?? '')
   const [gespeichert, setzeGespeichert] = useState(kenntnisAm)
@@ -461,9 +463,8 @@ function Kenntnisdatum({
   return (
     <Abschnitt titel="Wann haben Sie davon erfahren?">
       <p className={stile.hinweis}>
-        An welchem Tag haben Sie von der Erbschaft erfahren bzw. das Testament erhalten? Ab
-        diesem Tag läuft Ihre Frist. Das Datum sehen nur Sie: Jede und jeder trägt den eigenen
-        Tag ein.
+        {hinweis ??
+          'An welchem Tag haben Sie von der Erbschaft erfahren bzw. das Testament erhalten? Ab diesem Tag läuft Ihre Frist. Das Datum sehen nur Sie: Jede und jeder trägt den eigenen Tag ein.'}
       </p>
 
       {lage.art === 'datum' ? (
@@ -640,6 +641,7 @@ function Detail({
     /** Wrappt den DEK von `K_p` auf `K_c` (§3.7). */
     gibFuerAlleFrei: () => void
     speichereKenntnisAm: (datum: string | null) => Promise<boolean>
+    speichereAnfechtungKenntnisAm: (datum: string | null) => Promise<boolean>
   }
 }) {
   const { aufgabe, unteraufgaben, istBlatt, erledigt, blockiertVon } = knoten
@@ -785,6 +787,14 @@ function Detail({
           lage={lage}
           gesperrt={aktionen.gesperrt}
           aufSpeichern={aktionen.speichereKenntnisAm}
+        />
+      ) : istAnfechtungAufgabe(aufgabe) || aufgabe.katalog?.fristAb === 'anfechtungskenntnis' ? (
+        <Kenntnisdatum
+          kenntnisAm={fristbezug.anfechtungKenntnisAm}
+          lage={lage}
+          gesperrt={aktionen.gesperrt}
+          aufSpeichern={aktionen.speichereAnfechtungKenntnisAm}
+          hinweis="An welchem Tag haben Sie von dem Grund der möglichen Anfechtung erfahren? Ab diesem Tag laufen die 365 Tage dieser Frist. Das Datum sehen nur Sie: Jedes Mitglied trägt sein eigenes ein, und dieselbe Aufgabe hat deshalb für jeden ein anderes Ende."
         />
       ) : null}
 
@@ -1002,6 +1012,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     gibFuerAlleFrei,
     fristbezug,
     setzeKenntnisAm,
+    setzeAnfechtungKenntnisAm,
   } = useAufgaben(fall)
 
   const navigate = useNavigate()
@@ -1102,6 +1113,8 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
             }),
           gibFuerAlleFrei: () => void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe)),
           speichereKenntnisAm: (datum) => fuehreAus(() => setzeKenntnisAm(datum)),
+          speichereAnfechtungKenntnisAm: (datum) =>
+            fuehreAus(() => setzeAnfechtungKenntnisAm(datum)),
         }}
       />
     </>
