@@ -260,9 +260,13 @@ test('zweites Gerät freischalten', async ({ browser }) => {
 
       await startscreenZeigt(tablet, 'Friedrich Kaiser')
 
-      // Und die Freigabe ist damit erledigt. Der Hinweis aus Profil ist fort.
+      // Und die Freigabe ist damit erledigt. Der Hinweis aus Profil ist fort,
+      // und der Weg zur Freischaltung steht diesem Gerät nicht mehr offen.
       await gotoVerlaesslich(tablet, '/profil')
       await expect(tablet.getByText('Freigabe nötig')).toBeHidden()
+      await expect(
+        tablet.getByRole('link', { name: 'Dieses Gerät freischalten lassen' }),
+      ).toBeHidden()
     })
   } finally {
     await handy.context().close()
