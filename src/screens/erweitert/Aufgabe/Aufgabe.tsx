@@ -4,7 +4,6 @@ import type { InhaltZeile } from '../../../core/db/inhalte.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
-import { useMitglieder } from '../../../hooks/useMitglieder.ts'
 import type { Aufgabe as Aufgabendatensatz } from '../../../services/aufgabenService.ts'
 import { knotenZu, type Aufgabenknoten } from '../../../services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../../services/fallService.ts'
@@ -30,10 +29,8 @@ import {
 import { aktualisiereNotizMitGericht } from '../../../services/gerichtService.ts'
 import type { Nachlassgericht } from '../../../types/gericht.ts'
 import {
-  benenne,
   darfAbhaken,
   darfBearbeiten,
-  istFrei,
   type Zugewiesene,
   type Zuweisung,
 } from '../../../services/zuweisung.ts'
@@ -297,13 +294,22 @@ function Unteraufgabenzeile({
 
   return (
     <li className={stile.zeile}>
-      <Checkbox
-        abhaken
-        checked={erledigt}
-        disabled={gesperrt || !darfHaken}
-        onChange={(ereignis) => void haken(ereignis.target.checked)}
-        label={unteraufgabe.titel}
-      />
+      {/*
+        Wer nicht abhaken darf, sieht kein Kästchen. Ein graues Kästchen ist
+        eine Einladung, die nicht gilt; der Titel allein sagt dasselbe, ohne
+        etwas anzubieten.
+      */}
+      {darfHaken ? (
+        <Checkbox
+          abhaken
+          checked={erledigt}
+          disabled={gesperrt}
+          onChange={(ereignis) => void haken(ereignis.target.checked)}
+          label={unteraufgabe.titel}
+        />
+      ) : (
+        <p className={erledigt ? stile.fertig : undefined}>{unteraufgabe.titel}</p>
+      )}
       <div className={stile.aktionen}>
         <Link className={stile.hinweis} to={`/aufgabe/${unteraufgabe.id}`}>
           Zuständigkeit ändern
@@ -427,8 +433,6 @@ function Detail({
   fall,
   fristbezug,
   ich,
-  mitglieder,
-  mitgliederfehler,
   zeilen,
   aktualisiere,
   aktionen,
@@ -439,10 +443,6 @@ function Detail({
   fristbezug: Fristbezug
   /** Die angemeldete Person, so wie sie in eine Zuweisung geschrieben wird (§7). */
   ich: Zugewiesene
-  /** Die Mitglieder des Falls, benannt so gut es geht. */
-  mitglieder: Zugewiesene[]
-  /** Was beim Abruf der Mitglieder schiefging, oder `null`. */
-  mitgliederfehler: string | null
   /** Der Bestand als Ciphertext; die Dokumente lesen daraus ihre Zeilen (§7). */
   zeilen: InhaltZeile[]
   /** Stösst eine Sync-Runde an: Dokumente gehen nicht durch die Queue (§5). */
@@ -476,22 +476,6 @@ function Detail({
     setzeNotizen(aufgabe.notizen)
   }
 
-  const [eigenesHaken, setzeEigenesHaken] = useState(aufgabe.erledigt)
-  const [zuletztGesehen, setzeZuletztGesehen] = useState(aufgabe.erledigt)
-
-  if (zuletztGesehen !== aufgabe.erledigt) {
-    setzeZuletztGesehen(aufgabe.erledigt)
-    setzeEigenesHaken(aufgabe.erledigt)
-  }
-
-  async function haken(gewuenscht: boolean) {
-    setzeEigenesHaken(gewuenscht)
-
-    if (!(await aktionen.hakeAb(aufgabe, gewuenscht))) {
-      setzeEigenesHaken(aufgabe.erledigt)
-    }
-  }
-
   async function speichereNotizen(ereignis: FormEvent) {
     ereignis.preventDefault()
     await aktionen.schreibeNotizen(notizen)
@@ -514,14 +498,13 @@ function Detail({
   const fertigeKinder = unteraufgaben.filter((unter) => unter.erledigt).length
 
   /*
-   * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Gesperrt sind das
-   * Häkchen, die Notizen, neue Unteraufgaben und das Löschen, nicht das Lesen
-   * und nicht die Zuweisung selbst. Wer nicht eingetragen ist, soll die
+   * §7: "Bearbeiten darf nur, wem sie zugewiesen ist." Gesperrt sind die
+   * Notizen, neue Unteraufgaben und das Löschen, nicht das Lesen und nicht die
+   * Zuweisung selbst. Wer nicht eingetragen ist, soll die
    * Rechtsgrundlage sehen und sich eintragen können; alles andere wäre eine
    * Mauer vor einer Aufgabe, die vielleicht gerade dringend ist.
    */
   const darfAendern = darfBearbeiten(aufgabe.assignee, ich.userId)
-  const darfHaken = darfAbhaken(aufgabe.assignee, ich.userId)
 
   return (
     <>
@@ -552,9 +535,10 @@ function Detail({
 
         {/*
           Ob die Aufgabe erledigt ist, ist das Erste, was jemand hier wissen
-          will, und das Erste, was er tun will. Vorher stand das Häkchen in
-          einem eigenen Kasten mit der Überschrift "Erledigt?", drei Abschnitte
-          tiefer und hinter dem Rechtlichen. Jetzt steht es beim Titel.
+          will — und deshalb steht es beim Titel. Abgehakt wird sie hier
+          trotzdem nicht: Das eigene Häkchen im Detail und dasselbe Häkchen in
+          der Liste sind zwei Wege zu einer Handlung, und einer davon liegt
+          zwei Tipps tiefer. Es bleibt der in der Übersicht.
         */}
         {/*
           Die Seed-Aufgabe hat kein eigenes Häkchen (ERBE_DESIGN.md §9): Sie
@@ -569,13 +553,9 @@ function Detail({
               : 'Offen, solange Sie den Fragebaum nicht durchlaufen haben. Das entscheidet jede:r für sich.'}
           </p>
         ) : istBlatt ? (
-          <Checkbox
-            abhaken
-            checked={eigenesHaken}
-            disabled={aktionen.gesperrt || !darfHaken}
-            onChange={(ereignis) => void haken(ereignis.target.checked)}
-            label="Diese Aufgabe ist erledigt"
-          />
+          <p className={stile.hinweis} role="status">
+            {aufgabe.erledigt ? 'Erledigt.' : 'Offen. Abhaken können Sie sie in der Liste.'}
+          </p>
         ) : (
           /*
            * §7: Eine Aufgabe mit Unteraufgaben hat kein eigenes Häkchen. Sie
@@ -684,42 +664,16 @@ function Detail({
       {/*
         §7: Die Zuweisung ist eine Bearbeitungssperre, kein Zugriffsschutz: Der
         Server kann eine Regel nicht durchsetzen, die er nicht lesen kann (§3.3,
-        §11). Sie steht deshalb offen für jede:n: übernehmen, freigeben,
-        jemanden eintragen.
+        §11). Sie steht deshalb offen für jede:n: übernehmen und freigeben.
       */}
       <Gruppe titel="Zuständigkeit">
         <Card>
-
         <Zuweisungsfeld
           zuweisung={aufgabe.assignee}
           ich={ich}
-          mitglieder={mitglieder}
           gesperrt={aktionen.gesperrt}
           aufSetzen={aktionen.weiseZu}
         />
-
-        {darfAendern ? null : istFrei(aufgabe.assignee) ? (
-          <p className={stile.hinweis}>
-            Diese Aufgabe ist niemandem zugewiesen. Haken Sie sie ab, tragen Sie sich damit
-            ein. Zum Ändern übernehmen Sie sie.
-          </p>
-        ) : (
-          <p className={stile.hinweis}>
-            Diese Aufgabe ist Ihnen nicht zugewiesen. Sie können sie lesen; zum Ändern
-            übernehmen Sie sie.
-          </p>
-        )}
-
-        {/*
-          Die Auswahl ist dann kürzer, als sie sein sollte; das gehört gesagt
-          (§5). Übernehmen und Freigeben gehen trotzdem: Dafür braucht es nur
-          die eigene Person, und die kommt aus der Anmeldung.
-        */}
-        {mitgliederfehler === null ? null : (
-          <p className={stile.hinweis} role="alert">
-            Die Mitglieder dieses Falls sind gerade nicht abrufbar. {mitgliederfehler}
-          </p>
-        )}
         </Card>
       </Gruppe>
 
@@ -849,8 +803,6 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
     setzeKenntnisAm,
   } = useAufgaben(fall)
 
-  const { userIds, fehler: mitgliederfehler } = useMitglieder(fall.id)
-
   const [laeuft, setzeLaeuft] = useState(false)
   const [fehler, setzeFehler] = useState<string | null>(null)
 
@@ -873,18 +825,6 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
   if (zustand.status === 'laedt') {
     return <Ladeanzeige text="Ihre Aufgaben werden geladen…" />
   }
-
-  /*
-   * Die Kennungen kommen aus `memberships`, die Namen aus den Zuweisungen, die
-   * schon im Fall liegen (§7). Sobald die Kopplung `profiles` mitbringt (#10),
-   * kommen sie von dort; die Stelle, an der beides zusammenfindet, bleibt
-   * dieselbe.
-   */
-  const mitglieder = benenne(
-    userIds,
-    zustand.aufgaben.map((aufgabe) => aufgabe.assignee),
-    ich,
-  )
 
   const knoten = knotenZu(zustand.aufgaben, id)
 
@@ -934,8 +874,6 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
         fall={fall}
         fristbezug={fristbezug}
         ich={ich}
-        mitglieder={mitglieder}
-        mitgliederfehler={mitgliederfehler}
         zeilen={zeilen}
         aktualisiere={aktualisiere}
         aktionen={{

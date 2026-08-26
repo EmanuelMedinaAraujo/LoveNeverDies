@@ -132,12 +132,11 @@ describe('Aufgabe (einfach)', () => {
     expect(screen.getByText('Nachlassgericht (Amtsgericht)')).toBeVisible()
   })
 
-  it('hakt die Aufgabe ab', async () => {
-    const daten = mitDetail([aufgabe({ katalog: herkunft() })])
+  it('hat kein eigenes Häkchen: abgehakt wird in der Liste', () => {
+    mitDetail([aufgabe({ katalog: herkunft() })])
 
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' }))
-
-    expect(daten.hakeAb).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), true)
+    expect(screen.queryByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeNull()
+    expect(screen.getByText('Offen. Abhaken können Sie sie in der Liste.')).toBeVisible()
   })
 
   it('übernimmt die Aufgabe mit einem Verb (§7)', async () => {
@@ -281,8 +280,7 @@ describe('Aufgabe (einfach)', () => {
   it('lässt eine fremde Aufgabe lesen, aber nicht ändern (§7)', () => {
     mitDetail([aufgabe({ assignee: personen([BERT]), katalog: herkunft() })])
 
-    expect(screen.getByRole('checkbox', { name: 'Diese Aufgabe ist erledigt' })).toBeDisabled()
-    expect(screen.getByText(/Diese Aufgabe ist Ihnen nicht zugewiesen/)).toBeVisible()
+    expect(screen.getByText('Bert Müller')).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Diese Aufgabe löschen' })).toBeNull()
     expect(screen.getByText('Standesamt des Sterbeortes')).toBeVisible()
   })

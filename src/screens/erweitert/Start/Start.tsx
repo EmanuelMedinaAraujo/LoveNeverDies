@@ -201,11 +201,16 @@ function Startzeile({
   return (
     <Zeile className={blockiert ? stile.wartet : undefined}>
       <div className={stile.spalte}>
-        {istBlatt ? (
+        {/*
+          Kein Kästchen, wo niemand abhaken darf (§7): Ein graues ist eine
+          Einladung, die nicht gilt. Wer zuständig ist, steht in der Zeile
+          darunter, und der Weg dahin führt über die Aufgabe selbst.
+        */}
+        {istBlatt && darfHaken ? (
           <Checkbox
             abhaken
             checked={erledigt}
-            disabled={gesperrt || !darfHaken}
+            disabled={gesperrt}
             onChange={(ereignis) => void haken(ereignis.target.checked)}
             label={aufgabe.titel}
             nurKaestchen
