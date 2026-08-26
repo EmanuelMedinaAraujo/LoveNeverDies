@@ -984,8 +984,8 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
    * dieselbe Konstruktion, mit der §8 die Fristen ab Kenntnis löst.
    */
   const aufgaben = useMemo(
-    () => mitAbgeleitetemHaken(liste.aufgaben, liste.konfiguration?.fragebaum ?? null),
-    [liste.aufgaben, liste.konfiguration],
+    () => mitAbgeleitetemHaken(liste.aufgaben, liste.konfiguration?.fragebaum ?? null, ich),
+    [liste.aufgaben, liste.konfiguration, ich],
   )
 
   const baum = useMemo(() => baueBaum(aufgaben), [aufgaben])

@@ -57,7 +57,6 @@ describe('catalog.de.json (§8)', () => {
       'totenschein-erstellen',
       'sterbeurkunde-beantragen',
       'bestattungsunternehmen-kontaktieren',
-      'tresor-des-vorsorgenden-oeffnen',
       'erbenstellung-klaeren',
     ])
 
@@ -80,10 +79,8 @@ describe('catalog.de.json (§8)', () => {
     const bestattung = aufgaben.find((a) => a.id === 'bestattungsunternehmen-kontaktieren')
     expect(bestattung?.titel).toBe('Bestattungsunternehmen kontaktieren')
 
-    const tresor = aufgaben.find((a) => a.id === 'tresor-des-vorsorgenden-oeffnen')
-    expect(tresor?.titel).toBe('Tresor des Vorsorgenden öffnen und die Fragen')
-
     const erbe = aufgaben.find((a) => a.id === 'erbenstellung-klaeren')
     expect(erbe?.titel).toBe('Klären ob Sie Erbe sind')
   })
 })
+

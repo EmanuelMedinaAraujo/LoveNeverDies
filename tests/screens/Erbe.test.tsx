@@ -639,12 +639,11 @@ describe('Die Wege hinter dem Status "Erbe" (ERBE_DESIGN.md §10)', () => {
     })
   })
 
-  /** Tippt auf das Wort "Erbe" und danach durch die genannten Knöpfe. */
+  /** Tippt durch die genannten Knöpfe. */
   async function tippe(...knoepfe: string[]) {
     const nutzer = userEvent.setup()
 
     rendereMitProvidern(<Erbe />)
-    await nutzer.click(screen.getByRole('button', { name: 'Erbe' }))
 
     for (const knopf of knoepfe) {
       await nutzer.click(screen.getByRole('button', { name: knopf }))
@@ -653,12 +652,11 @@ describe('Die Wege hinter dem Status "Erbe" (ERBE_DESIGN.md §10)', () => {
     return nutzer
   }
 
-  it('macht aus dem Wort "Erbe" eine Schaltfläche', () => {
+  it('zeigt den Status "Erbe" als Badge ohne Schaltfläche/Aufklapp-Icon', () => {
     rendereMitProvidern(<Erbe />)
 
-    const schalter = screen.getByRole('button', { name: 'Erbe' })
-
-    expect(schalter).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Erbe')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Erbe' })).not.toBeInTheDocument()
   })
 
   it('lässt jeden anderen Status eine Anzeige bleiben', () => {
@@ -675,23 +673,16 @@ describe('Die Wege hinter dem Status "Erbe" (ERBE_DESIGN.md §10)', () => {
 
     expect(screen.getByText('Wahrscheinlich Erbe')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Wahrscheinlich Erbe/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Erbschein' })).not.toBeInTheDocument()
   })
 
-  it('öffnet auf das Antippen die beiden Wege', async () => {
-    await tippe()
+  it('zeigt die beiden Wege direkt geöffnet an', () => {
+    rendereMitProvidern(<Erbe />)
 
     expect(screen.getByRole('button', { name: 'Erbschein' })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Erbengemeinschaft bzw. Alleinerbe' }),
     ).toBeInTheDocument()
-  })
-
-  it('schließt sie beim zweiten Antippen wieder', async () => {
-    const nutzer = await tippe()
-
-    await nutzer.click(screen.getByRole('button', { name: 'Erbe' }))
-
-    expect(screen.queryByRole('button', { name: 'Erbschein' })).not.toBeInTheDocument()
   })
 
   it('zeigt unter "Erbschein" den Erklärtext und die Frage', async () => {
