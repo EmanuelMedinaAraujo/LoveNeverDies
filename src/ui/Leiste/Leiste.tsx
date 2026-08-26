@@ -4,7 +4,7 @@ import { SymbolAlle, SymbolErbe, SymbolProfil, SymbolStart } from './Symbole.tsx
 import stile from './Leiste.module.css'
 
 /**
- * Die untere Leiste: Start · Erbe · Alle · Profil (DESIGN.md §7).
+ * Die untere Leiste: Start · Alle · Erbe · Profil (DESIGN.md §7).
  *
  * Sie ist der einzige Ort für Navigation. Vorher trug jeder Screen seine eigene
  * Reihe Textlinks, und die Reihen waren pro Screen verschieden benannt und
@@ -91,15 +91,15 @@ export function Leiste({ freigabeNoetig = false, ohneFall = false }: LeisteProps
         <Tab zu="/" genau beschriftung="Start" symbol={<SymbolStart />} />
 
         {ohneFall ? (
-          <StummerTab beschriftung="Erbe" symbol={<SymbolErbe />} />
-        ) : (
-          <Tab zu="/erbe" beschriftung="Erbe" symbol={<SymbolErbe />} />
-        )}
-
-        {ohneFall ? (
           <StummerTab beschriftung="Alle" symbol={<SymbolAlle />} />
         ) : (
           <Tab zu="/alle" beschriftung="Alle" symbol={<SymbolAlle />} />
+        )}
+
+        {ohneFall ? (
+          <StummerTab beschriftung="Erbe" symbol={<SymbolErbe />} />
+        ) : (
+          <Tab zu="/erbe" beschriftung="Erbe" symbol={<SymbolErbe />} />
         )}
 
         <Tab

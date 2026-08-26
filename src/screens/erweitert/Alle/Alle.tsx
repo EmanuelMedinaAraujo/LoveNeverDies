@@ -8,18 +8,13 @@ import type { LesbarerFall } from '../../../services/fallService.ts'
 import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import { fristlage, fristText, heuteIso, type Fristlage } from '../../../services/fristen.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
-import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
+import { Button } from '../../../ui/Button/Button.tsx'
 import { Klapp } from '../../../ui/Klapp/Klapp.tsx'
 import { Detailziel, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import type { Erinnerungsdaten } from '../../../hooks/useErinnerungen.ts'
-import {
-  darfAbhaken,
-  darfBearbeiten,
-  istFrei,
-  zuweisungText,
-} from '../../../services/zuweisung.ts'
+import { darfAbhaken, zuweisungText } from '../../../services/zuweisung.ts'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
 import stile from './Alle.module.css'
@@ -34,10 +29,11 @@ import stile from './Alle.module.css'
  *
  * Die erweiterte Fassung dieses Tabs (§7). Die einfache steht daneben in
  * `screens/einfach/Alle`; getrennt sind sie, seit die einfache wirklich
- * weniger zeigt und nicht bloß größer gesetzt ist. Hier steht alles, was eine
- * Familie zum Verteilen braucht: sortieren, ändern, löschen, übernehmen,
- * freigeben — vier Aktionen unter jeder Zeile, ohne eine einzige Aufgabe zu
- * öffnen.
+ * weniger zeigt und nicht bloß größer gesetzt ist. Hier wird sortiert und
+ * abgehakt, mehr nicht: Ändern, Löschen, Übernehmen und Freigeben stehen im
+ * Aufgabendetail, einen Fingertipp weiter. Vier Schaltflächen unter jeder von
+ * zwanzig Zeilen sind vier Gelegenheiten, in einer Liste etwas zu löschen,
+ * das man nur ansehen wollte.
  *
  * Die Liste zeigt Wurzelaufgaben: Unteraufgaben stehen im Aufgabendetail,
  * unter der Aufgabe, zu der sie gehören (§7); hier zählt nur, wie viele davon
@@ -53,8 +49,6 @@ function Ladeanzeige({ text }: { text: string }) {
     </p>
   )
 }
-
-type ZeilenModus = 'anzeigen' | 'aendern' | 'loeschen' | 'freigeben'
 
 /** Wie dringend eine Frist aussieht (§12). Ab drei Tagen wird es knapp. */
 function badgelage(lage: Fristlage): Badgelage {
@@ -76,32 +70,16 @@ function Aufgabenzeile({
   gesperrt,
   ichUserId,
   aufHaken,
-  aufSpeichern,
-  aufLoeschen,
-  aufUebernehmen,
-  aufFreigeben,
-  aufFuerAlleSichtbar,
 }: {
   knoten: Aufgabenknoten
   lage: Fristlage
   gesperrt: boolean
-  /** Die angemeldete Person. Ob sie bearbeiten darf, entscheidet die Zuweisung (§7). */
+  /** Die angemeldete Person. Ob sie abhaken darf, entscheidet die Zuweisung (§7). */
   ichUserId: string
   /** @returns ob die Änderung angehängt wurde. Sonst nimmt die Zeile sie zurück. */
   aufHaken: (erledigt: boolean) => Promise<boolean>
-  /** `false`, wenn nichts gespeichert wurde. Die Zeile bleibt dann offen. */
-  aufSpeichern: (titel: string, beschreibung: string) => Promise<boolean>
-  aufLoeschen: () => void
-  aufUebernehmen: () => void
-  aufFreigeben: () => void
-  /** Wrappt den DEK von `K_p` auf `K_c` und macht die Aufgabe damit sichtbar (§3.7). */
-  aufFuerAlleSichtbar: () => void
 }) {
   const { aufgabe, unteraufgaben, istBlatt, erledigt: giltAlsErledigt, blockiertVon } = knoten
-
-  const [modus, setzeModus] = useState<ZeilenModus>('anzeigen')
-  const [titel, setzeTitel] = useState(aufgabe.titel)
-  const [beschreibung, setzeBeschreibung] = useState(aufgabe.beschreibung)
 
   /*
    * Das Häkchen folgt dem Finger und nicht dem Rundlauf.
@@ -144,138 +122,14 @@ function Aufgabenzeile({
     }
   }
 
-  function beginneAendern() {
-    setzeTitel(aufgabe.titel)
-    setzeBeschreibung(aufgabe.beschreibung)
-    setzeModus('aendern')
-  }
-
-  async function speichern(ereignis: FormEvent) {
-    ereignis.preventDefault()
-
-    // Nur bei Erfolg zu. Ging es schief, steht die Meldung darüber und der
-    // eingetippte Text noch da: §5 verlangt, dass eine abgelehnte Änderung
-    // sichtbar bleibt, und ein geleertes Formular wäre das Gegenteil davon.
-    if (await aufSpeichern(titel, beschreibung)) {
-      setzeModus('anzeigen')
-    }
-  }
-
-  if (modus === 'aendern') {
-    return (
-      <Zeile className={stile.formularzeile}>
-        <form className={stile.formular} onSubmit={(ereignis) => void speichern(ereignis)}>
-          <div className={stile.feld}>
-            <label htmlFor={`titel-${aufgabe.id}`}>Titel</label>
-            <input
-              id={`titel-${aufgabe.id}`}
-              className={stile.eingabe}
-              value={titel}
-              onChange={(ereignis) => setzeTitel(ereignis.target.value)}
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className={stile.feld}>
-            <label htmlFor={`beschreibung-${aufgabe.id}`}>Beschreibung</label>
-            <textarea
-              id={`beschreibung-${aufgabe.id}`}
-              className={stile.eingabe}
-              rows={3}
-              value={beschreibung}
-              onChange={(ereignis) => setzeBeschreibung(ereignis.target.value)}
-            />
-          </div>
-
-          <div className={stile.aktionen}>
-            {/*
-              `required` allein liesse einen Titel aus lauter Leerzeichen durch;
-              der Dienst weist ihn dann ab, und die Meldung landet über der
-              Liste, weit weg von dieser Zeile. Gesperrt zu sein ist die
-              ehrlichere Antwort: Was nicht gespeichert werden kann, lässt sich
-              gar nicht erst abschicken.
-            */}
-            <Button type="submit" disabled={gesperrt || titel.trim() === ''}>
-              Speichern
-            </Button>
-            <Button variante="sekundaer" onClick={() => setzeModus('anzeigen')}>
-              Abbrechen
-            </Button>
-          </div>
-        </form>
-      </Zeile>
-    )
-  }
-
-  if (modus === 'freigeben') {
-    return (
-      <Zeile className={stile.formularzeile}>
-        {/*
-          §3.7: Freigeben wrappt den DEK von `K_p` auf `K_c`. Einen Weg zurück
-          gibt es nicht: Der Fallschlüssel liegt bei allen, und was einmal
-          darunter lag, hat jedes Mitglied beim nächsten Delta gesehen. Das
-          gehört vor die Aktion gesagt und nicht danach.
-        */}
-        <p>
-          „{aufgabe.titel}" für alle sichtbar machen? Danach sehen alle Mitglieder des Falls
-          diese Aufgabe. Zurücknehmen lässt sich das nicht.
-        </p>
-        <div className={stile.aktionen}>
-          <Button
-            onClick={() => {
-              setzeModus('anzeigen')
-              aufFuerAlleSichtbar()
-            }}
-            disabled={gesperrt}
-          >
-            Für alle sichtbar machen
-          </Button>
-          <Button variante="sekundaer" onClick={() => setzeModus('anzeigen')}>
-            Abbrechen
-          </Button>
-        </div>
-      </Zeile>
-    )
-  }
-
-  if (modus === 'loeschen') {
-    return (
-      <Zeile className={stile.formularzeile}>
-        {/*
-          §5: Löschen gewinnt endgültig, die Datenbank weist eine Auferstehung
-          ab. Das gehört vor die Aktion gesagt und nicht danach.
-        */}
-        <p>
-          „{aufgabe.titel}" wirklich löschen? Gelöschte Aufgaben kommen nicht zurück.
-        </p>
-        <div className={stile.aktionen}>
-          <Button
-            onClick={() => {
-              setzeModus('anzeigen')
-              aufLoeschen()
-            }}
-            disabled={gesperrt}
-          >
-            Endgültig löschen
-          </Button>
-          <Button variante="sekundaer" onClick={() => setzeModus('anzeigen')}>
-            Abbrechen
-          </Button>
-        </div>
-      </Zeile>
-    )
-  }
-
   const badge = fristText(lage)
   const blockiert = blockiertVon.length > 0
 
   /*
-   * "Bearbeiten darf nur, wem sie zugewiesen ist." Wer nicht darunter steht,
-   * sieht die Aufgabe vollständig und findet statt der Schaltflächen den einen
-   * Weg, der ihm offensteht: sie übernehmen.
+   * "Abhaken darf nur, wem sie zugewiesen ist." Wer nicht darunter steht,
+   * sieht die Aufgabe vollständig und findet im Detail den einen Weg, der ihm
+   * offensteht: sie übernehmen.
    */
-  const darfAendern = darfBearbeiten(aufgabe.assignee, ichUserId)
   const darfHaken = darfAbhaken(aufgabe.assignee, ichUserId)
 
   /*
@@ -344,80 +198,6 @@ function Aufgabenzeile({
 
           {meta}
         </p>
-
-        {/*
-          Die Aktionen als Text und nicht als vier umrandete Kästen: In einer
-          Liste ist die Aufgabe die Sache, und die Schaltflächen sind das, was
-          man mit ihr tun kann. Jede trägt den Titel zum Vorlesen mit — ohne
-          ihn hörte eine blinde Person in einer Liste von zwanzig Aufgaben
-          zwanzigmal "Ändern" und wüsste nie, welche gemeint ist.
-
-          Das Trennzeichen ist ein Doppelpunkt und kein Leerzeichen: Die
-          Berechnung des zugänglichen Namens schneidet den Rand jedes
-          Textknotens ab, ein führendes Leerzeichen fiele also weg und beide
-          Teile klebten aneinander.
-        */}
-        <div className={stile.aktionen}>
-          {darfAendern ? (
-            <>
-              <Button
-                variante="text"
-                className={stile.leise}
-                onClick={beginneAendern}
-                vorleseText={`: „${aufgabe.titel}"`}
-              >
-                Ändern
-              </Button>
-              <Button
-                variante="text"
-                className={stile.leise}
-                onClick={() => setzeModus('loeschen')}
-                vorleseText={`: „${aufgabe.titel}"`}
-              >
-                Löschen
-              </Button>
-            </>
-          ) : (
-            <Button
-              variante="text"
-              disabled={gesperrt}
-              onClick={aufUebernehmen}
-              vorleseText={`: „${aufgabe.titel}"`}
-            >
-              Übernehmen
-            </Button>
-          )}
-
-          {/*
-            §7: "Eine Reservierung ist von jedem wieder lösbar, nicht nur von
-            der reservierenden Person." In einer Familie fällt jemand aus, und
-            eine Aufgabe, die niemand mehr freigeben kann, blockiert eine
-            gesetzliche Frist.
-          */}
-          {istFrei(aufgabe.assignee) ? null : (
-            <Button
-              variante="text"
-              className={stile.leise}
-              disabled={gesperrt}
-              onClick={aufFreigeben}
-              vorleseText={`: „${aufgabe.titel}"`}
-            >
-              Freigeben
-            </Button>
-          )}
-
-          {/* §3.7: "genau eine Aktion 'Für alle sichtbar machen'". */}
-          {aufgabe.privat ? (
-            <Button
-              variante="text"
-              disabled={gesperrt}
-              onClick={() => setzeModus('freigeben')}
-              vorleseText={`: „${aufgabe.titel}"`}
-            >
-              Für alle sichtbar machen
-            </Button>
-          ) : null}
-        </div>
       </div>
 
       {/*
@@ -491,17 +271,20 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
     abgelehnt,
     bestaetige,
     legeAn,
-    schreibe,
     hakeAb,
-    loesche,
     ich,
-    uebernimm,
-    gibFrei,
     uebernahmen,
     bestaetigeUebernahmen,
-    gibFuerAlleFrei,
     fristbezug,
   } = useAufgaben(fall)
+
+  /*
+   * §2, §3.5: Ein Vorsorgefall hat kein Sterbedatum und damit keine einzige
+   * Frist. "Nach Frist" sortierte dort eine Liste, in der jede Zeile denselben
+   * leeren Wert trägt — eine Wahl, die sichtbar nichts tut. Sie steht deshalb
+   * gar nicht erst da.
+   */
+  const mitFristen = fall.status !== 'vorsorge'
 
   const [neuerTitel, setzeNeuerTitel] = useState('')
   const [nurFuerMich, setzeNurFuerMich] = useState(false)
@@ -548,13 +331,6 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
         gesperrt={laeuft}
         ichUserId={ich.userId}
         aufHaken={(erledigt) => fuehreAus(() => hakeAb(knoten.aufgabe, erledigt))}
-        aufSpeichern={(titel, beschreibung) =>
-          fuehreAus(() => schreibe(knoten.aufgabe, { titel, beschreibung }))
-        }
-        aufLoeschen={() => void fuehreAus(() => loesche(knoten.aufgabe))}
-        aufUebernehmen={() => void fuehreAus(() => uebernimm(knoten.aufgabe))}
-        aufFreigeben={() => void fuehreAus(() => gibFrei(knoten.aufgabe))}
-        aufFuerAlleSichtbar={() => void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe))}
       />
     )
   }
@@ -678,18 +454,20 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
                 ansteht, und das ist für die meisten der bessere Weg durch die
                 Liste als ein Fristenranking.
               */}
-              <div className={stile.feld}>
-                <label htmlFor="sortierung">Sortierung</label>
-                <select
-                  id="sortierung"
-                  className={stile.eingabe}
-                  value={sortierung}
-                  onChange={(ereignis) => setzeSortierung(ereignis.target.value as Sortierung)}
-                >
-                  <option value="reihenfolge">Empfohlene Reihenfolge</option>
-                  <option value="frist">Nach Frist</option>
-                </select>
-              </div>
+              {mitFristen ? (
+                <div className={stile.sortierzeile}>
+                  <label htmlFor="sortierung">Sortierung</label>
+                  <select
+                    id="sortierung"
+                    className={stile.eingabe}
+                    value={sortierung}
+                    onChange={(ereignis) => setzeSortierung(ereignis.target.value as Sortierung)}
+                  >
+                    <option value="reihenfolge">Empfohlene Reihenfolge</option>
+                    <option value="frist">Nach Frist</option>
+                  </select>
+                </div>
+              ) : null}
 
               {/*
                 §7: Erledigte Aufgaben stehen am Ende der Liste und zu Anfang
@@ -698,7 +476,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
               */}
               {(() => {
                 const sortiert =
-                  sortierung === 'frist'
+                  mitFristen && sortierung === 'frist'
                     ? sortiereNachFrist(zustand.baum, fristbezug, heute)
                     : zustand.baum
                 const offene = sortiert.filter((knoten) => !knoten.erledigt)

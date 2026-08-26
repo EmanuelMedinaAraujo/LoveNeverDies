@@ -175,3 +175,22 @@
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
 }
+
+/*
+ * Sortierung: Beschriftung und Auswahl in einer Zeile (§7). Das Feld hat genau
+ * ein Wort als Beschriftung; untereinander kostete das eine ganze Zeile über
+ * der Liste, die dann weiter unten anfängt. Bei grosser Schrift bricht die
+ * Zeile um, statt aus der Fläche zu laufen.
+ */
+.sortierzeile {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+}
+
+.sortierzeile .eingabe {
+  flex: 1;
+  min-width: 12rem;
+  width: auto;
+}

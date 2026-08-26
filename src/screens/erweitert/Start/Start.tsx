@@ -379,16 +379,21 @@ function MeineAufgaben({ fall }: { fall: LesbarerFall }) {
               <Liste>{offenePersoenlich.map((eintrag) => zeile(eintrag))}</Liste>
             )}
 
-            {erledigtePersoenlich.length === 0 ? null : (
-              <Klapp {...erledigtSchalter(erledigtePersoenlich.length)}>
-                <Liste>{erledigtePersoenlich.map((eintrag) => zeile(eintrag))}</Liste>
-              </Klapp>
-            )}
-
             {weitere.length === 0 ? null : (
               <Gruppe titel="Weitere Aufgaben">
                 <Liste>{weitere.map((knoten) => zeile({ knoten, unter: null }))}</Liste>
               </Gruppe>
+            )}
+
+            {/*
+              Erledigtes steht ganz unten, hinter allem, was noch zu tun ist
+              (§7): Wer die Startseite aufmacht, sucht die offene Aufgabe und
+              nicht die abgehakte.
+            */}
+            {erledigtePersoenlich.length === 0 ? null : (
+              <Klapp {...erledigtSchalter(erledigtePersoenlich.length)}>
+                <Liste>{erledigtePersoenlich.map((eintrag) => zeile(eintrag))}</Liste>
+              </Klapp>
             )}
           </>
         )
