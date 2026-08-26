@@ -62,13 +62,14 @@ async function erstelleTresorZeile(
   fall: LesbarerFall,
   titel: string,
   inhalt: string,
+  frageId?: string,
 ): Promise<InhaltZeile> {
   if (fall.kv === null) throw new Error('kv fehlt')
   const { wrappeDek, erzeugeDek } = await import('../../src/core/crypto/dek.ts')
   const dek = erzeugeDek()
   const payload = await verschluessele(
     dek,
-    textBytes(JSON.stringify({ typ: 'tresor', titel, inhalt })),
+    textBytes(JSON.stringify({ typ: 'tresor', titel, inhalt, ...(frageId === undefined ? {} : { frageId }) })),
   )
   const wrappedDek = await wrappeDek(fall.kv, dek)
 
@@ -128,6 +129,7 @@ describe('useTresor Hook (§3.5)', () => {
       id: 'item-1',
       titel: 'Passwort',
       inhalt: 'geheim123',
+      frageId: null,
       dek: new Uint8Array(32),
       geaendertAm: '2026-08-24T12:00:00Z',
     })
@@ -136,6 +138,122 @@ describe('useTresor Hook (§3.5)', () => {
     const [loeschMutation] = mutiere.mock.calls[1] as [{ op: string; itemId: string }]
     expect(loeschMutation.op).toBe('loeschen')
     expect(loeschMutation.itemId).toBe('item-1')
+  })
+
+  it('legt eine Antwort auf eine Vorsorgefrage als Tresor-Item mit frageId an', async () => {
+    const fall = erstelleFall()
+    const mutiere = vi.fn()
+
+    const { result } = renderHook(() => useTresor(fall, [], mutiere, vi.fn()))
+
+    await result.current.speichereAntwort(
+      'testament',
+      'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+      'Im Bankschließfach bei der Sparkasse.',
+    )
+
+    expect(mutiere).toHaveBeenCalledTimes(1)
+    const [mutation] = mutiere.mock.calls[0] as [
+      { op: string; imTresor?: boolean; wrappedDek: Uint8Array; payload: Uint8Array },
+    ]
+    expect(mutation.op).toBe('anlegen')
+    expect(mutation.imTresor).toBe(true)
+
+    // Der Payload ist Ciphertext; gelesen wird er über denselben Weg wie im Screen.
+    const { entpackeDek } = await import('../../src/core/crypto/dek.ts')
+    const { entschluessele } = await import('../../src/core/crypto/aead.ts')
+    const { bytesText } = await import('../../src/core/crypto/bytes.ts')
+    if (fall.kv === null) throw new Error('kv fehlt')
+    const dek = await entpackeDek(fall.kv, mutation.wrappedDek)
+    const klartext = JSON.parse(bytesText(await entschluessele(dek, mutation.payload))) as {
+      frageId?: string
+      titel: string
+      inhalt: string
+    }
+
+    expect(klartext.frageId).toBe('testament')
+    expect(klartext.titel).toBe('Haben Sie ein Testament? Wenn ja, wo befindet es sich?')
+    expect(klartext.inhalt).toBe('Im Bankschließfach bei der Sparkasse.')
+  })
+
+  it('ändert eine vorhandene Antwort, statt eine zweite anzulegen', async () => {
+    const fall = erstelleFall()
+    const mutiere = vi.fn()
+    const zeile = await erstelleTresorZeile(fall, 'Haben Sie ein Testament?', 'Im Schrank.', 'testament')
+
+    const { result } = renderHook(() => useTresor(fall, [zeile], mutiere, vi.fn()))
+
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(1)
+    })
+
+    await result.current.speichereAntwort('testament', 'Haben Sie ein Testament?', 'Im Bankschließfach.')
+
+    expect(mutiere).toHaveBeenCalledTimes(1)
+    const [mutation] = mutiere.mock.calls[0] as [{ op: string; itemId: string }]
+    expect(mutation.op).toBe('aendern')
+    expect(mutation.itemId).toBe('item-1')
+  })
+
+  it('legt eine selbst gestellte Frage ohne Antwort im Tresor an', async () => {
+    const fall = erstelleFall()
+    const mutiere = vi.fn()
+
+    const { result } = renderHook(() => useTresor(fall, [], mutiere, vi.fn()))
+
+    await result.current.legeEigeneFrageAn('Wo liegt der Zweitschlüssel?')
+
+    expect(mutiere).toHaveBeenCalledTimes(1)
+    const [mutation] = mutiere.mock.calls[0] as [
+      { op: string; imTresor?: boolean; wrappedDek: Uint8Array; payload: Uint8Array },
+    ]
+    expect(mutation.op).toBe('anlegen')
+    expect(mutation.imTresor).toBe(true)
+
+    const { entpackeDek } = await import('../../src/core/crypto/dek.ts')
+    const { entschluessele } = await import('../../src/core/crypto/aead.ts')
+    const { bytesText } = await import('../../src/core/crypto/bytes.ts')
+    if (fall.kv === null) throw new Error('kv fehlt')
+    const dek = await entpackeDek(fall.kv, mutation.wrappedDek)
+    const klartext = JSON.parse(bytesText(await entschluessele(dek, mutation.payload))) as {
+      frageId?: string
+      titel: string
+      inhalt: string
+    }
+
+    // Der Wortlaut der Frage steht im Titel, die Antwort ist noch leer.
+    expect(klartext.titel).toBe('Wo liegt der Zweitschlüssel?')
+    expect(klartext.inhalt).toBe('')
+    expect(klartext.frageId).toMatch(/^eigen-/)
+  })
+
+  it('gibt zwei selbst gestellten Fragen zwei Kennungen', async () => {
+    const fall = erstelleFall()
+    const mutiere = vi.fn()
+    const { result } = renderHook(() => useTresor(fall, [], mutiere, vi.fn()))
+
+    await result.current.legeEigeneFrageAn('Erste Frage?')
+    await result.current.legeEigeneFrageAn('Zweite Frage?')
+
+    const { entpackeDek } = await import('../../src/core/crypto/dek.ts')
+    const { entschluessele } = await import('../../src/core/crypto/aead.ts')
+    const { bytesText } = await import('../../src/core/crypto/bytes.ts')
+    if (fall.kv === null) throw new Error('kv fehlt')
+    const kv = fall.kv
+
+    const kennungen = await Promise.all(
+      mutiere.mock.calls.map(async ([mutation]) => {
+        const m = mutation as { wrappedDek: Uint8Array; payload: Uint8Array }
+        const dek = await entpackeDek(kv, m.wrappedDek)
+        return (
+          JSON.parse(bytesText(await entschluessele(dek, m.payload))) as { frageId?: string }
+        ).frageId
+      }),
+    )
+
+    // Sonst überschriebe die zweite Frage die Antwort auf die erste.
+    expect(kennungen).toHaveLength(2)
+    expect(kennungen[0]).not.toBe(kennungen[1])
   })
 
   it('zeigt den korrekten Schwellwert basierend auf vaultN und vaultK', () => {

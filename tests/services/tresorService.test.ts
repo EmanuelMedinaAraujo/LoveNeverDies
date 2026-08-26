@@ -10,10 +10,16 @@ import type { InhaltZeile } from '../../src/core/db/inhalte'
 import type { MitgliederTabelle, MitgliedZeile } from '../../src/core/db/mitglieder'
 import type { ResplitShareInput, TresorTabelle } from '../../src/core/db/tresor'
 import {
+  antwortZuFrage,
   berechneTresorSchwelle,
+  eigeneFragen,
+  istEigeneFrage,
+  neueEigeneFrageId,
+  mutationTresorAendern,
   mutationTresorAnlegen,
   tresorItemsAusZeilen,
   verteileShares,
+  type TresorItem,
 } from '../../src/services/tresorService'
 
 function mockDb() {
@@ -284,6 +290,109 @@ describe('Tresor-Inhalte (§3.5)', () => {
     })
   })
 
+  it('trägt die Frage-Kennung durch das Verschlüsseln und wieder heraus', async () => {
+    const kv = erzeugeAesSchluessel()
+    const fallId = 'fall-1'
+
+    const mutation = await mutationTresorAnlegen(
+      fallId,
+      kv,
+      'Haben Sie ein Testament? Wenn ja, wo befindet es sich?',
+      'Im Bankschließfach.',
+      'testament',
+    )
+    if (mutation.op !== 'anlegen') throw new Error('Muss anlegen sein')
+
+    const zeile: InhaltZeile = {
+      id: mutation.itemId,
+      fallId,
+      seq: 1,
+      art: 'item',
+      geloescht: false,
+      imTresor: true,
+      kid: `vault_${fallId}`,
+      wrappedDek: mutation.wrappedDek,
+      payload: mutation.payload,
+      geaendertAm: '2026-08-24T12:00:00Z',
+    }
+
+    const [item] = await tresorItemsAusZeilen([zeile], kv)
+    if (item === undefined) throw new Error('Das Item fehlt.')
+    expect(item.frageId).toBe('testament')
+
+    // Ein frei angelegter Eintrag hat keine: `null`, nicht `undefined`.
+    const frei = await mutationTresorAnlegen(fallId, kv, 'Bankkonto', 'DE123')
+    if (frei.op !== 'anlegen') throw new Error('Muss anlegen sein')
+    const [freiesItem] = await tresorItemsAusZeilen(
+      [{ ...zeile, id: frei.itemId, wrappedDek: frei.wrappedDek, payload: frei.payload }],
+      kv,
+    )
+    expect(freiesItem?.frageId).toBeNull()
+  })
+
+  it('behält beim Ändern den DEK und die Frage-Kennung', async () => {
+    const kv = erzeugeAesSchluessel()
+    const fallId = 'fall-1'
+
+    const angelegt = await mutationTresorAnlegen(
+      fallId,
+      kv,
+      'Haben Sie ein Testament?',
+      'Im Schrank.',
+      'testament',
+    )
+    if (angelegt.op !== 'anlegen') throw new Error('Muss anlegen sein')
+
+    const zeile: InhaltZeile = {
+      id: angelegt.itemId,
+      fallId,
+      seq: 1,
+      art: 'item',
+      geloescht: false,
+      imTresor: true,
+      kid: `vault_${fallId}`,
+      wrappedDek: angelegt.wrappedDek,
+      payload: angelegt.payload,
+      geaendertAm: '2026-08-24T12:00:00Z',
+    }
+
+    const [item] = await tresorItemsAusZeilen([zeile], kv)
+    if (item === undefined) throw new Error('Das Item fehlt.')
+
+    const geaendert = await mutationTresorAendern(item, item.titel, 'Im Bankschließfach.')
+    expect(geaendert.op).toBe('aendern')
+    if (geaendert.op !== 'aendern') throw new Error('Muss aendern sein')
+    expect(geaendert.itemId).toBe(angelegt.itemId)
+
+    // Derselbe `wrappedDek` wie vorher: Ein Edit kostet genau eine Spalte (§5).
+    const [nachher] = await tresorItemsAusZeilen(
+      [{ ...zeile, payload: geaendert.payload, geaendertAm: '2026-08-25T09:00:00Z' }],
+      kv,
+    )
+    expect(nachher?.inhalt).toBe('Im Bankschließfach.')
+    expect(nachher?.frageId).toBe('testament')
+  })
+
+  it('nimmt bei zwei Antworten auf dieselbe Frage die jüngere', () => {
+    const basis: TresorItem = {
+      id: 'item-1',
+      titel: 'Haben Sie ein Testament?',
+      inhalt: 'Im Schrank.',
+      frageId: 'testament',
+      dek: new Uint8Array(32),
+      geaendertAm: '2026-08-24T12:00:00Z',
+    }
+
+    const items: TresorItem[] = [
+      basis,
+      { ...basis, id: 'item-2', inhalt: 'Im Bankschließfach.', geaendertAm: '2026-08-25T09:00:00Z' },
+      { ...basis, id: 'item-3', frageId: null, inhalt: 'Etwas anderes.' },
+    ]
+
+    expect(antwortZuFrage(items, 'testament')?.id).toBe('item-2')
+    expect(antwortZuFrage(items, 'bestattung')).toBeNull()
+  })
+
   it('lässt sich mit einem falschen K_v nicht entschlüsseln und wird verworfen', async () => {
     const kv1 = erzeugeAesSchluessel()
     const kv2 = erzeugeAesSchluessel()
@@ -306,5 +415,107 @@ describe('Tresor-Inhalte (§3.5)', () => {
 
     const items = await tresorItemsAusZeilen([zeile], kv2)
     expect(items).toHaveLength(0)
+  })
+})
+
+describe('Selbst gestellte Vorsorgefragen (§3.5)', () => {
+  function item(ueberschreibung: Partial<TresorItem> = {}): TresorItem {
+    return {
+      id: 'item-1',
+      titel: 'Wo liegt der Zweitschlüssel?',
+      inhalt: '',
+      frageId: null,
+      dek: new Uint8Array([9]),
+      geaendertAm: '2026-08-24T12:00:00Z',
+      ...ueberschreibung,
+    }
+  }
+
+  it('erkennt eine selbst gestellte Frage an ihrer Kennung', () => {
+    expect(istEigeneFrage(neueEigeneFrageId())).toBe(true)
+  })
+
+  it('hält eine gelieferte Frage und einen freien Eintrag auseinander', () => {
+    // Die acht Kennungen aus der Inhaltsdatei tragen kein Präfix.
+    expect(istEigeneFrage('testament')).toBe(false)
+    expect(istEigeneFrage(null)).toBe(false)
+  })
+
+  it('vergibt für jede Frage eine eigene Kennung', () => {
+    expect(neueEigeneFrageId()).not.toBe(neueEigeneFrageId())
+  })
+
+  it('liest die selbst gestellten Fragen in der Reihenfolge ihrer Entstehung', () => {
+    const zuerst = item({ id: 'item-1', frageId: 'eigen-a' })
+    const danach = item({ id: 'item-2', frageId: 'eigen-b' })
+
+    // Auch verdreht hereingereicht: `uuidv7` trägt die Zeit in der Kennung.
+    expect(eigeneFragen([danach, zuerst]).map((f) => f.id)).toEqual(['item-1', 'item-2'])
+  })
+
+  it('lässt gelieferte Antworten und freie Einträge draussen', () => {
+    const eigen = item({ id: 'item-3', frageId: 'eigen-a' })
+
+    const gefunden = eigeneFragen([
+      item({ id: 'item-1', frageId: null }),
+      item({ id: 'item-2', frageId: 'testament' }),
+      eigen,
+    ])
+
+    expect(gefunden).toEqual([eigen])
+  })
+
+  it('trägt Frage und Antwort durch Anlegen und Ändern hindurch', async () => {
+    const kv = await erzeugeAesSchluessel()
+    const fallId = 'fall-1'
+    const frageId = neueEigeneFrageId()
+
+    // Die Frage entsteht ohne Antwort: Ihr Wortlaut steht im Titel.
+    const angelegt = await mutationTresorAnlegen(
+      fallId,
+      kv,
+      'Wo liegt der Zweitschlüssel?',
+      '',
+      frageId,
+    )
+    if (angelegt.op !== 'anlegen') throw new Error('Muss anlegen sein')
+
+    const zeile: InhaltZeile = {
+      id: angelegt.itemId,
+      fallId,
+      seq: 1,
+      art: 'item',
+      geloescht: false,
+      imTresor: true,
+      kid: `vault_${fallId}`,
+      wrappedDek: angelegt.wrappedDek,
+      payload: angelegt.payload,
+      geaendertAm: '2026-08-24T12:00:00Z',
+    }
+
+    const [offen] = await tresorItemsAusZeilen([zeile], kv)
+    if (offen === undefined) throw new Error('Die Frage fehlt.')
+    expect(offen.titel).toBe('Wo liegt der Zweitschlüssel?')
+    expect(offen.inhalt).toBe('')
+    expect(eigeneFragen([offen])).toEqual([offen])
+
+    // Die Antwort ersetzt den Inhalt und lässt die Kennung stehen: Sonst
+    // stünde sie danach als freier Eintrag neben ihrer wieder leeren Frage.
+    const geaendert = await mutationTresorAendern(offen, offen.titel, 'Bei Frau Weber nebenan.')
+    if (geaendert.op !== 'aendern') throw new Error('Muss aendern sein')
+
+    const [beantwortet] = await tresorItemsAusZeilen(
+      [{ ...zeile, payload: geaendert.payload, geaendertAm: '2026-08-25T09:00:00Z' }],
+      kv,
+    )
+    expect(beantwortet?.titel).toBe('Wo liegt der Zweitschlüssel?')
+    expect(beantwortet?.inhalt).toBe('Bei Frau Weber nebenan.')
+    expect(beantwortet?.frageId).toBe(frageId)
+  })
+
+  it('findet die Antwort auf eine selbst gestellte Frage über deren Kennung', () => {
+    const eigen = item({ id: 'item-3', frageId: 'eigen-a', inhalt: 'Bei Frau Weber.' })
+
+    expect(antwortZuFrage([item({ frageId: 'testament' }), eigen], 'eigen-a')).toEqual(eigen)
   })
 })
