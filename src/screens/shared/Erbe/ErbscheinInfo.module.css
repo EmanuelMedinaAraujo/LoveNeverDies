@@ -1,0 +1,63 @@
+.liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eintrag {
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-karte);
+}
+
+.titel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dichte-abstand-klein);
+  padding: var(--dichte-abstand-klein) var(--dichte-abstand);
+  min-height: var(--ziel-mindestmass);
+  cursor: pointer;
+  font-size: var(--dichte-schrift);
+  font-weight: var(--typo-gewicht-betont);
+  list-style: none;
+}
+
+.titel::-webkit-details-marker {
+  display: none;
+}
+
+.schalter {
+  flex: none;
+  color: var(--farbe-akzent);
+  font-size: var(--dichte-schrift-klein);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.inhalt {
+  padding: 0 var(--dichte-abstand) var(--dichte-abstand);
+  line-height: var(--dichte-zeilenhoehe);
+  color: var(--farbe-text);
+  margin: 0;
+}
+
+.punkte {
+  margin: 0;
+  padding: 0 var(--dichte-abstand) var(--dichte-abstand) calc(var(--dichte-abstand) + var(--dichte-abstand-gross));
+  line-height: var(--dichte-zeilenhoehe);
+  color: var(--farbe-text);
+}
+
+.gruen {
+  color: var(--farbe-akzent);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.rot {
+  color: var(--farbe-frist-abgelaufen-text);
+  font-weight: var(--typo-gewicht-betont);
+}
+
