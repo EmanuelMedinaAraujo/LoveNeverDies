@@ -96,10 +96,7 @@ function Ansichtseinstellungen() {
     useAnsicht()
 
   return (
-    <Gruppe
-      titel="Ansicht"
-      fussnote="Die einfache Ansicht zeigt weniger auf einem Bildschirm und setzt alles größer. Die Wege durch die App sind in beiden gleich."
-    >
+    <Gruppe titel="Ansicht">
       <Liste>
         <Zeile className={stile.einstellung}>
           <label className={stile.etikett} htmlFor="ansicht-modus">
@@ -262,9 +259,18 @@ export function Profil() {
           {/*
             Beide Richtungen stehen nebeneinander, weil dasselbe Gerät je nach
             Lage in beiden Rollen steckt: Es gibt ein anderes frei, oder es
-            wartet selbst auf seine Freigabe (§3.6).
+            wartet selbst auf seine Freigabe (§3.6). Beide zugleich geht nicht:
+            Wer einen Fall lesen kann, ist freigeschaltet und bekommt jeden
+            neuen Fall ohnehin mit — der Weg bliebe eine Aufforderung ohne
+            Gegenstand.
           */}
-          <Navizeile titel="Dieses Gerät freischalten lassen" ziel="/geraet-freischalten" />
+          {kannTeilen ? (
+            <Zeile>
+              <span className={stile.aus}>Dieses Gerät freischalten lassen</span>
+            </Zeile>
+          ) : (
+            <Navizeile titel="Dieses Gerät freischalten lassen" ziel="/geraet-freischalten" />
+          )}
           {kannTeilen ? (
             <Navizeile titel="Ein weiteres Gerät freigeben" ziel="/koppeln" />
           ) : null}

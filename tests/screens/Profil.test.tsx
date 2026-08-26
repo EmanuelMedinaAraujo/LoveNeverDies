@@ -166,14 +166,28 @@ describe('Profil', () => {
     expect(screen.getByText(/lässt sich niemand hinzufügen/)).toBeVisible()
   })
 
-  it('fuehrt immer zur Freischaltung dieses Geraets', () => {
-    // Der Weg steht auch dann da, wenn gerade nichts gesperrt ist: Ein zweites
-    // Geraet holt sich hier seinen Code, bevor es ueberhaupt einen Fall sieht.
+  it('fuehrt zur Freischaltung dieses Geraets, solange es nichts lesen kann', () => {
+    /*
+     * Der Weg steht da, solange dieses Geraet keinen Fall lesen kann: Ein
+     * zweites Geraet holt sich hier seinen Code, bevor es ueberhaupt einen
+     * Fall sieht.
+     */
     rendereMitProvidern(<Profil />)
 
     expect(
       screen.getByRole('link', { name: 'Dieses Gerät freischalten lassen' }),
     ).toHaveAttribute('href', '/geraet-freischalten')
+  })
+
+  it('schaltet ein bereits freigeschaltetes Geraet nicht noch einmal frei', () => {
+    // Wer einen Fall liest, ist freigeschaltet und bekommt neue Faelle
+    // ohnehin mit; der Weg waere eine Aufforderung ohne Gegenstand.
+    useCase.mockReturnValue(falldaten({ status: 'bereit', faelle: [LESBAR], aktiver: LESBAR }))
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.queryByRole('link', { name: 'Dieses Gerät freischalten lassen' })).toBeNull()
+    expect(screen.getByText('Dieses Gerät freischalten lassen')).toBeVisible()
   })
 
   it('zeigt den Freigabe-Badge an den Geraeten, sobald ein Fall gesperrt ist', () => {
