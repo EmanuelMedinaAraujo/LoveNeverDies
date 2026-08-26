@@ -485,6 +485,18 @@ describe('Die Wege hinter dem Status "Erbe" (ERBE_DESIGN.md §10)', () => {
     expect(screen.queryByText(/•/)).not.toBeInTheDocument()
   })
 
+  it('zeichnet den roten Hinweis aus, statt die Klammer mitzudrucken', async () => {
+    // Der Erklärtext trägt dieselben Auszeichnungen wie Fragebaum und Aufgabe.
+    // Stünde "[rot:Hinweis:]" wörtlich da, müsste der Leser sie selbst
+    // übersetzen.
+    await tippe('Erbschein')
+
+    expect(screen.queryByText(/\[rot:/)).not.toBeInTheDocument()
+    const hinweis = screen.getByText('Hinweis:')
+    expect(hinweis.tagName).toBe('SPAN')
+    expect(hinweis.className).toMatch(/rot/)
+  })
+
   it('legt auf "Ja" sofort die Aufgabe an', async () => {
     await tippe('Erbschein', 'Ja')
 

@@ -1,5 +1,38 @@
+import type { ReactNode } from 'react'
 import type { Infotext } from '../../types/infotext.ts'
 import stile from './Infoblock.module.css'
+
+/**
+ * Die Auszeichnungen aus der Inhaltsschicht: `**fett**`, `[gruen:text]`,
+ * `[rot:text]`.
+ *
+ * Der Erklaertext kommt aus `content/` und traegt dieselben Zeichen wie der
+ * Text im Fragebaum und in der Aufgabe. Ohne diesen Schritt stuende
+ * `[rot:Hinweis:]` woertlich auf dem Bildschirm -- eine Klammer, die der
+ * Leser sich selbst uebersetzen muesste.
+ */
+function mitAuszeichnung(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*|\[gruen:[^\]]+\]|\[rot:[^\]]+\])/g).map((teil, nummer) => {
+    if (teil.startsWith('**') && teil.endsWith('**')) {
+      return <strong key={nummer}>{mitAuszeichnung(teil.slice(2, -2))}</strong>
+    }
+    if (teil.startsWith('[gruen:') && teil.endsWith(']')) {
+      return (
+        <span key={nummer} className={stile.gruen}>
+          {mitAuszeichnung(teil.slice(7, -1))}
+        </span>
+      )
+    }
+    if (teil.startsWith('[rot:') && teil.endsWith(']')) {
+      return (
+        <span key={nummer} className={stile.rot}>
+          {mitAuszeichnung(teil.slice(5, -1))}
+        </span>
+      )
+    }
+    return teil
+  })
+}
 
 /**
  * Ein gegliederter Erklaertext (DESIGN.md §8).
@@ -32,13 +65,13 @@ export function Infoblock({
 
   return (
     <div className={stile.info}>
-      <Titel className={stile.titel}>{text.titel}</Titel>
+      <Titel className={stile.titel}>{mitAuszeichnung(text.titel)}</Titel>
 
       {text.abschnitte.map((abschnitt) =>
         abschnitt.art === 'punkte' ? (
           <ul key={abschnitt.punkte.join('|')} className={stile.punkte}>
             {abschnitt.punkte.map((punkt) => (
-              <li key={punkt}>{punkt}</li>
+              <li key={punkt}>{mitAuszeichnung(punkt)}</li>
             ))}
           </ul>
         ) : (
@@ -46,7 +79,7 @@ export function Infoblock({
             key={abschnitt.text}
             className={abschnitt.art === 'zwischentitel' ? stile.zwischentitel : stile.absatz}
           >
-            {abschnitt.text}
+            {mitAuszeichnung(abschnitt.text)}
           </p>
         ),
       )}
