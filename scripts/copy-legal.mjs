@@ -9,7 +9,7 @@
  *   node scripts/copy-legal.mjs
  */
 
-import { cpSync, mkdirSync, readdirSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -17,6 +17,9 @@ const HIER = dirname(fileURLToPath(import.meta.url))
 const QUELLE = join(HIER, '..', 'legal')
 const ZIEL = join(HIER, '..', 'public', 'legal')
 
+if (existsSync(ZIEL)) {
+  rmSync(ZIEL, { recursive: true, force: true })
+}
 mkdirSync(ZIEL, { recursive: true })
 
 const dateien = readdirSync(QUELLE).filter((datei) => datei.endsWith('.html'))
