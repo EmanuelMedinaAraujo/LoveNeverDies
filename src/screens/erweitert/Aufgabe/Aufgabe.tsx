@@ -19,7 +19,6 @@ import { istSeedAufgabe } from '../../../services/fragebaumService.ts'
 import { Badge, type Badgelage } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
-import { Gruppe } from '../../../ui/Liste/Liste.tsx'
 import { Checkbox } from '../../../ui/Checkbox/Checkbox.tsx'
 import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import {
@@ -147,9 +146,7 @@ function Angaben({
   const schritte = katalog.unteraufgaben.filter((eintrag) => eintrag.trim() !== '')
 
   return (
-    <Gruppe titel="Das gilt dafür">
-      <Card>
-
+    <Card titel="Das gilt dafür">
       <dl className={stile.angaben}>
         {lage.art === 'datum' ? (
           <Angabe was="Frist">
@@ -221,8 +218,7 @@ function Angaben({
 
         {katalog.hinweis === '' ? null : <Angabe was="Hinweis">{katalog.hinweis}</Angabe>}
       </dl>
-      </Card>
-    </Gruppe>
+    </Card>
   )
 }
 
@@ -330,6 +326,95 @@ function Unteraufgabenzeile({
 }
 
 /**
+ * Die selbst gesetzte Frist dieser Aufgabe (§7).
+ *
+ * Sie gehört der Aufgabe und nicht der Person: Wer sich mit den Geschwistern
+ * auf einen Tag einigt, meint diesen Tag für alle. Das unterscheidet sie vom
+ * Kenntnisdatum darunter, das ausdrücklich privat ist (§3.7, #12).
+ *
+ * Sie ersetzt die gesetzliche Frist nicht, sie tritt daneben: Angezeigt wird
+ * die frühere von beiden (`fristen.ts`). Ein selbst eingetragener späterer Tag
+ * darf eine Ausschlagungsfrist nicht vom Bildschirm nehmen — das ist der eine
+ * Fehler, den §8 teuer nennt. Dass beides gilt, steht in der Karte und nicht
+ * nur im Code: Wer ein Datum einträgt und daraufhin ein anderes im Badge
+ * liest, hält das sonst für einen Defekt.
+ */
+function Eigenefrist({
+  fristAm,
+  gesetzlich,
+  gesperrt,
+  aufSpeichern,
+}: {
+  /** Das eingetragene Datum, oder `null`. */
+  fristAm: string | null
+  /** Die gesetzliche Frist derselben Aufgabe, ohne die eigene gerechnet (§8). */
+  gesetzlich: Fristlage
+  gesperrt: boolean
+  /** @returns ob gespeichert wurde. Sonst bleibt das Feld, wie es ist. */
+  aufSpeichern: (datum: string | null) => Promise<boolean>
+}) {
+  const [eingabe, setzeEingabe] = useState(fristAm ?? '')
+  const [gespeichert, setzeGespeichert] = useState(fristAm)
+
+  // Was der Bestand bringt, gewinnt, aber erst, wenn er sich wirklich geändert
+  // hat: dieselbe Überlegung wie bei den Notizen und beim Kenntnisdatum.
+  if (gespeichert !== fristAm) {
+    setzeGespeichert(fristAm)
+    setzeEingabe(fristAm ?? '')
+  }
+
+  async function speichere(ereignis: FormEvent) {
+    ereignis.preventDefault()
+    await aufSpeichern(eingabe === '' ? null : eingabe)
+  }
+
+  return (
+    <Card titel="Frist">
+      <p>
+        Bis wann soll diese Aufgabe erledigt sein? Das Datum gehört zur Aufgabe: Alle Mitglieder
+        des Falls sehen dasselbe.
+      </p>
+
+      {gesetzlich.art === 'datum' ? (
+        <p className={stile.hinweis}>
+          Für diese Aufgabe gilt schon eine gesetzliche Frist bis zum{' '}
+          {datumText(gesetzlich.ende)}. Ihr eigenes Datum ersetzt sie nicht: Angezeigt wird die
+          frühere der beiden.
+        </p>
+      ) : gesetzlich.art === 'unverzueglich' ? (
+        <p className={stile.hinweis}>
+          Diese Aufgabe ist unverzüglich zu erledigen, also ohne schuldhaftes Zögern. Das bleibt
+          so, gleich welches Datum Sie hier eintragen.
+        </p>
+      ) : null}
+
+      <form className={stile.formular} onSubmit={(ereignis) => void speichere(ereignis)}>
+        <div className={stile.feld}>
+          <label htmlFor="frist-am">Erledigt bis</label>
+          <input
+            id="frist-am"
+            type="date"
+            className={stile.eingabe}
+            value={eingabe}
+            onChange={(ereignis) => setzeEingabe(ereignis.target.value)}
+          />
+        </div>
+
+        <Button type="submit" volleBreite disabled={gesperrt || eingabe === (fristAm ?? '')}>
+          Frist speichern
+        </Button>
+      </form>
+
+      {fristAm === null ? null : (
+        <Button variante="sekundaer" disabled={gesperrt} onClick={() => void aufSpeichern(null)}>
+          Frist entfernen
+        </Button>
+      )}
+    </Card>
+  )
+}
+
+/**
  * Das eigene Kenntnisdatum (DESIGN.md §8, #12).
  *
  * Die Ausschlagungsfrist nach § 1944 BGB knüpft an die Kenntnis des jeweiligen
@@ -374,9 +459,7 @@ function Kenntnisdatum({
   }
 
   return (
-    <Gruppe titel="Ihr Kenntnisdatum">
-      <Card>
-
+    <Card titel="Ihr Kenntnisdatum">
       <p>
         An welchem Tag haben Sie erfahren, dass Sie Erbe sind? Ab diesem Tag laufen
         {fristTage === null ? ' die' : ` die ${fristTage}`} Tage dieser Frist. Das Datum sehen nur
@@ -423,8 +506,7 @@ function Kenntnisdatum({
           Datum entfernen
         </Button>
       )}
-      </Card>
-    </Gruppe>
+    </Card>
   )
 }
 
@@ -458,10 +540,19 @@ function Detail({
     gibFuerAlleFrei: () => void
     /** Legt das eigene Kenntnisdatum ab oder ändert es (§8, #12). */
     speichereKenntnisAm: (datum: string | null) => Promise<boolean>
+    /** Setzt die selbst gewählte Frist dieser Aufgabe, oder entfernt sie (§7). */
+    speichereFrist: (datum: string | null) => Promise<boolean>
   }
 }) {
   const { aufgabe, unteraufgaben, istBlatt, erledigt, blockiertVon } = knoten
-  const lage = fristlage(aufgabe.katalog, fristbezug, heuteIso())
+  const heute = heuteIso()
+  const lage = fristlage(aufgabe.katalog, fristbezug, heute, aufgabe.fristAm)
+  /*
+   * Ohne die eigene Frist: Die Karte "Frist" erklärt damit, was daneben noch
+   * gilt. Aus `lage` allein wäre das nicht zu lesen — dort steht bereits die
+   * frühere der beiden, und welche das ist, ist genau die Frage.
+   */
+  const gesetzlicheFrist = fristlage(aufgabe.katalog, fristbezug, heute)
   const badge = fristText(lage)
 
   const [notizen, setzeNotizen] = useState(aufgabe.notizen)
@@ -590,9 +681,21 @@ function Detail({
 
       <Angaben
         aufgabe={aufgabe}
-        lage={lage}
+        lage={gesetzlicheFrist}
         aufGerichtGefunden={speichereGerichtNotiz}
         gesperrt={aktionen.gesperrt || !darfAendern}
+      />
+
+      {/*
+        §7: Eine Frist lässt sich für jede Aufgabe eintragen, auch für eine
+        selbst angelegte ohne Rechtsgrundlage. Gesperrt ist sie wie alles
+        andere, was die Aufgabe ändert: Bearbeiten darf, wem sie zugewiesen ist.
+      */}
+      <Eigenefrist
+        fristAm={aufgabe.fristAm}
+        gesetzlich={gesetzlicheFrist}
+        gesperrt={aktionen.gesperrt || !darfAendern}
+        aufSpeichern={aktionen.speichereFrist}
       />
 
       {/*
@@ -616,9 +719,7 @@ function Detail({
         entscheiden und nichts zu erklären.
       */}
       {aufgabe.privat ? (
-        <Gruppe titel="Sichtbarkeit">
-          <Card>
-
+        <Card titel="Sichtbarkeit">
           <p>
             Diese Aufgabe sehen nur Sie, auf Ihren eigenen Geräten. Die anderen Mitglieder des
             Falls laden sie zwar mit, können sie aber nicht lesen.
@@ -657,8 +758,7 @@ function Detail({
               Für alle sichtbar machen
             </Button>
           )}
-          </Card>
-        </Gruppe>
+        </Card>
       ) : null}
 
       {/*
@@ -666,20 +766,16 @@ function Detail({
         Server kann eine Regel nicht durchsetzen, die er nicht lesen kann (§3.3,
         §11). Sie steht deshalb offen für jede:n: übernehmen und freigeben.
       */}
-      <Gruppe titel="Zuständigkeit">
-        <Card>
+      <Card titel="Zuständigkeit">
         <Zuweisungsfeld
           zuweisung={aufgabe.assignee}
           ich={ich}
           gesperrt={aktionen.gesperrt}
           aufSetzen={aktionen.weiseZu}
         />
-        </Card>
-      </Gruppe>
+      </Card>
 
-      <Gruppe titel="Unteraufgaben">
-        <Card>
-
+      <Card titel="Unteraufgaben">
         {unteraufgaben.length === 0 ? (
           <p className={stile.hinweis}>Noch keine. Eine Unteraufgabe teilt die Arbeit auf.</p>
         ) : (
@@ -740,8 +836,7 @@ function Detail({
             Diese Aufgabe ist selbst eine Unteraufgabe. Tiefer gliedert die App nicht.
           </p>
         )}
-        </Card>
-      </Gruppe>
+      </Card>
 
       {/*
         §7: "Dokument abfotografieren": Die Sterbeurkunde gehört an die
@@ -756,9 +851,7 @@ function Detail({
         darfAendern={darfAendern}
       />
 
-      <Gruppe titel="Notizen">
-        <Card>
-
+      <Card titel="Notizen">
         <form className={stile.formular} onSubmit={(ereignis) => void speichereNotizen(ereignis)}>
           <div className={stile.feld}>
             <label htmlFor="notizen">Ihre Notizen zu dieser Aufgabe</label>
@@ -779,8 +872,7 @@ function Detail({
             Notizen speichern
           </Button>
         </form>
-        </Card>
-      </Gruppe>
+      </Card>
     </>
   )
 }
@@ -885,6 +977,8 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
           loesche: (aufgabe) => void fuehreAus(() => loesche(aufgabe)),
           gibFuerAlleFrei: () => void fuehreAus(() => gibFuerAlleFrei(knoten.aufgabe)),
           speichereKenntnisAm: (datum) => fuehreAus(() => setzeKenntnisAm(datum)),
+          speichereFrist: (datum) =>
+            fuehreAus(() => schreibe(knoten.aufgabe, { fristAm: datum })),
         }}
       />
     </>

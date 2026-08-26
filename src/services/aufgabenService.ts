@@ -142,6 +142,18 @@ export type Aufgabenpayload = {
    * in `zuweisung.ts`.
    */
   assignee: Zuweisung
+  /**
+   * Eine selbst gesetzte Frist als ISO `YYYY-MM-DD`, oder `null` (§7, §8).
+   *
+   * Sie steht neben der gesetzlichen aus dem Katalog und ersetzt sie nicht:
+   * Angezeigt wird die frühere von beiden (`fristen.ts`). Eine gesetzliche
+   * Frist hinter einem später eingetippten Datum verschwinden zu lassen wäre
+   * genau der Fehler, den §8 teuer nennt.
+   *
+   * Anders als `kenntnisAm` gehört sie der Aufgabe und nicht der Person: Wer
+   * sich mit den Geschwistern auf einen Tag einigt, meint diesen Tag für alle.
+   */
+  fristAm: string | null
   /** Aus dem Katalog kopiert (§8), oder `null` bei einer selbst angelegten Aufgabe. */
   katalog: Katalogherkunft | null
 }
@@ -263,6 +275,13 @@ export type Aufgabe = {
   /** Wem sie gehört (§7). Wer nicht darunter steht, sieht sie und ändert sie nicht. */
   assignee: Zuweisung
   /**
+   * Die selbst gesetzte Frist als ISO `YYYY-MM-DD`, oder `null` (§7).
+   *
+   * Gilt neben der gesetzlichen aus `katalog`, nicht statt ihrer: Welche von
+   * beiden auf dem Bildschirm landet, entscheidet `fristen.ts`.
+   */
+  fristAm: string | null
+  /**
    * Der DEK dieser Zeile, entpackt. Er bleibt im Speicher, weil jede Änderung
    * ihn wieder braucht; neu erzeugt würde er nur bei einer neuen Aufgabe.
    */
@@ -325,6 +344,15 @@ export type Aufgabenaenderung = {
   /** Die UUID-Liste ganz, nicht einzelne Einträge: Sie ist kurz genug (§7). */
   dependsOn?: string[]
   /**
+   * Die eigene Frist setzen oder entfernen (§7).
+   *
+   * `null` entfernt sie, `undefined` lässt sie stehen: Deshalb steht sie in
+   * `mutationAendern` nicht bei den `??`-Feldern — `null ?? alt` gäbe den
+   * alten Wert zurück, und eine entfernte Frist käme beim nächsten Rendern
+   * wieder.
+   */
+  fristAm?: string | null
+  /**
    * Die Zuweisung ganz: übernehmen, freigeben, jemanden eintragen (§7).
    *
    * Ganz und nicht als Einzelschritt, weil zwei Geräte denselben Payload
@@ -349,6 +377,26 @@ export function pruefeTitel(titel: string): string {
   }
 
   return gekuerzt
+}
+
+/**
+ * Eine eingetippte Frist, geprüft, oder ein Wurf.
+ *
+ * Ein `<input type="date">` liefert `YYYY-MM-DD`; ein älterer Browser fällt
+ * auf ein Textfeld zurück, und was von dort kommt, hat niemand geprüft. Ein
+ * Datum, das keines ist, ergäbe eine Frist, die beim nächsten Lesen still
+ * verschwindet — und §5 verlangt das Gegenteil einer stillen Verwerfung.
+ */
+export function pruefeFrist(frist: string | null): string | null {
+  if (frist === null || frist === '') {
+    return null
+  }
+
+  if (!istKalendertag(frist)) {
+    throw new AufgabenFehler('Diese Frist ist kein Datum.')
+  }
+
+  return frist
 }
 
 function alsText(wert: unknown): string {
@@ -507,6 +555,7 @@ function lesePayload(
     parentId: typeof felder.parentId === 'string' && felder.parentId !== '' ? felder.parentId : null,
     dependsOn: alsListe(felder.dependsOn),
     assignee: zuweisungAus(felder.assignee),
+    fristAm: alsDatum(felder.fristAm),
     katalog: herkunftAus(felder.katalog),
   }
 }
@@ -577,7 +626,8 @@ async function leseZeile(
     }
   }
 
-  const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, assignee, katalog } = inhalt
+  const { titel, beschreibung, erledigt, notizen, parentId, dependsOn, assignee, fristAm, katalog } =
+    inhalt
 
   return {
     id: zeile.id,
@@ -588,6 +638,7 @@ async function leseZeile(
     parentId,
     dependsOn,
     assignee,
+    fristAm,
     katalog,
     dek,
     kid: zeile.kid,
@@ -684,6 +735,7 @@ export async function mutationAnlegen(
     parentId,
     dependsOn: [],
     assignee: wer === null ? NIEMAND : personen([wer]),
+    fristAm: null,
     katalog: null,
   })
 
@@ -752,6 +804,10 @@ export async function mutationAendern(
     // zwei Menschen davor bewahrt, dieselbe Behörde anzurufen, hielte genau
     // bis zum ersten Fortschritt (§7).
     assignee: aenderung.assignee ?? aufgabe.assignee,
+    // `undefined` heisst "unverändert", `null` heisst "entfernt". Ein `??`
+    // könnte die beiden nicht auseinanderhalten, und "Frist entfernen" wäre
+    // die eine Änderung, die stillschweigend nichts täte (§5).
+    fristAm: aenderung.fristAm === undefined ? aufgabe.fristAm : pruefeFrist(aenderung.fristAm),
     // Die Herkunft schreibt jede Änderung unverändert mit. Sie ist kein Feld,
     // das jemand bearbeitet. Sie fiele sonst beim ersten Häkchen aus dem
     // Payload, und mit ihr Frist und zuständige Stelle (§8).

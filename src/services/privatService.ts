@@ -270,6 +270,7 @@ export async function mutationPrivatAnlegen(
       parentId: null,
       dependsOn: [],
       assignee: wer === null ? NIEMAND : personen([wer]),
+      fristAm: null,
       katalog: inhalt.katalog ?? null,
     },
   )

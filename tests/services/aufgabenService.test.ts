@@ -390,6 +390,49 @@ describe('mutationAendern', () => {
     })
   })
 
+  it('setzt eine selbst gewaehlte Frist und liest sie wieder', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const aufgabe = await legeAn(inhalte, k, 'Konten kuendigen')
+    expect(aufgabe.fristAm).toBeNull()
+
+    await uebertrage(inhalte, await mutationAendern(aufgabe, { fristAm: '2026-06-30' }))
+
+    expect((await lies(inhalte, k)).aufgaben[0]?.fristAm).toBe('2026-06-30')
+  })
+
+  it('entfernt eine Frist mit `null` und laesst sie bei `undefined` stehen', async () => {
+    // `null` und `undefined` sind hier zwei verschiedene Ansagen: entfernen
+    // und "nicht angefasst". Ein `??` koennte die beiden nicht trennen, und
+    // "Frist entfernen" waere die eine Aenderung, die stillschweigend nichts
+    // taete (§5).
+    const { inhalte } = server()
+    const k = fall()
+
+    const aufgabe = await legeAn(inhalte, k, 'Konten kuendigen')
+    await uebertrage(inhalte, await mutationAendern(aufgabe, { fristAm: '2026-06-30' }))
+
+    const [mitFrist] = (await lies(inhalte, k)).aufgaben
+    await uebertrage(inhalte, await mutationAendern(mitFrist!, { titel: 'Konten kuendigen (Bank)' }))
+    expect((await lies(inhalte, k)).aufgaben[0]?.fristAm).toBe('2026-06-30')
+
+    const [immerNoch] = (await lies(inhalte, k)).aufgaben
+    await uebertrage(inhalte, await mutationAendern(immerNoch!, { fristAm: null }))
+    expect((await lies(inhalte, k)).aufgaben[0]?.fristAm).toBeNull()
+  })
+
+  it('weist eine Frist zurueck, die kein Datum ist', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    const aufgabe = await legeAn(inhalte, k, 'Titel')
+
+    await expect(mutationAendern(aufgabe, { fristAm: '2026-02-31' })).rejects.toThrow(
+      AufgabenFehler,
+    )
+  })
+
   it('weist einen leeren Titel zurueck', async () => {
     const { inhalte } = server()
     const k = fall()

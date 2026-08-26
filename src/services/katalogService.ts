@@ -108,6 +108,7 @@ function payloadAus(
     // Die Aufgaben der Juristinnen kommen unzugewiesen in den Fall (§7): Wer
     // sie übernimmt, entscheidet die Familie, nicht der Katalog.
     assignee: NIEMAND,
+    fristAm: null,
     katalog: { ...uebriges, aufgabeId: id, version },
   }
 }
@@ -129,6 +130,7 @@ function unterpayloadAus(titel: string, parentId: string): Aufgabenpayload {
     parentId,
     dependsOn: [],
     assignee: NIEMAND,
+    fristAm: null,
     katalog: null,
   }
 }
