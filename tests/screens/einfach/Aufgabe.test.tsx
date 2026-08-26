@@ -218,7 +218,7 @@ describe('Aufgabe (einfach)', () => {
 
     mitDetail(
       [aufgabe({ katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }) })],
-      { fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null }, setzeKenntnisAm },
+      { fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null, anfechtungKenntnisAm: null }, setzeKenntnisAm },
     )
 
     const feld = screen.getByLabelText('Tag Ihrer Kenntnis')

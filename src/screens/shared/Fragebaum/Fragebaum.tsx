@@ -231,7 +231,9 @@ function Frageseite({
       <div className={stile.kopf}>
         <p className={stile.schritt}>Frage {pfad.length}</p>
         <h1 className={stile.frage}>{text}</h1>
-        {knoten.hinweis === undefined ? null : <p className={stile.hinweis}>{knoten.hinweis}</p>}
+        {knoten.hinweis === undefined ? null : (
+          <p className={stile.hinweisKasten}>{knoten.hinweis}</p>
+        )}
       </div>
 
       {knoten.info === undefined ? null : <Infoknopf thema={knoten.info} />}
@@ -294,6 +296,7 @@ function Ergebnisseite({
     fragebaumAufgabe,
     legeFragebaumAufgabeAn,
     setzeKenntnisAm,
+    setzeAnfechtungKenntnisAm,
     fristbezug,
   } = aufgaben
 
@@ -353,7 +356,11 @@ function Ergebnisseite({
    * genau einmal geschrieben wird.
    */
   useEffect(() => {
-    if (entschieden === null || entschieden.vorher !== null || geschrieben.current) {
+    if (
+      entschieden === null ||
+      (entschieden.vorher !== null && entschieden.vorher.status !== null) ||
+      geschrieben.current
+    ) {
       return
     }
 
@@ -425,7 +432,8 @@ function Ergebnisseite({
    * "Sie sind Erbe" wäre eine Warnung vor einem Widerspruch, den es nicht gibt.
    */
   const vorher = entschieden?.vorher ?? null
-  const abweichend = vorher !== null && vorher.knotenId !== knoten.id ? vorher : null
+  const abweichend =
+    vorher !== null && vorher.status !== null && vorher.knotenId !== knoten.id ? vorher : null
 
   const vorlage = knoten.aufgabe
   const vorhandene = vorlage === undefined ? null : fragebaumAufgabe(vorlage)
@@ -446,10 +454,23 @@ function Ergebnisseite({
     }
 
     try {
-      await legeFragebaumAufgabeAn(vorlage, notizAus({ plz, gericht, anfechtungAm }))
+      /*
+       * Der Ergebnistext wandert mit in die Aufgabe (§7): Genau er stand über
+       * dem Knopf, und wer ihn dort gelesen hat, soll ihn in der Aufgabe
+       * wiederfinden, statt den Baum noch einmal gehen zu müssen.
+       */
+      await legeFragebaumAufgabeAn(
+        vorlage,
+        notizAus({ plz, gericht, anfechtungAm }),
+        knoten.text.replaceAll('{person}', fall.personName),
+      )
 
       if (kenntnis !== '' && knoten.kenntnisdatum === true) {
         await setzeKenntnisAm(kenntnis)
+      }
+
+      if (anfechtungAm !== '' && knoten.anfechtungsdatum === true) {
+        await setzeAnfechtungKenntnisAm(anfechtungAm)
       }
     } catch (ursache) {
       setzeFehler(alsNachricht(ursache))
@@ -466,6 +487,13 @@ function Ergebnisseite({
           </div>
         )}
       </div>
+
+      {knoten.ausschlagungshinweis !== true ? null : (
+        <p className={stile.warnung}>
+          Hinweis: Wer Gegenstände aus dem Nachlass verkauft, verschenkt oder nutzt, nimmt das
+          Erbe automatisch an. Danach kann das Erbe nicht mehr abgelehnt werden.
+        </p>
+      )}
 
       <Langtext text={knoten.text.replaceAll('{person}', fall.personName)} />
 
@@ -509,7 +537,7 @@ function Ergebnisseite({
             onChange={(ereignis) => setzeAnfechtungAm(ereignis.target.value)}
           />
           <p className={stile.hinweis}>
-            Die Frist beträgt ein Jahr ab diesem Tag. Sie wird nicht ausgerechnet: Dieser Tag
+            Die Frist beträgt ein Jahr ab diesem Tag und wird automatisch berechnet. Dieser Tag
             ist ein anderer als Ihre Kenntnis von Anfall und Berufungsgrund. Das Datum wird in
             die Aufgabe übernommen.
           </p>

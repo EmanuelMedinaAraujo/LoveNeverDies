@@ -11,8 +11,16 @@
  * an genau einer Stelle.
  */
 
-/** Woran eine Frist hängt (§8). `null` heißt: keine gesetzliche Frist. */
-export type Fristanker = 'sterbedatum' | 'kenntnis'
+/**
+ * Woran eine Frist hängt (§8). `null` heißt: keine gesetzliche Frist.
+ *
+ * `anfechtungskenntnis` ist ausdrücklich kein Alias für `kenntnis`: Beide
+ * hängen an einem eigenen, aber unterschiedlichen Tag (ERBE_DESIGN.md §7,
+ * `fragebaumService.ts` bei `BAUPLAENE.anfechtung`). Sie auf denselben Anker
+ * zu legen ergäbe für zwei verschiedene Fristen dasselbe Datum und damit ein
+ * Fristende, das für die eine oder die andere falsch ist.
+ */
+export type Fristanker = 'sterbedatum' | 'kenntnis' | 'anfechtungskenntnis'
 
 /**
  * Eine Katalogaufgabe, so wie sie eingecheckt ist.

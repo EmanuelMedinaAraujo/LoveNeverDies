@@ -154,9 +154,10 @@ export type Aufgabenpayload = {
  * Baum deshalb nicht verletzen. Die beiden Strukturregeln aus §3.7 gelten für
  * sie ausdrücklich nicht.
  *
- * Bislang trägt sie genau ein Feld. Ein eigener `typ` steht trotzdem darüber:
- * Er ist die Unterscheidung, an der ein Leser dieses Item von einer Aufgabe
- * trennt, ohne aus dem Fehlen eines Titels auf einen Defekt zu schließen.
+ * Trägt heute drei Daten und ein Ergebnis. Ein eigener `typ` steht trotzdem
+ * darüber: Er ist die Unterscheidung, an der ein Leser dieses Item von einer
+ * Aufgabe trennt, ohne aus dem Fehlen eines Titels auf einen Defekt zu
+ * schließen.
  */
 export type Konfigurationspayload = {
   typ: 'konfiguration'
@@ -169,6 +170,15 @@ export type Konfigurationspayload = {
    * bleiben dann fristenlos.
    */
   kenntnisAm: string | null
+  /**
+   * Der Tag, an dem diese Person vom Grund einer Testamentsanfechtung erfahren
+   * hat (§8, ERBE_DESIGN.md §7), als ISO `YYYY-MM-DD`, oder `null`.
+   *
+   * Ausdrücklich nicht `kenntnisAm`: Beide sind die Kenntnis von etwas anderem
+   * und tragen deshalb unterschiedliche Fristenden (`fristen.ts`,
+   * `types/fragebaum.ts` bei `anfechtungsdatum`).
+   */
+  anfechtungKenntnisAm: string | null
   /**
    * Das gespeicherte Ergebnis des Erbe-Fragebaums (ERBE_DESIGN.md §6), oder
    * `null`, solange niemand ihn zu Ende gegangen ist.
@@ -230,6 +240,7 @@ export type Nachlasseintrag = {
 export type Konfiguration = {
   id: string
   kenntnisAm: string | null
+  anfechtungKenntnisAm: string | null
   fragebaum: Fragebaumergebnis | null
   /** Der DEK dieser Zeile, entpackt: Ein neues Datum schreibt darunter weiter. */
   dek: Uint8Array
@@ -373,7 +384,11 @@ function herkunftAus(wert: unknown): Katalogherkunft | null {
     version: alsText(felder.version),
     fristTage: typeof felder.fristTage === 'number' ? felder.fristTage : null,
     fristAb:
-      felder.fristAb === 'sterbedatum' || felder.fristAb === 'kenntnis' ? felder.fristAb : null,
+      felder.fristAb === 'sterbedatum' ||
+      felder.fristAb === 'kenntnis' ||
+      felder.fristAb === 'anfechtungskenntnis'
+        ? felder.fristAb
+        : null,
     zustaendigeStelle: alsText(felder.zustaendigeStelle),
     benoetigteDokumente: alsListe(felder.benoetigteDokumente),
     unteraufgaben: alsListe(felder.unteraufgaben),
@@ -461,6 +476,7 @@ function lesePayload(
     return {
       typ: 'konfiguration',
       kenntnisAm: alsDatum(felder.kenntnisAm),
+      anfechtungKenntnisAm: alsDatum(felder.anfechtungKenntnisAm),
       fragebaum: gelesenesErgebnis(felder.fragebaum),
     }
   }
@@ -553,6 +569,7 @@ async function leseZeile(
     return {
       id: zeile.id,
       kenntnisAm: inhalt.kenntnisAm,
+      anfechtungKenntnisAm: inhalt.anfechtungKenntnisAm,
       fragebaum: inhalt.fragebaum,
       dek,
       kid: zeile.kid,

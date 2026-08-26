@@ -49,6 +49,8 @@ import type { Aufgabenvorlage } from '../types/fragebaum.ts'
 import {
   gibFuerAlleFrei as gibFuerAlleFreiDienst,
   ladePersoenlichenSchluessel,
+  mutationAnfechtungKenntnisAendern,
+  mutationAnfechtungKenntnisAnlegen,
   mutationFragebaumAendern,
   mutationFragebaumAnlegen,
   mutationKenntnisAendern,
@@ -61,6 +63,7 @@ import {
 import { baueBaum, type Aufgabenknoten } from '../services/aufgabenbaum.ts'
 import {
   BAUPLAENE,
+  aufgabenBeschreibung,
   ergebnisAus,
   mitAbgeleitetemHaken,
   stammtAus,
@@ -222,6 +225,17 @@ export type Aufgabendaten = {
    */
   setzeKenntnisAm: (kenntnisAm: string | null) => Promise<void>
   /**
+   * Trägt das eigene Anfechtungs-Kenntnisdatum ein oder ändert es (§8).
+   *
+   * Dasselbe Muster wie {@link setzeKenntnisAm}, nur für das andere Feld:
+   * Beide sind die Kenntnis von etwas anderem und tragen deshalb
+   * unterschiedliche Fristenden (`fristen.ts`).
+   *
+   * @throws {AufgabenFehler} bei einem Datum, das keiner ist oder in der
+   * Zukunft liegt, und ohne angemeldetes Gerät.
+   */
+  setzeAnfechtungKenntnisAm: (anfechtungKenntnisAm: string | null) => Promise<void>
+  /**
    * Das gespeicherte Ergebnis des Erbe-Fragebaums, oder `null`
    * (ERBE_DESIGN.md §6).
    *
@@ -265,7 +279,11 @@ export type Aufgabendaten = {
    * Gibt es sie schon, passiert nichts. Zwei gleiche Ausschlagungen mit
    * derselben Frist sind das, was jemanden die richtige übersehen lässt.
    */
-  legeFragebaumAufgabeAn: (vorlage: Aufgabenvorlage, notizen?: string) => Promise<void>
+  legeFragebaumAufgabeAn: (
+    vorlage: Aufgabenvorlage,
+    notizen?: string,
+    ergebnisText?: string,
+  ) => Promise<void>
 }
 
 const LEER = {
@@ -671,6 +689,32 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     [fall, holePersoenlichenSchluessel, liste.konfiguration, mutiere],
   )
 
+  /**
+   * Das eigene Anfechtungs-Kenntnisdatum eintragen, ändern oder wieder leeren
+   * (§8).
+   *
+   * Dasselbe Muster wie {@link setzeKenntnisAm} und aus demselben Grund ein
+   * eigenes Feld desselben Konfigurations-Items: Beide Daten sind die Kenntnis
+   * von etwas anderem und tragen unterschiedliche Fristenden (`fristen.ts`).
+   */
+  const setzeAnfechtungKenntnisAm = useCallback(
+    async (anfechtungKenntnisAm: string | null) => {
+      if (liste.konfiguration !== null) {
+        mutiere(await mutationAnfechtungKenntnisAendern(liste.konfiguration, anfechtungKenntnisAm))
+        return
+      }
+
+      mutiere(
+        await mutationAnfechtungKenntnisAnlegen(
+          fall,
+          await holePersoenlichenSchluessel(),
+          anfechtungKenntnisAm,
+        ),
+      )
+    },
+    [fall, holePersoenlichenSchluessel, liste.konfiguration, mutiere],
+  )
+
   const fragebaum = liste.konfiguration?.fragebaum ?? null
 
   /*
@@ -723,7 +767,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   )
 
   const legeFragebaumAufgabeAn = useCallback(
-    async (vorlage: Aufgabenvorlage, notizen = '') => {
+    async (vorlage: Aufgabenvorlage, notizen = '', ergebnisText = '') => {
       if (fragebaumAufgabe(vorlage) !== null) {
         return
       }
@@ -732,7 +776,8 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
 
       mutiere(
         await mutationPrivatAnlegen(fall, await holePersoenlichenSchluessel(), bauplan.titel, ich, {
-          beschreibung: bauplan.beschreibung,
+          // §7: Was über „Aufgabe erstellen" stand, steht danach in der Aufgabe.
+          beschreibung: aufgabenBeschreibung(vorlage, ergebnisText),
           notizen,
           katalog: bauplan.katalog,
         }),
@@ -958,6 +1003,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
     () => ({
       sterbedatum: fall.sterbedatum,
       kenntnisAm: liste.konfiguration?.kenntnisAm ?? null,
+      anfechtungKenntnisAm: liste.konfiguration?.anfechtungKenntnisAm ?? null,
     }),
     [fall.sterbedatum, liste.konfiguration],
   )
@@ -1002,6 +1048,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       fristbezug,
       nachlass: liste.nachlass,
       setzeKenntnisAm,
+      setzeAnfechtungKenntnisAm,
       fragebaum,
       fragebaumGeladen,
       speichereFragebaum,
@@ -1030,6 +1077,7 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
       fristbezug,
       liste.nachlass,
       setzeKenntnisAm,
+      setzeAnfechtungKenntnisAm,
       fragebaum,
       fragebaumGeladen,
       speichereFragebaum,

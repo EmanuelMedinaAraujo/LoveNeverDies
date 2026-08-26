@@ -131,6 +131,7 @@ function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlag
   }
 
   const dokumente = katalog.benoetigteDokumente.filter((eintrag) => eintrag.trim() !== '')
+  const schritte = katalog.unteraufgaben.filter((eintrag) => eintrag.trim() !== '')
 
   return (
     <Gruppe titel="Das gilt dafür">
@@ -173,6 +174,23 @@ function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlag
                 <li key={dokument}>{dokument}</li>
               ))}
             </ul>
+          </Angabe>
+        )}
+
+        {/*
+          Die Schritte, die zu dieser Aufgabe gehören (§7). Sie stehen als
+          Aufzählung und nicht als eigene Unteraufgaben-Zeilen: Die Aufgaben
+          aus dem Fragebaum sind privat, und private Aufgaben sind immer
+          Wurzelaufgaben (§3.7). Eine Unteraufgabe daran wäre eine Zeile, die
+          es für niemanden sonst gibt.
+        */}
+        {schritte.length === 0 ? null : (
+          <Angabe was="Diese Schritte gehören dazu">
+            <ol className={stile.punkte}>
+              {schritte.map((schritt) => (
+                <li key={schritt}>{schritt}</li>
+              ))}
+            </ol>
           </Angabe>
         )}
 

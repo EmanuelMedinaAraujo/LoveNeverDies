@@ -70,7 +70,7 @@ function morgens(iso: string, stunde = 6): Date {
 }
 
 function plan(aufgaben: Aufgabe[], jetzt: Date, kenntnisAm: string | null = null) {
-  return planeErinnerungen(baueBaum(aufgaben), { sterbedatum: STERBEDATUM, kenntnisAm }, jetzt)
+  return planeErinnerungen(baueBaum(aufgaben), { sterbedatum: STERBEDATUM, kenntnisAm, anfechtungKenntnisAm: null }, jetzt)
 }
 
 describe('planeErinnerungen (§7)', () => {
@@ -191,7 +191,7 @@ describe('planeErinnerungen (§7)', () => {
     expect(
       planeErinnerungen(
         baueBaum([mitFrist(10)]),
-        { sterbedatum: null, kenntnisAm: null },
+        { sterbedatum: null, kenntnisAm: null, anfechtungKenntnisAm: null },
         morgens('2026-05-12'),
       ),
     ).toEqual([])

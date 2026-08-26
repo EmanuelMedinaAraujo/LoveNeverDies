@@ -129,9 +129,10 @@ function aufgabendaten(
     uebernahmen: [],
     bestaetigeUebernahmen: vi.fn(),
     gibFuerAlleFrei: vi.fn().mockResolvedValue(undefined),
-    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null },
+    fristbezug: { sterbedatum: LESBAR.sterbedatum, kenntnisAm: null, anfechtungKenntnisAm: null },
     nachlass: [],
     setzeKenntnisAm: vi.fn().mockResolvedValue(undefined),
+    setzeAnfechtungKenntnisAm: vi.fn().mockResolvedValue(undefined),
     fragebaum: null,
     fragebaumGeladen: true,
     speichereFragebaum: vi.fn().mockResolvedValue(undefined),
@@ -271,6 +272,9 @@ describe('Alle', () => {
         <Alle />
       </Huelle>,
     )
+    // §7: Erledigt wandert ans Ende und ist zu Anfang eingeklappt; erst
+    // aufklappen, um das Häkchen wiederzufinden.
+    await userEvent.click(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' }))
     expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeChecked()
 
     useAufgaben.mockReturnValue(aufgabendaten())
@@ -298,6 +302,8 @@ describe('Alle', () => {
 
     rendereMitProvidern(<Alle />)
 
+    // §7: Erledigt steht zu Anfang eingeklappt.
+    await userEvent.click(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' }))
     await userEvent.click(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' }))
 
     await waitFor(() => expect(hakeAb).toHaveBeenCalledWith(aufgabe({ erledigt: true }), false))
@@ -760,7 +766,7 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
         // Derselbe frische Fall, nur so, wie die Fristen ihn sehen (§8): Das
         // Sterbedatum kommt aus dem Fall, das Kenntnisdatum aus dem privaten
         // Konfigurations-Item, und hier hat niemand eines eingetragen (#12).
-        fristbezug: { sterbedatum: heute(), kenntnisAm: null },
+        fristbezug: { sterbedatum: heute(), kenntnisAm: null, anfechtungKenntnisAm: null },
         ...ueberschreibung,
       }),
     )
@@ -810,11 +816,15 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
     expect(screen.getByText('1/2 erledigt')).toBeVisible()
   })
 
-  it('nennt eine Aufgabe erledigt, sobald alle Unteraufgaben es sind', () => {
+  it('nennt eine Aufgabe erledigt, sobald alle Unteraufgaben es sind', async () => {
     zeige([
       aufgabe({ id: 'eltern', titel: 'Sterbefall anzeigen', erledigt: false }),
       aufgabe({ id: 'kind-1', titel: 'Urkunden bestellen', parentId: 'eltern', erledigt: true }),
     ])
+
+    // §7: Eine Wurzel, deren Kinder alle erledigt sind, gilt selbst als
+    // erledigt und steht deshalb zu Anfang eingeklappt.
+    await userEvent.click(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' }))
 
     expect(screen.getByText('1/1 erledigt')).toBeVisible()
   })
@@ -1082,5 +1092,85 @@ describe('Private Aufgaben (§3.7)', () => {
 
     expect(daten.gibFuerAlleFrei).not.toHaveBeenCalled()
     expect(screen.getByText('Erbausschlagung erwägen')).toBeVisible()
+  })
+})
+
+/**
+ * Die Fragebaum-Standardaufgabe in "Alle" (ERBE_DESIGN.md §9).
+ *
+ * Sie hat keine eigene Detailseite: Ihr Ergebnis steht im Fragebaum. Der Weg
+ * ins Detail führt deshalb direkt dorthin statt zur Aufgaben-Detailseite.
+ */
+describe('Seed-Aufgabe in "Alle" (ERBE_DESIGN.md §9)', () => {
+  it('führt direkt in den Fragebaum statt in eine Detailseite', () => {
+    const seed = aufgabe({
+      id: 'seed-1',
+      titel: 'Klären ob Sie Erbe sind',
+      katalog: { aufgabeId: 'erbenstellung-klaeren', fristTage: null, fristAb: null } as Katalogherkunft,
+    })
+    useAufgaben.mockReturnValue(
+      aufgabendaten({ zustand: { status: 'bereit', aufgaben: [seed], uebersprungen: 0, ...NETZ } }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByRole('link', { name: 'Details: „Klären ob Sie Erbe sind“' })).toHaveAttribute(
+      'href',
+      '/erbe/fragebaum',
+    )
+  })
+})
+
+/** Erledigte Aufgaben in "Alle" (§7): ans Ende, zu Anfang eingeklappt. */
+describe('Erledigte Aufgaben in "Alle" (§7)', () => {
+  it('stehen hinter den offenen und sind zu Anfang eingeklappt', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({ id: 'item-1', titel: 'Offene Aufgabe' }),
+            aufgabe({ id: 'item-2', titel: 'Erledigte Aufgabe', erledigt: true }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.getByText('Offene Aufgabe')).toBeVisible()
+    expect(screen.queryByText('Erledigte Aufgabe')).toBeNull()
+    expect(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' })).toBeVisible()
+  })
+
+  it('zeigt sie nach einem Klick auf den Schalter, auch bei "Nach Frist" sortiert', async () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({ id: 'item-1', titel: 'Offene Aufgabe' }),
+            aufgabe({ id: 'item-2', titel: 'Erledigte Aufgabe', erledigt: true }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    await userEvent.selectOptions(screen.getByLabelText('Sortierung'), 'frist')
+    await userEvent.click(screen.getByRole('button', { name: '1 erledigte Aufgabe anzeigen' }))
+
+    expect(screen.getByText('Erledigte Aufgabe')).toBeVisible()
+  })
+
+  it('lässt den Schalter ganz weg, wenn nichts erledigt ist', () => {
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.queryByRole('button', { name: /erledigte Aufgabe/ })).toBeNull()
   })
 })

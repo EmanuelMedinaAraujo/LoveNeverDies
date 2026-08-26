@@ -59,15 +59,15 @@ export function useErinnerungen(baum: Aufgabenknoten[], bezug: Fristbezug): Erin
   const [erlaubnis, setzeErlaubnis] = useState<Erinnerungserlaubnis>(gelesen)
 
   /*
-   * Die beiden Daten einzeln und nicht der `bezug` als Objekt: Ein frisch
-   * gebautes Objekt bei jedem Rendern plante sonst jedes Mal neu und stellte
-   * damit sämtliche Timer neu, ohne dass sich etwas geändert hätte.
+   * Die einzelnen Daten und nicht der `bezug` als Objekt: Ein frisch gebautes
+   * Objekt bei jedem Rendern plante sonst jedes Mal neu und stellte damit
+   * sämtliche Timer neu, ohne dass sich etwas geändert hätte.
    */
-  const { sterbedatum, kenntnisAm } = bezug
+  const { sterbedatum, kenntnisAm, anfechtungKenntnisAm } = bezug
 
   const termine = useMemo(
-    () => planeErinnerungen(baum, { sterbedatum, kenntnisAm }, new Date()),
-    [baum, sterbedatum, kenntnisAm],
+    () => planeErinnerungen(baum, { sterbedatum, kenntnisAm, anfechtungKenntnisAm }, new Date()),
+    [baum, sterbedatum, kenntnisAm, anfechtungKenntnisAm],
   )
 
   useEffect(() => {

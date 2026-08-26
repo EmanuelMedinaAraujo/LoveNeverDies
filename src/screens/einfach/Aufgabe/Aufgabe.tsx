@@ -125,6 +125,7 @@ function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlag
   }
 
   const dokumente = katalog.benoetigteDokumente.filter((eintrag) => eintrag.trim() !== '')
+  const schritte = katalog.unteraufgaben.filter((eintrag) => eintrag.trim() !== '')
 
   return (
     <Abschnitt titel="Das gilt dafür">
@@ -161,6 +162,21 @@ function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlag
                 <li key={dokument}>{dokument}</li>
               ))}
             </ul>
+          </Angabe>
+        )}
+
+        {/*
+          Die Schritte dieser Aufgabe (§7). Als Aufzählung und nicht als eigene
+          Unteraufgaben: Die Aufgaben aus dem Fragebaum sind privat, und private
+          Aufgaben stehen immer für sich (§3.7).
+        */}
+        {schritte.length === 0 ? null : (
+          <Angabe was="Das ist zu tun">
+            <ol className={stile.punkte}>
+              {schritte.map((schritt) => (
+                <li key={schritt}>{schritt}</li>
+              ))}
+            </ol>
           </Angabe>
         )}
 
