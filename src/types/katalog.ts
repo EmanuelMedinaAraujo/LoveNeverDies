@@ -11,8 +11,16 @@
  * an genau einer Stelle.
  */
 
-/** Woran eine Frist hängt (§8). `null` heißt: keine gesetzliche Frist. */
-export type Fristanker = 'sterbedatum' | 'kenntnis'
+/**
+ * Woran eine Frist hängt (§8). `null` heißt: keine gesetzliche Frist.
+ *
+ * `anfechtungskenntnis` ist ausdrücklich kein Alias für `kenntnis`: Beide
+ * hängen an einem eigenen, aber unterschiedlichen Tag (ERBE_DESIGN.md §7,
+ * `fragebaumService.ts` bei `BAUPLAENE.anfechtung`). Sie auf denselben Anker
+ * zu legen ergäbe für zwei verschiedene Fristen dasselbe Datum und damit ein
+ * Fristende, das für die eine oder die andere falsch ist.
+ */
+export type Fristanker = 'sterbedatum' | 'kenntnis' | 'anfechtungskenntnis'
 
 /**
  * Eine Katalogaufgabe, so wie sie eingecheckt ist.
@@ -37,15 +45,12 @@ export type Katalogaufgabe = {
   /** Tage, oder `null`, wenn es keine gesetzliche Frist gibt. Nie geraten (§8). */
   fristTage: number | null
   fristAb: Fristanker | null
-  /** Ohne sie gibt es keine Frist: Der Import weist das ab (§8). */
-  rechtsgrundlage: string
   zustaendigeStelle: string
   benoetigteDokumente: string[]
   unteraufgaben: string[]
   /** IDs anderer Katalogaufgaben, die vorher erledigt sein sollten. */
   haengtAbVon: string[]
   hinweis: string
-  quelleUrl: string
   kategorie: string
   /** Die Reihenfolge, in der die Juristinnen die Aufgaben sehen wollen. */
   reihenfolge: number

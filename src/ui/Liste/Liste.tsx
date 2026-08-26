@@ -129,6 +129,21 @@ export function Winkel() {
  * Tastatur und Vorlesestimme ein Ziel, das zwei Dinge tut. Sie stehen deshalb
  * nebeneinander, und der Winkel bekommt seine eigenen 44 px.
  */
+/**
+ * Der Winkel am Zeilenende -- und zugleich die Trefferflaeche der ganzen Zeile.
+ *
+ * Der sichtbare Winkel bleibt, weil er ansagt, dass es hier weitergeht; ein
+ * Kaestchen, das nur aussieht wie Text, ist keine Ansage. Anzutippen ist aber
+ * die ganze Zeile: Sein `::after` legt sich ueber sie (`.zeile` ist dafuer
+ * `position: relative`), und was in der Zeile selbst etwas tut -- das
+ * Haekchen, "Aendern", "Uebernehmen" -- liegt darueber und faengt seinen Tipp
+ * vorher ab.
+ *
+ * Ein einziger echter Link bleibt es trotzdem: Ein `<li>` mit `onClick` waere
+ * fuer Tastatur und Bildschirmleser kein Ziel, und ein zweiter Link um die
+ * ganze Zeile herum enthielte das Haekchen -- ein Bedienelement im anderen,
+ * was kein Browser sauber aufloest.
+ */
 export function Detailziel({ ziel, titel }: { ziel: string; titel: string }) {
   return (
     <Link className={stile.detail} to={ziel} aria-label={`Details: „${titel}“`}>

@@ -247,4 +247,26 @@ describe('Fragebaum-Inhalt (ERBE_DESIGN.md §2)', () => {
       expect(knoten.hinweis).toContain('Schulden')
     }
   })
+
+  it('bietet an "Wollen Sie das Erbe haben?" den Pflichtteil-Infoknopf an (B)', () => {
+    const wollen = FRAGEBAUM.filter((knoten) => knoten.text === 'Wollen Sie das Erbe haben?')
+
+    expect(wollen.length).toBe(10)
+
+    for (const knoten of wollen) {
+      expect(knoten.info, knoten.id).toBe('pflichtteil')
+    }
+  })
+
+  it('setzt den Ausschlagungshinweis auf jedem Ausschlagungs-Ergebnis (C)', () => {
+    const ausschlagung = FRAGEBAUM.filter((knoten) =>
+      knoten.text.startsWith('Sie wollen das Erbe nicht (Ausschlagung)'),
+    )
+
+    expect(ausschlagung.length).toBe(10)
+
+    for (const knoten of ausschlagung) {
+      expect(knoten.ausschlagungshinweis, knoten.id).toBe(true)
+    }
+  })
 })

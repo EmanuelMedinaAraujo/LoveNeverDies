@@ -1,8 +1,13 @@
-import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, type ChangeEvent, type FormEvent } from 'react'
 import { useEinloesung } from '../../../hooks/useKopplung.ts'
+import { useQrScanner } from '../../../hooks/useQrScanner.ts'
+import {
+  formatiereKopplungscodeEingabe,
+  KOPPLUNGSCODE_LAENGE,
+} from '../../../services/kopplungService.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
+import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import stile from './Koppeln.module.css'
 
 /**
@@ -25,6 +30,46 @@ export function Koppeln() {
   const [eingabe, setzeEingabe] = useState('')
   const [gewaehlterFall, setzeGewaehltenFall] = useState<string | null>(null)
 
+  /*
+   * Scannen ist eine Alternative zum Eintippen, keine zweite Baustelle: Der
+   * QR-Code trägt genau den Kopplungscode, den auch das Textfeld annimmt
+   * (§6, Punkt 5 der Kopplungs-Anforderungen). Zu, bis jemand ihn ausdrücklich
+   * anfordert, sonst hinge diese Seite an einer Kamera, die die meisten
+   * Besuche gar nicht brauchen.
+   */
+  const [scanAktiv, setzeScanAktiv] = useState(false)
+
+  function codeErkannt(rohwert: string) {
+    // Dieselbe Normalisierung wie beim Tippen, damit ein gescannter Code
+    // durch keine andere Prüfung läuft als ein eingetippter (§6). Der
+    // eigentliche Format- und Alphabet-Check sitzt in `loeseKopplungscodeEin`
+    // und trifft beide Wege gleichermaßen.
+    const formatiert = formatiereKopplungscodeEingabe(rohwert, { geloescht: false, vorher: '' })
+
+    setzeEingabe(formatiert)
+    setzeScanAktiv(false)
+    void einloesen(formatiert)
+  }
+
+  const { zustand: scanZustand, videoRef: scanVideoRef } = useQrScanner(scanAktiv, codeErkannt)
+
+  /*
+   * Getippt wird der Code, den Bindestrich setzt das Feld (§6, Schritt 4). Ob
+   * gerade gelöscht wurde, weiß nur das Ereignis; ohne diese Auskunft käme der
+   * Bindestrich nach jedem Löschversuch sofort zurück, und das vierte Zeichen
+   * ließe sich nicht mehr entfernen.
+   */
+  function tippen(ereignis: ChangeEvent<HTMLInputElement>) {
+    const art = (ereignis.nativeEvent as InputEvent).inputType ?? ''
+
+    setzeEingabe(
+      formatiereKopplungscodeEingabe(ereignis.target.value, {
+        geloescht: art.startsWith('delete'),
+        vorher: eingabe,
+      }),
+    )
+  }
+
   function absenden(ereignis: FormEvent) {
     ereignis.preventDefault()
     void einloesen(eingabe)
@@ -33,6 +78,8 @@ export function Koppeln() {
   if (zustand.status === 'fertig') {
     return (
       <main className={stile.seite}>
+        <Zurueck ziel="/profil" />
+
         <div className={stile.kopf}>
           <h1>Fertig</h1>
         </div>
@@ -42,10 +89,6 @@ export function Koppeln() {
             {zustand.nachricht}
           </p>
         </Card>
-
-        <p className={stile.hinweis}>
-          <Link to="/profil">Zurück zu Profil</Link>
-        </p>
       </main>
     )
   }
@@ -56,6 +99,8 @@ export function Koppeln() {
 
     return (
       <main className={stile.seite}>
+        <Zurueck ziel="/profil" />
+
         <div className={stile.kopf}>
           <h1>{angebot.zweck === 'join' ? 'Zum Fall hinzufügen?' : 'Gerät freischalten?'}</h1>
           <p className={stile.einleitung}>
@@ -148,11 +193,13 @@ export function Koppeln() {
 
   return (
     <main className={stile.seite}>
+      <Zurueck ziel="/profil" />
+
       <div className={stile.kopf}>
         <h1>Kopplungscode eingeben</h1>
         <p className={stile.einleitung}>
-          Lassen Sie sich die acht Zeichen nennen. Groß- und Kleinschreibung und der Bindestrich
-          spielen keine Rolle.
+          Lassen Sie sich die acht Zeichen nennen. Groß- und Kleinschreibung spielen keine Rolle,
+          und den Bindestrich setzt das Feld selbst.
         </p>
       </div>
 
@@ -164,7 +211,9 @@ export function Koppeln() {
               id="koppeln-code"
               className={`${stile.eingabe} ${stile.codeeingabe}`}
               value={eingabe}
-              onChange={(ereignis) => setzeEingabe(ereignis.target.value)}
+              onChange={tippen}
+              maxLength={KOPPLUNGSCODE_LAENGE + 1}
+              inputMode="text"
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
@@ -185,9 +234,51 @@ export function Koppeln() {
         </form>
       </Card>
 
-      <p className={stile.hinweis}>
-        <Link to="/profil">Zurück zu Profil</Link>
-      </p>
+      <Card>
+        <h2 className={stile.abschnitt}>Oder Code scannen</h2>
+
+        {scanAktiv ? (
+          <>
+            {scanZustand.status === 'nicht-unterstuetzt' ? (
+              <p className={stile.hinweis} role="alert">
+                Scannen wird auf diesem Gerät nicht unterstützt, bitte Code eintippen.
+              </p>
+            ) : scanZustand.status === 'fehler' ? (
+              <p className={stile.hinweis} role="alert">
+                {scanZustand.nachricht}
+              </p>
+            ) : (
+              <>
+                {/*
+                  Reines Kamerabild ohne eigenen Inhalt: Was hier zu wissen ist,
+                  steht in der Statuszeile daneben (§7).
+                */}
+                <video
+                  ref={scanVideoRef}
+                  className={stile.video}
+                  autoPlay
+                  playsInline
+                  muted
+                  aria-hidden="true"
+                />
+                <p className={stile.hinweis} role="status">
+                  {scanZustand.status === 'startet'
+                    ? 'Kamera wird gestartet…'
+                    : 'Halten Sie den QR-Code vor die Kamera.'}
+                </p>
+              </>
+            )}
+
+            <Button variante="sekundaer" volleBreite onClick={() => setzeScanAktiv(false)}>
+              Scannen abbrechen
+            </Button>
+          </>
+        ) : (
+          <Button variante="sekundaer" volleBreite onClick={() => setzeScanAktiv(true)}>
+            Code scannen
+          </Button>
+        )}
+      </Card>
     </main>
   )
 }

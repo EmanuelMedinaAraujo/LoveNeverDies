@@ -53,7 +53,11 @@ export default defineConfig(({ mode }) => {
         // Der Service Worker soll auch im Dev-Modus laufen, damit sich das
         // Installieren auf einem echten Gerät testen lässt.
         devOptions: { enabled: true, type: 'module' },
-        includeAssets: ['favicon.svg', 'apple-touch-icon-180.png'],
+        includeAssets: [
+          'favicon-hell-64.png',
+          'favicon-dunkel-64.png',
+          'apple-touch-icon-180.png',
+        ],
         manifest: {
           name: 'LoveNeverDies',
           short_name: 'LoveNeverDies',
@@ -87,5 +91,16 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('gerichte.json')) {
+              return 'gerichte-daten'
+            }
+          },
+        },
+      },
+    },
   }
 })

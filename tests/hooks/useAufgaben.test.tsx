@@ -38,6 +38,7 @@ vi.mock('../../src/services/aufgabenService.ts', () => ({
    * davon prüfte nur, ob der Test dieselbe Regel noch einmal aufschreibt.
    */
   istKonfiguration: (eintrag: object) => 'kenntnisAm' in eintrag,
+  istNachlass: (eintrag: object) => 'inhalt' in eintrag,
   beschreibeAbgelehnte: (...a: unknown[]) => beschreibeAbgelehnte(...a),
   mutationAnlegen: (...a: unknown[]) => mutationAnlegen(...a),
   mutationAendern: (...a: unknown[]) => mutationAendern(...a),
@@ -55,6 +56,8 @@ const stellePersoenlichenSchluesselBereit = vi.fn()
 const mutationPrivatAnlegen = vi.fn()
 const mutationKenntnisAnlegen = vi.fn()
 const mutationKenntnisAendern = vi.fn()
+const mutationAnfechtungKenntnisAnlegen = vi.fn()
+const mutationAnfechtungKenntnisAendern = vi.fn()
 const gibFuerAlleFreiDienst = vi.fn()
 const pruefeAbhaengigkeiten = vi.fn()
 
@@ -65,6 +68,8 @@ vi.mock('../../src/services/privatService.ts', () => ({
   mutationPrivatAnlegen: (...a: unknown[]) => mutationPrivatAnlegen(...a),
   mutationKenntnisAnlegen: (...a: unknown[]) => mutationKenntnisAnlegen(...a),
   mutationKenntnisAendern: (...a: unknown[]) => mutationKenntnisAendern(...a),
+  mutationAnfechtungKenntnisAnlegen: (...a: unknown[]) => mutationAnfechtungKenntnisAnlegen(...a),
+  mutationAnfechtungKenntnisAendern: (...a: unknown[]) => mutationAnfechtungKenntnisAendern(...a),
   gibFuerAlleFrei: (...a: unknown[]) => gibFuerAlleFreiDienst(...a),
   pruefeAbhaengigkeiten: (...a: unknown[]) => pruefeAbhaengigkeiten(...a),
 }))
@@ -184,13 +189,15 @@ beforeEach(() => {
   vi.clearAllMocks()
   mockAuth = { status: 'angemeldet', benutzer: { id: ICH.userId, anzeigename: ICH.name } }
   mutiere.mockResolvedValue(undefined)
-  aufgabenAusZeilen.mockResolvedValue({ aufgaben: [], konfigurationen: [], uebersprungeneIds: [] })
+  aufgabenAusZeilen.mockResolvedValue({ aufgaben: [], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
   beschreibeAbgelehnte.mockResolvedValue([])
   ladePersoenlichenSchluessel.mockResolvedValue(null)
   stellePersoenlichenSchluesselBereit.mockResolvedValue(PRIVAT)
   mutationPrivatAnlegen.mockResolvedValue({ op: 'anlegen' })
   mutationKenntnisAnlegen.mockResolvedValue({ op: 'anlegen', itemId: 'kenntnis-1' })
   mutationKenntnisAendern.mockResolvedValue({ op: 'aendern', itemId: 'kenntnis-1' })
+  mutationAnfechtungKenntnisAnlegen.mockResolvedValue({ op: 'anlegen', itemId: 'anfechtung-1' })
+  mutationAnfechtungKenntnisAendern.mockResolvedValue({ op: 'aendern', itemId: 'anfechtung-1' })
   gibFuerAlleFreiDienst.mockResolvedValue(undefined)
   pruefeAbhaengigkeiten.mockReturnValue(undefined)
   instanziiereKatalog.mockResolvedValue(0)
@@ -210,7 +217,7 @@ describe('useAufgaben', () => {
     // §5: "Gecachte Inhalte werden sofort gerendert." Die Ladeanzeige gehört
     // dem Fetch, nicht dem Entschlüsseln.
     const eine = zeile('item-1')
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [eine], laedtNetz: true }))
 
     const { result } = renderHook(() => useAufgaben(FALL))
@@ -230,7 +237,7 @@ describe('useAufgaben', () => {
   it('laesst die Liste stehen, wenn der Abruf scheitert', async () => {
     // Ein Server, der nicht antwortet, darf nicht als "keine Aufgaben"
     // durchgehen. Sonst sieht jemand einen leeren Fall und legt alles neu an.
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(
       syncdaten({ zeilen: [zeile('item-1')], netzfehler: 'Kein Netz.' }),
     )
@@ -257,7 +264,7 @@ describe('useAufgaben', () => {
     const erste = zeile('item-1')
     const zweite = zeile('item-2')
 
-    aufgabenAusZeilen.mockResolvedValueOnce({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValueOnce({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [erste] }))
 
     const { result, rerender } = renderHook(() => useAufgaben(FALL))
@@ -268,6 +275,7 @@ describe('useAufgaben', () => {
     aufgabenAusZeilen.mockResolvedValueOnce({
       aufgaben: [aufgabe({ id: 'item-2', titel: 'Konten kündigen' })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [erste, zweite] }))
@@ -298,6 +306,7 @@ describe('useAufgaben', () => {
     aufgabenAusZeilen.mockResolvedValueOnce({
       aufgaben: [],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: ['fremdes-item'],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [fremd] }))
@@ -340,10 +349,14 @@ describe('useAufgaben', () => {
     })
     expect(mutationAendern).toHaveBeenCalledWith(aufgabe(), { titel: 'Anders' })
 
+    // Eine Aufgabe, die schon jemandem gehoert, aendert beim Haken nur das
+    // Haekchen. Die freie traegt die Uebernahme mit; das steht weiter unten.
+    const meine = aufgabe({ assignee: personen([ICH]) })
+
     await act(async () => {
-      await result.current.hakeAb(aufgabe(), true)
+      await result.current.hakeAb(meine, true)
     })
-    expect(mutationAendern).toHaveBeenLastCalledWith(aufgabe(), { erledigt: true })
+    expect(mutationAendern).toHaveBeenLastCalledWith(meine, { erledigt: true })
 
     await act(async () => {
       await result.current.loesche(aufgabe())
@@ -416,6 +429,7 @@ describe('useAufgaben', () => {
         aufgabe({ id: 'item-1' }),
       ],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [erste, zweite] }))
@@ -482,13 +496,11 @@ describe('useAufgaben', () => {
         version: '2026-08+testtest',
         fristTage: null,
         fristAb: null,
-        rechtsgrundlage: '',
         zustaendigeStelle: '',
         benoetigteDokumente: [],
         unteraufgaben: [],
         haengtAbVon: [],
         hinweis: '',
-        quelleUrl: '',
         kategorie: 'Sofort',
         reihenfolge,
       })
@@ -501,6 +513,7 @@ describe('useAufgaben', () => {
           aufgabe({ id: 'katalog-10', titel: 'Erste', katalog: katalog(10) }),
         ],
         konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
       })
 
@@ -546,7 +559,7 @@ describe('useAufgaben', () => {
       // Kein Wurf und keine Mitteilung: Was hier scheitert, ist das Netz oder
       // ein fremder Katalogstand: Beides kann niemand hier beheben.
       instanziiereKatalog.mockRejectedValue(new Error('kein Netz'))
-      aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+      aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
       useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
 
       const { result } = renderHook(() => useAufgaben(FALL))
@@ -574,11 +587,97 @@ describe('Zuweisung', () => {
   function mitAufgabe(zuweisung = NIEMAND, ueberschreibung: Partial<Aufgabe> = {}) {
     const eine = aufgabe({ assignee: zuweisung, ...ueberschreibung })
 
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile(eine.id)] }))
 
     return eine
   }
+
+  it('trägt beim Abhaken einer freien Aufgabe die angemeldete Person ein', async () => {
+    /*
+     * §7: Eine freie Aufgabe abzuhaken *ist* die Ansage "ich habe das
+     * gemacht". Wer sie erst übernehmen müsste, um sie abhaken zu dürfen,
+     * macht zwei Handgriffe für eine Auskunft.
+     */
+    const freie = mitAufgabe(NIEMAND)
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.hakeAb(freie, true)
+    })
+
+    // Ein Payload, nicht zwei: Zwei Mutationen könnten halb ankommen, und
+    // "abgehakt, aber niemand war es" ist genau der Fall, den das abschafft.
+    expect(mutationAendern).toHaveBeenCalledTimes(1)
+    expect(mutationAendern).toHaveBeenCalledWith(freie, {
+      erledigt: true,
+      assignee: personen([ICH]),
+    })
+  })
+
+  it('trägt beim Wegnehmen des Häkchens niemanden ein', async () => {
+    // "Doch nicht erledigt" ist keine Ansage, etwas getan zu haben.
+    const freie = mitAufgabe(NIEMAND, { erledigt: true })
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.hakeAb(freie, false)
+    })
+
+    expect(mutationAendern).toHaveBeenCalledWith(freie, { erledigt: false })
+  })
+
+  it('lässt eine fremde Aufgabe beim Abhaken fremd', async () => {
+    /*
+     * Die Sperre ist dazu da, dass nicht zwei Menschen dieselbe Behörde
+     * anrufen. Sie beiläufig zu übergehen hieße, sie abzuschaffen. Die
+     * Oberfläche sperrt das Häkchen hier ohnehin; der Hook soll sich nicht
+     * darauf verlassen.
+     */
+    const fremde = mitAufgabe(personen([BERT]))
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.hakeAb(fremde, true)
+    })
+
+    expect(mutationAendern).toHaveBeenCalledWith(fremde, { erledigt: true })
+  })
+
+  it('meldet die verlorene Übernahme auch, wenn sie aus einem Häkchen kam', async () => {
+    // §7: Tippen zwei Menschen im selben Moment, gewinnt die höhere `seq`.
+    // Die unterlegene Person soll lesen, wer schneller war.
+    const freie = mitAufgabe(NIEMAND)
+    mutationAendern.mockResolvedValue({ op: 'aendern' })
+
+    const { result, rerender } = renderHook(() => useAufgaben(FALL))
+    await waitFor(() => expect(result.current.zustand.status).toBe('bereit'))
+
+    await act(async () => {
+      await result.current.hakeAb(freie, true)
+    })
+
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [aufgabe({ assignee: personen([BERT]) })],
+      konfigurationen: [],
+      nachlass: [],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
+    rerender()
+
+    await waitFor(() => expect(result.current.uebernahmen).toHaveLength(1))
+    expect(result.current.uebernahmen[0]?.name).toBe('Bert Müller')
+  })
 
   it('trägt die angemeldete Person ein, wenn sie übernimmt', async () => {
     const eine = mitAufgabe()
@@ -654,6 +753,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -684,6 +784,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -715,6 +816,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -747,6 +849,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: personen([ICH, BERT]) })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -770,6 +873,7 @@ describe('Zuweisung', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe({ assignee: NIEMAND })],
       konfigurationen: [],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1', { seq: 2 })] }))
@@ -876,7 +980,7 @@ describe('Private Aufgaben (§3.7)', () => {
 
   it('prüft die Abhängigkeiten, bevor eine Änderung in die Queue geht', async () => {
     const eine = aufgabe()
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     mutationAendern.mockResolvedValue({ op: 'aendern', itemId: eine.id })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
 
@@ -902,7 +1006,7 @@ describe('Private Aufgaben (§3.7)', () => {
 
   it('hängt nichts an, wenn die Abhängigkeit auf eine private Aufgabe zeigt', async () => {
     const eine = aufgabe()
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [eine], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
 
     pruefeAbhaengigkeiten.mockImplementation(() => {
@@ -973,7 +1077,7 @@ describe('Private Aufgaben (§3.7)', () => {
      * Die geteilten Aufgaben stehen davon unberührt da.
      */
     ladePersoenlichenSchluessel.mockRejectedValue(new Error('Kein Netz.'))
-    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], uebersprungeneIds: [] })
+    aufgabenAusZeilen.mockResolvedValue({ aufgaben: [aufgabe()], konfigurationen: [], nachlass: [], uebersprungeneIds: [] })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1')] }))
 
     const { result } = renderHook(() => useAufgaben(FALL))
@@ -998,14 +1102,19 @@ describe('Private Aufgaben (§3.7)', () => {
  */
 describe('Kenntnisdatum (§8, #12)', () => {
   /** Ein gelesenes Konfigurations-Item, so wie der Dienst es liefert. */
-  function konfiguration(id: string, kenntnisAm: string | null) {
-    return { id, kenntnisAm, dek: new Uint8Array([8]), kid: PRIVAT.kid }
+  function konfiguration(
+    id: string,
+    kenntnisAm: string | null,
+    anfechtungKenntnisAm: string | null = null,
+  ) {
+    return { id, kenntnisAm, anfechtungKenntnisAm, dek: new Uint8Array([8]), kid: PRIVAT.kid }
   }
 
   it('haelt es aus dem Aufgabenbaum heraus und gibt es als Fristbezug weiter', async () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [aufgabe()],
       konfigurationen: [konfiguration('kenntnis-1', '2026-05-12')],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('item-1'), zeile('kenntnis-1')] }))
@@ -1016,6 +1125,7 @@ describe('Kenntnisdatum (§8, #12)', () => {
       expect(result.current.fristbezug).toEqual({
         sterbedatum: FALL.sterbedatum,
         kenntnisAm: '2026-05-12',
+        anfechtungKenntnisAm: null,
       })
     })
 
@@ -1049,6 +1159,7 @@ describe('Kenntnisdatum (§8, #12)', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [],
       konfigurationen: [vorhanden],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('kenntnis-1')] }))
@@ -1076,6 +1187,7 @@ describe('Kenntnisdatum (§8, #12)', () => {
     aufgabenAusZeilen.mockResolvedValue({
       aufgaben: [],
       konfigurationen: [konfiguration('kenntnis-1', '2026-05-12'), konfiguration('kenntnis-2', '2026-06-02')],
+      nachlass: [],
       uebersprungeneIds: [],
     })
     useSync.mockReturnValue(syncdaten({ zeilen: [zeile('kenntnis-1'), zeile('kenntnis-2')] }))
@@ -1085,6 +1197,90 @@ describe('Kenntnisdatum (§8, #12)', () => {
     await waitFor(() => {
       expect(result.current.fristbezug.kenntnisAm).toBe('2026-06-02')
     })
+  })
+})
+
+/**
+ * Das eigene Anfechtungs-Kenntnisdatum (§8, D).
+ *
+ * Dasselbe Muster wie oben bei `setzeKenntnisAm`, nur ein eigenes Feld
+ * desselben Konfigurations-Items: Die Anfechtung hängt an einem anderen Tag
+ * als die Ausschlagung nach § 1944 BGB, und beide dürfen sich nicht
+ * gegenseitig überschreiben.
+ */
+describe('Anfechtungs-Kenntnisdatum (§8, D)', () => {
+  function konfiguration(
+    id: string,
+    kenntnisAm: string | null,
+    anfechtungKenntnisAm: string | null,
+  ) {
+    return { id, kenntnisAm, anfechtungKenntnisAm, dek: new Uint8Array([8]), kid: PRIVAT.kid }
+  }
+
+  it('gibt es getrennt vom Kenntnisdatum als Fristbezug weiter', async () => {
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [],
+      konfigurationen: [konfiguration('konfig-1', '2026-05-12', '2026-06-01')],
+      nachlass: [],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('konfig-1')] }))
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => {
+      expect(result.current.fristbezug).toEqual({
+        sterbedatum: FALL.sterbedatum,
+        kenntnisAm: '2026-05-12',
+        anfechtungKenntnisAm: '2026-06-01',
+      })
+    })
+  })
+
+  it('legt beim ersten Eintragen ein Item unter K_p an', async () => {
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => {
+      expect(result.current.zustand.status).toBe('bereit')
+    })
+
+    await act(async () => {
+      await result.current.setzeAnfechtungKenntnisAm('2026-05-12')
+    })
+
+    expect(stellePersoenlichenSchluesselBereit).toHaveBeenCalled()
+    expect(mutationAnfechtungKenntnisAnlegen).toHaveBeenCalledWith(FALL, PRIVAT, '2026-05-12')
+    expect(mutationAnfechtungKenntnisAendern).not.toHaveBeenCalled()
+    expect(mutiere).toHaveBeenCalledWith({ op: 'anlegen', itemId: 'anfechtung-1' })
+  })
+
+  it('aendert das vorhandene Item, statt ein zweites anzulegen', async () => {
+    const vorhanden = konfiguration('konfig-1', null, '2026-05-12')
+
+    ladePersoenlichenSchluessel.mockResolvedValue(PRIVAT)
+    aufgabenAusZeilen.mockResolvedValue({
+      aufgaben: [],
+      konfigurationen: [vorhanden],
+      nachlass: [],
+      uebersprungeneIds: [],
+    })
+    useSync.mockReturnValue(syncdaten({ zeilen: [zeile('konfig-1')] }))
+
+    const { result } = renderHook(() => useAufgaben(FALL))
+
+    await waitFor(() => {
+      expect(result.current.fristbezug.anfechtungKenntnisAm).toBe('2026-05-12')
+    })
+
+    await act(async () => {
+      await result.current.setzeAnfechtungKenntnisAm('2026-06-02')
+    })
+
+    expect(mutationAnfechtungKenntnisAendern).toHaveBeenCalledWith(vorhanden, '2026-06-02')
+    expect(mutationAnfechtungKenntnisAnlegen).not.toHaveBeenCalled()
+    // Und das Kenntnisdatum nach § 1944 BGB bleibt unberührt: andere Funktion,
+    // anderes Feld.
+    expect(mutationKenntnisAendern).not.toHaveBeenCalled()
   })
 })
 

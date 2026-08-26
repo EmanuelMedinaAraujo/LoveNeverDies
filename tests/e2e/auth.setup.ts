@@ -1,5 +1,5 @@
 import { test as setup } from '@playwright/test'
-import { clerk } from '@clerk/testing/playwright'
+import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright'
 import { ansichtErweitert } from './helpers.ts'
 import { authDatei, testpersonAdresse, type Projektname } from './nutzer.ts'
 
@@ -17,6 +17,10 @@ import { authDatei, testpersonAdresse, type Projektname } from './nutzer.ts'
  * `clerk.signIn` mit `emailAddress` sucht die Person ueber Clerks Backend-API
  * und meldet sie per Ticket an: kein Passwort, kein Bestaetigungscode, keine
  * echten E-Mails. Siehe tests/e2e/README.md fuer die Einrichtung.
+ *
+ * `setupClerkTestingToken` legt den Testing Token aus `clerk.setup.ts` in
+ * diese Seite. Er umgeht Clerks Bot-Schutz; ohne ihn haengt eine Anmeldung im
+ * Captcha fest, das in einer Testumgebung niemand loest.
  */
 setup('Testperson anmelden', async ({ page }, testInfo) => {
   const projekt = testInfo.project.name.replace(/^setup-/, '') as Projektname
@@ -27,6 +31,7 @@ setup('Testperson anmelden', async ({ page }, testInfo) => {
    * wandert mit dem `storageState` in jedes Spec dieses Projekts.
    */
   await ansichtErweitert(page.context())
+  await setupClerkTestingToken({ page })
 
   await page.goto('/')
   await clerk.signIn({ page, emailAddress: email })

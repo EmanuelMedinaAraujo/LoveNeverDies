@@ -380,6 +380,41 @@ describe('Erbstatus im Trauerfall (ERBE_DESIGN.md §10)', () => {
     mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
   }
 
+  it('führt vom Nachlass-Tresor in den geöffneten Tresor (§3.5)', () => {
+    /*
+     * Vorher stand hier ein Satz, der auf den Tab "Alle" verwies. Was die
+     * vorsorgende Person hinterlegt hat, war damit nirgends zu sehen.
+     */
+    trauerfall()
+
+    rendereMitProvidern(<Erbe />)
+
+    const karte = screen.getByRole('link', { name: /Nachlass-Tresor/ })
+
+    expect(karte).toHaveAttribute('href', '/erbe/tresor')
+  })
+
+  it('zeigt den Nachlass-Tresor nicht, wenn der Fall nie eine Vorsorge hatte', () => {
+    /*
+     * `preparer_id` steht "nur bei Vorsorge" (siehe die Migration der
+     * `faelle`-Tabelle). Ein Trauerfall, der direkt angelegt wurde, hat nie
+     * einen Tresor gehabt, und die Karte führte dann zu einem Screen, der nur
+     * "Versiegelt, 0 von 0" melden könnte.
+     */
+    const fall = standardFall({
+      status: 'trauerfall',
+      sterbedatum: '2026-03-15',
+      preparerId: null,
+      vaultCommitment: null,
+      kv: null,
+    })
+    mockFallZustand = { status: 'bereit', faelle: [fall], aktiver: fall }
+
+    rendereMitProvidern(<Erbe />)
+
+    expect(screen.queryByRole('link', { name: /Nachlass-Tresor/ })).toBeNull()
+  })
+
   it('lädt in den Fragebaum ein, solange kein Ergebnis vorliegt', () => {
     trauerfall()
 
