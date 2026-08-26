@@ -219,6 +219,33 @@
 }
 
 /*
+ * Datumsfeld und Kreuz in einer Zeile (§7). Das Kreuz steht rechts *im* Feld
+ * und nicht als eigener Kasten darunter: Es gehoert zu diesem einen Feld.
+ */
+.fristzeile {
+  display: flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+}
+
+.fristzeile .eingabe {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Ein Kreuz ohne Text braucht seine 44 px aus eigenem Antrieb (§7). */
+.entfernen {
+  flex: none;
+  min-width: var(--ziel-mindestmass);
+  color: var(--farbe-text-sekundaer);
+}
+
+.kreuz {
+  width: var(--dichte-schrift-mittel);
+  height: var(--dichte-schrift-mittel);
+}
+
+/*
  * Eine Rueckfrage vor einer Handlung, die sich nicht zuruecknehmen laesst
  * (§7). Sie steht an der Stelle, an der gefragt wurde, und nicht als Dialog
  * ueber dem Bildschirm: Ein Dialog nimmt den Satz weg, um den es geht.
