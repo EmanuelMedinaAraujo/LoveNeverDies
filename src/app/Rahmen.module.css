@@ -13,3 +13,14 @@
       var(--raster-2)
   );
 }
+
+/*
+ * Ohne Fall steht keine Leiste unter dem Screen (§7). Dann gehört der Platz
+ * dafür auch nicht abgezogen: Der Willkommen-Screen zentriert seinen Inhalt,
+ * und ein Polster, das nichts mehr verdeckt, schöbe ihn sichtbar nach oben.
+ */
+.inhaltOhneLeiste {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}

@@ -17,6 +17,20 @@ import { createContext, useContext } from 'react'
 export type AuthBenutzer = {
   /** Clerk `sub`. Steht im Klartext in `memberships.user_id` (§3.3). */
   id: string
+  /**
+   * Der Name der Person, so wie sie ihn beim Anbieter hinterlegt hat — und
+   * sonst nichts.
+   *
+   * Leer, wenn dort keiner steht. Das ist der Regelfall bei der Anmeldung mit
+   * Apple, die den Namen nur beim allerersten Mal weiterreicht und die
+   * E-Mail-Adresse auf Wunsch verbirgt. Frueher stand hier ersatzweise die
+   * Adresse, und die wanderte von hier aus in `profiles`, in den Fallnamen der
+   * Vorsorge und in jedes Kopplungsangebot: „Zum Fall hinzufuegen?" fragte
+   * dann nach `a1b2c3d4e5@privaterelay.appleid.com`.
+   *
+   * Ein leerer Name ist die ehrlichere Auskunft. Wo ein Name gebraucht wird,
+   * fragt die App danach (`services/personenname.ts`).
+   */
   anzeigename: string
   email: string | null
 }

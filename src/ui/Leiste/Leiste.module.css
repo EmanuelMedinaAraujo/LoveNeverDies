@@ -150,17 +150,3 @@
   background: var(--farbe-akzent);
   box-shadow: 0 0 0 0.125rem var(--farbe-karte);
 }
-
-/*
- * Ohne Fall fuehren „Erbe" und „Alle" nirgendwohin (§7). Gedaempft statt
- * entfernt: Die Leiste behaelt ihre vier Plaetze, damit niemand am Telefon eine
- * andere Leiste beschreibt als die, vor der er sitzt.
- */
-.stumm {
-  color: color-mix(in srgb, var(--farbe-icon-inaktiv) 55%, var(--farbe-karte));
-  cursor: default;
-}
-
-.stumm .symbol {
-  color: inherit;
-}

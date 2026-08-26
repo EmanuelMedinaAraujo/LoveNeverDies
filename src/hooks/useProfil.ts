@@ -60,6 +60,13 @@ export function useProfilAbgleich(): Profildaten {
   const anzeigename = benutzer?.anzeigename ?? null
   const email = benutzer?.email ?? null
 
+  /*
+   * Geschrieben wird auch ein leerer Name, und das ist Absicht: Ohne Zeile in
+   * `profiles` gibt es keinen Kopplungscode ("Ohne hinterlegten Namen gibt es
+   * keinen Kopplungscode."), und wer bei Clerk keinen Namen hinterlegt hat,
+   * bekommt hier keinen erfundenen (`core/auth/clerkAdapter.tsx`). Wie ein
+   * fehlender Name dasteht, entscheidet die Anzeige (`services/personenname.ts`).
+   */
   useEffect(() => {
     if (benutzerId === null || anzeigename === null) {
       return

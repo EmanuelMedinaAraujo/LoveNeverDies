@@ -19,8 +19,20 @@ export function Vorsorge() {
   const { zustand: authZustand } = useAuth()
   const navigate = useNavigate()
 
+  /*
+   * Vorbelegt wird nur ein wirklich hinterlegter Name (§3.3).
+   *
+   * Frueher stand hier ersatzweise die E-Mail-Adresse, und wer sie stehen
+   * liess — die meisten, denn ein vorausgefuelltes Feld liest sich wie eine
+   * Auskunft der App —, legte seinen Vorsorgefall auf
+   * `a1b2c3d4e5@privaterelay.appleid.com" an. Der Fallname steht danach in
+   * jeder Ueberschrift und in jedem Kopplungsangebot.
+   *
+   * Steht kein Name bereit, bleibt das Feld leer und der Platzhalter sagt, was
+   * hineingehoert (`core/auth/clerkAdapter.tsx`).
+   */
   const standardName =
-    authZustand.status === 'angemeldet' ? authZustand.benutzer.anzeigename : ''
+    authZustand.status === 'angemeldet' ? authZustand.benutzer.anzeigename.trim() : ''
 
   const [personName, setzePersonName] = useState(standardName)
   const [laeuft, setzeLaeuft] = useState(false)
@@ -32,7 +44,7 @@ export function Vorsorge() {
     setzeFehler(null)
 
     try {
-      await legeVorsorgefallAn({ personName: personName || standardName })
+      await legeVorsorgefallAn({ personName: personName.trim() })
       navigate('/nachlass', { replace: true })
     } catch (ursache) {
       setzeFehler(alsNachricht(ursache))
@@ -65,7 +77,7 @@ export function Vorsorge() {
               className={stile.eingabe}
               value={personName}
               onChange={(ereignis) => setzePersonName(ereignis.target.value)}
-              placeholder={standardName || 'Vor- und Nachname'}
+              placeholder="Vor- und Nachname"
               required
               autoFocus
             />

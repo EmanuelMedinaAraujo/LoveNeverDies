@@ -402,6 +402,29 @@ export function istAusschlagungAufgabe(aufgabe: {
   return titel.includes('ausschlag')
 }
 
+/**
+ * Ob das die Katalogaufgabe „Totenschein erstellen" ist (§8).
+ *
+ * Sie ist der eine Fall, in dem der Kasten „Das gilt dafür" nichts zu sagen
+ * hat als den einen Schritt: Frist hat sie keine, Dokumente braucht sie keine,
+ * und „Dorthin geht es: Ärztin oder Arzt" wiederholt nur, was in „Arzt
+ * kontaktieren" schon steht. Drei Zeilen, von denen zwei leer und eine doppelt
+ * ist, machen aus dem ersten Schritt nach einem Todesfall eine Formularseite.
+ *
+ * Erkannt wird sie an der Katalogkennung und ersatzweise am Titel — wie bei
+ * den Aufgaben aus dem Fragebaum daneben: Eine Aufgabe, die jemand von Hand
+ * „Totenschein erstellen" genannt hat, meint dieselbe Sache.
+ */
+export function istTotenscheinAufgabe(aufgabe: {
+  titel?: string
+  katalog?: Katalogherkunft | null
+}): boolean {
+  const id = aufgabe.katalog?.aufgabeId?.toLowerCase() ?? ''
+  if (id.includes('totenschein')) return true
+  const titel = aufgabe.titel?.toLowerCase() ?? ''
+  return titel.includes('totenschein')
+}
+
 /** Ob diese Aufgabe die Katalogaufgabe ist, die auf den Fragebaum führt. */
 export function istSeedAufgabe(katalog: Katalogherkunft | null): boolean {
   return katalog !== null && katalog.aufgabeId === SEED_AUFGABE

@@ -106,18 +106,18 @@ describe('Rahmen', () => {
     expect(screen.queryByRole('link', { name: 'Erbe' })).toBeNull()
   })
 
-  it('stellt Erbe und Alle still, solange es keinen Fall gibt (§7)', () => {
+  it('lässt die Leiste weg, solange es keinen Fall gibt (§7)', () => {
+    /*
+     * Ohne Fall steht auf jedem Hauptscreen der Willkommen-Screen: Zwei der
+     * vier Plätze führten dann nirgendwohin und einer wieder hierher. Das
+     * Onboarding ist ein linearer Ablauf, und dort trägt kein Screen eine
+     * Leiste (`screens/shared/KeinFall`).
+     */
     useCase.mockReturnValue(falldaten({ status: 'kein-fall' }))
 
     rendere()
 
-    expect(screen.getByText('Erbe').closest('[role="link"]')).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
-    expect(screen.getByText('Alle').closest('[role="link"]')).toHaveAttribute(
-      'aria-disabled',
-      'true',
-    )
+    expect(screen.getByText('Screeninhalt')).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'Hauptbereiche' })).toBeNull()
   })
 })
