@@ -297,8 +297,9 @@ export type Fristbezug = {
  * @param eigeneFrist die selbst gesetzte Frist der Aufgabe (`fristAm`), oder
  * `null`. Sie tritt neben die gesetzliche und nicht an ihre Stelle: Gezeigt
  * wird die frühere von beiden. Ein selbst eingetragener späterer Tag darf eine
- * Ausschlagungsfrist nicht vom Bildschirm nehmen (§8) — und ein früherer soll
- * mahnen, weil genau dafür ihn jemand eingetragen hat.
+ * Frist nicht vom Bildschirm nehmen (§8) — und ein früherer soll mahnen, weil
+ * genau dafür ihn jemand eingetragen hat. Bei einer Frist ab eigener Kenntnis
+ * bleibt sie ausdrücklich aussen vor (siehe `haengtAnEigenerKenntnis`).
  */
 export function fristlage(
   katalog: Katalogherkunft | null,
@@ -307,7 +308,7 @@ export function fristlage(
   eigeneFrist: string | null = null,
 ): Fristlage {
   const gesetzlich = gesetzlicheLage(katalog, bezug, heute)
-  const eigen = eigeneLage(eigeneFrist, heute)
+  const eigen = haengtAnEigenerKenntnis(katalog) ? null : eigeneLage(eigeneFrist, heute)
 
   if (eigen === null) {
     return gesetzlich
@@ -327,6 +328,20 @@ export function fristlage(
   }
 
   return eigen.ende < gesetzlich.ende ? eigen : gesetzlich
+}
+
+/**
+ * Ob die Frist dieser Aufgabe an der Kenntnis *dieser* Person hängt — der
+ * Ausschlagung (§ 1944 BGB) und der Testamentsanfechtung (§ 2082 BGB).
+ *
+ * Solche Aufgaben kennen keine selbst gesetzte Frist daneben: Das Datum, das
+ * ihr Ende bestimmt, ist das eigene Kenntnisdatum, und es steht als einziges
+ * Feld auf dem Screen. Ein zweites Datum, das die Anzeige übersteuert, wäre
+ * genau bei den beiden Fristen, die den Nachlass kosten können, die Frage,
+ * welche der beiden Zahlen nun gilt.
+ */
+function haengtAnEigenerKenntnis(katalog: Katalogherkunft | null): boolean {
+  return katalog?.fristAb === 'kenntnis' || katalog?.fristAb === 'anfechtungskenntnis'
 }
 
 /**
