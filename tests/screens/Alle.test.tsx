@@ -8,7 +8,7 @@ import type { Aufgabe, Katalogherkunft } from '../../src/services/aufgabenServic
 import { baueBaum } from '../../src/services/aufgabenbaum.ts'
 import type { LesbarerFall } from '../../src/services/fallService.ts'
 import { BENUTZER, Huelle, rendereMitProvidern } from './harness.tsx'
-import { NIEMAND, personen } from '../../src/services/zuweisung.ts'
+import { personen } from '../../src/services/zuweisung.ts'
 
 const useCase = vi.fn<() => Falldaten>()
 const useAufgaben = vi.fn<() => Aufgabendaten>()
@@ -309,96 +309,6 @@ describe('Alle', () => {
     await waitFor(() => expect(hakeAb).toHaveBeenCalledWith(aufgabe({ erledigt: true }), false))
   })
 
-  it('benennt eine Aufgabe um und nimmt die Beschreibung mit', async () => {
-    const schreibe = vi.fn().mockResolvedValue(undefined)
-    useAufgaben.mockReturnValue(aufgabendaten({ schreibe }))
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Ändern/ }))
-
-    await userEvent.clear(screen.getByLabelText('Titel'))
-    await userEvent.type(screen.getByLabelText('Titel'), 'Sterbeurkunde abholen')
-    await userEvent.type(screen.getByLabelText('Beschreibung'), 'Sechs Ausfertigungen')
-    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
-
-    await waitFor(() =>
-      expect(schreibe).toHaveBeenCalledWith(aufgabe(), {
-        titel: 'Sterbeurkunde abholen',
-        beschreibung: 'Sechs Ausfertigungen',
-      }),
-    )
-  })
-
-  it('laesst das Umbenennen abbrechen, ohne etwas zu schreiben', async () => {
-    const schreibe = vi.fn().mockResolvedValue(undefined)
-    useAufgaben.mockReturnValue(aufgabendaten({ schreibe }))
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Ändern/ }))
-    await userEvent.type(screen.getByLabelText('Titel'), 'verworfen')
-    await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
-
-    expect(schreibe).not.toHaveBeenCalled()
-    expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
-  })
-
-  it('fragt vor dem Loeschen und nennt die Endgueltigkeit', async () => {
-    // §5: Löschen gewinnt endgültig, die Datenbank weist eine Auferstehung ab.
-    // Das gehört vor die Aktion gesagt.
-    const loesche = vi.fn().mockResolvedValue(undefined)
-    useAufgaben.mockReturnValue(aufgabendaten({ loesche }))
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Löschen/ }))
-
-    expect(screen.getByText(/kommen nicht zurück/)).toBeVisible()
-    expect(loesche).not.toHaveBeenCalled()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }))
-
-    await waitFor(() => expect(loesche).toHaveBeenCalledWith(aufgabe()))
-  })
-
-  it('laesst das Loeschen abbrechen', async () => {
-    const loesche = vi.fn().mockResolvedValue(undefined)
-    useAufgaben.mockReturnValue(aufgabendaten({ loesche }))
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Löschen/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
-
-    expect(loesche).not.toHaveBeenCalled()
-    expect(screen.getByRole('checkbox', { name: 'Sterbeurkunde beantragen' })).toBeVisible()
-  })
-
-  it('nennt jede Schaltflaeche mit ihrer Aufgabe', async () => {
-    // Ohne den Titel zum Vorlesen hoerte eine blinde Person in einer Liste von
-    // zwanzig Aufgaben zwanzigmal "Ändern" (§7).
-    useAufgaben.mockReturnValue(
-      aufgabendaten({
-        zustand: {
-          status: 'bereit',
-          aufgaben: [aufgabe(), aufgabe({ id: 'item-2', titel: 'Konten kündigen' })],
-          uebersprungen: 0,
-          ...NETZ,
-        },
-      }),
-    )
-
-    rendereMitProvidern(<Alle />)
-
-    // Der zugaengliche Name wird als regulaerer Ausdruck geprueft: Wie das
-    // Trennzeichen zwischen sichtbarem und vorgelesenem Teil aussieht,
-    // normalisiert jede Umgebung anders. Die Zusage ist, dass der Titel darin
-    // vorkommt, nicht wie er angeklebt wird.
-    expect(screen.getByRole('button', { name: /^Ändern.*Konten kündigen/ })).toBeVisible()
-    expect(screen.getByRole('button', { name: /^Löschen.*Konten kündigen/ })).toBeVisible()
-  })
-
   it('haelt die Beschreibung aus der Liste heraus', () => {
     useAufgaben.mockReturnValue(
       aufgabendaten({
@@ -455,25 +365,23 @@ describe('Alle', () => {
 
     await userEvent.type(screen.getByLabelText('Neue Aufgabe'), 'Etwas')
     expect(hinzufuegen).toBeEnabled()
-
-    await userEvent.click(screen.getByRole('button', { name: /^Ändern/ }))
-    await userEvent.clear(screen.getByLabelText('Titel'))
-    expect(screen.getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })
 
-  it('haelt das Aenderungsformular offen, wenn das Speichern scheitert', async () => {
-    const schreibe = vi.fn().mockRejectedValue(new Error('Die Aufgabe war nicht zu ändern.'))
-    useAufgaben.mockReturnValue(aufgabendaten({ schreibe }))
+  it('bietet in der Liste keine Aktion an, sondern nur den Weg ins Detail (§7)', () => {
+    /*
+     * Ändern, Löschen, Übernehmen und Freigeben stehen im Aufgabendetail. Vier
+     * Schaltflächen unter jeder von zwanzig Zeilen sind vier Gelegenheiten, in
+     * einer Liste etwas zu löschen, das man nur ansehen wollte.
+     */
+    useAufgaben.mockReturnValue(aufgabendaten())
 
     rendereMitProvidern(<Alle />)
 
-    await userEvent.click(screen.getByRole('button', { name: /Ändern/ }))
-    await userEvent.clear(screen.getByLabelText('Titel'))
-    await userEvent.type(screen.getByLabelText('Titel'), 'Sterbeurkunde abholen')
-    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
+    for (const name of [/^Ändern/, /^Löschen/, /^Übernehmen/, /^Freigeben/]) {
+      expect(screen.queryByRole('button', { name })).toBeNull()
+    }
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('nicht zu ändern')
-    expect(screen.getByLabelText('Titel')).toHaveValue('Sterbeurkunde abholen')
+    expect(screen.getByRole('link', { name: 'Details: „Sterbeurkunde beantragen“' })).toBeVisible()
   })
 
   it('zeigt den Zaehler der uebersprungenen Eintraege nur im Dev-Modus', () => {
@@ -685,33 +593,6 @@ describe('Alle', () => {
       expect(screen.queryByRole('link', { name })).toBeNull()
     }
   })
-
-  it('aendert genau die Aufgabe, deren Schaltflaeche gedrueckt wurde', async () => {
-    const schreibe = vi.fn().mockResolvedValue(undefined)
-    const zweite = aufgabe({ id: 'item-2', titel: 'Konten kündigen' })
-    useAufgaben.mockReturnValue(
-      aufgabendaten({
-        schreibe,
-        zustand: { status: 'bereit', aufgaben: [aufgabe(), zweite], uebersprungen: 0, ...NETZ },
-      }),
-    )
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /^Ändern.*Konten kündigen/ }))
-
-    // Nur eine Zeile steht im Änderungsmodus, also gibt es genau ein
-    // "Speichern", und der vorbelegte Titel verrät, welche Zeile es ist.
-    expect(screen.getByLabelText('Titel')).toHaveValue('Konten kündigen')
-    await userEvent.click(screen.getByRole('button', { name: 'Speichern' }))
-
-    await waitFor(() =>
-      expect(schreibe).toHaveBeenCalledWith(zweite, {
-        titel: 'Konten kündigen',
-        beschreibung: '',
-      }),
-    )
-  })
 })
 
 /**
@@ -866,6 +747,29 @@ describe('Alle: Fristen, Unteraufgaben, Abhängigkeiten (§7)', () => {
     expect(titel()).toEqual(['/aufgabe/frueh', '/aufgabe/spaet', '/aufgabe/ohne'])
   })
 
+  it('bietet im Vorsorgefall gar keine Sortierung an (§2, §3.5)', () => {
+    /*
+     * Ein Vorsorgefall hat kein Sterbedatum und damit keine einzige Frist.
+     * "Nach Frist" sortierte dort eine Liste, in der jede Zeile denselben
+     * leeren Wert trägt — eine Wahl, die sichtbar nichts tut.
+     */
+    const vorsorge: LesbarerFall = { ...LESBAR, status: 'vorsorge', sterbedatum: null }
+    useCase.mockReturnValue(
+      falldaten({ zustand: { status: 'bereit', faelle: [vorsorge], aktiver: vorsorge } }),
+    )
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: { status: 'bereit', aufgaben: [aufgabe()], uebersprungen: 0, ...NETZ },
+        fristbezug: { sterbedatum: null, kenntnisAm: null, anfechtungKenntnisAm: null },
+      }),
+    )
+
+    rendereMitProvidern(<Alle />)
+
+    expect(screen.queryByLabelText('Sortierung')).toBeNull()
+    expect(screen.queryByRole('option', { name: 'Nach Frist' })).toBeNull()
+  })
+
   it('bietet Erinnerungen an, sobald es welche zu planen gibt', async () => {
     const frage = vi.fn().mockResolvedValue(undefined)
 
@@ -925,39 +829,13 @@ describe('Zuweisung', () => {
 
     rendereMitProvidern(<Alle />)
 
-    // Kein graues Kästchen, sondern gar keines: Der Titel steht als Text da.
+    /*
+     * Kein graues Kästchen, sondern gar keines: Der Titel steht als Text da.
+     * Alles Weitere — übernehmen, freigeben, ändern — steht im Detail (§7);
+     * dass die Liste gar keine Aktion mehr trägt, prüft der Test oben.
+     */
     expect(screen.queryByRole('checkbox', { name: /Sterbeurkunde beantragen/ })).toBeNull()
     expect(screen.getByText('Sterbeurkunde beantragen')).toBeVisible()
-    expect(screen.queryByRole('button', { name: /^Ändern/ })).toBeNull()
-    expect(screen.queryByRole('button', { name: /^Löschen/ })).toBeNull()
-  })
-
-  it('lässt eine unzugewiesene Aufgabe übernehmen', async () => {
-    const daten = mitAufgabe({ assignee: NIEMAND })
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Übernehmen/ }))
-
-    expect(daten.uebernimm).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }))
-  })
-
-  it('bietet bei einer freien Aufgabe nichts zum Freigeben an', () => {
-    mitAufgabe({ assignee: NIEMAND })
-
-    rendereMitProvidern(<Alle />)
-
-    expect(screen.queryByRole('button', { name: /Freigeben/ })).toBeNull()
-  })
-
-  it('lässt jedes Mitglied eine fremde Reservierung lösen (§7)', async () => {
-    const daten = mitAufgabe({ assignee: personen([BERT]) })
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Freigeben/ }))
-
-    expect(daten.gibFrei).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }))
   })
 
   it('meldet, wer eine Aufgabe stattdessen übernommen hat', () => {
@@ -1048,52 +926,26 @@ describe('Private Aufgaben (§3.7)', () => {
     expect(within(screen.getByRole('listitem')).getByText('Nur für mich')).toBeVisible()
   })
 
-  it('zeigt "Für alle sichtbar machen" nur bei privaten Aufgaben', () => {
-    useAufgaben.mockReturnValue(aufgabendaten())
+  it('hält "Für alle sichtbar machen" aus der Liste heraus (§7)', () => {
+    /*
+     * Die eine Aktion aus §3.7 gibt es weiterhin, aber im Aufgabendetail: Sie
+     * wrappt den DEK von `K_p` auf `K_c` und lässt sich nicht zurücknehmen —
+     * nichts, was in einer Liste unter jeder Zeile stehen sollte.
+     */
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [aufgabe({ titel: 'Erbausschlagung erwägen', privat: true })],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
 
     rendereMitProvidern(<Alle />)
 
     expect(screen.queryByRole('button', { name: /Für alle sichtbar machen/ })).toBeNull()
-  })
-
-  it('fragt vor der Freigabe und gibt danach frei', async () => {
-    /*
-     * Freigeben wrappt den DEK von `K_p` auf `K_c` (§3.7). Einen Weg zurück
-     * gibt es nicht: Der Fallschlüssel liegt bei allen, und was einmal darunter
-     * lag, hat jedes Mitglied beim nächsten Delta gesehen.
-     */
-    const meine = aufgabe({ titel: 'Erbausschlagung erwägen', privat: true })
-    const daten = aufgabendaten({
-      zustand: { status: 'bereit', aufgaben: [meine], uebersprungen: 0, ...NETZ },
-    })
-    useAufgaben.mockReturnValue(daten)
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Für alle sichtbar machen/ }))
-
-    expect(screen.getByText(/Zurücknehmen lässt sich das nicht/)).toBeVisible()
-    expect(daten.gibFuerAlleFrei).not.toHaveBeenCalled()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Für alle sichtbar machen' }))
-
-    expect(daten.gibFuerAlleFrei).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }))
-  })
-
-  it('nimmt die Freigabe zurück, wenn jemand abbricht', async () => {
-    const meine = aufgabe({ titel: 'Erbausschlagung erwägen', privat: true })
-    const daten = aufgabendaten({
-      zustand: { status: 'bereit', aufgaben: [meine], uebersprungen: 0, ...NETZ },
-    })
-    useAufgaben.mockReturnValue(daten)
-
-    rendereMitProvidern(<Alle />)
-
-    await userEvent.click(screen.getByRole('button', { name: /Für alle sichtbar machen/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'Abbrechen' }))
-
-    expect(daten.gibFuerAlleFrei).not.toHaveBeenCalled()
-    expect(screen.getByText('Erbausschlagung erwägen')).toBeVisible()
   })
 })
 
