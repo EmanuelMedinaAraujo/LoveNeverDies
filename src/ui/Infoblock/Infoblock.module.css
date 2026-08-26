@@ -60,3 +60,19 @@ h2.titel {
 .punkte > li + li {
   margin-block-start: var(--raster-1);
 }
+
+/*
+ * Die farbigen Auszeichnungen aus der Inhaltsschicht. Gruen hebt eine
+ * Zwischenzeile hervor ("Ueber ein Notariat:"), rot einen Hinweis, dessen
+ * Missachtung etwas kostet. Beide fett, damit sie auch ohne Farbe auffallen --
+ * Farbe allein traegt keine Bedeutung.
+ */
+.gruen {
+  color: var(--farbe-akzent);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.rot {
+  color: var(--farbe-frist-abgelaufen-text);
+  font-weight: var(--typo-gewicht-betont);
+}
