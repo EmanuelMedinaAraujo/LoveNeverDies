@@ -26,6 +26,15 @@ import stile from './Zurueck.module.css'
  * Eintrag einen Schluessel und nennt genau den ersten `default`. Steht er da,
  * ist dieser Screen der Einstieg dieser Sitzung, und `navigate(-1)` fuehrte
  * aus der App heraus -- im installierten Zustand auf einen leeren Bildschirm.
+ *
+ * **Wo die Historie das falsche Versprechen gibt.** Ein Screen kann beim
+ * Navigieren `state.zurueck` mitgeben und damit sagen: Von hier fuehrt der Weg
+ * zurueck nicht dorthin, wo der Klick herkam. Der Fragebaum tut das, wenn er
+ * eine angelegte Aufgabe oeffnet -- er ist ein Ablauf, aus dem man
+ * herauskommt, und wer die Aufgabe gesehen hat, will danach zu den Aufgaben
+ * und nicht mitten in den Baum zurueck. Der Eintrag wird dabei ersetzt: Die
+ * Aufgabe bleibt sonst zwischen Uebersicht und Baum stehen, und der
+ * Zurueck-Knopf des Browsers fuehrte durch dasselbe Detail ein zweites Mal.
  */
 export function Zurueck({
   ziel,
@@ -37,7 +46,14 @@ export function Zurueck({
   beschriftung?: string
 }) {
   const navigate = useNavigate()
-  const { key } = useLocation()
+  const { key, state } = useLocation()
+  /*
+   * Das erzwungene Ziel des Screens, der hierher navigiert hat. Es gewinnt
+   * gegen die Historie und gegen `ziel`: Nur der Weg herein weiss, ob der Weg
+   * zurueck derselbe sein soll.
+   */
+  const erzwungen = (state as { zurueck?: unknown } | null)?.zurueck
+  const ausweg = typeof erzwungen === 'string' ? erzwungen : null
 
   function zurueck(ereignis: React.MouseEvent<HTMLAnchorElement>) {
     // Ein Klick mit Zusatztaste oder mit der mittleren Maustaste gehoert dem
@@ -53,6 +69,12 @@ export function Zurueck({
       return
     }
 
+    if (ausweg !== null) {
+      ereignis.preventDefault()
+      navigate(ausweg, { replace: true })
+      return
+    }
+
     if (key !== 'default') {
       ereignis.preventDefault()
       navigate(-1)
@@ -60,7 +82,7 @@ export function Zurueck({
   }
 
   return (
-    <Link to={ziel} className={stile.zurueck} onClick={zurueck}>
+    <Link to={ausweg ?? ziel} className={stile.zurueck} onClick={zurueck}>
       <svg
         className={stile.winkel}
         viewBox="0 0 24 24"

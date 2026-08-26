@@ -14,11 +14,16 @@ import { Zurueck } from '../../src/ui/Zurueck/Zurueck.tsx'
  * `ziel`.
  */
 
-function Anderswo() {
+function Anderswo({ zurueck }: { zurueck?: string } = {}) {
   const navigate = useNavigate()
 
   return (
-    <button type="button" onClick={() => navigate('/detail')}>
+    <button
+      type="button"
+      onClick={() =>
+        navigate('/detail', zurueck === undefined ? undefined : { state: { zurueck } })
+      }
+    >
       Weiter zum Detail
     </button>
   )
@@ -58,6 +63,31 @@ describe('Zurueck', () => {
   it('nimmt das Ziel, wenn es keine Historie gibt', async () => {
     const nutzer = userEvent.setup()
     render(<Buehne />)
+
+    await nutzer.click(screen.getByRole('link', { name: 'Zurück' }))
+
+    expect(screen.getByText('Startseite')).toBeVisible()
+  })
+
+  it('nimmt das erzwungene Ziel aus dem Navigationsstatus statt der Historie', async () => {
+    // Der Fragebaum oeffnet so eine angelegte Aufgabe: Zurueck fuehrt zu den
+    // Aufgaben, nicht auf die Frage, aus der sie entstanden ist.
+    const nutzer = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={['/liste']}>
+        <Routes>
+          <Route path="/liste" element={<Anderswo zurueck="/start" />} />
+          <Route path="/start" element={<p>Startseite</p>} />
+          <Route path="/detail" element={<Zurueck ziel="/anderswohin" />} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    await nutzer.click(screen.getByRole('button', { name: 'Weiter zum Detail' }))
+
+    // Auch das `href` zeigt dorthin: der Link verspricht, was der Klick tut.
+    expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/start')
 
     await nutzer.click(screen.getByRole('link', { name: 'Zurück' }))
 
