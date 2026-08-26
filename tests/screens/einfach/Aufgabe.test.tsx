@@ -93,6 +93,29 @@ describe('Aufgabe (einfach)', () => {
     expect(screen.queryByRole('link', { name: /gesetze-im-internet/ })).toBeNull()
   })
 
+  it('zeigt Nachlassgerichtssuche ausgeklappt und persistiert gefundene Gerichte in den Notizen', async () => {
+    const daten = mitDetail([
+      aufgabe({
+        katalog: herkunft({
+          zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
+        }),
+      }),
+    ])
+
+    const eingabe = screen.getByPlaceholderText(/PLZ z\. B\./i)
+    expect(eingabe).toBeVisible()
+
+    await userEvent.type(eingabe, '74199')
+
+    expect(screen.getByRole('heading', { name: 'Amtsgericht Heilbronn' })).toBeVisible()
+    expect(daten.schreibe).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'item-1' }),
+      expect.objectContaining({
+        notizen: expect.stringContaining('Amtsgericht Heilbronn'),
+      }),
+    )
+  })
+
   it('hakt die Aufgabe ab', async () => {
     const daten = mitDetail([aufgabe({ katalog: herkunft() })])
 
