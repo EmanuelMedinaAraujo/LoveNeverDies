@@ -1,0 +1,306 @@
+/*
+ * Der Nachlass-Bereich (DESIGN.md §3.5, §7). Alle Masse aus den Tokens.
+ *
+ * Eine Datei fuer sechs Seiten, und das ist Absicht: Es sind sechs Ansichten
+ * *eines* Bereichs, sie liegen hintereinander, und wer von der Checkliste zur
+ * Uebersicht geht, soll dieselbe Seite in einem anderen Zustand sehen und
+ * nicht eine zweite Seite, die aehnlich aussieht. Sechs Dateien waeren sechs
+ * Gelegenheiten, das Polster einer Karte um zwei Pixel zu verfehlen.
+ */
+
+.seite {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-gross);
+  padding: var(--dichte-abstand-gross) var(--dichte-abstand);
+  max-width: 32rem;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kopf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.kopf h1 {
+  margin: 0;
+}
+
+.statusKopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--dichte-abstand);
+}
+
+/* Kartenueberschrift. Der Abstand kommt aus dem Gap der Karte. */
+.abschnitt {
+  margin: 0;
+}
+
+.hinweis {
+  margin: 0;
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.warnung {
+  margin: 0;
+  color: var(--farbe-frist-abgelaufen-text);
+  font-size: var(--dichte-schrift-klein);
+  font-weight: var(--typo-gewicht-betont);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.absatz {
+  margin: 0;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/*
+ * Die beiden Wege vom Nachlass-Screen aus: je eine Karte, die ganz anzutippen
+ * ist. Der Link umschliesst die Karte, statt in ihr zu stehen -- dieselbe
+ * Form wie die Karte "Nachlass-Tresor" im Trauerfall (§3.5).
+ */
+.wege {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+.weg {
+  display: block;
+  width: 100%;
+  border-radius: var(--dichte-radius);
+  color: inherit;
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+
+.weg:hover .wegTitel {
+  text-decoration: underline;
+}
+
+.wegKopf {
+  display: flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Das Symbol behaelt seine Groesse. Ohne das drueckt eine lange Beschriftung
+ * es im Flex-Kasten zusammen, und aus dem Symbol wird ein Strich.
+ */
+.wegKopf svg {
+  flex: none;
+  color: var(--farbe-akzent);
+}
+
+.wegTitel {
+  flex: 1;
+  margin: 0;
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------- Fragen */
+
+.fragen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-gross);
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * `pre-wrap`, weil der gelieferte Text seine eigenen Zeilen hat: "Beispiel:
+ * Mietvertrag, Strom, Kfz usw." steht darin auf einer eigenen Zeile und soll
+ * auf einer eigenen Zeile stehen bleiben (§8).
+ */
+.frage {
+  white-space: pre-wrap;
+  font-weight: var(--typo-gewicht-betont);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/*
+ * Fuenf Zeilen hoch und in der Hoehe ziehbar: In diese Felder gehoeren
+ * Adressen, Vertragsnummern und ganze Absaetze, nicht ein Wort.
+ */
+.textbereich {
+  width: 100%;
+  min-height: 7rem;
+  padding: var(--dichte-abstand-klein);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+  line-height: var(--dichte-zeilenhoehe);
+  resize: vertical;
+}
+
+.eingabe {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+}
+
+/*
+ * Die Zeile unter dem Antwortfeld: "Wird gespeichert…", "Gespeichert" oder
+ * die Meldung, dass es nicht ging.
+ *
+ * Sie steht immer da, auch wenn sie leer ist, und behaelt ihre Hoehe: Sonst
+ * ruckte die ganze Seite um eine Zeile, sobald jemand ein Feld verlaesst --
+ * und zwar unter dem Finger, der gerade das naechste Feld sucht.
+ */
+.stand {
+  display: flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+  min-height: 1.5rem;
+  margin: 0;
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}
+
+.standFehler {
+  color: var(--farbe-frist-abgelaufen-text);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+/* Das Haekchen vor "Gespeichert". */
+.haken {
+  flex: none;
+  color: var(--farbe-akzent);
+}
+
+/*
+ * Der Anschluss unter einer Frage: die Weiterfrage zum Testament samt ihrem
+ * Weg. Abgesetzt durch eine Haarlinie, nicht durch eine zweite Karte: Es
+ * gehoert zu dieser Frage und nicht daneben.
+ */
+.anschluss {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  padding-block-start: var(--dichte-abstand);
+  border-block-start: 0.0625rem solid var(--farbe-kartenrand);
+}
+
+/* ------------------------------------------------------------- Eintraege */
+
+.liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+.eintrag {
+  padding: var(--dichte-abstand-klein);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eintragKopf {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eintragTitel {
+  margin: 0;
+  font-weight: var(--typo-gewicht-betont);
+}
+
+/*
+ * `pre-wrap`: Wer eine Liste von Zugaengen hinterlegt, hat die Zeilenumbrueche
+ * gesetzt, und sie wegzurechnen machte aus der Liste einen Absatz.
+ */
+.eintragInhalt {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+/*
+ * Zwei Schaltflaechen nebeneinander, solange der Platz reicht, und
+ * untereinander, wenn nicht: Auf einem schmalen Telefon steht "Speichern"
+ * sonst halb ueber "Abbrechen".
+ */
+.knopfgruppe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--dichte-abstand-klein);
+}
+
+.knopfgruppe > * {
+  flex: 1 1 10rem;
+}
+
+/* ------------------------------------------------------------ Uebersicht */
+
+/*
+ * Eine Antwort in der Uebersicht: die Frage klein darueber, die Antwort
+ * darunter im Fliesstext. Umgekehrt als im Formular, wo die Frage die
+ * Beschriftung des Feldes ist -- hier ist die Antwort die Sache.
+ */
+.antwort {
+  display: flex;
+  flex-direction: column;
+  gap: var(--raster-1);
+}
+
+.antwortFrage {
+  margin: 0;
+  white-space: pre-wrap;
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.antwortText {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/* Eine Frage ohne Antwort. Kursiv statt grau: Grau ist hier schon die Frage. */
+.antwortOffen {
+  margin: 0;
+  font-style: italic;
+  color: var(--farbe-text-sekundaer);
+}

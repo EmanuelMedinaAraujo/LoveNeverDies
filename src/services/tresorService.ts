@@ -12,6 +12,7 @@
  * Neuverteilungen laufen atomar über die RPC resplit_vault.
  */
 
+import { VORSORGEFRAGEN } from '../content/vorsorgefragen'
 import { entschluessele, verschluessele } from '../core/crypto/aead'
 import { bytesText, sha256, textBytes } from '../core/crypto/bytes'
 import { entpackeDek, erzeugeDek, wrappeDek } from '../core/crypto/dek'
@@ -248,39 +249,48 @@ export function mutationTresorLoeschen(itemId: string): Mutation {
 }
 
 /**
- * Woran eine selbst gestellte Frage zu erkennen ist.
+ * Die freien Eintraege im Tresor: alles, was zu keiner Frage gehoert.
  *
- * Die acht gelieferten Fragen tragen ihre Kennung aus der Inhaltsdatei
- * (`content/vorsorgefragen.ts`), eine selbst gestellte bekommt sie beim
- * Anlegen. Das Präfix trennt beide, ohne dass der Tresor ein zweites Feld
- * dafür braucht: Wer die Zeilen ohne diese App liest, sieht an der Kennung,
- * dass der Wortlaut der Frage im Titel steht und nicht in einer Inhaltsdatei,
- * die er nicht hat.
+ * Eine Notiz und eine Antwort sehen im Tresor gleich aus; getrennt haelt sie
+ * die Frage-Kennung im Payload. Ohne diese Trennung stuende dieselbe Auskunft
+ * zweimal auf dem Bildschirm — einmal unter ihrer Frage, einmal ohne sie und
+ * ohne Feld zum Aendern (§3.5).
+ *
+ * Sortiert wird ueber die Item-Kennung und nicht ueber `geaendertAm`: Sonst
+ * spraenge ein Eintrag nach unten, sobald jemand ihn aendert, und die Liste
+ * saehe nach jedem Speichern anders aus. `uuidv7` traegt die Zeit im Praefix,
+ * die Kennung ordnet also nach Entstehung.
  */
-export const EIGENE_FRAGE_PRAEFIX = 'eigen-'
-
-/** Ob diese Kennung zu einer selbst gestellten Frage gehört. */
-export function istEigeneFrage(frageId: string | null): boolean {
-  return frageId !== null && frageId.startsWith(EIGENE_FRAGE_PRAEFIX)
-}
-
-/** Eine frische Kennung für eine selbst gestellte Frage. */
-export function neueEigeneFrageId(): string {
-  return `${EIGENE_FRAGE_PRAEFIX}${uuidv7()}`
+export function freieEintraege(items: TresorItem[]): TresorItem[] {
+  return items
+    .filter((item) => item.frageId === null)
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 }
 
 /**
- * Die selbst gestellten Fragen, in der Reihenfolge, in der sie entstanden sind.
+ * Wie weit die Nachlass-Checkliste gefuellt ist (§3.5).
  *
- * Sortiert wird über die Item-Kennung und nicht über `geaendertAm`: Sonst
- * spränge eine Frage nach unten, sobald jemand ihre Antwort ändert, und die
- * Liste sähe nach jedem Speichern anders aus. `uuidv7` trägt die Zeit im
- * Präfix, die Kennung ordnet also nach Entstehung.
+ * Gezaehlt wird gegen `content/vorsorgefragen.ts` und nicht gegen die Zeilen
+ * im Tresor: "3 von 8" soll eine Auskunft ueber die Liste sein, die auf dem
+ * Bildschirm steht. Eine Antwort auf eine Frage, die es nicht mehr gibt,
+ * zaehlt deshalb nicht mit.
+ *
+ * Eine Zeile mit leerem Inhalt gilt als unbeantwortet. Es gibt sie: Wer eine
+ * Antwort wieder leert, hinterlaesst eine Zeile ohne Auskunft, und die als
+ * "beantwortet" zu zaehlen waere die eine Zahl, die nach dem Loeschen steigt.
  */
-export function eigeneFragen(items: TresorItem[]): TresorItem[] {
-  return items
-    .filter((item) => istEigeneFrage(item.frageId))
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+export function checklistenstand(items: TresorItem[]): { beantwortet: number; gesamt: number } {
+  let beantwortet = 0
+
+  for (const frage of VORSORGEFRAGEN) {
+    const antwort = antwortZuFrage(items, frage.id)
+
+    if (antwort !== null && antwort.inhalt.trim() !== '') {
+      beantwortet += 1
+    }
+  }
+
+  return { beantwortet, gesamt: VORSORGEFRAGEN.length }
 }
 
 /**

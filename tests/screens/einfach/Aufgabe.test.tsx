@@ -84,6 +84,40 @@ describe('Aufgabe (einfach)', () => {
     expect(screen.getByRole('link', { name: 'Zurück' })).toHaveAttribute('href', '/alle')
   })
 
+  it('benennt eine selbst angelegte Aufgabe um', async () => {
+    /*
+     * §3.5: „Aufgabe erstellen" legt mit einem vorläufigen Titel an und führt
+     * unmittelbar hierher. Ein Feld, ein Knopf, ein Verb — wie alles in dieser
+     * Ansicht.
+     */
+    const daten = mitDetail([aufgabe({ titel: 'Neue Aufgabe', katalog: null })])
+
+    const feld = screen.getByLabelText('Titel')
+    await userEvent.clear(feld)
+    await userEvent.type(feld, 'Den Kater versorgen')
+    await userEvent.click(screen.getByRole('button', { name: 'Titel speichern' }))
+
+    expect(daten.schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
+      titel: 'Den Kater versorgen',
+    })
+  })
+
+  it('lässt einen Titel aus lauter Leerzeichen gar nicht erst abschicken', async () => {
+    const daten = mitDetail([aufgabe({ titel: 'Neue Aufgabe', katalog: null })])
+
+    await userEvent.clear(screen.getByLabelText('Titel'))
+    await userEvent.type(screen.getByLabelText('Titel'), '   ')
+
+    expect(screen.getByRole('button', { name: 'Titel speichern' })).toBeDisabled()
+    expect(daten.schreibe).not.toHaveBeenCalled()
+  })
+
+  it('bietet den Titel einer Katalogaufgabe nicht zum Ändern an', () => {
+    mitDetail([aufgabe({ titel: 'Sterbefall anzeigen', katalog: herkunft() })])
+
+    expect(screen.queryByLabelText('Titel')).toBeNull()
+  })
+
   it('zeigt weder Rechtsgrundlage noch Quelle (ADR-0003)', () => {
     mitDetail([aufgabe({ katalog: herkunft() })])
 

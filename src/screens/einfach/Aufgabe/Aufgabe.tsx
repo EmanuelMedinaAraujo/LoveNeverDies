@@ -118,6 +118,65 @@ function Abschnitt({ titel, children }: { titel: string; children: ReactNode }) 
   )
 }
 
+/**
+ * Der Titel dieser Aufgabe (DESIGN.md §7, §3.5).
+ *
+ * Ein Feld, ein Knopf, ein Verb — wie alles in dieser Ansicht.
+ *
+ * Nur bei selbst angelegten Aufgaben. Der Titel einer Katalogaufgabe ist
+ * Rechtstext (§8) und steht in der Inhaltsschicht.
+ */
+function Titelfeld({
+  titel,
+  gesperrt,
+  aufSpeichern,
+}: {
+  titel: string
+  gesperrt: boolean
+  /** @returns ob gespeichert wurde. Sonst bleibt das Feld, wie es ist. */
+  aufSpeichern: (titel: string) => Promise<boolean>
+}) {
+  const [eingabe, setzeEingabe] = useState(titel)
+  const [gespeichert, setzeGespeichert] = useState(titel)
+
+  // Was der Bestand bringt, gewinnt, aber erst, wenn er sich wirklich geändert
+  // hat: dieselbe Überlegung wie bei den Notizen.
+  if (gespeichert !== titel) {
+    setzeGespeichert(titel)
+    setzeEingabe(titel)
+  }
+
+  async function speichere(ereignis: FormEvent) {
+    ereignis.preventDefault()
+    await aufSpeichern(eingabe.trim())
+  }
+
+  return (
+    <Abschnitt titel="Wie soll die Aufgabe heissen?">
+      <form className={stile.formular} onSubmit={(ereignis) => void speichere(ereignis)}>
+        <div className={stile.feld}>
+          <label htmlFor="aufgabe-titel">Titel</label>
+          <input
+            id="aufgabe-titel"
+            className={stile.eingabe}
+            value={eingabe}
+            onChange={(ereignis) => setzeEingabe(ereignis.target.value)}
+            required
+          />
+        </div>
+
+        <Button
+          type="submit"
+          volleBreite
+          disabled={gesperrt || eingabe.trim() === '' || eingabe.trim() === titel}
+        >
+          Titel speichern
+        </Button>
+      </form>
+    </Abschnitt>
+  )
+}
+
 /** Eine Angabe aus dem Katalog: Etikett, darunter der Wert. */
 function Angabe({ was, children }: { was: string; children: ReactNode }) {
   return (
@@ -468,6 +527,8 @@ function Detail({
     gesperrt: boolean
     hakeAb: (aufgabe: Aufgabendatensatz, erledigt: boolean) => Promise<boolean>
     schreibeNotizen: (notizen: string) => Promise<boolean>
+    /** Benennt eine selbst angelegte Aufgabe um (§7). */
+    speichereTitel: (titel: string) => Promise<boolean>
     legeUnteraufgabeAn: (titel: string) => Promise<boolean>
     loesche: (aufgabe: Aufgabendatensatz) => void
     loescheDiese: () => void
@@ -578,6 +639,18 @@ function Detail({
         Wer sie umbenennt, soll den Weg dorthin nicht verlieren.
       */}
       {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
+
+      {/*
+        Der Titel steht oben und nicht am Ende: Eine selbst angelegte Aufgabe
+        lässt sich hier umbenennen (§7).
+      */}
+      {aufgabe.katalog === null ? (
+        <Titelfeld
+          titel={aufgabe.titel}
+          gesperrt={aktionen.gesperrt || !darfAendern}
+          aufSpeichern={aktionen.speichereTitel}
+        />
+      ) : null}
 
       <Angaben
         aufgabe={aufgabe}
@@ -821,7 +894,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
   const [fehler, setzeFehler] = useState<string | null>(null)
 
   /** §5: Was hier ankommt, steht danach als Meldung auf dem Bildschirm. */
-  async function fuehreAus(arbeit: () => Promise<void>): Promise<boolean> {
+  async function fuehreAus(arbeit: () => Promise<unknown>): Promise<boolean> {
     setzeLaeuft(true)
     setzeFehler(null)
 
@@ -897,6 +970,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
           weiseZu: (zuweisung) => void fuehreAus(() => weiseZu(knoten.aufgabe, zuweisung)),
           hakeAb: (aufgabe, erledigt) => fuehreAus(() => hakeAb(aufgabe, erledigt)),
           schreibeNotizen: (notizen) => fuehreAus(() => schreibe(knoten.aufgabe, { notizen })),
+          speichereTitel: (titel) => fuehreAus(() => schreibe(knoten.aufgabe, { titel })),
           legeUnteraufgabeAn: (titel) => fuehreAus(() => legeAn(titel, knoten.aufgabe.id)),
           loesche: (aufgabe) => void fuehreAus(() => loesche(aufgabe)),
           /*

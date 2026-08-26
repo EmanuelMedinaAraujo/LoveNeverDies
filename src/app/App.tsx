@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '../core/auth/authProvider.ts'
 import { speicherDauerhaftAnfordern } from '../core/storage/persist.ts'
 import { useAnsicht } from '../hooks/useAnsichtsmodus.ts'
+import { useCase } from '../hooks/useCase.ts'
 import { useGeraeteanmeldung } from '../hooks/useGeraete.ts'
 import { useProfilAbgleich } from '../hooks/useProfil.ts'
 import { Alle as AlleEinfach } from '../screens/einfach/Alle/Alle.tsx'
@@ -18,10 +20,16 @@ import { Fragebaum } from '../screens/shared/Fragebaum/Fragebaum.tsx'
 import { Konto } from '../screens/shared/Konto/Konto.tsx'
 import { Koppeln } from '../screens/shared/Koppeln/Koppeln.tsx'
 import { Nachlass } from '../screens/shared/Nachlass/Nachlass.tsx'
+import { Antwortuebersicht } from '../screens/shared/Nachlassbereich/Antwortuebersicht.tsx'
+import { Checkliste } from '../screens/shared/Nachlassbereich/Checkliste.tsx'
+import { Checklistenfragen } from '../screens/shared/Nachlassbereich/Checklistenfragen.tsx'
+import { Nachlassbereich } from '../screens/shared/Nachlassbereich/Nachlassbereich.tsx'
+import { Testament } from '../screens/shared/Nachlassbereich/Testament.tsx'
 import { Ansichtswahl } from '../screens/shared/Onboarding/Ansichtswahl.tsx'
 import { Profil } from '../screens/shared/Profil/Profil.tsx'
 import { Todesfall } from '../screens/shared/Todesfall/Todesfall.tsx'
 import { Vorsorge } from '../screens/shared/Vorsorge/Vorsorge.tsx'
+import { istVorsorgende } from '../services/fallService.ts'
 import { Rahmen } from './Rahmen.tsx'
 import stile from './App.module.css'
 
@@ -31,6 +39,29 @@ function Ladeanzeige({ text }: { text: string }) {
       {text}
     </div>
   )
+}
+
+/**
+ * Die Weiche auf der Startadresse und auf „Erbe" (DESIGN.md §3.5).
+ *
+ * Im Trauerfall und ohne Fall zeigt `/` auf den Start-Screen (einfach oder
+ * erweitert); im eigenen Vorsorgefall leitet dieselbe Adresse auf `/nachlass`
+ * weiter. Die Entscheidung geschieht an der Route und nicht im Screen:
+ * `Start` behält seine feste Bedeutung als Aufgabenliste und muss nicht
+ * wissen, warum es manchmal etwas anderes zeigen sollte.
+ *
+ * Dasselbe gilt für `/erbe`: Die vorsorgende Person erreicht es über einen
+ * Link, über eine installierte App, die dort neu startet. Dann führt der Weg
+ * dorthin, wo dieser Fall anfängt, statt auf einen leeren Screen.
+ */
+function Hauptweiche({ children }: { children: ReactNode }) {
+  const { zustand } = useCase()
+
+  if (zustand.status === 'bereit' && istVorsorgende(zustand.aktiver)) {
+    return <Navigate to="/nachlass" replace />
+  }
+
+  return <>{children}</>
 }
 
 export function App() {
@@ -149,15 +180,34 @@ export function App() {
       <Route
         path="/"
         element={
-          <Rahmen>{einfach ? <StartEinfach /> : <Start />}</Rahmen>
+          <Hauptweiche>
+            <Rahmen>{einfach ? <StartEinfach /> : <Start />}</Rahmen>
+          </Hauptweiche>
         }
       />
+      {/*
+        §3.5: Der Nachlass-Bereich im Vorsorgefall.
+      */}
+      <Route
+        path="/nachlass"
+        element={
+          <Rahmen>
+            <Nachlassbereich />
+          </Rahmen>
+        }
+      />
+      <Route path="/nachlass/checkliste" element={<Checkliste />} />
+      <Route path="/nachlass/checkliste/fragen" element={<Checklistenfragen />} />
+      <Route path="/nachlass/checkliste/testament" element={<Testament />} />
+      <Route path="/nachlass/checkliste/uebersicht" element={<Antwortuebersicht />} />
       <Route
         path="/erbe"
         element={
-          <Rahmen>
-            <Erbe />
-          </Rahmen>
+          <Hauptweiche>
+            <Rahmen>
+              <Erbe />
+            </Rahmen>
+          </Hauptweiche>
         }
       />
       <Route

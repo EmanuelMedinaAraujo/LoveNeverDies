@@ -92,6 +92,25 @@ export type GesperrterFall = {
 
 export type Fall = LesbarerFall | GesperrterFall
 
+/**
+ * Ob dieser Fall der eigene Vorsorgefall ist (DESIGN.md §3.5).
+ *
+ * Zwei Bedingungen, und beide sind noetig. `status === 'vorsorge'` allein
+ * traefe auch die Angehoerigen, die in denselben Fall eingeladen sind: Sie
+ * sehen ihn, koennen den Tresor aber nicht lesen und sollen ihn nicht fuellen.
+ * `kv !== null` allein gibt es ausserhalb der Vorsorge nicht, ist aber nach
+ * dem Oeffnen des Tresors auch im Trauerfall wahr.
+ *
+ * Woran die Oberflaeche das haengt: Wer vorsorgt, sieht eine andere untere
+ * Leiste als alle anderen -- Nachlass statt Start und Erbe (§7). Die
+ * Entscheidung faellt deshalb hier und nicht in jedem Screen einzeln, wo sie
+ * beim naechsten Mal um eine Bedingung kuerzer geraten wuerde.
+ */
+export function istVorsorgende(fall: Fall | null): boolean {
+  return fall !== null && fall.zustand === 'lesbar' && fall.status === 'vorsorge' && fall.kv !== null
+}
+
+
 const STERBEDATUM_FORM = /^(\d{4})-(\d{2})-(\d{2})$/
 
 /**

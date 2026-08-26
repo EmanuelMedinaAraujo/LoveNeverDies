@@ -201,7 +201,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
    * läuft jede Mutation durch diese eine Stelle, und was hier ankommt, steht
    * danach als Meldung auf dem Bildschirm.
    */
-  async function fuehreAus(arbeit: () => Promise<void>): Promise<boolean> {
+  async function fuehreAus(arbeit: () => Promise<unknown>): Promise<boolean> {
     setzeLaeuft(true)
     setzeFehler(null)
 

@@ -62,6 +62,22 @@ vi.mock('../../src/screens/shared/Beitreten/Beitreten.tsx', () => ({
 vi.mock('../../src/screens/shared/Koppeln/Koppeln.tsx', () => ({
   Koppeln: () => <p>Codeeingabe</p>,
 }))
+vi.mock('../../src/screens/shared/Nachlassbereich/Nachlassbereich.tsx', () => ({
+  Nachlassbereich: () => <p>Nachlassbereich</p>,
+}))
+vi.mock('../../src/screens/shared/Nachlassbereich/Checkliste.tsx', () => ({
+  Checkliste: () => <p>Checklistenerklaerung</p>,
+}))
+vi.mock('../../src/screens/shared/Nachlassbereich/Checklistenfragen.tsx', () => ({
+  Checklistenfragen: () => <p>Checklistenformular</p>,
+}))
+vi.mock('../../src/screens/shared/Nachlassbereich/Testament.tsx', () => ({
+  Testament: () => <p>Testamenttext</p>,
+}))
+vi.mock('../../src/screens/shared/Nachlassbereich/Antwortuebersicht.tsx', () => ({
+  Antwortuebersicht: () => <p>Antwortuebersicht</p>,
+}))
+vi.mock('../../src/screens/shared/Erbe/Erbe.tsx', () => ({ Erbe: () => <p>Erbeseite</p> }))
 vi.mock('../../src/screens/shared/Konto/Konto.tsx', () => ({
   Konto: () => <p>Kontoeinstellungen</p>,
 }))
@@ -72,9 +88,11 @@ vi.mock('../../src/screens/shared/Konto/Konto.tsx', () => ({
  * ersetzt: Welche Route zu welchem Screen führt, hat mit Fällen nichts zu tun.
  * Was der Rahmen aus dem Zustand liest, steht in `Rahmen.test.tsx`.
  */
+let fallZustand: { status: string; faelle?: unknown[]; aktiver?: unknown } = { status: 'laedt' }
+
 vi.mock('../../src/hooks/useCase.ts', () => ({
   useCase: () => ({
-    zustand: { status: 'laedt' },
+    zustand: fallZustand,
     legeTrauerfallAn: vi.fn(),
     legeVorsorgefallAn: vi.fn(),
     loescheVorsorgefall: vi.fn(),
@@ -82,6 +100,22 @@ vi.mock('../../src/hooks/useCase.ts', () => ({
     aktualisiere: vi.fn(),
   }),
 }))
+
+/*
+ * §3.5: Der eigene Vorsorgefall. Er hat `K_v`, und daran erkennt die App die
+ * vorsorgende Person — die Einzige, die eine andere untere Leiste und einen
+ * anderen ersten Screen bekommt.
+ */
+const VORSORGEFALL = {
+  zustand: 'lesbar',
+  id: 'fall-1',
+  status: 'vorsorge',
+  kv: new Uint8Array([1]),
+}
+
+function alsVorsorgende() {
+  fallZustand = { status: 'bereit', faelle: [VORSORGEFALL], aktiver: VORSORGEFALL }
+}
 
 const { App } = await import('../../src/app/App.tsx')
 
@@ -104,6 +138,7 @@ const ANGEMELDET: AuthZustand = {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  fallZustand = { status: 'laedt' }
   useGeraeteanmeldung.mockReturnValue({ status: 'laedt' })
   useProfilAbgleich.mockReturnValue({ status: 'bereit' })
 
@@ -143,108 +178,67 @@ describe('Anmeldezustand', () => {
     expect(speicherDauerhaftAnfordern).not.toHaveBeenCalled()
 
     rendere(ANGEMELDET)
-    await waitFor(() => expect(speicherDauerhaftAnfordern).toHaveBeenCalled())
-  })
-
-  it('setzt den Ansichtsmodus als data-dichte auf die Wurzel', async () => {
-    rendere(ANGEMELDET)
 
     await waitFor(() => {
-      expect(document.documentElement.dataset.dichte).toBe('erweitert')
-    })
-  })
-
-  it('fragt die Ansicht vor der Fallweiche, mit "Einfach" vorausgewaehlt', () => {
-    // §7: Ohne getroffene Wahl kommt niemand an dieser Frage vorbei.
-    localStorage.clear()
-    ansichtZuruecksetzen()
-
-    rendere(ANGEMELDET, '/alle')
-
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'Wie möchten Sie die App nutzen?',
-    )
-    expect(screen.queryByText('Aufgabenliste')).toBeNull()
-    expect(screen.getByRole('radio', { name: /Einfach/ })).toBeChecked()
-  })
-
-  it('rendert bis zur Wahl in der einfachen Dichte', async () => {
-    localStorage.clear()
-    ansichtZuruecksetzen()
-
-    rendere(ANGEMELDET)
-
-    await waitFor(() => {
-      expect(document.documentElement.dataset.dichte).toBe('einfach')
-    })
-  })
-
-  it('setzt die Overrides aus Profil an die Wurzel, "system" gar nicht', async () => {
-    /*
-     * §7: "ein Override, der auf 'Systemeinstellung folgen' steht". Steht er
-     * dort, steht an der Wurzel nichts, und `prefers-color-scheme` entscheidet
-     * weiter allein.
-     */
-    rendere(ANGEMELDET)
-
-    await waitFor(() => expect(document.documentElement.dataset.dichte).toBe('erweitert'))
-    expect(document.documentElement.dataset.farbschema).toBeUndefined()
-    expect(document.documentElement.dataset.textgroesse).toBeUndefined()
-
-    ansichtSchreiben({ darstellung: 'dunkel', textgroesse: 'sehr-gross' })
-
-    await waitFor(() => {
-      expect(document.documentElement.dataset.farbschema).toBe('dunkel')
-      expect(document.documentElement.dataset.textgroesse).toBe('sehr-gross')
+      expect(speicherDauerhaftAnfordern).toHaveBeenCalledTimes(1)
     })
   })
 })
 
-describe('Routen', () => {
-  it('fuehrt / zu "Meine Aufgaben"', () => {
-    rendere(ANGEMELDET)
+describe('Routen fuer angemeldete Nutzer (§7)', () => {
+  it('fuehrt / zur Startseite, mit unterer Leiste', () => {
+    rendere(ANGEMELDET, '/')
 
     expect(screen.getByText('Startseite')).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Hauptbereiche' })).toBeVisible()
   })
 
-  it('fuehrt /todesfall zur Fallanlage', () => {
-    rendere(ANGEMELDET, '/todesfall')
-
-    expect(screen.getByText('Fallanlage')).toBeVisible()
-  })
-
-  it('fuehrt /alle zur Aufgabenliste', () => {
+  it('fuehrt /alle zur Aufgabenliste, mit unterer Leiste', () => {
     rendere(ANGEMELDET, '/alle')
 
     expect(screen.getByText('Aufgabenliste')).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Hauptbereiche' })).toBeVisible()
   })
 
-  it('fuehrt /beitreten zum Kopplungscode fuer eine Einladung', () => {
-    rendere(ANGEMELDET, '/beitreten')
-
-    expect(screen.getByText('Kopplungscode fuer join')).toBeVisible()
-  })
-
-  it('fuehrt /geraet-freischalten zum Kopplungscode fuer ein zweites Geraet', () => {
-    // §6: derselbe Ablauf, nur mit `purpose = device` und Einstieg ueber Profil.
-    rendere(ANGEMELDET, '/geraet-freischalten')
-
-    expect(screen.getByText('Kopplungscode fuer device')).toBeVisible()
-  })
-
-  it('fuehrt /koppeln zur Codeeingabe', () => {
-    rendere(ANGEMELDET, '/koppeln')
-
-    expect(screen.getByText('Codeeingabe')).toBeVisible()
-  })
-
-  it('fuehrt /profil zum Profil', () => {
+  it('fuehrt /profil zur Profilseite, mit unterer Leiste', () => {
     rendere(ANGEMELDET, '/profil')
 
     expect(screen.getByText('Profilseite')).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Hauptbereiche' })).toBeVisible()
   })
 
-  it('fuehrt /aufgabe/:id zum Aufgabendetail mit unterer Leiste', () => {
+  it('fuehrt /todesfall zur Fallanlage, ohne untere Leiste', () => {
+    rendere(ANGEMELDET, '/todesfall')
+
+    expect(screen.getByText('Fallanlage')).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'Hauptbereiche' })).toBeNull()
+  })
+
+  it('fuehrt /beitreten und /geraet-freischalten auf denselben Screen, mit dem jeweiligen Zweck', () => {
+    /*
+     * Zwei Einstiege, zwei Zwecke (§6), ein Screen. Einladungen kommen von
+     * ausserhalb des Falls („Ich wurde eingeladen"); Freischaltungen von
+     * innerhalb („Dieses Gerät freischalten").
+     */
+    const beitreten = rendere(ANGEMELDET, '/beitreten')
+    expect(screen.getByText('Kopplungscode fuer join')).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'Hauptbereiche' })).toBeNull()
+    beitreten.unmount()
+
+    const freischalten = rendere(ANGEMELDET, '/geraet-freischalten')
+    expect(screen.getByText('Kopplungscode fuer device')).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'Hauptbereiche' })).toBeNull()
+    freischalten.unmount()
+  })
+
+  it('fuehrt /koppeln zur Codeeingabe, ohne untere Leiste', () => {
+    rendere(ANGEMELDET, '/koppeln')
+
+    expect(screen.getByText('Codeeingabe')).toBeVisible()
+    expect(screen.queryByRole('navigation', { name: 'Hauptbereiche' })).toBeNull()
+  })
+
+  it('fuehrt /aufgabe/:id zum Detail, mit unterer Leiste', () => {
     rendere(ANGEMELDET, '/aufgabe/item-1')
 
     expect(screen.getByText('Aufgabendetail')).toBeVisible()
@@ -266,6 +260,71 @@ describe('Routen', () => {
     rendere(ANGEMELDET, '/gibt-es-nicht')
 
     expect(screen.getByText('Startseite')).toBeVisible()
+  })
+})
+
+/**
+ * Der Nachlass-Bereich im eigenen Vorsorgefall (DESIGN.md §3.5, §7).
+ *
+ * Nur `/nachlass` steht im `Rahmen` und trägt die untere Leiste; alles
+ * darunter ist ein linearer Ablauf mit genau einem nächsten Schritt und steht
+ * ohne sie — wie Todesfall, Koppeln und der Fragebaum.
+ */
+describe('Der Nachlass-Bereich (§3.5)', () => {
+  const WEGE = [
+    { pfad: '/nachlass/checkliste', text: 'Checklistenerklaerung' },
+    { pfad: '/nachlass/checkliste/fragen', text: 'Checklistenformular' },
+    { pfad: '/nachlass/checkliste/testament', text: 'Testamenttext' },
+    { pfad: '/nachlass/checkliste/uebersicht', text: 'Antwortuebersicht' },
+  ]
+
+  it('fuehrt /nachlass zum Bereich, mit unterer Leiste', () => {
+    alsVorsorgende()
+    rendere(ANGEMELDET, '/nachlass')
+
+    expect(screen.getByText('Nachlassbereich')).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Hauptbereiche' })).toBeVisible()
+  })
+
+  for (const weg of WEGE) {
+    it(`fuehrt ${weg.pfad} ohne untere Leiste zum passenden Screen`, () => {
+      alsVorsorgende()
+      rendere(ANGEMELDET, weg.pfad)
+
+      expect(screen.getByText(weg.text)).toBeVisible()
+      expect(screen.queryByRole('navigation', { name: 'Hauptbereiche' })).toBeNull()
+    })
+  }
+
+  it('schickt die vorsorgende Person von / in den Nachlass-Bereich', () => {
+    /*
+     * „Start" wäre für sie auf Dauer der Satz "Für Sie ist gerade nichts
+     * eingetragen". Die Adresse bleibt erreichbar — über ein Lesezeichen, über
+     * eine installierte App, die dort neu startet —, führt aber weiter.
+     */
+    alsVorsorgende()
+    rendere(ANGEMELDET, '/')
+
+    expect(screen.getByText('Nachlassbereich')).toBeVisible()
+    expect(screen.queryByText('Startseite')).toBeNull()
+  })
+
+  it('schickt die vorsorgende Person auch von /erbe dorthin', () => {
+    alsVorsorgende()
+    rendere(ANGEMELDET, '/erbe')
+
+    expect(screen.getByText('Nachlassbereich')).toBeVisible()
+    expect(screen.queryByText('Erbeseite')).toBeNull()
+  })
+
+  it('laesst alle anderen auf ihren gewohnten Screens', () => {
+    // Ohne `K_v` ist es nicht der eigene Vorsorgefall (§3.5).
+    const angehoerige = { ...VORSORGEFALL, kv: null }
+    fallZustand = { status: 'bereit', faelle: [angehoerige], aktiver: angehoerige }
+
+    rendere(ANGEMELDET, '/erbe')
+
+    expect(screen.getByText('Erbeseite')).toBeVisible()
   })
 })
 

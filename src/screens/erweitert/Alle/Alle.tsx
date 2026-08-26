@@ -335,7 +335,7 @@ function Kopf({ aktion }: { aktion?: ReactNode }) {
  * scrollt; unten, weil wer von oben nach unten ausfüllt, unten aufhört und
  * nicht wieder hochsehen soll.
  */
-function NeueAufgabe({
+export function NeueAufgabe({
   gesperrt,
   aufSchliessen,
   aufAnlegen,
@@ -508,7 +508,7 @@ function Aufgabenbereich({ fall }: { fall: LesbarerFall }) {
    *
    * @returns ob es geklappt hat. Wer etwas eingetippt hat, behält es sonst.
    */
-  async function fuehreAus(arbeit: () => Promise<void>): Promise<boolean> {
+  async function fuehreAus(arbeit: () => Promise<unknown>): Promise<boolean> {
     setzeLaeuft(true)
     setzeFehler(null)
 

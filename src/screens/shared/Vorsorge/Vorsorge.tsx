@@ -33,7 +33,7 @@ export function Vorsorge() {
 
     try {
       await legeVorsorgefallAn({ personName: personName || standardName })
-      navigate('/erbe', { replace: true })
+      navigate('/nachlass', { replace: true })
     } catch (ursache) {
       setzeFehler(alsNachricht(ursache))
       setzeLaeuft(false)

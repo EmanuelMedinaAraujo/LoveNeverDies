@@ -285,34 +285,72 @@ describe('Profil', () => {
     expect(screen.getByRole('button', { name: 'Fall verlassen' })).toBeVisible()
   })
 
-  it('zeigt Hinweis für den Preparer eines versiegelten Vorsorgefalls', () => {
-    const versiegelterVorsorgeFall: LesbarerFall = {
-      ...LESBAR,
-      id: 'fall-vorsorge',
-      status: 'vorsorge',
-      preparerId: 'user_1',
-      vaultCommitment: new Uint8Array([1, 2, 3]),
-    }
+  const VORSORGE: LesbarerFall = {
+    ...LESBAR,
+    id: 'fall-vorsorge',
+    status: 'vorsorge',
+    personName: 'Anna Müller',
+    kv: new Uint8Array(32),
+    preparerId: 'user_1',
+    vaultCommitment: new Uint8Array([1, 2, 3]),
+    katalogVersion: null,
+  }
 
+  function alsVorsorgende(loeschen = vi.fn()) {
     useCase.mockReturnValue(
-      falldaten({
-        status: 'bereit',
-        faelle: [versiegelterVorsorgeFall],
-        aktiver: versiegelterVorsorgeFall,
-      }),
+      falldaten(
+        { status: 'bereit', faelle: [VORSORGE], aktiver: VORSORGE },
+        { loescheVorsorgefall: loeschen },
+      ),
     )
 
-    rendereMitProvidern(<Profil />, {
+    return rendereMitProvidern(<Profil />, {
       auth: authWert({
         status: 'angemeldet',
         benutzer: { id: 'user_1', anzeigename: 'Anna Müller', email: 'anna@example.de' },
       }),
     })
+  }
+
+  it('bietet der vorsorgenden Person das Löschen statt des Verlassens an', () => {
+    alsVorsorgende()
 
     expect(
-      screen.getByText(/Als Ersteller dieses versiegelten Vorsorgefalls können Sie ihn nicht verlassen/),
+      screen.getByText(/Als vorsorgende Person können Sie diesen Fall nicht verlassen/),
     ).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Fall verlassen' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Vorsorge löschen' })).toBeVisible()
+  })
+
+  it('führt die vorsorgende Person in ihren Nachlass-Bereich', () => {
+    alsVorsorgende()
+
+    expect(screen.getByRole('link', { name: 'Nachlass' })).toHaveAttribute('href', '/nachlass')
+  })
+
+  it('löscht die Vorsorge erst nach der Rückfrage, und die nennt den Namen', async () => {
+    const loeschen = vi.fn().mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    alsVorsorgende(loeschen)
+
+    await user.click(screen.getByRole('button', { name: 'Vorsorge löschen' }))
+    expect(loeschen).not.toHaveBeenCalled()
+    expect(screen.getByText(/Die Vorsorge für „Anna Müller“ samt allen/)).toBeVisible()
+
+    await user.click(screen.getByRole('button', { name: 'Ja, Vorsorge löschen' }))
+    expect(loeschen).toHaveBeenCalledWith('fall-vorsorge')
+  })
+
+  it('nimmt die Rückfrage auf Abbrechen zurück, ohne zu löschen', async () => {
+    const loeschen = vi.fn()
+    const user = userEvent.setup()
+    alsVorsorgende(loeschen)
+
+    await user.click(screen.getByRole('button', { name: 'Vorsorge löschen' }))
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }))
+
+    expect(loeschen).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Vorsorge löschen' })).toBeVisible()
   })
 })
 

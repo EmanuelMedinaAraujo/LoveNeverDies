@@ -16,7 +16,6 @@ import { Detailziel, Gruppe, Liste, Zeile } from '../../../ui/Liste/Liste.tsx'
 import { KeinFall } from '../../shared/KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../../shared/Ladeanzeige/FallLadeanzeige.tsx'
 import { Abgelehnt, Uebernahmen } from '../../shared/Meldungen/Meldungen.tsx'
-import { Vorsorgebereich } from '../../shared/Vorsorgefragen/Vorsorgebereich.tsx'
 import stile from './Start.module.css'
 
 /**
@@ -479,15 +478,6 @@ export function Start() {
             <Link to="/geraet-freischalten">Dieses Gerät freischalten lassen</Link>
           </p>
         </>
-      ) : zustand.aktiver.status === 'vorsorge' ? (
-        /*
-         * §2, §3.5: Ein Vorsorgefall hat keine Aufgaben — kein Sterbedatum,
-         * kein Rechtskatalog. Wer vorsorgt, läse hier für immer "Für Sie ist
-         * gerade nichts eingetragen". An dieser Stelle stehen deshalb die
-         * Vorsorgefragen: der erste Screen nach dem Öffnen, und das Einzige,
-         * was in diesem Fall zu tun ist.
-         */
-        <Vorsorgebereich fall={zustand.aktiver} />
       ) : (
         <MeineAufgaben fall={zustand.aktiver} />
       )}

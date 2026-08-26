@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { useCase } from '../hooks/useCase.ts'
+import { istVorsorgende } from '../services/fallService.ts'
 import { Leiste } from '../ui/Leiste/Leiste.tsx'
 import stile from './Rahmen.module.css'
 
@@ -24,10 +25,21 @@ export function Rahmen({ children }: { children: ReactNode }) {
   const freigabeNoetig =
     zustand.status === 'bereit' && zustand.faelle.some((eintrag) => eintrag.zustand === 'gesperrt')
 
+  /*
+   * §3.5: Im Vorsorgefall schaltet die Leiste auf „Nachlass · Alle · Profil"
+   * um. `istVorsorgende` prüft `K_v`: Angehörige eines Vorsorgefalls behalten
+   * die vier Tabs und finden dort den Weg zur Freigabe.
+   */
+  const vorsorge = zustand.status === 'bereit' && istVorsorgende(zustand.aktiver)
+
   return (
     <>
       <div className={stile.inhalt}>{children}</div>
-      <Leiste freigabeNoetig={freigabeNoetig} ohneFall={zustand.status === 'kein-fall'} />
+      <Leiste
+        freigabeNoetig={freigabeNoetig}
+        ohneFall={zustand.status === 'kein-fall'}
+        vorsorge={vorsorge}
+      />
     </>
   )
 }

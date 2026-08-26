@@ -1,0 +1,62 @@
+/*
+ * Ein Erklaertext mit Struktur (DESIGN.md §8). Alle Masse aus den Tokens.
+ *
+ * Der Block traegt selbst keine Flaeche und keinen Rand: Er steht in einer
+ * Karte, und ein Kasten im Kasten waere ein zweiter Rahmen um denselben Text.
+ */
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.titel {
+  margin: 0;
+}
+
+/*
+ * Steht der Block fuer sich in einer Karte, ist sein Titel deren Titel und
+ * sieht auch so aus (`ui/Card`). Als `h3` -- also innerhalb eines Abschnitts,
+ * der schon eine Ueberschrift hat -- bleibt er die kleinere Stufe aus
+ * `ui/base.css`. Zwei Groessen, weil es zwei Rollen sind, und nicht zwei
+ * Geschmaecker.
+ */
+h2.titel {
+  font-size: var(--dichte-schrift-mittel);
+  font-weight: var(--typo-gewicht-titel);
+  line-height: var(--typo-zeile-titel);
+  letter-spacing: var(--typo-laufweite-titel);
+}
+
+/*
+ * Eine Zwischenueberschrift im Erklaertext ("Aussehen", "1. Was ist ein
+ * Erbschein?"). Fett und nicht als eigene Ueberschriftsebene: Die Gliederung
+ * steht im Wort, und eine vierte Ebene unter h3 macht die Vorleseansicht
+ * tiefer, ohne dass etwas dazukommt.
+ */
+.zwischentitel {
+  margin: 0;
+  font-weight: var(--typo-gewicht-betont);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.absatz {
+  margin: 0;
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+/*
+ * Aufzaehlungen: gefuellte Punkte, also die Voreinstellung des Browsers
+ * (`disc`) und kein eigenes Zeichen. Ein Punkt, der als Text mitliefe, waere
+ * eine Grafik, die eine Vorlesestimme mitspricht.
+ */
+.punkte {
+  margin: 0;
+  padding-inline-start: var(--dichte-abstand-gross);
+  line-height: var(--dichte-zeilenhoehe);
+}
+
+.punkte > li + li {
+  margin-block-start: var(--raster-1);
+}

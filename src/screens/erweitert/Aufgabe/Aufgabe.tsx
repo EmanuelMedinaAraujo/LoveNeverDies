@@ -826,6 +826,76 @@ function Eigenefrist({
 }
 
 /**
+ * Der Titel dieser Aufgabe (DESIGN.md §7, §3.5).
+ *
+ * Bis hierher liess sich ein Titel nur beim Anlegen setzen und danach nie
+ * wieder ändern — ein Vertipper stand für immer in der Liste.
+ *
+ * Nur bei selbst angelegten Aufgaben. Der Titel einer Katalogaufgabe ist
+ * Rechtstext (§8): Er steht in der Inhaltsschicht, gilt für alle Fälle
+ * gleich, und was hier stünde, wäre eine Änderung an einer Kopie davon.
+ */
+function Titelfeld({
+  titel,
+  gesperrt,
+  aufSpeichern,
+}: {
+  titel: string
+  gesperrt: boolean
+  /** @returns ob gespeichert wurde. Sonst bleibt das Feld, wie es ist. */
+  aufSpeichern: (titel: string) => Promise<boolean>
+}) {
+  const [eingabe, setzeEingabe] = useState(titel)
+  const [gespeichert, setzeGespeichert] = useState(titel)
+
+  // Was der Bestand bringt, gewinnt, aber erst, wenn er sich wirklich geändert
+  // hat: dieselbe Überlegung wie bei den Notizen und bei der Frist.
+  if (gespeichert !== titel) {
+    setzeGespeichert(titel)
+    setzeEingabe(titel)
+  }
+
+  async function speichere(ereignis: FormEvent) {
+    ereignis.preventDefault()
+    await aufSpeichern(eingabe.trim())
+  }
+
+  return (
+    <Card titel="Titel">
+      <p className={stile.hinweis}>
+        Wie soll diese Aufgabe heissen? Alle Mitglieder des Falls sehen denselben Titel.
+      </p>
+
+      <form className={stile.formular} onSubmit={(ereignis) => void speichere(ereignis)}>
+        <div className={stile.feld}>
+          <label htmlFor="aufgabe-titel">Titel</label>
+          <input
+            id="aufgabe-titel"
+            className={stile.eingabe}
+            value={eingabe}
+            onChange={(ereignis) => setzeEingabe(ereignis.target.value)}
+            required
+          />
+        </div>
+
+        {/*
+          `required` allein liesse einen Titel aus lauter Leerzeichen durch;
+          der Dienst weist ihn dann ab, und die Meldung landet weit weg von
+          diesem Feld (§5).
+        */}
+        <Button
+          type="submit"
+          volleBreite
+          disabled={gesperrt || eingabe.trim() === '' || eingabe.trim() === titel}
+        >
+          Titel speichern
+        </Button>
+      </form>
+    </Card>
+  )
+}
+
+/**
  * Das eigene Kenntnisdatum (DESIGN.md §8, #12).
  *
  * Die Ausschlagungsfrist nach § 1944 BGB knüpft an die Kenntnis des jeweiligen
@@ -953,6 +1023,8 @@ function Detail({
     speichereKenntnisAm: (datum: string | null) => Promise<boolean>
     /** Setzt die selbst gewählte Frist dieser Aufgabe, oder entfernt sie (§7). */
     speichereFrist: (datum: string | null) => Promise<boolean>
+    /** Benennt eine selbst angelegte Aufgabe um (§7). */
+    speichereTitel: (titel: string) => Promise<boolean>
     aufLoeschen: () => void
   }
 }) {
@@ -1087,6 +1159,18 @@ function Detail({
         Wer sie umbenennt, soll den Weg dorthin nicht verlieren.
       */}
       {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
+
+      {/*
+        Der Titel steht ganz oben unter der Überschrift und nicht am Ende:
+        Eine selbst angelegte Aufgabe lässt sich hier umbenennen (§7).
+      */}
+      {aufgabe.katalog === null ? (
+        <Titelfeld
+          titel={aufgabe.titel}
+          gesperrt={aktionen.gesperrt || !darfAendern}
+          aufSpeichern={aktionen.speichereTitel}
+        />
+      ) : null}
 
       <Angaben
         aufgabe={aufgabe}
@@ -1343,7 +1427,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
   const [fragtLoeschen, setzeFragtLoeschen] = useState(false)
 
   /** §5: Was hier ankommt, steht danach als Meldung auf dem Bildschirm. */
-  async function fuehreAus(arbeit: () => Promise<void>): Promise<boolean> {
+  async function fuehreAus(arbeit: () => Promise<unknown>): Promise<boolean> {
     setzeLaeuft(true)
     setzeFehler(null)
 
@@ -1514,6 +1598,7 @@ function Aufgabenbereich({ fall, id }: { fall: LesbarerFall; id: string }) {
           speichereKenntnisAm: (datum) => fuehreAus(() => setzeKenntnisAm(datum)),
           speichereFrist: (datum) =>
             fuehreAus(() => schreibe(knoten.aufgabe, { fristAm: datum })),
+          speichereTitel: (titel) => fuehreAus(() => schreibe(knoten.aufgabe, { titel })),
           aufLoeschen: () => setzeFragtLoeschen(true),
         }}
       />

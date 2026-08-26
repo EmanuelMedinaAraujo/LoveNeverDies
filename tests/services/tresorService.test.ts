@@ -9,12 +9,12 @@ import type {
 import type { InhaltZeile } from '../../src/core/db/inhalte'
 import type { MitgliederTabelle, MitgliedZeile } from '../../src/core/db/mitglieder'
 import type { ResplitShareInput, TresorTabelle } from '../../src/core/db/tresor'
+import { VORSORGEFRAGEN } from '../../src/content/vorsorgefragen'
 import {
   antwortZuFrage,
   berechneTresorSchwelle,
-  eigeneFragen,
-  istEigeneFrage,
-  neueEigeneFrageId,
+  checklistenstand,
+  freieEintraege,
   mutationTresorAendern,
   mutationTresorAnlegen,
   tresorItemsAusZeilen,
@@ -418,11 +418,11 @@ describe('Tresor-Inhalte (§3.5)', () => {
   })
 })
 
-describe('Selbst gestellte Vorsorgefragen (§3.5)', () => {
+describe('Freie Einträge und Checklistenstand (§3.5)', () => {
   function item(ueberschreibung: Partial<TresorItem> = {}): TresorItem {
     return {
       id: 'item-1',
-      titel: 'Wo liegt der Zweitschlüssel?',
+      titel: 'Bankverbindung',
       inhalt: '',
       frageId: null,
       dek: new Uint8Array([9]),
@@ -431,91 +431,58 @@ describe('Selbst gestellte Vorsorgefragen (§3.5)', () => {
     }
   }
 
-  it('erkennt eine selbst gestellte Frage an ihrer Kennung', () => {
-    expect(istEigeneFrage(neueEigeneFrageId())).toBe(true)
-  })
-
-  it('hält eine gelieferte Frage und einen freien Eintrag auseinander', () => {
-    // Die acht Kennungen aus der Inhaltsdatei tragen kein Präfix.
-    expect(istEigeneFrage('testament')).toBe(false)
-    expect(istEigeneFrage(null)).toBe(false)
-  })
-
-  it('vergibt für jede Frage eine eigene Kennung', () => {
-    expect(neueEigeneFrageId()).not.toBe(neueEigeneFrageId())
-  })
-
-  it('liest die selbst gestellten Fragen in der Reihenfolge ihrer Entstehung', () => {
-    const zuerst = item({ id: 'item-1', frageId: 'eigen-a' })
-    const danach = item({ id: 'item-2', frageId: 'eigen-b' })
+  it('liest die freien Einträge in der Reihenfolge ihrer Entstehung', () => {
+    const zuerst = item({ id: 'item-1' })
+    const danach = item({ id: 'item-2' })
 
     // Auch verdreht hereingereicht: `uuidv7` trägt die Zeit in der Kennung.
-    expect(eigeneFragen([danach, zuerst]).map((f) => f.id)).toEqual(['item-1', 'item-2'])
+    expect(freieEintraege([danach, zuerst]).map((eintrag) => eintrag.id)).toEqual([
+      'item-1',
+      'item-2',
+    ])
   })
 
-  it('lässt gelieferte Antworten und freie Einträge draussen', () => {
-    const eigen = item({ id: 'item-3', frageId: 'eigen-a' })
+  it('lässt die Antworten auf Checklistenfragen draussen', () => {
+    // Sonst stünde dieselbe Auskunft zweimal auf dem Bildschirm: einmal unter
+    // ihrer Frage, einmal ohne sie und ohne Feld zum Ändern.
+    const frei = item({ id: 'item-3' })
 
-    const gefunden = eigeneFragen([
-      item({ id: 'item-1', frageId: null }),
-      item({ id: 'item-2', frageId: 'testament' }),
-      eigen,
+    expect(freieEintraege([item({ id: 'item-2', frageId: 'testament' }), frei])).toEqual([frei])
+  })
+
+  it('zählt nur beantwortete Checklistenfragen', () => {
+    const stand = checklistenstand([
+      item({ id: 'item-1', frageId: 'testament', inhalt: 'Im Ordner im Flur.' }),
+      item({ id: 'item-2', frageId: 'abos', inhalt: 'Zeitung, Fitnessstudio' }),
     ])
 
-    expect(gefunden).toEqual([eigen])
+    expect(stand).toEqual({ beantwortet: 2, gesamt: VORSORGEFRAGEN.length })
   })
 
-  it('trägt Frage und Antwort durch Anlegen und Ändern hindurch', async () => {
-    const kv = await erzeugeAesSchluessel()
-    const fallId = 'fall-1'
-    const frageId = neueEigeneFrageId()
+  it('zählt eine geleerte Antwort nicht mit', () => {
+    /*
+     * Es gibt sie: Wer eine Antwort wieder leert, hinterlässt eine Zeile ohne
+     * Auskunft. Sie als beantwortet zu zählen wäre die eine Zahl, die nach dem
+     * Löschen steigt.
+     */
+    const stand = checklistenstand([item({ id: 'item-1', frageId: 'testament', inhalt: '   ' })])
 
-    // Die Frage entsteht ohne Antwort: Ihr Wortlaut steht im Titel.
-    const angelegt = await mutationTresorAnlegen(
-      fallId,
-      kv,
-      'Wo liegt der Zweitschlüssel?',
-      '',
-      frageId,
-    )
-    if (angelegt.op !== 'anlegen') throw new Error('Muss anlegen sein')
-
-    const zeile: InhaltZeile = {
-      id: angelegt.itemId,
-      fallId,
-      seq: 1,
-      art: 'item',
-      geloescht: false,
-      imTresor: true,
-      kid: `vault_${fallId}`,
-      wrappedDek: angelegt.wrappedDek,
-      payload: angelegt.payload,
-      geaendertAm: '2026-08-24T12:00:00Z',
-    }
-
-    const [offen] = await tresorItemsAusZeilen([zeile], kv)
-    if (offen === undefined) throw new Error('Die Frage fehlt.')
-    expect(offen.titel).toBe('Wo liegt der Zweitschlüssel?')
-    expect(offen.inhalt).toBe('')
-    expect(eigeneFragen([offen])).toEqual([offen])
-
-    // Die Antwort ersetzt den Inhalt und lässt die Kennung stehen: Sonst
-    // stünde sie danach als freier Eintrag neben ihrer wieder leeren Frage.
-    const geaendert = await mutationTresorAendern(offen, offen.titel, 'Bei Frau Weber nebenan.')
-    if (geaendert.op !== 'aendern') throw new Error('Muss aendern sein')
-
-    const [beantwortet] = await tresorItemsAusZeilen(
-      [{ ...zeile, payload: geaendert.payload, geaendertAm: '2026-08-25T09:00:00Z' }],
-      kv,
-    )
-    expect(beantwortet?.titel).toBe('Wo liegt der Zweitschlüssel?')
-    expect(beantwortet?.inhalt).toBe('Bei Frau Weber nebenan.')
-    expect(beantwortet?.frageId).toBe(frageId)
+    expect(stand.beantwortet).toBe(0)
   })
 
-  it('findet die Antwort auf eine selbst gestellte Frage über deren Kennung', () => {
-    const eigen = item({ id: 'item-3', frageId: 'eigen-a', inhalt: 'Bei Frau Weber.' })
+  it('zählt eine Antwort auf eine Frage, die es nicht mehr gibt, nicht mit', () => {
+    // "3 von 8" soll eine Auskunft über die Liste sein, die auf dem Bildschirm
+    // steht — nicht über die Zeilen, die im Tresor liegen.
+    const stand = checklistenstand([
+      item({ id: 'item-1', frageId: 'sachversicherungen', inhalt: 'Kfz bei der Allianz' }),
+    ])
 
-    expect(antwortZuFrage([item({ frageId: 'testament' }), eigen], 'eigen-a')).toEqual(eigen)
+    expect(stand.beantwortet).toBe(0)
+  })
+
+  it('findet die Antwort auf eine Checklistenfrage über deren Kennung', () => {
+    const testament = item({ id: 'item-3', frageId: 'testament', inhalt: 'Im Ordner im Flur.' })
+
+    expect(antwortZuFrage([item({ frageId: 'abos' }), testament], 'testament')).toEqual(testament)
   })
 })

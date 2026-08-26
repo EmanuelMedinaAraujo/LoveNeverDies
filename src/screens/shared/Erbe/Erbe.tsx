@@ -1,32 +1,24 @@
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import {
   ALLEINERBE,
   ERBENGEMEINSCHAFT,
   ERBSCHEIN,
   ERBSCHEIN_FRAGE,
 } from '../../../content/erbstatus.ts'
-import { VORSORGEFRAGEN } from '../../../content/vorsorgefragen.ts'
 import { alsNachricht } from '../../../core/fehler.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
 import { useTodesfall } from '../../../hooks/useTodesfall.ts'
-import { useTresor } from '../../../hooks/useTresor.ts'
 import type { Aufgabe, Fragebaumergebnis } from '../../../services/aufgabenService.ts'
-import type { LesbarerFall } from '../../../services/fallService.ts'
+import { istVorsorgende, type LesbarerFall } from '../../../services/fallService.ts'
 import { BAUPLAENE, knoten, statusText } from '../../../services/fragebaumService.ts'
-import {
-  antwortZuFrage,
-  eigeneFragen,
-  type TresorItem,
-} from '../../../services/tresorService.ts'
-import type { Infotext } from '../../../types/infotext.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
+import { Infoblock } from '../../../ui/Infoblock/Infoblock.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
-import { Vorsorgefragen } from '../Vorsorgefragen/Vorsorgefragen.tsx'
 import stile from './Erbe.module.css'
 import { SymbolPerson, SymbolPersonen, SymbolUrkunde } from './Symbole.tsx'
 
@@ -35,130 +27,6 @@ function Ladeanzeige({ text }: { text: string }) {
     <p className={stile.hinweis} role="status">
       {text}
     </p>
-  )
-}
-
-function TresorInhalte({
-  items,
-  onNeu,
-  onLoeschen,
-}: {
-  items: TresorItem[]
-  onNeu: (titel: string, inhalt: string) => Promise<void>
-  onLoeschen: (item: TresorItem) => Promise<void>
-}) {
-  const [formOffen, setzeFormOffen] = useState(false)
-  const [titel, setzeTitel] = useState('')
-  const [inhalt, setzeInhalt] = useState('')
-  const [laeuft, setzeLaeuft] = useState(false)
-  const [fehler, setzeFehler] = useState<string | null>(null)
-
-  async function absenden(ereignis: FormEvent) {
-    ereignis.preventDefault()
-    setzeLaeuft(true)
-    setzeFehler(null)
-
-    try {
-      await onNeu(titel, inhalt)
-      setzeTitel('')
-      setzeInhalt('')
-      setzeFormOffen(false)
-    } catch (ursache) {
-      setzeFehler(alsNachricht(ursache))
-    } finally {
-      setzeLaeuft(false)
-    }
-  }
-
-  return (
-    <Card>
-      <div className={stile.statusKopf}>
-        <h2 className={stile.abschnitt}>Weitere Tresor-Inhalte</h2>
-        <Badge lage="ruhig">{items.length} {items.length === 1 ? 'Eintrag' : 'Einträge'}</Badge>
-      </div>
-
-      <p className={stile.hinweis}>
-        Inhalte im Tresor liegen verschlüsselt unter Ihrem Tresorschlüssel K_v. Angehörige
-        erhalten erst nach dem Trauerfall und mit den nötigen Freigaben Zugriff.
-      </p>
-
-      {items.length === 0 ? (
-        <p className={stile.hinweis}>Hier steht noch nichts außer Ihren Antworten oben.</p>
-      ) : (
-        <ul className={stile.liste}>
-          {items.map((item) => (
-            <li key={item.id} className={stile.item}>
-              <div className={stile.itemKopf}>
-                <p className={stile.itemTitel}>{item.titel}</p>
-                <Button
-                  variante="sekundaer"
-                  onClick={() => void onLoeschen(item)}
-                  aria-label={`"${item.titel}" löschen`}
-                >
-                  Löschen
-                </Button>
-              </div>
-              {item.inhalt ? <p className={stile.itemInhalt}>{item.inhalt}</p> : null}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {formOffen ? (
-        <form className={stile.formular} onSubmit={(ereignis) => void absenden(ereignis)}>
-          <div className={stile.feld}>
-            <label htmlFor="tresor-titel">Titel</label>
-            <input
-              id="tresor-titel"
-              className={stile.eingabe}
-              value={titel}
-              onChange={(e) => setzeTitel(e.target.value)}
-              placeholder="z. B. Bankverbindung, Wichtiges Passwort, Persönlicher Brief"
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className={stile.feld}>
-            <label htmlFor="tresor-inhalt">Inhalt / Notiz</label>
-            <textarea
-              id="tresor-inhalt"
-              className={stile.textbereich}
-              value={inhalt}
-              onChange={(e) => setzeInhalt(e.target.value)}
-              placeholder="Zugangsdaten, Hinweise oder vertrauliche Informationen..."
-            />
-          </div>
-
-          {fehler === null ? null : (
-            <p className={stile.hinweis} role="alert">
-              {fehler}
-            </p>
-          )}
-
-          <div className={stile.gefahrGruppe}>
-            <Button type="submit" disabled={laeuft}>
-              Im Tresor speichern
-            </Button>
-            <Button
-              variante="sekundaer"
-              type="button"
-              disabled={laeuft}
-              onClick={() => {
-                setzeFormOffen(false)
-                setzeFehler(null)
-              }}
-            >
-              Abbrechen
-            </Button>
-          </div>
-        </form>
-      ) : (
-        <Button volleBreite onClick={() => setzeFormOffen(true)}>
-          Inhalt in Tresor legen
-        </Button>
-      )}
-    </Card>
   )
 }
 
@@ -357,227 +225,38 @@ function Todesfallfreigabe({
   )
 }
 
-function VorsorgeTresor({
+/**
+ * Der Tab „Erbe" bei einem Vorsorgefall (DESIGN.md §3.5, §7).
+ *
+ * Hier kommt nur an, wer *nicht* vorsorgt: Die vorsorgende Person hat ihren
+ * eigenen Bereich unter „Nachlass", und die Route schickt sie dorthin
+ * (`app/App.tsx`). Was Angehörigen in diesem Fall bleibt, sind genau zwei
+ * Dinge — die Todesbestätigung und die Auskunft, dass der Tresor bis dahin
+ * versiegelt ist.
+ *
+ * Ohne `K_v` gibt es hier nichts zu lesen und nichts zu schreiben (§3.5).
+ * Deshalb zieht dieser Zweig auch keinen Tresor-Zustand mehr auf: Er zeigte
+ * eine leere Liste, für die zuvor jede Zeile des Falls entschlüsselt worden
+ * wäre.
+ */
+function VorsorgeAngehoerige({
   fall,
-  onLoescheFall,
   onFallAktualisieren,
 }: {
   fall: LesbarerFall
-  onLoescheFall: (fallId: string) => Promise<void>
   onFallAktualisieren: () => void
 }) {
-  // Derselbe Sync-Stream wie bei den Aufgaben und Dokumenten (§5): ein Delta,
-  // ein Cache, eine Queue je Fall.
-  const { zustand: aufgabenZustand, zeilen, mutiere } = useAufgaben(fall)
-  const {
-    items,
-    schwelle,
-    istPreparer,
-    resplitPending,
-    legeItemAn,
-    speichereAntwort,
-    legeEigeneFrageAn,
-    loescheItem,
-    verteileShares,
-    resplitLaeuft,
-    resplitFehler,
-  } = useTresor(fall, zeilen, mutiere, onFallAktualisieren)
-  const navigate = useNavigate()
-
-  const [loeschenBestaetigen, setzeLoeschenBestaetigen] = useState(false)
-  const [loeschenLaeuft, setzeLoeschenLaeuft] = useState(false)
-  const [loeschenFehler, setzeLoeschenFehler] = useState<string | null>(null)
-
-  async function vorsorgeLoeschen() {
-    setzeLoeschenLaeuft(true)
-    setzeLoeschenFehler(null)
-
-    try {
-      await onLoescheFall(fall.id)
-      navigate('/', { replace: true })
-    } catch (ursache) {
-      setzeLoeschenFehler(alsNachricht(ursache))
-      setzeLoeschenLaeuft(false)
-    }
-  }
-
-  if (aufgabenZustand.status === 'laedt') {
-    return <Ladeanzeige text="Tresor wird geladen..." />
-  }
-
-  /*
-   * Die Antworten auf die Vorsorgefragen stehen in ihrem eigenen Block; unter
-   * "Weitere Tresor-Inhalte" hätten sie ein zweites Mal dagestanden, dort ohne
-   * ihre Frage und ohne Feld zum Ändern.
-   */
-  const freieItems = items.filter((item) => item.frageId === null)
-
-  /*
-   * Gezaehlt werden die gelieferten Fragen und die selbst gestellten zusammen.
-   * "3 von 8" neben elf Fragen waere eine Auskunft ueber eine Liste, die so
-   * nicht auf dem Bildschirm steht.
-   *
-   * Eine selbst gestellte Frage gilt als beantwortet, sobald etwas im Feld
-   * steht: Ihre Zeile entsteht schon beim Stellen der Frage, ihr blosses
-   * Dasein sagt also nichts darueber, ob jemand sie beantwortet hat.
-   */
-  const eigene = eigeneFragen(items)
-  const gesamt = VORSORGEFRAGEN.length + eigene.length
-  const beantwortet =
-    VORSORGEFRAGEN.filter((frage) => antwortZuFrage(items, frage.id) !== null).length +
-    eigene.filter((item) => item.inhalt !== '').length
-
   return (
     <>
+      <Todesfallfreigabe fall={fall} onFallAktualisieren={onFallAktualisieren} />
+
       <Card>
-        <div className={stile.statusKopf}>
-          <h2 className={stile.abschnitt}>Tresor-Status</h2>
-          <Badge lage="ruhig">Versiegelt</Badge>
-        </div>
-
-        {schwelle.n === 0 ? (
-          <>
-            <p className={stile.warnung}>
-              Der Tresor ist versiegelt. Im Tresor befinden sich Ihre Antworten. Der Tresor kann
-              nach Ihrem Tod nur von Ihren Angehörigen geöffnet werde. Bitte laden Sie Angehörige
-              ein, damit diese im Ernstfall auf Ihre Antworten Zugriefen können.
-            </p>
-            <Button volleBreite onClick={() => navigate('/koppeln')}>
-              Angehörige einladen
-            </Button>
-          </>
-        ) : schwelle.n === 1 ? (
-          <p className={stile.hinweis}>
-            Solange nur 1 Angehörige:r hinterlegt ist, kann diese Person den Tresor allein öffnen.
-          </p>
-        ) : (
-          <p className={stile.hinweis}>
-            Zur Öffnung sind {schwelle.k} von {schwelle.n} Freigaben erforderlich (k = ⌈2n/3⌉).
-          </p>
-        )}
-
-        {resplitPending ? (
-          <p className={stile.hinweis}>
-            Mitglieder haben sich geändert. Die Tresorschlüssel werden aktualisiert...
-          </p>
-        ) : null}
-
-        {resplitLaeuft ? <p className={stile.hinweis}>Schlüssel werden neu verteilt...</p> : null}
-        {resplitFehler !== null && !resplitLaeuft ? (
-          <>
-            <p className={stile.warnung} role="alert">
-              Die Schlüssel konnten nicht neu verteilt werden: {resplitFehler} Bis das
-              gelingt, können die zuletzt hinzugekommenen Angehörigen den Tresor nicht
-              freigeben.
-            </p>
-            {/*
-              Von Hand und nicht von allein: Ein automatischer zweiter Versuch
-              liefe bei einem dauerhaften Fehler in eine Schleife gegen den
-              Server. Der Preparer sieht den Stand und entscheidet.
-            */}
-            <Button volleBreite onClick={() => void verteileShares().catch(() => undefined)}>
-              Erneut versuchen
-            </Button>
-          </>
-        ) : null}
+        <h2 className={stile.abschnitt}>Geschützter Tresor</h2>
+        <p className={stile.hinweis}>
+          Dies ist der Vorsorgefall von {fall.personName}. Der Tresor ist versiegelt und wird
+          erst nach Bestätigung des Todesfalls durch die Angehörigen geöffnet.
+        </p>
       </Card>
-
-      {/*
-        Die Todesbestaetigung steht nur bei den Angehoerigen (§3.5, §7).
-        Die vorsorgende Person kann ihren eigenen Tod nicht freigeben: `k`
-        zaehlt ausschliesslich Angehoerige, und der Knopf war fuer sie ohnehin
-        immer gesperrt. Was blieb, war ein Kasten ueber die eigene Beerdigung
-        auf dem Weg zu den eigenen Unterlagen.
-      */}
-      {istPreparer ? null : (
-        <Todesfallfreigabe fall={fall} onFallAktualisieren={onFallAktualisieren} />
-      )}
-
-      {istPreparer ? (
-        <>
-          {/*
-            Dieselben Fragen wie auf dem ersten Screen, und dieselben Antworten
-            (§3.5). Sie stehen hier ein zweites Mal, weil der Tresor der Ort
-            ist, an dem man nachsieht, was man hinterlegt hat: Wer eine Auskunft
-            ändern will, sucht sie dort, wo sie liegt, und nicht in einem
-            Formular auf der Startseite.
-          */}
-          <Card>
-            <div className={stile.statusKopf}>
-              <h2 className={stile.abschnitt}>Ihre Vorsorgefragen</h2>
-              <Badge lage="ruhig">
-                {beantwortet} von {gesamt} beantwortet
-              </Badge>
-            </div>
-            <p className={stile.hinweis}>
-              Ihre Antworten liegen verschlüsselt im Tresor. Sie können sie hier jederzeit
-              ändern; gespeichert wird jede Antwort für sich.
-            </p>
-          </Card>
-
-          <Vorsorgefragen
-            items={items}
-            onSpeichern={speichereAntwort}
-            onFrageAnlegen={legeEigeneFrageAn}
-            onFrageLoeschen={loescheItem}
-          />
-
-          <TresorInhalte items={freieItems} onNeu={legeItemAn} onLoeschen={loescheItem} />
-
-          <Card>
-            <h2 className={stile.abschnitt}>Vorsorge beenden</h2>
-            <p className={stile.hinweis}>
-              Als vorsorgende Person können Sie diesen Fall nicht verlassen. Sie können die
-              Vorsorge samt Tresor jedoch unwiderruflich löschen.
-            </p>
-
-            {loeschenBestaetigen ? (
-              <div className={stile.loeschenGruppe}>
-                <p className={stile.warnung}>
-                  Möchten Sie diesen Vorsorgefall samt Tresor wirklich unwiderruflich löschen?
-                </p>
-                <div className={stile.gefahrGruppe}>
-                  <Button
-                    variante="sekundaer"
-                    disabled={loeschenLaeuft}
-                    onClick={() => void vorsorgeLoeschen()}
-                  >
-                    Ja, Vorsorge löschen
-                  </Button>
-                  <Button
-                    variante="sekundaer"
-                    disabled={loeschenLaeuft}
-                    onClick={() => setzeLoeschenBestaetigen(false)}
-                  >
-                    Abbrechen
-                  </Button>
-                </div>
-                {loeschenFehler ? (
-                  <p className={stile.hinweis} role="alert">
-                    {loeschenFehler}
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <Button
-                variante="sekundaer"
-                volleBreite
-                onClick={() => setzeLoeschenBestaetigen(true)}
-              >
-                Vorsorge löschen
-              </Button>
-            )}
-          </Card>
-        </>
-      ) : (
-        <Card>
-          <h2 className={stile.abschnitt}>Geschützter Tresor</h2>
-          <p className={stile.hinweis}>
-            Dies ist der Vorsorgefall von {fall.personName}. Der Tresor ist versiegelt und wird erst
-            nach Bestätigung des Todesfalls durch die Angehörigen geöffnet.
-          </p>
-        </Card>
-      )}
     </>
   )
 }
@@ -609,41 +288,6 @@ function Zurueck({ auf }: { auf: () => void }) {
     <Button variante="text" className={stile.zurueck} onClick={auf}>
       <span aria-hidden="true">←</span> Zurück
     </Button>
-  )
-}
-
-/**
- * Ein gegliederter Erklärtext (§8).
- *
- * Die Aufzählung ist eine `ul` und trägt damit gefüllte Punkte, in beiden
- * Ansichten und auch dann, wenn jemand den Text vorgelesen bekommt: Eine
- * Vorlesestimme sagt "Liste mit fünf Einträgen". Punkte, die als Zeichen im
- * Text stünden, sagte sie mit vor.
- */
-function Infoblock({ text }: { text: Infotext }) {
-  return (
-    <div className={stile.info}>
-      <h3 className={stile.infoTitel}>{text.titel}</h3>
-
-      {text.abschnitte.map((abschnitt) =>
-        abschnitt.art === 'punkte' ? (
-          <ul key={abschnitt.punkte.join('|')} className={stile.punkte}>
-            {abschnitt.punkte.map((punkt) => (
-              <li key={punkt}>{punkt}</li>
-            ))}
-          </ul>
-        ) : (
-          <p
-            key={abschnitt.text}
-            className={
-              abschnitt.art === 'zwischentitel' ? stile.infoZwischentitel : stile.infoAbsatz
-            }
-          >
-            {abschnitt.text}
-          </p>
-        ),
-      )}
-    </div>
   )
 }
 
@@ -886,7 +530,7 @@ function ergebnisSatz(ergebnis: Fragebaumergebnis): string {
 }
 
 export function Erbe() {
-  const { zustand, loescheVorsorgefall: onLoescheFall, aktualisiere: onFallAktualisieren } = useCase()
+  const { zustand, aktualisiere: onFallAktualisieren } = useCase()
 
   if (zustand.status === 'laedt' || zustand.status === 'schluessel-erneuerung') {
     return (
@@ -910,6 +554,16 @@ export function Erbe() {
     )
   }
 
+  /*
+   * §3.5: Die vorsorgende Person hat ihren eigenen Bereich. Die Route schickt
+   * sie ohnehin dorthin (`app/App.tsx`); dass der Screen es noch einmal tut,
+   * hält ihn für sich allein richtig — er zeigte sonst, direkt aufgerufen, die
+   * Todesbestätigung für den eigenen Tod.
+   */
+  if (istVorsorgende(zustand.aktiver)) {
+    return <Navigate to="/nachlass" replace />
+  }
+
   const fall = zustand.aktiver
   if (fall.zustand === 'gesperrt') {
     return (
@@ -931,11 +585,7 @@ export function Erbe() {
       </div>
 
       {fall.status === 'vorsorge' ? (
-        <VorsorgeTresor
-          fall={fall}
-          onLoescheFall={onLoescheFall}
-          onFallAktualisieren={onFallAktualisieren}
-        />
+        <VorsorgeAngehoerige fall={fall} onFallAktualisieren={onFallAktualisieren} />
       ) : (
         <>
           <Erbstatus fall={fall} />
