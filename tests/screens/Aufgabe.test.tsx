@@ -1442,6 +1442,34 @@ describe('Kenntnisdatum (§8, #12)', () => {
     expect(screen.queryByLabelText('Tag Ihrer Kenntnis')).toBeNull()
   })
 
+  it('stellt daneben kein zweites Fristfeld hin', () => {
+    /*
+     * Bei der Ausschlagung bestimmt allein das Kenntnisdatum das Ende (§8).
+     * Ein eigenes Datum daneben wäre bei der Frist, die den ganzen Nachlass
+     * kosten kann, die Frage, welche der beiden Zahlen nun gilt.
+     */
+    zeigeAusschlagung()
+
+    expect(screen.queryByLabelText('Frist')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Frist entfernen' })).toBeNull()
+  })
+
+  it('lässt ein früher eingetragenes eigenes Datum das Badge nicht bestimmen', () => {
+    // Gespeichertes `fristAm` gibt es weiterhin — gezeigt wird es hier nicht
+    // mehr, und gerechnet wird ohne es.
+    zeigeAusschlagung({
+      kenntnisAm: heute(),
+      aufgaben: [
+        aufgabe({
+          katalog: herkunft({ fristTage: 42, fristAb: 'kenntnis' }),
+          fristAm: vorTagen(1),
+        }),
+      ],
+    })
+
+    expect(screen.getByText('noch 42 Tage')).toBeVisible()
+  })
+
   it('nimmt das Datum entgegen und gibt es an den Hook weiter', () => {
     const setzeKenntnisAm = vi.fn().mockResolvedValue(undefined)
     zeigeAusschlagung({ setzeKenntnisAm })
