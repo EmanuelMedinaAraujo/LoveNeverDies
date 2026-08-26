@@ -501,6 +501,17 @@ export function Profil() {
           </Liste>
         </Gruppe>
       ) : null}
+
+      <footer className={stile.fusszeile}>
+        <a
+          href="/legal/datenschutz.html"
+          target="_blank"
+          rel="noreferrer"
+          className={stile.datenschutzLink}
+        >
+          Datenschutz
+        </a>
+      </footer>
     </main>
   )
 }

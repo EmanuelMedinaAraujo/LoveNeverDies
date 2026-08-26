@@ -124,3 +124,21 @@
 .gefahr {
   color: var(--farbe-frist-abgelaufen-text);
 }
+
+.fusszeile {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-block: var(--dichte-abstand-klein);
+}
+
+.datenschutzLink {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  text-decoration: underline;
+  text-underline-offset: 0.125rem;
+}
+
+.datenschutzLink:hover {
+  color: var(--farbe-text);
+}
