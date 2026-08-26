@@ -621,14 +621,24 @@ describe('Hinweis bei Ausschlagung (C)', () => {
 })
 
 describe('Rechtlicher Hinweis bei Verwandtschaftsfragen', () => {
-  it('zeigt den rechtlichen Hinweis auf der Frage "Ich bin {person}s …"', () => {
+  it('zeigt den rechtlichen Hinweis als modales Overlay vor der Frage "Ich bin {person}s …" und schließt ihn bei Klick auf Verstanden', async () => {
+    const nutzer = userEvent.setup()
     zeige('/erbe/fragebaum/n65', { pfad: ['n0', 'n57', 'n65'] })
 
+    const dialog = screen.getByRole('dialog')
+    expect(dialog).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Rechtlicher Hinweis' })).toBeInTheDocument()
     expect(
       screen.getByText(
         'Die Ergebnisse der folgenden Fragen dienen ausschließlich der allgemeinen Information und Orientierung. Sie stellen keine Rechtsberatung dar und ersetzen nicht die individuelle Prüfung durch einen Anwalt oder Notar.',
       ),
     ).toBeInTheDocument()
+
+    const verstandenKnopf = screen.getByRole('button', { name: 'Verstanden' })
+    await nutzer.click(verstandenKnopf)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Kind' })).toBeInTheDocument()
   })
 })
 
