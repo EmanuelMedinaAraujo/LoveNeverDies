@@ -148,6 +148,43 @@ async function legeAn(inhalte: InhalteTabelle, k: Fallschluessel, titel: string)
   return aufgaben[aufgaben.length - 1]!
 }
 
+describe('Was eine neue Aufgabe mitbringt (§7)', () => {
+  it('nimmt Beschreibung und Frist in dieselbe Mutation wie den Titel', async () => {
+    /*
+     * Anlegen und gleich darauf ändern wären zwei Einträge in der Queue, und
+     * offline liegt zwischen ihnen eine Weile, in der die Aufgabe bei den
+     * Geschwistern ohne die Frist dasteht, wegen der sie angelegt wurde (§5).
+     */
+    const { inhalte } = server()
+    const k = fall()
+
+    await uebertrage(
+      inhalte,
+      await mutationAnlegen(k, 'Konten kündigen', null, null, {
+        beschreibung: 'Sparkasse und Bausparvertrag',
+        fristAm: '2026-09-30',
+      }),
+    )
+
+    const { aufgaben } = await lies(inhalte, k)
+
+    expect(aufgaben[0]?.beschreibung).toBe('Sparkasse und Bausparvertrag')
+    expect(aufgaben[0]?.fristAm).toBe('2026-09-30')
+  })
+
+  it('kommt ohne die Angaben aus und legt sie dann leer an', async () => {
+    const { inhalte } = server()
+    const k = fall()
+
+    await uebertrage(inhalte, await mutationAnlegen(k, 'Konten kündigen'))
+
+    const { aufgaben } = await lies(inhalte, k)
+
+    expect(aufgaben[0]?.beschreibung).toBe('')
+    expect(aufgaben[0]?.fristAm).toBeNull()
+  })
+})
+
 describe('Unteraufgaben als eigene Zeilen (§7)', () => {
   it('legt eine Unteraufgabe unter ihrer Elternaufgabe an', async () => {
     const { inhalte } = server()

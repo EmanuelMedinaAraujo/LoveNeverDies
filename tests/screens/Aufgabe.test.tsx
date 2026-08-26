@@ -426,16 +426,63 @@ describe('Aufgabendetail (§7, §8)', () => {
     expect(screen.getByText('Erledigt: alle 1 Unteraufgaben sind abgehakt.')).toBeVisible()
   })
 
-  it('legt eine Unteraufgabe unter dieser Aufgabe an', async () => {
+  it('legt eine Unteraufgabe im Dialog hinter dem Plus an', async () => {
     const legeAn = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(aufgabendaten({ legeAn }))
 
     zeigeDetail()
 
-    await userEvent.type(screen.getByLabelText('Neue Unteraufgabe'), 'Urkunden bestellen')
-    await userEvent.click(screen.getByRole('button', { name: 'Unteraufgabe hinzufügen' }))
+    // Solange niemand das Plus antippt, steht unter der Liste kein Formular.
+    expect(screen.queryByRole('dialog')).toBeNull()
 
-    expect(legeAn).toHaveBeenCalledWith('Urkunden bestellen', 'item-1')
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Unteraufgabe' }))
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Urkunden bestellen')
+    await userEvent.click(screen.getByRole('button', { name: 'Unteraufgabe speichern' }))
+
+    expect(legeAn).toHaveBeenCalledWith('Urkunden bestellen', 'item-1', false, {
+      beschreibung: '',
+      fristAm: null,
+    })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  })
+
+  it('nimmt auch bei einer Unteraufgabe Beschreibung und Frist auf (§7)', async () => {
+    /*
+     * Eine Unteraufgabe ist eine Zeile wie jede andere und hat ihre eigene
+     * Frist: "Sterbeurkunden bestellen" bis Freitag, "Termin machen" bis
+     * übermorgen. Genau dafür sind es eigene Zeilen und keine Liste im
+     * Payload der Elternaufgabe.
+     */
+    const legeAn = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(aufgabendaten({ legeAn }))
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Unteraufgabe' }))
+    await userEvent.type(screen.getByLabelText('Was ist zu tun?'), 'Urkunden bestellen')
+    await userEvent.type(screen.getByLabelText('Beschreibung (optional)'), 'Sechs Stück')
+    await userEvent.type(screen.getByLabelText('Erledigt bis (optional)'), '2026-09-30')
+    await userEvent.click(screen.getByRole('button', { name: 'Unteraufgabe speichern' }))
+
+    expect(legeAn).toHaveBeenCalledWith('Urkunden bestellen', 'item-1', false, {
+      beschreibung: 'Sechs Stück',
+      fristAm: '2026-09-30',
+    })
+  })
+
+  it('bietet in der Unteraufgabe keinen Schalter "Nur für mich" an (§3.7)', async () => {
+    /*
+     * Private Aufgaben sind immer Wurzelaufgaben. Eine private Unteraufgabe
+     * läge unter `K_p`, und dieselbe Elternaufgabe hätte für ihre Besitzerin
+     * drei Kinder und für alle anderen zwei.
+     */
+    useAufgaben.mockReturnValue(aufgabendaten())
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Neue Unteraufgabe' }))
+
+    expect(screen.queryByRole('checkbox', { name: 'Nur für mich' })).toBeNull()
   })
 
   it('hakt eine Unteraufgabe für sich ab', async () => {
@@ -462,7 +509,73 @@ describe('Aufgabendetail (§7, §8)', () => {
     expect(hakeAb).toHaveBeenCalledWith(expect.objectContaining({ id: 'kind-1' }), true)
   })
 
-  it('fragt, bevor es eine Unteraufgabe löscht', async () => {
+  it('bietet an einer Unteraufgabenzeile keine Aktion an, sondern den Weg ins Detail', () => {
+    /*
+     * „Zuständigkeit ändern" versprach etwas Engeres, als der Link tat, und
+     * „Löschen" stand unter jeder Zeile. Gelöscht wird jetzt in der Aufgabe
+     * selbst, oben rechts, wie bei jeder anderen auch.
+     */
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe(),
+            aufgabe({ id: 'kind-1', titel: 'Urkunden bestellen', parentId: 'item-1' }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    expect(screen.queryByRole('link', { name: /Zuständigkeit ändern/ })).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: /Löschen.*Urkunden bestellen/ }),
+    ).toBeNull()
+
+    expect(
+      screen.getByRole('link', { name: 'Details: „Urkunden bestellen“' }),
+    ).toHaveAttribute('href', '/aufgabe/kind-1')
+  })
+
+  it('löscht die Aufgabe nach Rückfrage über den Weg oben rechts', async () => {
+    const loesche = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(aufgabendaten({ loesche }))
+
+    zeigeDetail()
+
+    await userEvent.click(
+      screen.getByRole('button', { name: /Aufgabe löschen.*Sterbefall/ }),
+    )
+    expect(loesche).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toHaveTextContent('wirklich löschen')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }))
+    await waitFor(() =>
+      expect(loesche).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' })),
+    )
+  })
+
+  it('löscht die Aufgabe nach Rückfrage über die Schaltfläche unten', async () => {
+    const loesche = vi.fn().mockResolvedValue(undefined)
+    useAufgaben.mockReturnValue(aufgabendaten({ loesche }))
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Aufgabe löschen' }))
+    expect(loesche).not.toHaveBeenCalled()
+    expect(screen.getByRole('dialog')).toHaveTextContent('wirklich löschen')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }))
+    await waitFor(() =>
+      expect(loesche).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' })),
+    )
+  })
+
+  it('löscht eine Unteraufgabe nach Rückfrage über oben rechts und unten', async () => {
     const loesche = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(
       aufgabendaten({
@@ -479,13 +592,44 @@ describe('Aufgabendetail (§7, §8)', () => {
       }),
     )
 
+    zeigeDetail('kind-1')
+
+    // Oben rechts Icon-Button
+    const obenKnopf = screen.getByRole('button', {
+      name: /Unteraufgabe löschen.*Urkunden bestellen/,
+    })
+    expect(obenKnopf).toBeVisible()
+
+    // Unten Button
+    const untenKnopf = screen.getByRole('button', { name: 'Unteraufgabe löschen' })
+    expect(untenKnopf).toBeVisible()
+
+    await userEvent.click(untenKnopf)
+    expect(screen.getByRole('dialog')).toHaveTextContent('wirklich löschen')
+    await userEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }))
+    await waitFor(() =>
+      expect(loesche).toHaveBeenCalledWith(expect.objectContaining({ id: 'kind-1' })),
+    )
+  })
+
+  it('bietet das Löschen nicht an, wo niemand bearbeiten darf', () => {
+    // §7: Bearbeiten darf nur, wem sie zugewiesen ist — und wegnehmen erst recht.
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({ assignee: personen([{ userId: 'user_bert', name: 'Bert Müller' }]) }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
     zeigeDetail()
 
-    await userEvent.click(screen.getByRole('button', { name: 'Löschen: „Urkunden bestellen"' }))
-    expect(loesche).not.toHaveBeenCalled()
-
-    await userEvent.click(screen.getByRole('button', { name: 'Endgültig löschen' }))
-    expect(loesche).toHaveBeenCalledWith(expect.objectContaining({ id: 'kind-1' }))
+    expect(screen.queryByRole('button', { name: /löschen/i })).toBeNull()
   })
 
   it('bietet unter einer Unteraufgabe keine weitere Ebene an', () => {
@@ -506,8 +650,14 @@ describe('Aufgabendetail (§7, §8)', () => {
 
     zeigeDetail('kind-1')
 
-    expect(screen.queryByLabelText('Neue Unteraufgabe')).toBeNull()
-    expect(screen.getByText(/Tiefer gliedert die App nicht/)).toBeVisible()
+    /*
+     * Der Abschnitt steht gar nicht mehr da. Vorher stand dort eine leere
+     * Karte mit dem Satz "Tiefer gliedert die App nicht" — eine Überschrift,
+     * eine Fläche und ein Absatz, um mitzuteilen, dass es hier nichts gibt.
+     */
+    expect(screen.queryByRole('heading', { name: 'Unteraufgaben' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Neue Unteraufgabe' })).toBeNull()
+    expect(screen.queryByText(/Tiefer gliedert die App nicht/)).toBeNull()
   })
 
   it('benennt offene Abhängigkeiten und verlinkt sie', () => {
@@ -534,18 +684,28 @@ describe('Aufgabendetail (§7, §8)', () => {
     )
   })
 
-  it('speichert Notizen', async () => {
+  it('speichert Notizen von selbst, ohne Schaltfläche', async () => {
+    /*
+     * §5, §7: Ein Feld mit einer Schaltfläche daneben ist eine Zusage, die man
+     * einlösen muss. Auf einem Telefon verdeckt die Tastatur genau die
+     * Schaltfläche, die man danach hätte drücken sollen.
+     */
     const schreibe = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(aufgabendaten({ schreibe }))
 
     zeigeDetail()
 
-    await userEvent.type(screen.getByLabelText(/Notizen/), 'Termin am Montag')
-    await userEvent.click(screen.getByRole('button', { name: 'Notizen speichern' }))
+    expect(screen.queryByRole('button', { name: 'Notizen speichern' })).toBeNull()
 
-    expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
-      notizen: 'Termin am Montag',
-    })
+    await userEvent.type(screen.getByLabelText(/Notizen/), 'Termin am Montag')
+
+    await waitFor(
+      () =>
+        expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
+          notizen: 'Termin am Montag',
+        }),
+      { timeout: 3000 },
+    )
   })
 
   describe('Selbst gesetzte Frist (§7)', () => {
@@ -565,17 +725,25 @@ describe('Aufgabendetail (§7, §8)', () => {
 
       zeigeDetail()
 
-      fireEvent.change(screen.getByLabelText('Erledigt bis'), {
+      // Kein erklärender Satz und keine Feldbeschriftung mehr: über dem Feld
+      // steht „Frist", und ein Datumsfeld darunter sagt den Rest.
+      expect(screen.queryByText(/Bis wann soll diese Aufgabe erledigt sein/)).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Frist speichern' })).toBeNull()
+
+      fireEvent.change(screen.getByLabelText('Frist'), {
         target: { value: '2026-06-30' },
       })
-      await userEvent.click(screen.getByRole('button', { name: 'Frist speichern' }))
 
-      expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
-        fristAm: '2026-06-30',
-      })
+      await waitFor(
+        () =>
+          expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
+            fristAm: '2026-06-30',
+          }),
+        { timeout: 3000 },
+      )
     })
 
-    it('entfernt eine eingetragene Frist wieder', async () => {
+    it('entfernt eine eingetragene Frist über das Kreuz in der Zeile', async () => {
       const schreibe = vi.fn().mockResolvedValue(undefined)
       useAufgaben.mockReturnValue(
         aufgabendaten({
@@ -591,11 +759,26 @@ describe('Aufgabendetail (§7, §8)', () => {
 
       zeigeDetail()
 
-      await userEvent.click(screen.getByRole('button', { name: 'Frist entfernen' }))
+      const kreuz = screen.getByRole('button', { name: 'Frist entfernen' })
+
+      // In derselben Zeile wie das Feld, nicht als eigener Kasten darunter:
+      // Das Kreuz gehört zu diesem einen Feld.
+      expect(kreuz.parentElement).toContainElement(screen.getByLabelText('Frist'))
+
+      await userEvent.click(kreuz)
 
       expect(schreibe).toHaveBeenCalledWith(expect.objectContaining({ id: 'item-1' }), {
         fristAm: null,
       })
+      expect(screen.getByLabelText('Frist')).toHaveValue('')
+    })
+
+    it('zeigt das Kreuz erst, wenn etwas im Feld steht', () => {
+      useAufgaben.mockReturnValue(aufgabendaten())
+
+      zeigeDetail()
+
+      expect(screen.queryByRole('button', { name: 'Frist entfernen' })).toBeNull()
     })
 
     it('zeigt die eigene Frist im Badge, wenn sie früher endet als die gesetzliche', () => {
@@ -809,11 +992,45 @@ describe('Zuständigkeit (§7)', () => {
 
     zeigeDetail()
 
-    expect(screen.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Neue Unteraufgabe' })).toBeDisabled()
+    expect(screen.getByLabelText(/Notizen/)).toBeDisabled()
 
-    // Wer zuständig ist, steht in der Zuständigkeitszeile und nicht ein
-    // zweites Mal als Erklärung neben jedem gesperrten Feld.
+    // Wer zuständig ist, steht in der Zuständigkeitszeile
     expect(screen.getByText('Bert Müller')).toBeVisible()
+  })
+
+  it('zeigt beim Antippen deaktivierter Felder einen Hinweis zur Zuweisung', async () => {
+    mitAufgabe({ assignee: personen([BERT]) })
+
+    zeigeDetail()
+
+    // Vorher kein Hinweis
+    expect(screen.queryByRole('alert')).toBeNull()
+
+    // Frist antippen
+    await userEvent.click(screen.getByLabelText('Frist').parentElement!)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /Zuständig: Bert Müller.*unter „Zuständigkeit“/,
+    )
+
+    // Notizen antippen
+    await userEvent.click(screen.getByLabelText(/Notizen/).parentElement!)
+    expect(screen.getAllByRole('alert')).toHaveLength(2)
+
+    // Dokumente antippen
+    await userEvent.click(screen.getByText('Dokument abfotografieren'))
+    expect(screen.getAllByRole('alert')).toHaveLength(3)
+  })
+
+  it('zeigt bei einer freien Aufgabe beim Antippen deaktivierter Felder den Hinweis sich die Aufgabe zuzuweisen', async () => {
+    mitAufgabe({ assignee: NIEMAND })
+
+    zeigeDetail()
+
+    await userEvent.click(screen.getByLabelText('Frist').parentElement!)
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /Weisen Sie sich die Aufgabe erst zu/,
+    )
   })
 
   it('nennt eine freie Aufgabe frei und bietet sie an', () => {
@@ -821,11 +1038,11 @@ describe('Zuständigkeit (§7)', () => {
 
     zeigeDetail()
 
-    expect(screen.getByText('Niemand')).toBeVisible()
+    expect(screen.getByText('Niemand zugewiesen')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Übernehmen' })).toBeEnabled()
 
     // Die übrige Sperre bleibt: Ändern setzt weiterhin eine Zuweisung voraus.
-    expect(screen.getByRole('button', { name: 'Unteraufgabe hinzufügen' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Neue Unteraufgabe' })).toBeDisabled()
   })
 
   it('lässt die Angaben trotzdem lesen', () => {
@@ -921,7 +1138,7 @@ describe('Private Aufgaben im Detail (§3.7)', () => {
 
     zeigeDetail()
 
-    expect(screen.queryByLabelText('Neue Unteraufgabe')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Neue Unteraufgabe' })).toBeNull()
     expect(screen.getByText(/Machen Sie sie für alle sichtbar/)).toBeVisible()
   })
 
@@ -931,7 +1148,7 @@ describe('Private Aufgaben im Detail (§3.7)', () => {
     zeigeDetail()
 
     expect(screen.queryByRole('heading', { name: 'Sichtbarkeit' })).toBeNull()
-    expect(screen.getByLabelText('Neue Unteraufgabe')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Neue Unteraufgabe' })).toBeEnabled()
   })
 })
 

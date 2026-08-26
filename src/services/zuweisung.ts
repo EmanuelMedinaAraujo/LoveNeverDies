@@ -270,7 +270,14 @@ export function zuweisungText(zuweisung: Zuweisung, userId: string): string {
   }
 
   if (zuweisung.art === 'niemand') {
-    return 'Niemand'
+    /*
+     * Ein ganzer Satz und nicht bloss "Niemand": In einer Liste steht dieses
+     * Wort dort, wo bei jeder anderen Zeile ein Name steht -- unter dem Titel,
+     * klein und grau --, und wer die Liste ueberfliegt, liest es als einen.
+     * "Niemand zugewiesen" sagt stattdessen, was der Fall ist, und nebenbei,
+     * dass sich das aendern laesst (§7).
+     */
+    return 'Niemand zugewiesen'
   }
 
   const namen = zuweisung.personen.map((person) => nameVon(person, userId))

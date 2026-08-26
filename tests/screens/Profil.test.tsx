@@ -100,6 +100,38 @@ describe('Profil', () => {
     expect(screen.queryByText('anna@example.de')).toBeNull()
   })
 
+  it('fuehrt vom eigenen Namen in die Kontoeinstellungen', () => {
+    /*
+     * Der eigene Name war die einzige Zeile in diesem Screen, die dastand,
+     * ohne irgendwohin zu führen — und ausgerechnet dort tippt jeder zuerst
+     * hin, der seine E-Mail-Adresse oder sein Passwort ändern will (§7).
+     */
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByRole('link', { name: /Anna Müller/ })).toHaveAttribute('href', '/konto')
+  })
+
+  it('meldet ab, damit sich jemand anderes anmelden kann (§7)', async () => {
+    const auth = authWert()
+
+    rendereMitProvidern(<Profil />, { auth })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abmelden' }))
+
+    expect(auth.abmelden).toHaveBeenCalled()
+  })
+
+  it('nennt den Grund, wenn das Abmelden nicht durchgeht (§5)', async () => {
+    const auth = authWert()
+    auth.abmelden = vi.fn().mockRejectedValue(new Error('Keine Verbindung.'))
+
+    rendereMitProvidern(<Profil />, { auth })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Abmelden' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Keine Verbindung.')
+  })
+
   it('laesst den Abschnitt zur Person weg, solange niemand angemeldet ist', () => {
     rendereMitProvidern(<Profil />, { auth: authWert({ status: 'laedt' }) })
 

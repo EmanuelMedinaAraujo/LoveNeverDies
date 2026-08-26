@@ -9,10 +9,88 @@
   margin: 0 auto;
 }
 
+/*
+ * Die obere Leiste: der Weg zurueck links, die eine Aktion rechts. Sie ist die
+ * erste Zeile des Screens und bleibt es auch, wenn rechts nichts steht -- dann
+ * steht dort eben nur der Weg zurueck, an derselben Stelle wie sonst.
+ */
+.leiste {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dichte-abstand-klein);
+  min-height: var(--ziel-mindestmass);
+}
+
+/*
+ * Die einzige Aktion in diesem Screen, die etwas wegnimmt. Die
+ * Fristenpalette aus §12 traegt dafuer schon eine Farbe, die auf beiden
+ * Untergruenden AA erfuellt; eine neunte Farbe nur fuer diesen einen Knopf
+ * waere eine, die bei der naechsten Palettenaenderung vergessen wird.
+ */
+.loeschen {
+  flex: none;
+  color: var(--farbe-frist-abgelaufen-text);
+}
+
+/* Dieselbe Farbe im Dialog, wo die Frage endgueltig beantwortet wird. */
+.gefahr {
+  background: var(--farbe-frist-abgelaufen-text);
+}
+
+.gefahrknopf {
+  color: var(--farbe-frist-abgelaufen-text);
+  border-color: var(--farbe-frist-abgelaufen-text);
+}
+
+.sperre {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+  width: 100%;
+}
+
+.sperre :disabled {
+  pointer-events: none;
+}
+
+.warnung {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  margin: 0;
+}
+
 .kopf {
   display: flex;
   flex-direction: column;
   gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Das Plus an einer Karte traegt seine 44 px selbst: Ein Symbol ohne Text
+ * bekommt sie sonst von nichts (§7).
+ */
+.plusknopf {
+  flex: none;
+  min-width: var(--ziel-mindestmass);
+}
+
+.plus {
+  width: var(--dichte-schrift-gross);
+  height: var(--dichte-schrift-gross);
+}
+
+/*
+ * Die Textspalte einer Unteraufgabenzeile: Titel, darunter die Zustaendigkeit.
+ * Dieselbe Form wie in "Alle", damit eine Unteraufgabe nicht aussieht wie eine
+ * andere Art Sache, nur weil sie unter einer Aufgabe steht.
+ */
+.unterspalte {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.0625rem;
+  min-width: 0;
 }
 
 /* Titel und Fristbadge nebeneinander, mit Umbruch bei grosser Schrift (§7). */
@@ -78,31 +156,9 @@
   color: var(--farbe-text);
   margin-bottom: var(--dichte-abstand-klein);
 }
-
-.liste {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dichte-abstand-klein);
-
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .punkte {
   margin: 0;
   padding-left: var(--dichte-abstand-gross);
-}
-
-.zeile {
-  display: flex;
-  flex-direction: column;
-  gap: var(--dichte-abstand-klein);
-
-  padding: var(--dichte-abstand-klein);
-  border: 0.0625rem solid var(--farbe-kartenrand);
-  border-radius: var(--dichte-radius);
-  background: var(--farbe-karte);
 }
 
 .formular {
@@ -137,4 +193,54 @@
 .hinweis {
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
+}
+
+/*
+ * Die Unteraufgaben stehen schon in einer Karte. Eine zweite Flaeche mit
+ * eigenem Rand darin waere ein Kasten im Kasten; die Zeilen und ihre
+ * Haarlinien reichen. Bis an die Kanten der Karte gezogen, damit sie ein
+ * Abschnitt der Karte sind und kein eingelegter Block.
+ */
+.unterliste {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  margin-inline: calc(var(--dichte-abstand) * -1);
+}
+
+/*
+ * Eine abgehakte Unteraufgabe, deren Titel ohne Kaestchen dasteht: Sie hat
+ * nichts, was das zeigen koennte, also zeigt es der Titel.
+ */
+.fertig {
+  color: var(--farbe-text-sekundaer);
+  text-decoration: line-through;
+}
+
+/*
+ * Das Datumsfeld und das Kreuz, das es leert, in einer Zeile. Das Kreuz gehoert
+ * zu diesem einen Feld; ein Knopf in voller Breite darunter sah aus wie der
+ * Speichern-Knopf, den es hier gerade nicht mehr gibt.
+ */
+.fristzeile {
+  display: flex;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+}
+
+.fristzeile .eingabe {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Ein Kreuz ohne Text braucht seine 44 px aus eigenem Antrieb (§7). */
+.entfernen {
+  flex: none;
+  min-width: var(--ziel-mindestmass);
+  color: var(--farbe-text-sekundaer);
+}
+
+.kreuz {
+  width: var(--dichte-schrift-mittel);
+  height: var(--dichte-schrift-mittel);
 }

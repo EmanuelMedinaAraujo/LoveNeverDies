@@ -49,6 +49,20 @@
   opacity: 0.55;
 }
 
+.gesperrt input {
+  pointer-events: none;
+}
+
+.aufnahmeHuelle {
+  width: 100%;
+}
+
+.warnung {
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+  margin: 0;
+}
+
 /*
  * Nicht `display: none`: Ein verstecktes Feld ist fuer die Tastatur und fuer
  * eine Vorlesestimme gar nicht da, und das <label> allein loest nichts aus.

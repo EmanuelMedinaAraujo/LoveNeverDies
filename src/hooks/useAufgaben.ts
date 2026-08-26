@@ -43,6 +43,7 @@ import {
   type Fragebaumergebnis,
   type Konfiguration,
   type Nachlasseintrag,
+  type Neuinhalt,
 } from '../services/aufgabenService.ts'
 import type { Fristbezug } from '../services/fristen.ts'
 import type { Aufgabenvorlage } from '../types/fragebaum.ts'
@@ -120,6 +121,15 @@ export type Uebernahme = {
   name: string
 }
 
+/**
+ * Was das Formular ausser dem Titel aufnimmt (§7).
+ *
+ * Es geht in einem Stueck in dieselbe Mutation wie der Titel: Anlegen und
+ * gleich darauf aendern waeren zwei Eintraege in der Queue, und offline liegt
+ * zwischen ihnen eine Weile, in der die Aufgabe ohne ihre Frist dasteht (§5).
+ */
+export type Neuangaben = Neuinhalt
+
 export type Aufgabendaten = {
   zustand: AufgabenZustand
   /**
@@ -154,8 +164,14 @@ export type Aufgabendaten = {
    * @param parentId gesetzt, wenn eine Unteraufgabe entsteht (§7).
    * @param nurFuerMich legt die Aufgabe unter `K_p` ab (§3.7). Zusammen mit
    * einer `parentId` ein Wurf: Private Aufgaben sind immer Wurzelaufgaben.
+   * @param angaben was das Formular ausser dem Titel noch aufgenommen hat (§7).
    */
-  legeAn: (titel: string, parentId?: string | null, nurFuerMich?: boolean) => Promise<void>
+  legeAn: (
+    titel: string,
+    parentId?: string | null,
+    nurFuerMich?: boolean,
+    angaben?: Neuangaben,
+  ) => Promise<void>
   schreibe: (aufgabe: Aufgabe, aenderung: Aufgabenaenderung) => Promise<void>
   /**
    * Das Haekchen setzen oder wegnehmen (§7).
@@ -643,9 +659,21 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
   }, [fall.id, geraeteId, ich.userId, identitaet, zugang])
 
   const legeAn = useCallback(
-    async (titel: string, parentId: string | null = null, nurFuerMich = false) => {
+    async (
+      titel: string,
+      parentId: string | null = null,
+      nurFuerMich = false,
+      angaben: Neuangaben = {},
+    ) => {
+      /*
+       * §7: Wer etwas aufschreibt, ist damit eingetragen — etwas selbst zu
+       * notieren *ist* die Ansage "ich mache das". Ohne Anmeldung gibt es
+       * niemanden einzutragen, und die Aufgabe bleibt frei.
+       */
+      const wer = ich.userId === '' ? null : ich
+
       if (!nurFuerMich) {
-        mutiere(await mutationAnlegen(fall, titel, parentId, ich.userId === '' ? null : ich))
+        mutiere(await mutationAnlegen(fall, titel, parentId, wer, angaben))
         return
       }
 
@@ -661,7 +689,15 @@ export function useAufgaben(fall: Aufgabenfall): Aufgabendaten {
         )
       }
 
-      mutiere(await mutationPrivatAnlegen(fall, await holePersoenlichenSchluessel(), titel, ich))
+      mutiere(
+        await mutationPrivatAnlegen(
+          fall,
+          await holePersoenlichenSchluessel(),
+          titel,
+          wer,
+          angaben,
+        ),
+      )
     },
     [fall, holePersoenlichenSchluessel, ich, mutiere],
   )

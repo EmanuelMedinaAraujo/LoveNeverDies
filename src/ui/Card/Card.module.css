@@ -31,3 +31,24 @@
   letter-spacing: var(--typo-laufweite-titel);
   color: var(--farbe-text);
 }
+
+/*
+ * Titel links, daneben Platz fuer genau eine Sache: ein Badge oder die Aktion,
+ * die zu dieser Karte gehoert. `center` und nicht `baseline`, weil ein Symbol
+ * ohne Schriftlinie an einer Baseline sichtbar zu tief haengt.
+ */
+.kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--dichte-abstand-klein);
+}
+
+/*
+ * Die 44 px gelten der Trefferflaeche und stehen deshalb nur dort, wo eine ist
+ * (§7). Eine Karte ohne Aktion daneben soll nicht ploetzlich hoeher sein als
+ * vorher.
+ */
+.mitAktion {
+  min-height: var(--ziel-mindestmass);
+}

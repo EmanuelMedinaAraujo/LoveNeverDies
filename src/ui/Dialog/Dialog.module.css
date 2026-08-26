@@ -1,0 +1,107 @@
+/*
+ * Der Dialog liegt ueber allem, auch ueber der unteren Leiste: Sie ist in
+ * diesem Moment kein Weg, sondern etwas, das im Weg steht.
+ */
+.hintergrund {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+
+  /*
+   * Abgedunkelt, nicht milchig: Ein `backdrop-filter` kostet auf aelteren
+   * Telefonen genau dort Bildrate, wo gerade jemand tippt.
+   */
+  background: rgb(0 0 0 / 45%);
+}
+
+/*
+ * Auf dem Telefon steht der Dialog unten und laesst oben einen Rest der Seite
+ * stehen -- die Form, an der man sieht, dass die Liste darunter noch da ist.
+ * Ab Tablettbreite steht er mittig, weil ein Blatt am unteren Rand eines
+ * grossen Bildschirms weit weg vom Blick liegt.
+ */
+.flaeche {
+  display: flex;
+  flex-direction: column;
+
+  width: 100%;
+  max-width: 32rem;
+  max-height: 90svh;
+
+  background: var(--farbe-hintergrund);
+  border-top-left-radius: var(--dichte-radius);
+  border-top-right-radius: var(--dichte-radius);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+}
+
+@media (min-width: 40rem) {
+  .hintergrund {
+    align-items: center;
+    padding: var(--dichte-abstand);
+  }
+
+  .flaeche {
+    border-radius: var(--dichte-radius);
+  }
+}
+
+/*
+ * Kreuz links, Titel in der Mitte, Aktion rechts. Das Raster gibt beiden
+ * Seiten dieselbe Breite, damit der Titel wirklich mittig steht und nicht
+ * dorthin rutscht, wo die laengere der beiden Schaltflaechen ihn hinschiebt.
+ */
+.kopf {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--dichte-abstand-klein);
+
+  padding: var(--dichte-abstand-klein) var(--dichte-abstand);
+  border-bottom: 0.0625rem solid var(--farbe-kartenrand);
+}
+
+.titel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: center;
+  font-size: var(--dichte-schrift);
+  font-weight: var(--typo-gewicht-betont);
+}
+
+.schliessen {
+  justify-self: start;
+  /* Ein Kreuz ohne Text braucht seine 44 px aus eigenem Antrieb (§7). */
+  min-width: var(--ziel-mindestmass);
+}
+
+.kreuz {
+  width: var(--dichte-schrift-mittel);
+  height: var(--dichte-schrift-mittel);
+}
+
+.kopfaktion {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/*
+ * Der scrollende Teil. `overscroll-behavior` haelt die Bewegung im Dialog:
+ * Ohne die Zeile scrollt am Ende der Liste die Seite dahinter weiter, und der
+ * Dialog steht danach vor einem anderen Ausschnitt, als er geoeffnet wurde.
+ */
+.inhalt {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+
+  padding: var(--dichte-abstand);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
