@@ -226,7 +226,7 @@ function Angaben({
         {katalog.zustaendigeStelle === '' ? null : (
           <Angabe was="Zuständige Stelle">
             <div>
-              <span>{katalog.zustaendigeStelle}</span>
+              <span className={stile.zustaendigeStelle}>{katalog.zustaendigeStelle}</span>
               {istGerichtStelle(katalog.zustaendigeStelle) ? (
                 <GerichtNachschlagen
                   initialNotiz={aufgabe.notizen}
