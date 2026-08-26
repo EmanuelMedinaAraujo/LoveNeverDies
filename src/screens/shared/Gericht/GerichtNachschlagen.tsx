@@ -1,6 +1,9 @@
 import { useState } from 'react'
-import { findeNachlassgericht } from '../../../services/gerichtService.ts'
-import type { GerichtLookupErgebnis } from '../../../types/gericht.ts'
+import {
+  extrahierePlzAusNotiz,
+  findeNachlassgericht,
+} from '../../../services/gerichtService.ts'
+import type { GerichtLookupErgebnis, Nachlassgericht } from '../../../types/gericht.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Gerichtskarte } from '../../../ui/Gerichtskarte/Gerichtskarte.tsx'
 import stile from './GerichtNachschlagen.module.css'
@@ -11,16 +14,46 @@ export function istGerichtStelle(stelle: string): boolean {
   return s.includes('nachlassgericht') || s.includes('amtsgericht')
 }
 
+export type GerichtNachschlagenProps = {
+  initialNotiz?: string | undefined
+  aufGerichtGefunden?: ((gericht: Nachlassgericht, plz: string) => void | Promise<void>) | undefined
+  gesperrt?: boolean | undefined
+}
+
 /**
- * Klappbare Suche nach dem zuständigen Gericht direkt an einer Aufgabe.
+ * Suche nach dem zuständigen Gericht direkt an einer Aufgabe.
+ * In Aufgaben ist das Suchwerkzeug immer ausgeklappt.
  */
-export function GerichtNachschlagen() {
-  const [offen, setzeOffen] = useState(false)
-  const [plz, setzePlz] = useState('')
-  const [ergebnis, setzeErgebnis] = useState<GerichtLookupErgebnis | null>(null)
+export function GerichtNachschlagen({
+  initialNotiz = '',
+  aufGerichtGefunden,
+  gesperrt = false,
+}: GerichtNachschlagenProps = {}) {
+  const [plz, setzePlz] = useState(() => extrahierePlzAusNotiz(initialNotiz) ?? '')
+  const [ergebnis, setzeErgebnis] = useState<GerichtLookupErgebnis | null>(() => {
+    const extracted = extrahierePlzAusNotiz(initialNotiz)
+    if (extracted && extracted.length === 5) {
+      return findeNachlassgericht(extracted)
+    }
+    return null
+  })
+  const [zuletztGeseheneNotiz, setzeZuletztGeseheneNotiz] = useState(initialNotiz)
+
+  if (initialNotiz !== zuletztGeseheneNotiz) {
+    setzeZuletztGeseheneNotiz(initialNotiz)
+    const extracted = extrahierePlzAusNotiz(initialNotiz)
+    if (extracted && extracted.length === 5) {
+      setzePlz(extracted)
+      setzeErgebnis(findeNachlassgericht(extracted))
+    }
+  }
 
   function suche(eingabe: string) {
-    setzeErgebnis(findeNachlassgericht(eingabe))
+    const res = findeNachlassgericht(eingabe)
+    setzeErgebnis(res)
+    if (res.status === 'gefunden') {
+      void aufGerichtGefunden?.(res.gericht, res.plz)
+    }
   }
 
   function handlePlzChange(neuePlz: string) {
@@ -33,20 +66,6 @@ export function GerichtNachschlagen() {
     }
   }
 
-  if (!offen) {
-    return (
-      <div className={stile.container}>
-        <Button
-          variante="text"
-          onClick={() => setzeOffen(true)}
-          aria-expanded={false}
-        >
-          Zuständiges Gericht ermitteln (PLZ)
-        </Button>
-      </div>
-    )
-  }
-
   return (
     <div className={stile.container}>
       <div className={stile.sucheZeile}>
@@ -57,21 +76,15 @@ export function GerichtNachschlagen() {
           onChange={(e) => handlePlzChange(e.target.value)}
           placeholder="PLZ z. B. 74199"
           maxLength={5}
+          disabled={gesperrt}
           aria-label="Postleitzahl für Gerichtssuche"
         />
-        <Button variante="sekundaer" onClick={() => suche(plz)}>
-          Suchen
-        </Button>
         <Button
-          variante="text"
-          onClick={() => {
-            setzeOffen(false)
-            setzeErgebnis(null)
-            setzePlz('')
-          }}
-          aria-expanded={true}
+          variante="sekundaer"
+          disabled={gesperrt || plz.trim() === ''}
+          onClick={() => suche(plz)}
         >
-          Schließen
+          Suchen
         </Button>
       </div>
 
@@ -97,3 +110,4 @@ export function GerichtNachschlagen() {
     </div>
   )
 }
+

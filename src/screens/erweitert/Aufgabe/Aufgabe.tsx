@@ -27,6 +27,8 @@ import {
   GerichtNachschlagen,
   istGerichtStelle,
 } from '../../shared/Gericht/GerichtNachschlagen.tsx'
+import { aktualisiereNotizMitGericht } from '../../../services/gerichtService.ts'
+import type { Nachlassgericht } from '../../../types/gericht.ts'
 import {
   benenne,
   darfAbhaken,
@@ -123,7 +125,17 @@ function ZumFragebaum() {
  * Link auf die Gesetzesseite lesen sich wie eine Rechtsberatung, und die gibt
  * diese App nicht. Deshalb heißt der Abschnitt auch nicht mehr "Rechtliches".
  */
-function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlage }) {
+function Angaben({
+  aufgabe,
+  lage,
+  aufGerichtGefunden,
+  gesperrt,
+}: {
+  aufgabe: Aufgabendatensatz
+  lage: Fristlage
+  aufGerichtGefunden?: (gericht: Nachlassgericht, plz: string) => Promise<void>
+  gesperrt?: boolean
+}) {
   const katalog = aufgabe.katalog
 
   if (katalog === null) {
@@ -162,7 +174,13 @@ function Angaben({ aufgabe, lage }: { aufgabe: Aufgabendatensatz; lage: Fristlag
           <Angabe was="Zuständige Stelle">
             <div>
               <span>{katalog.zustaendigeStelle}</span>
-              {istGerichtStelle(katalog.zustaendigeStelle) ? <GerichtNachschlagen /> : null}
+              {istGerichtStelle(katalog.zustaendigeStelle) ? (
+                <GerichtNachschlagen
+                  initialNotiz={aufgabe.notizen}
+                  aufGerichtGefunden={aufGerichtGefunden}
+                  gesperrt={gesperrt}
+                />
+              ) : null}
             </div>
           </Angabe>
         )}
@@ -477,6 +495,12 @@ function Detail({
     }
   }
 
+  async function speichereGerichtNotiz(gericht: Nachlassgericht, plz: string) {
+    const neueNotizen = aktualisiereNotizMitGericht(notizen, gericht, plz)
+    setzeNotizen(neueNotizen)
+    await aktionen.schreibeNotizen(neueNotizen)
+  }
+
   const fertigeKinder = unteraufgaben.filter((unter) => unter.erledigt).length
 
   /*
@@ -574,7 +598,12 @@ function Detail({
       */}
       {istSeedAufgabe(aufgabe.katalog) ? <ZumFragebaum /> : null}
 
-      <Angaben aufgabe={aufgabe} lage={lage} />
+      <Angaben
+        aufgabe={aufgabe}
+        lage={lage}
+        aufGerichtGefunden={speichereGerichtNotiz}
+        gesperrt={aktionen.gesperrt || !darfAendern}
+      />
 
       {/*
         §8: Nur bei den Fristen, die an der eigenen Kenntnis hängen. Bei allen
