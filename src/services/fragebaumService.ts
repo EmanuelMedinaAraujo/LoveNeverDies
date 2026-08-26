@@ -157,7 +157,7 @@ export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
       aufgabeId: 'fragebaum-testament',
       version: FRAGEBAUM_STAND,
       fristTage: null,
-      fristAb: null,
+      fristAb: 'unverzueglich',
       zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
       benoetigteDokumente: ['Testament', 'Sterbeurkunde'],
       unteraufgaben: [

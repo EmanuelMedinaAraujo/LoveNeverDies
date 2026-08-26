@@ -147,6 +147,12 @@ function Angaben({
           der eigenen Kenntnis steht dagegen hier, weil sie kein Datum ist,
           sondern eine Erklärung (§8).
         */}
+        {lage.art === 'unverzueglich' ? (
+          <Angabe was="Frist">
+            unverzüglich (ohne schuldhaftes Zögern)
+          </Angabe>
+        ) : null}
+
         {lage.art === 'ab-kenntnis' ? (
           /*
             §8: Ohne Kenntnisdatum wird kein Ende gerechnet und keines

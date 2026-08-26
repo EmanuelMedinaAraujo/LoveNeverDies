@@ -523,6 +523,48 @@ describe('Aufgaben aus dem Baum (§7)', () => {
 
     expect(screen.queryByRole('button', { name: 'Aufgabe erstellen' })).not.toBeInTheDocument()
   })
+
+  it('bietet auf der Frageseite n2 (Testament gefunden) Aufgabe erstellen und Gerichtssuche an', async () => {
+    const nutzer = userEvent.setup()
+    const TESTAMENT_FRAGE_PFAD = ['n0', 'n1', 'n2']
+    zeige('/erbe/fragebaum/n2', { pfad: TESTAMENT_FRAGE_PFAD })
+
+    expect(
+      screen.getByRole('heading', { name: 'Was mache ich, wenn ich ein Testament gefunden habe?' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Aufgabe erstellen' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Weiter zu Fragen über das Erbe' }),
+    ).toBeInTheDocument()
+
+    // Gerichtssuche ausklappen und PLZ suchen
+    await nutzer.click(screen.getByRole('button', { name: /Zuständige Stelle ermitteln/ }))
+    await nutzer.type(screen.getByLabelText(/Postleitzahl/), '74199')
+    await nutzer.click(screen.getByRole('button', { name: 'Gericht suchen' }))
+
+    expect(screen.getByRole('heading', { name: 'Amtsgericht Heilbronn' })).toBeInTheDocument()
+
+    // Aufgabe erstellen
+    await nutzer.click(screen.getByRole('button', { name: 'Aufgabe erstellen' }))
+
+    expect(legeFragebaumAufgabeAn).toHaveBeenCalledWith(
+      'testament',
+      expect.stringContaining('Amtsgericht Heilbronn'),
+      expect.stringContaining('Was mache ich, wenn ich ein Testament gefunden habe?'),
+    )
+  })
+
+  it('zeigt auf der Frageseite n2 Aufgabe öffnen, wenn die Aufgabe bereits angelegt wurde', () => {
+    mockVorhandene.mockReturnValue({ id: 'item-testament-1' } as Aufgabe)
+    const TESTAMENT_FRAGE_PFAD = ['n0', 'n1', 'n2']
+    zeige('/erbe/fragebaum/n2', { pfad: TESTAMENT_FRAGE_PFAD })
+
+    expect(screen.queryByRole('button', { name: 'Aufgabe erstellen' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Aufgabe öffnen' })).toBeInTheDocument()
+    expect(
+      screen.getByText(/Sie haben diese Aufgabe bereits angelegt/),
+    ).toBeInTheDocument()
+  })
 })
 
 describe('Infoknoten (§5)', () => {
