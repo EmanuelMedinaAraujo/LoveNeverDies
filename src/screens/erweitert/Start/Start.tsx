@@ -54,6 +54,10 @@ function Ladeanzeige({ text }: { text: string }) {
 
 /** Wie dringend eine Frist aussieht (§12). Ab drei Tagen wird es knapp. */
 function badgelage(lage: Fristlage): Badgelage {
+  if (lage.art === 'unverzueglich') {
+    return 'knapp'
+  }
+
   if (lage.art !== 'datum') {
     return 'ruhig'
   }

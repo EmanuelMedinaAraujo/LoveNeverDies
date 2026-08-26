@@ -32,6 +32,8 @@ export type Fristlage =
    * fest (§8, #12). Ein Datum gibt es hier bewusst nicht.
    */
   | { art: 'ab-kenntnis' }
+  /** Die Frist ist unverzüglich (ohne schuldhaftes Zögern). */
+  | { art: 'unverzueglich' }
   | {
       art: 'datum'
       /** ISO `YYYY-MM-DD`, ausgerechnet und nirgends abgelegt. */
@@ -305,11 +307,17 @@ export function fristlage(
    * `alsIso`, im schlechteren ein Datum, das keines ist. §8 rechnet lieber gar
    * nicht: Was keine Zahl von Tagen mitbringt, hat hier keine Frist.
    */
+  if (katalog === null || katalog.fristAb === null) {
+    return { art: 'keine' }
+  }
+
+  if (katalog.fristAb === 'unverzueglich') {
+    return { art: 'unverzueglich' }
+  }
+
   if (
-    katalog === null ||
     katalog.fristTage === null ||
-    !Number.isFinite(katalog.fristTage) ||
-    katalog.fristAb === null
+    !Number.isFinite(katalog.fristTage)
   ) {
     return { art: 'keine' }
   }
@@ -355,6 +363,10 @@ export function fristText(lage: Fristlage): string | null {
     return null
   }
 
+  if (lage.art === 'unverzueglich') {
+    return 'unverzüglich'
+  }
+
   if (lage.art === 'ab-kenntnis') {
     return 'Frist ab Ihrer Kenntnis'
   }
@@ -374,7 +386,7 @@ export function fristText(lage: Fristlage): string | null {
 
 /** Der Rang einer Fristlage: je kleiner, desto weiter vorn. */
 function rang(lage: Fristlage): number {
-  return lage.art === 'datum' ? 0 : lage.art === 'ab-kenntnis' ? 1 : 2
+  return lage.art === 'unverzueglich' ? 0 : lage.art === 'datum' ? 1 : lage.art === 'ab-kenntnis' ? 2 : 3
 }
 
 /**

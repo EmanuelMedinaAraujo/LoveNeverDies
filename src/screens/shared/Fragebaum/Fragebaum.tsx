@@ -261,12 +261,19 @@ function Frageseite({
   knoten,
   fall,
   pfad,
+  aufgaben,
 }: {
   knoten: Fragebaumknoten
   fall: LesbarerFall
   pfad: string[]
+  aufgaben: Aufgabendaten
 }) {
   const navigate = useNavigate()
+  const { fragebaumAufgabe, legeFragebaumAufgabeAn } = aufgaben
+  const [plz, setzePlz] = useState('')
+  const [gericht, setzeGericht] = useState<Nachlassgericht | null>(null)
+  const [fehler, setzeFehler] = useState<string | null>(null)
+
   const text = knoten.text.replaceAll('{person}', fall.personName)
   /*
    * Vier Fragen tragen unter der Ueberschrift noch einen Fliesstext mit
@@ -275,6 +282,25 @@ function Frageseite({
    * einziger langer Satz: `.frage` haelt die Umbrueche der Inhaltsdatei nicht.
    */
   const [ueberschrift, rest] = geteilt(text)
+
+  const vorlage = knoten.aufgabe
+  const vorhandene = vorlage === undefined ? null : fragebaumAufgabe(vorlage)
+
+  async function aufgabeAnlegen() {
+    if (vorlage === undefined) {
+      return
+    }
+
+    try {
+      await legeFragebaumAufgabeAn(
+        vorlage,
+        notizAus({ plz, gericht }),
+        knoten.text.replaceAll('{person}', fall.personName),
+      )
+    } catch (ursache) {
+      setzeFehler(alsNachricht(ursache))
+    }
+  }
 
   return (
     <>
@@ -288,6 +314,40 @@ function Frageseite({
       </div>
 
       {knoten.info === undefined ? null : <Infoknopf thema={knoten.info} />}
+
+      {knoten.gericht === true ? (
+        <Gerichtssuche
+          plz={plz}
+          setzePlz={setzePlz}
+          setzeGericht={setzeGericht}
+        />
+      ) : null}
+
+      {fehler === null ? null : (
+        <p className={stile.warnung} role="alert">
+          {fehler}
+        </p>
+      )}
+
+      {vorlage === undefined ? null : (
+        <div className={stile.aktionen}>
+          {vorhandene === null ? (
+            <Button volleBreite onClick={() => void aufgabeAnlegen()}>
+              Aufgabe erstellen
+            </Button>
+          ) : (
+            <>
+              <p className={stile.hinweis}>
+                Sie haben diese Aufgabe bereits angelegt. Sie steht unter „{BAUPLAENE[vorlage].titel}“
+                und ist nur für Sie sichtbar.
+              </p>
+              <Button volleBreite onClick={() => navigate(`/aufgabe/${vorhandene.id}`)}>
+                Aufgabe öffnen
+              </Button>
+            </>
+          )}
+        </div>
+      )}
 
       <ul className={stile.antworten}>
         {knoten.antworten.map((antwort) => (
@@ -693,7 +753,7 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
       <Zurueck ziel="/erbe" />
 
       {knoten.art === 'frage' ? (
-        <Frageseite knoten={knoten} fall={fall} pfad={pfad} />
+        <Frageseite knoten={knoten} fall={fall} pfad={pfad} aufgaben={aufgaben} />
       ) : (
         <Ergebnisseite knoten={knoten} fall={fall} pfad={pfad} aufgaben={aufgaben} />
       )}

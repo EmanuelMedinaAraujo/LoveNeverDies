@@ -110,8 +110,9 @@ describe('Bauplaene (§7)', () => {
     expect(BAUPLAENE.anfechtung.katalog.hinweis).not.toContain('wird hier nicht ausgerechnet')
   })
 
-  it('laesst das Testament fristenlos, weil das Gesetz keine Tagesfrist nennt', () => {
+  it('gibt dem Testament die Frist unverzüglich ohne Tagesfrist', () => {
     expect(BAUPLAENE.testament.katalog.fristTage).toBeNull()
+    expect(BAUPLAENE.testament.katalog.fristAb).toBe('unverzueglich')
     expect(BAUPLAENE.testament.katalog.hinweis).toContain('Unverzüglich')
   })
 
