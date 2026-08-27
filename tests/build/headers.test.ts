@@ -66,7 +66,7 @@ describe('buildHeaders', () => {
 
     expect(policy).toContain('camera=(self)')
     expect(policy).toContain('geolocation=()')
-    expect(policy).toContain('microphone=()')
+    expect(policy).toContain('microphone=(self)')
   })
 
   it('cacht nur die gehashten Assets unverfallbar, nicht die App-Huelle', () => {

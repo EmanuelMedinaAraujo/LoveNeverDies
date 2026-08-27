@@ -21,6 +21,10 @@ interface ImportMetaEnv {
    * jemand damit sieht, entscheidet die RLS aus §4, nicht der Besitz des Keys.
    */
   readonly VITE_SUPABASE_ANON_KEY?: string
+  /**
+   * ElevenLabs Conversational AI Agent ID für den Erbe-Fragebaum Sprachassistenten.
+   */
+  readonly VITE_ELEVENLABS_AGENT_ID?: string
 }
 
 interface ImportMeta {

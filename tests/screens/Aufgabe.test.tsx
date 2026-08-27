@@ -1,6 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
 import type { AufgabenZustand, Aufgabendaten } from '../../src/hooks/useAufgaben.ts'
 import type { Falldaten } from '../../src/hooks/useCase.ts'
@@ -206,6 +206,9 @@ function zeigeAusschlagung({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-08-25T10:00:00Z'))
+  LESBAR.sterbedatum = heute()
   useCase.mockReturnValue({
     zustand: { status: 'bereit', faelle: [LESBAR], aktiver: LESBAR },
     legeTrauerfallAn: vi.fn().mockResolvedValue(undefined),
@@ -215,6 +218,10 @@ beforeEach(() => {
     aktualisiere: vi.fn(),
   })
   useAufgaben.mockReturnValue(aufgabendaten())
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('Aufgabendetail (§7, §8)', () => {

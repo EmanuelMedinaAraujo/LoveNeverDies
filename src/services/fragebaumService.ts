@@ -158,19 +158,26 @@ export type Aufgabenbauplan = {
  */
 export const BAUPLAENE: Record<Aufgabenvorlage, Aufgabenbauplan> = {
   testament: {
-    titel: "Testament beim Nachlassgericht abliefern",
-    beschreibung: ".",
+    titel: 'Testament beim Nachlassgericht abliefern',
+    beschreibung:
+      'Wer ein Testament der verstorbenen Person besitzt, muss es beim Nachlassgericht abliefern. Eine Nicht-Abgabe kann strafrechtliche Folgen und Kosten nach sich ziehen.',
     katalog: {
-      aufgabeId: "fragebaum-testament",
+      aufgabeId: 'fragebaum-testament',
       version: FRAGEBAUM_STAND,
       fristTage: null,
-      fristAb: "unverzueglich",
-      zustaendigeStelle: "Nachlassgericht (Amtsgericht)",
-      benoetigteDokumente: [],
-      unteraufgaben: [],
+      fristAb: 'unverzueglich',
+      zustaendigeStelle: 'Nachlassgericht (Amtsgericht)',
+      benoetigteDokumente: ['Testament', 'Sterbeurkunde'],
+      unteraufgaben: [
+        'Zuständiges Nachlassgericht über die Postleitzahl des letzten Wohnorts ermitteln',
+        'Testament im Original heraussuchen',
+        'Sterbeurkunde bereitlegen',
+        'Testament unverzüglich beim Nachlassgericht abgeben',
+      ],
       haengtAbVon: [],
-      hinweis: "",
-      kategorie: "Erbe",
+      hinweis:
+        'Das Gesetz verlangt die Ablieferung unverzüglich, nennt aber keine Zahl von Tagen. Unverzüglich heißt: ohne schuldhaftes Zögern.',
+      kategorie: 'Erbe',
       reihenfolge: 40,
     },
   },

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AufgabenZustand, Aufgabendaten } from '../../src/hooks/useAufgaben.ts'
 import type { Falldaten } from '../../src/hooks/useCase.ts'
 import type { Erinnerungsdaten } from '../../src/hooks/useErinnerungen.ts'
@@ -145,8 +145,14 @@ function aufgabendaten(
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-08-25T10:00:00Z'))
   useCase.mockReturnValue(falldaten())
   useAufgaben.mockReturnValue(aufgabendaten())
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('Alle', () => {
