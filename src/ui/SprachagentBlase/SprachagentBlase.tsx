@@ -65,6 +65,16 @@ export function SprachagentBlase({
       aria-modal="true"
       aria-label="Fragebaum Sprachassistent"
     >
+      {/* Oberer Bereich: Verbindungs-Statusanzeige oben statt unten */}
+      <div className={stile.kopf}>
+        {istVerbinden && !fehler ? (
+          <div className={stile.statusHinweisWrapper}>
+            <span className={stile.statusPulsPunkt} />
+            <p className={stile.statusHinweis}>Verbindung wird aufgebaut…</p>
+          </div>
+        ) : null}
+      </div>
+
       <div className={stile.zentrum}>
         <div className={stile.orbContainer}>
           {/* Optische Hör- und Sprech-Indikator-Wellen */}
@@ -89,11 +99,6 @@ export function SprachagentBlase({
             <div className={stile.orbGlanz} />
           </div>
         </div>
-
-        {/* Verbindungs-Statusanzeige */}
-        {istVerbinden && !fehler ? (
-          <p className={stile.statusHinweis}>Verbindung wird aufgebaut…</p>
-        ) : null}
 
         {/* Fehlerbox direkt im Overlay */}
         {istFehler && fehler ? (
