@@ -60,6 +60,18 @@ export type KopplungscodeZustand =
 
 export type Kopplungscodedaten = {
   zustand: KopplungscodeZustand
+  /**
+   * Ob erst noch ein Name gebraucht wird (§3.3, §6).
+   *
+   * `erzeuge_kopplungscode` verlangt ein Profil ("Ohne hinterlegten Namen gibt
+   * es keinen Kopplungscode."), und das ist keine Formalie: Die einladende
+   * Person sieht diesen Namen und entscheidet daran, ob sie das
+   * Familiengeheimnis weitergibt. Steht keiner da, fragt der Screen danach,
+   * statt einen Code anzufordern, der nicht kommen kann.
+   */
+  nameFehlt: boolean
+  /** Trägt den eigenen Namen ein. Danach läuft der Code von selbst an. */
+  speichereNamen: (name: string) => Promise<void>
   /** Nach Ablauf oder Fehlgriff: einen frischen Code holen. */
   neuAnfordern: () => void
 }
@@ -81,7 +93,12 @@ export type Kopplungscodedaten = {
  */
 export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
   const anmeldung = useGeraeteanmeldung()
-  const { zustand: profil, nochmal: profilNochmal } = useProfilAbgleich()
+  const {
+    zustand: profil,
+    nameFehlt,
+    speichereNamen,
+    nochmal: profilNochmal,
+  } = useProfilAbgleich()
   const zugang = useSupabase()
 
   /*
@@ -102,7 +119,7 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
   const profilFehler = profil.status === 'fehler' ? profil.nachricht : null
 
   useEffect(() => {
-    if (identitaet === null || geraetId === null || !profilBereit) {
+    if (identitaet === null || geraetId === null || !profilBereit || nameFehlt) {
       return
     }
 
@@ -125,7 +142,7 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
     return () => {
       aktuell = false
     }
-  }, [geraetId, identitaet, profilBereit, runde, zugang, zweck])
+  }, [geraetId, identitaet, nameFehlt, profilBereit, runde, zugang, zweck])
 
   const neuAnfordern = useCallback(() => {
     // Erst das alte Ergebnis fort, dann die neue Runde: Sonst stünde der
@@ -164,7 +181,10 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
     }
   }, [anmeldungFehler, ergebnis, identitaet, profilFehler])
 
-  return useMemo(() => ({ zustand, neuAnfordern }), [neuAnfordern, zustand])
+  return useMemo(
+    () => ({ zustand, nameFehlt, speichereNamen, neuAnfordern }),
+    [nameFehlt, neuAnfordern, speichereNamen, zustand],
+  )
 }
 
 export type WacheZustand =

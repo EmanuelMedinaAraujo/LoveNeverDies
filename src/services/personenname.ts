@@ -31,3 +31,28 @@ export function personenname(name: string | null | undefined, ersatz = OHNE_NAME
 
   return gekuerzt === '' ? ersatz : gekuerzt
 }
+
+/**
+ * Ob das ein Name ist, den ein Mensch von sich angegeben hat.
+ *
+ * Zwei Faelle gelten als "keiner": nichts, und eine E-Mail-Adresse. Die
+ * Adresse steht in `profiles.display_name` bei jedem, der sich angemeldet hat,
+ * solange der Adapter sie ersatzweise als Anzeigenamen eintrug — ein Bestand,
+ * den diese Pruefung wieder einsammelt, ohne dass jemand die Tabelle anfassen
+ * muss. Beim naechsten Fall, bei der naechsten Vorsorge, bei der naechsten
+ * Einladung fragt die App nach einem Namen und ersetzt sie.
+ *
+ * Erkannt wird die Adresse an ihrer Form und nicht am Vergleich mit der
+ * hinterlegten Adresse: Wer zwei Adressen hat, traegt womoeglich die andere
+ * ein, und "Zum Fall hinzufuegen? k7f3x9a2b1@privaterelay.appleid.com" ist mit
+ * jeder von beiden dieselbe unbrauchbare Auskunft.
+ *
+ * Ein Name mit einem `@` darin ist keiner: Im Deutschen kommt das Zeichen in
+ * keinem Personennamen vor, und die Verwechslungsgefahr geht nur in die eine
+ * Richtung.
+ */
+export function istEchterName(name: string | null | undefined): boolean {
+  const gekuerzt = name?.trim() ?? ''
+
+  return gekuerzt !== '' && !gekuerzt.includes('@')
+}

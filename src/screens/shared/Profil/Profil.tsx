@@ -10,6 +10,7 @@ import {
 } from '../../../hooks/useAnsichtsmodus.ts'
 import { useAufgaben } from '../../../hooks/useAufgaben.ts'
 import { useCase } from '../../../hooks/useCase.ts'
+import { useProfilAbgleich } from '../../../hooks/useProfil.ts'
 import { istVorsorgende, type LesbarerFall } from '../../../services/fallService.ts'
 import { personenname } from '../../../services/personenname.ts'
 import { statusText } from '../../../services/fragebaumService.ts'
@@ -243,6 +244,13 @@ function Vorsorgeloeschen({
 export function Profil() {
   const { zustand, abmelden } = useAuth()
   const { zustand: fall, verlasseFall, loescheVorsorgefall } = useCase()
+  /*
+   * Der Name aus `profiles` und nicht der aus der Anmeldung: Wer ihn selbst
+   * eingetragen hat — beim Anlegen eines Falls oder vor einem Kopplungscode
+   * (§3.3) —, soll ihn hier wiederfinden und nicht „Namen ergänzen" lesen,
+   * obwohl er es eben getan hat.
+   */
+  const { name: hinterlegterName } = useProfilAbgleich()
   const benutzer = zustand.status === 'angemeldet' ? zustand.benutzer : null
 
   const [bestaetigung, setzeBestaetigung] = useState(false)
@@ -315,7 +323,7 @@ export function Profil() {
               wo sich der Name eintragen laesst.
             */}
             <Navizeile
-              titel={personenname(benutzer.anzeigename, 'Namen ergänzen')}
+              titel={personenname(hinterlegterName, 'Namen ergänzen')}
               meta={benutzer.email ?? undefined}
               ziel="/konto"
               vorleseText=": Konto und Anmeldung ändern"

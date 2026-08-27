@@ -77,3 +77,31 @@
   gap: var(--dichte-abstand-klein);
   margin-top: var(--dichte-abstand-klein);
 }
+
+/*
+ * Die Namensfrage vor dem Kopplungscode (§3.3, §6). Dieselben Masse wie das
+ * Codefeld drueben in `Koppeln`: Es ist derselbe Ablauf, von der anderen
+ * Seite aus gesehen.
+ */
+.formular {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand);
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dichte-abstand-klein);
+}
+
+.eingabe {
+  width: 100%;
+  padding: var(--dichte-abstand-klein);
+  border: 0.0625rem solid var(--farbe-kartenrand);
+  border-radius: var(--dichte-radius);
+  background: var(--farbe-hintergrund);
+  color: var(--farbe-text);
+  font: inherit;
+  font-size: var(--dichte-schrift);
+}
