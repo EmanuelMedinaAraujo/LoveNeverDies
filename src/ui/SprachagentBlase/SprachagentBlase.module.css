@@ -1,0 +1,253 @@
+/*
+ * Sprachagent Vollbild-Overlay im Einklang mit dem App-Farbschema (DESIGN.md §12).
+ * 3D Metallic Orb mit optischem Hör-/Sprech-Indikator und runden Mute/Stop-Knöpfen.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: radial-gradient(
+    circle at 50% 40%,
+    var(--farbe-karte, #ffffff) 0%,
+    var(--farbe-hintergrund, #f7f4ec) 80%
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3rem 1.5rem;
+  user-select: none;
+  animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  touch-action: manipulation;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.zentrum {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+}
+
+.orbContainer {
+  position: relative;
+  width: min(76vw, 360px);
+  height: min(76vw, 360px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Visuelle Indikator-Wellen für Hören / Sprechen */
+.hoerenWelle {
+  position: absolute;
+  inset: -25px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.35) 0%, rgba(14, 165, 233, 0) 70%);
+  animation: metallicWave 2.8s infinite ease-in-out;
+  pointer-events: none;
+}
+
+.sprechenWelle {
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(53, 82, 60, 0.3) 0%, rgba(14, 165, 233, 0) 72%);
+  animation: metallicWave 1.8s infinite ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes metallicWave {
+  0%, 100% {
+    transform: scale(0.94);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1.16);
+    opacity: 0.9;
+  }
+}
+
+/* Der fotorealistische 3D Metallic Orb */
+.orb {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 25%,
+    #ffffff 0%,
+    #f1f5f9 12%,
+    #cbd5e1 28%,
+    #94a3b8 48%,
+    #475569 70%,
+    #1e293b 88%,
+    #090d16 100%
+  );
+  box-shadow:
+    0 30px 65px rgba(0, 0, 0, 0.28),
+    0 12px 25px rgba(0, 0, 0, 0.16),
+    inset 0 2px 6px rgba(255, 255, 255, 0.95),
+    inset -18px -18px 45px rgba(0, 0, 0, 0.85);
+  transition: transform 0.12s ease-out, box-shadow 0.25s ease-out;
+  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+/* Spiegeleffekt / Glanzreflexion auf dem Metall */
+.orbGlanz {
+  position: absolute;
+  top: 7%;
+  left: 14%;
+  width: 48%;
+  height: 26%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0) 100%);
+  transform: rotate(-28deg);
+  pointer-events: none;
+}
+
+/* Zustand: Hört aktiv zu (Listening) -> leuchtender Cyan-Metallring */
+.orbHoeren {
+  box-shadow:
+    0 30px 70px rgba(0, 0, 0, 0.3),
+    0 0 45px rgba(14, 165, 233, 0.5),
+    inset 0 2px 7px rgba(255, 255, 255, 0.95),
+    inset -18px -18px 45px rgba(0, 0, 0, 0.85);
+  animation: orbHoerenPuls 3s infinite ease-in-out;
+}
+
+/* Zustand: Sprachagent spricht (Speaking) -> dynamischer Impuls */
+.orbSprechen {
+  background: radial-gradient(
+    circle at 30% 25%,
+    #ffffff 0%,
+    #e0f2fe 12%,
+    #7dd3fc 28%,
+    #38bdf8 48%,
+    #0284c7 70%,
+    #0f172a 88%,
+    #020617 100%
+  );
+  box-shadow:
+    0 35px 80px rgba(0, 0, 0, 0.35),
+    0 0 60px rgba(56, 189, 248, 0.6),
+    inset 0 2px 8px rgba(255, 255, 255, 1),
+    inset -18px -18px 45px rgba(0, 0, 0, 0.85);
+  animation: orbSprechenPuls 1.6s infinite ease-in-out;
+}
+
+/* Zustand: Pausiert / Stummgeschaltet */
+.orbPausiert {
+  background: radial-gradient(
+    circle at 30% 25%,
+    #ffffff 0%,
+    #fef3c7 12%,
+    #fde68a 28%,
+    #d97706 55%,
+    #78350f 80%,
+    #1c1917 100%
+  );
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.22),
+    0 0 30px rgba(217, 119, 6, 0.3),
+    inset 0 2px 4px rgba(255, 255, 255, 0.7);
+  transform: scale(0.96);
+  animation: none;
+}
+
+@keyframes orbHoerenPuls {
+  0%, 100% {
+    transform: scale(0.98);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes orbSprechenPuls {
+  0%, 100% {
+    transform: scale(0.97);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+/* Knopfreihe am unteren Bildschirmrand: Nur die beiden runden Knöpfe */
+.knopfreihe {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  z-index: 10;
+}
+
+/* Runder 3D Metallic Knopf */
+.kreisKnopf {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.18),
+    inset 0 1px 2px rgba(255, 255, 255, 0.35);
+  transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.kreisKnopf:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.26);
+}
+
+.kreisKnopf:active {
+  transform: scale(0.94);
+}
+
+/* Mute / Pause Knopf (Dunkelmetall) */
+.stummKnopf {
+  background: linear-gradient(180deg, #334155 0%, #1e293b 60%, #0f172a 100%);
+  color: #f8fafc;
+}
+
+.stummKnopfAktiv {
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 60%, #b45309 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+}
+
+/* Beenden / Stop Knopf (Rotes Metall) */
+.beendenKnopf {
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 60%, #7f1d1d 100%);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+.beendenKnopf:hover {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 60%, #991b1b 100%);
+  box-shadow: 0 12px 30px rgba(220, 38, 38, 0.45);
+}
+
+.telefonIcon {
+  transform: rotate(135deg);
+  display: block;
+}

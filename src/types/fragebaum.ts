@@ -25,6 +25,17 @@ export type Erbstatus =
   | 'kein-erbe'
   | 'noch-erbe'
 
+/** Status des ElevenLabs Sprachagenten */
+export type SprachagentStatus =
+  | 'idle'
+  | 'connecting'
+  | 'connected'
+  | 'listening'
+  | 'speaking'
+  | 'paused'
+  | 'error'
+  | 'completed'
+
 /**
  * Die Aufgaben, die aus dem Baum und aus dem Erbstatus entstehen können
  * (ERBE_DESIGN.md §7).
