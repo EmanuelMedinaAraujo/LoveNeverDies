@@ -20,6 +20,8 @@ import { findeNachlassgericht } from '../../../services/gerichtService.ts'
 import { Badge } from '../../../ui/Badge/Badge.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Gerichtskarte } from '../../../ui/Gerichtskarte/Gerichtskarte.tsx'
+import { SprachagentBlase } from '../../../ui/SprachagentBlase/SprachagentBlase.tsx'
+import { useFragebaumVoiceAgent } from '../../../hooks/useFragebaumVoiceAgent.ts'
 import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
 import { KeinFall } from '../KeinFall/KeinFall.tsx'
 import { fallLadeText } from '../Ladeanzeige/FallLadeanzeige.tsx'
@@ -793,7 +795,20 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
   const pfad = (location.state as Pfadstatus)?.pfad
   const knoten = knotenMit(knotenId)
   const [abbrechenOffen, setzeAbbrechenOffen] = useState(false)
+  const [sprachagentAktiv, setzeSprachagentAktiv] = useState(false)
   const dialogRef = useRef<HTMLDivElement | null>(null)
+
+  const voiceAgent = useFragebaumVoiceAgent({
+    personName: fall.personName,
+    startKnotenId: knotenId,
+    startPfad: pfad ?? [knotenId],
+    onAutoEnd: (endKnotenId, endPfad) => {
+      setzeSprachagentAktiv(false)
+      navigate(`/erbe/fragebaum/${endKnotenId}`, {
+        state: { pfad: endPfad },
+      })
+    },
+  })
 
   /*
    * Der Sync-Stream hängt hier und nicht an der Ergebnisseite (§6).
@@ -828,7 +843,7 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
   /*
    * Ohne Pfad im `state` gibt es keinen Durchlauf, zu dem diese Seite gehört:
    * ein geteilter Link, ein Lesezeichen, ein neuer Tab. Dann fängt der Baum von
-   * vorn an, statt aus der Mitte heraus so zu tun, als wäre etwas beantwortet.
+   * vorn an, statt aus der Mitte heraus so to tun, als wäre etwas beantwortet.
    */
   if (knoten === null || pfad === undefined || pfad.at(-1) !== knotenId) {
     return <Navigate to="/erbe/fragebaum" replace />
@@ -844,6 +859,32 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
       */}
       <div className={stile.navigation}>
         <Zurueck ziel="/erbe" />
+        <button
+          type="button"
+          className={stile.sprachKnopf}
+          onClick={() => {
+            setzeSprachagentAktiv(true)
+            void voiceAgent.starteSitzung(knotenId, pfad)
+          }}
+          aria-label="Fragebaum mit Sprachassistent starten"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+            <line x1="12" y1="19" x2="12" y2="22" />
+          </svg>
+          <span>Sprachassistent</span>
+        </button>
         <Button
           variante="text"
           className={stile.abbrechenKnopf}
@@ -858,6 +899,22 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
       ) : (
         <Ergebnisseite knoten={knoten} fall={fall} pfad={pfad} aufgaben={aufgaben} />
       )}
+
+      {sprachagentAktiv ? (
+        <SprachagentBlase
+          status={voiceAgent.status}
+          isMuted={voiceAgent.isMuted}
+          lautstaerke={voiceAgent.lautstaerke}
+          onPauseToggle={voiceAgent.togglestumm}
+          onStop={() => {
+            const endStand = voiceAgent.beendeSitzung()
+            setzeSprachagentAktiv(false)
+            navigate(`/erbe/fragebaum/${endStand.knotenId}`, {
+              state: { pfad: endStand.pfad },
+            })
+          }}
+        />
+      ) : null}
 
       {abbrechenOffen ? (
         <div

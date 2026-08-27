@@ -261,6 +261,26 @@
   color: var(--farbe-akzent);
 }
 
+.sprachKnopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  background: var(--farbe-karte);
+  border: 0.0625rem solid var(--farbe-akzent);
+  color: var(--farbe-akzent);
+  font-size: var(--dichte-schrift-klein);
+  font-weight: var(--typo-gewicht-betont);
+  cursor: pointer;
+  transition: all 150ms ease-out;
+}
+
+.sprachKnopf:hover {
+  background: var(--farbe-akzent);
+  color: var(--farbe-auf-akzent);
+}
+
 .dialogHintergrund {
   position: fixed;
   inset: 0;
