@@ -72,9 +72,7 @@ export type Scandaten = {
 export function scannenUnterstuetzt(): boolean {
   return (
     typeof navigator !== 'undefined' &&
-    (typeof navigator.mediaDevices?.getUserMedia === 'function' ||
-      typeof (navigator as unknown as { webkitGetUserMedia?: unknown }).webkitGetUserMedia ===
-        'function')
+    typeof navigator.mediaDevices?.getUserMedia === 'function'
   )
 }
 
@@ -84,50 +82,11 @@ function fehlermeldung(fehler: unknown): string {
     return 'Der Zugriff auf die Kamera wurde nicht erlaubt. Bitte erlauben Sie ihn in den Einstellungen des Browsers, oder tippen Sie den Code stattdessen ein.'
   }
 
-  if (
-    fehler instanceof DOMException &&
-    (fehler.name === 'NotFoundError' || fehler.name === 'OverconstrainedError')
-  ) {
+  if (fehler instanceof DOMException && fehler.name === 'NotFoundError') {
     return 'Dieses Gerät hat keine nutzbare Kamera. Bitte tippen Sie den Code stattdessen ein.'
   }
 
   return 'Die Kamera war nicht zu öffnen. Bitte tippen Sie den Code stattdessen ein.'
-}
-
-/**
- * Fordert den Kamera-Stream an — bevorzugt die rückseitige Umgebungskamera,
- * weicht bei strikten Einschränkungen auf jede verfügbare Kamera aus.
- */
-async function holeKameraStream(): Promise<MediaStream> {
-  if (typeof navigator.mediaDevices?.getUserMedia === 'function') {
-    try {
-      return await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } },
-        audio: false,
-      })
-    } catch {
-      return await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: false,
-      })
-    }
-  }
-
-  const legacy = (navigator as unknown as {
-    webkitGetUserMedia?: (
-      c: MediaStreamConstraints,
-      s: (stream: MediaStream) => void,
-      e: (err: unknown) => void,
-    ) => void
-  }).webkitGetUserMedia
-
-  if (typeof legacy === 'function') {
-    return new Promise((resolve, reject) => {
-      legacy.call(navigator, { video: true, audio: false }, resolve, reject)
-    })
-  }
-
-  throw new DOMException('Kamera-Schnittstelle nicht vorhanden', 'NotFoundError')
 }
 
 /** Liest ein Einzelbild aus dem Video, oder `null`, solange keines dasteht. */
@@ -154,20 +113,28 @@ function bildDaten(video: HTMLVideoElement, leinwand: HTMLCanvasElement): ImageD
     return null
   }
 
-  try {
-    pinsel.drawImage(video, 0, 0, breite, hoehe)
-    return pinsel.getImageData(0, 0, breite, hoehe)
-  } catch {
-    return null
-  }
+  pinsel.drawImage(video, 0, 0, breite, hoehe)
+
+  return pinsel.getImageData(0, 0, breite, hoehe)
 }
 
-/** Erstellt den canvas-basierten jsQR-Dekodierer. */
-async function erstelleJsQrDekodierer(): Promise<(video: HTMLVideoElement) => string | null> {
+/**
+ * Der Dekodierer dieses Laufs: der eingebaute, sonst `jsQR`.
+ *
+ * Gibt eine Funktion zurück, die ein Videobild auf einen QR-Code hin ansieht
+ * und seinen Text zurückgibt — oder `null`, wenn keiner darin war.
+ */
+async function dekodierer(): Promise<(video: HTMLVideoElement) => Promise<string | null>> {
+  if (typeof window !== 'undefined' && window.BarcodeDetector !== undefined) {
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
+
+    return async (video) => (await detector.detect(video))[0]?.rawValue ?? null
+  }
+
   const { default: jsQR } = await import('jsqr')
   const leinwand = document.createElement('canvas')
 
-  return (video: HTMLVideoElement) => {
+  return async (video) => {
     const bild = bildDaten(video, leinwand)
 
     if (bild === null) {
@@ -180,44 +147,8 @@ async function erstelleJsQrDekodierer(): Promise<(video: HTMLVideoElement) => st
      * zweites Mal invertiert und kosten je Takt so viel wie der erste
      * Durchgang.
      */
-    return (
-      jsQR(bild.data, bild.width, bild.height, { inversionAttempts: 'dontInvert' })?.data ?? null
-    )
+    return jsQR(bild.data, bild.width, bild.height, { inversionAttempts: 'dontInvert' })?.data ?? null
   }
-}
-
-/**
- * Der Dekodierer dieses Laufs: der eingebaute, sonst `jsQR`.
- *
- * Gibt eine Funktion zurück, die ein Videobild auf einen QR-Code hin ansieht
- * und seinen Text zurückgibt — oder `null`, wenn keiner darin war.
- */
-async function dekodierer(): Promise<(video: HTMLVideoElement) => Promise<string | null>> {
-  if (typeof window !== 'undefined' && window.BarcodeDetector !== undefined) {
-    try {
-      const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
-      let jsQrFallback: ((video: HTMLVideoElement) => string | null) | null = null
-
-      return async (video) => {
-        try {
-          const treffer = await detector.detect(video)
-          return treffer[0]?.rawValue ?? null
-        } catch {
-          // Falls detect auf diesem System bei Video-Elementen fehlschlägt,
-          // weichen wir nahtlos auf den Canvas-Dekodierer aus.
-          if (jsQrFallback === null) {
-            jsQrFallback = await erstelleJsQrDekodierer()
-          }
-          return jsQrFallback(video)
-        }
-      }
-    } catch {
-      // BarcodeDetector-Konstruktor warf (z. B. Format 'qr_code' nicht unterstützt)
-    }
-  }
-
-  const jsQr = await erstelleJsQrDekodierer()
-  return async (video) => jsQr(video)
 }
 
 /**
@@ -276,22 +207,17 @@ export function useQrScanner(aktiv: boolean, onErkannt: (wert: string) => void):
 
       try {
         /*
-         * WICHTIG für iOS Safari: Kamera-Anfrage SOFORT starten!
-         *
-         * Auf dem iPhone/Safari erlischt die flüchtige Benutzerinteraktion
-         * (User Activation Token) nach asynchronen Microtasks oder Netzwerk-
-         * Ladevorgängen (wie dem dynamischen Laden von jsQR). Wurde der
-         * Import vorher abgewartet, verwarf Safari das nachfolgende
-         * `getUserMedia` mit einem `NotAllowedError`.
-         *
-         * Deshalb stoßen wir `holeKameraStream()` und `dekodierer()` parallel
-         * an — der Kamera-Aufruf geschieht im selben Ereignis-Durchlauf
-         * wie das Tippen auf den Button.
+         * Der Dekodierer zuerst und die Kamera danach: Der dynamische Import
+         * kann fehlschlagen (kein Netz beim ersten Scan, eine Datei, die der
+         * Cache nicht hat), und dann soll keine Kamera angegangen sein, die
+         * gleich wieder ausgeht.
          */
-        const streamPromise = holeKameraStream()
-        const dekodiererPromise = dekodierer()
+        const erkenne = await dekodierer()
 
-        stream = await streamPromise
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false,
+        })
 
         if (abgeraeumt) {
           stream.getTracks().forEach((spur) => spur.stop())
@@ -306,32 +232,8 @@ export function useQrScanner(aktiv: boolean, onErkannt: (wert: string) => void):
         }
 
         videoElement = video
-
-        /*
-         * iOS Safari verlangt `playsinline` und `muted` direkt auf dem DOM-
-         * Element, andernfalls verweigert `video.play()` das automatische
-         * Abspielen und wirft `NotAllowedError`.
-         */
-        video.playsInline = true
-        video.muted = true
-        video.setAttribute('playsinline', 'true')
-        video.setAttribute('webkit-playsinline', 'true')
-
         video.srcObject = stream
-
-        try {
-          await video.play()
-        } catch {
-          // Falls play() fehlschlägt (z. B. kurzzeitige Autoplay-Verzögerung),
-          // lassen wir den Stream weiterlaufen; der nächste Frame verarbeitet
-          // ihn, sobald Daten ankommen.
-        }
-
-        if (abgeraeumt) {
-          return
-        }
-
-        const erkenne = await dekodiererPromise
+        await video.play()
 
         if (abgeraeumt) {
           return

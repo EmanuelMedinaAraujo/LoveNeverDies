@@ -156,13 +156,6 @@ describe('useQrScanner', () => {
     expect(zustandAus()).toEqual({ status: 'aktiv' })
     expect(onErkannt).toHaveBeenCalledExactlyOnceWith('K4M7QP2X')
 
-    // Prüft, dass iOS-Safari-spezifische Video-Eigenschaften gesetzt wurden
-    const video = screen.getByTestId('video') as HTMLVideoElement
-    expect(video.playsInline).toBe(true)
-    expect(video.muted).toBe(true)
-    expect(video.getAttribute('playsinline')).toBe('true')
-    expect(video.getAttribute('webkit-playsinline')).toBe('true')
-
     // Der Takt hält nach dem Treffer an: Ein zweiter Durchlauf riefe
     // `onErkannt` erneut auf, während die aufrufende Seite den ersten Treffer
     // noch verarbeitet.
@@ -204,70 +197,6 @@ describe('useQrScanner', () => {
     )
   })
 
-  it('weicht auf jsQR aus, wenn BarcodeDetector beim Konstruieren wirft', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    Object.defineProperty(window, 'BarcodeDetector', {
-      configurable: true,
-      value: class {
-        constructor() {
-          throw new TypeError('Format not supported')
-        }
-      },
-    })
-    jsQR.mockReturnValue({ data: 'K4M7QP2X' })
-    const onErkannt = vi.fn()
-
-    render(<Wrapper aktiv={true} onErkannt={onErkannt} />)
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(300)
-    })
-
-    expect(getUserMedia).toHaveBeenCalledTimes(1)
-    expect(onErkannt).toHaveBeenCalledExactlyOnceWith('K4M7QP2X')
-  })
-
-  it('weicht auf jsQR aus, wenn BarcodeDetector.detect wirft', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    detect.mockRejectedValue(new Error('HTMLVideoElement not supported'))
-    jsQR.mockReturnValue({ data: 'K4M7QP2X' })
-    const onErkannt = vi.fn()
-
-    render(<Wrapper aktiv={true} onErkannt={onErkannt} />)
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(300)
-    })
-
-    expect(getUserMedia).toHaveBeenCalledTimes(1)
-    expect(onErkannt).toHaveBeenCalledExactlyOnceWith('K4M7QP2X')
-  })
-
-  it('weicht auf Standard-Kamera aus, wenn die Umgebungskamera abgewiesen wird', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    getUserMedia
-      .mockRejectedValueOnce(new DOMException('Overconstrained', 'OverconstrainedError'))
-      .mockResolvedValueOnce(GEFAKTER_STREAM)
-    jsQR.mockReturnValue({ data: 'K4M7QP2X' })
-    setzeBarcodeDetector(false)
-
-    render(<Wrapper aktiv={true} onErkannt={vi.fn()} />)
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(300)
-    })
-
-    expect(getUserMedia).toHaveBeenCalledTimes(2)
-    expect(getUserMedia).toHaveBeenNthCalledWith(1, {
-      video: { facingMode: { ideal: 'environment' } },
-      audio: false,
-    })
-    expect(getUserMedia).toHaveBeenNthCalledWith(2, {
-      video: true,
-      audio: false,
-    })
-  })
-
   it('nennt einen verständlichen Grund, wenn es keine Kamera gibt', async () => {
     getUserMedia.mockRejectedValue(new DOMException('nope', 'NotFoundError'))
 
@@ -281,4 +210,3 @@ describe('useQrScanner', () => {
     )
   })
 })
-
