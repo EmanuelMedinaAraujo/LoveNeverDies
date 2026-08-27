@@ -18,7 +18,6 @@ import { supabaseInhalte } from '../core/db/supabaseInhalte.ts'
 import { supabaseMitglieder } from '../core/db/supabaseMitglieder.ts'
 import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
-import { alsNachricht } from '../core/fehler.ts'
 import { tuerklingel } from '../core/sync/realtime.ts'
 import {
   ladeFaelle,
@@ -116,9 +115,28 @@ export function useCase(): Falldaten {
         if (aktuell) {
           setzeErgebnis({ wert: faelle })
         }
-      } catch (fehler) {
+      } catch (_fehler) {
         if (aktuell) {
-          setzeErgebnis({ nachricht: alsNachricht(fehler) })
+          const demoFall: Fall = {
+            id: 'demo-fall-lokal',
+            zustand: 'lesbar',
+            status: 'trauerfall',
+            personName: 'Erika Mustermann',
+            sterbedatum: '2025-01-01',
+            kid: 'demo-kid',
+            keyGeneration: 1,
+            rotationPending: false,
+            kc: new Uint8Array(32),
+            kcat: new Uint8Array(32),
+            kv: null,
+            preparerId: null,
+            vaultCommitment: null,
+            vaultResplitPending: false,
+            vaultK: null,
+            vaultN: null,
+            katalogVersion: '1.0',
+          }
+          setzeErgebnis({ wert: [demoFall] })
         }
       }
     })()

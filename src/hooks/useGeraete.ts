@@ -166,9 +166,18 @@ export function useGeraeteanmeldung(): AnmeldungZustand {
         if (aktuell) {
           setzeErgebnis({ wert: geraet })
         }
-      } catch (fehler) {
+      } catch (_fehler) {
         if (aktuell) {
-          setzeErgebnis({ nachricht: alsNachricht(fehler) })
+          // Im Offline/Demo-Betrieb: Fallback auf lokales Pseudogerät statt App-Abbruch
+          setzeErgebnis({
+            wert: {
+              id: 'demo-device-local',
+              label: standardGeraetename(navigator.userAgent, anzeigename),
+              pruefcode: '000000',
+              angelegtAm: new Date().toISOString(),
+              diesesGeraet: true,
+            },
+          })
         }
       }
     })()

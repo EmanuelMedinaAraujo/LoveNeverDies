@@ -170,6 +170,111 @@
   animation: none;
 }
 
+/* Zustand: Fehlerzustand -> Roter Metallic-Orb mit Warn-Glow */
+.orbFehler {
+  background: radial-gradient(
+    circle at 30% 25%,
+    #ffffff 0%,
+    #fee2e2 12%,
+    #fca5a5 28%,
+    #ef4444 55%,
+    #991b1b 80%,
+    #450a0a 100%
+  );
+  box-shadow:
+    0 25px 60px rgba(0, 0, 0, 0.3),
+    0 0 35px rgba(239, 68, 68, 0.5),
+    inset 0 2px 5px rgba(255, 255, 255, 0.8),
+    inset -18px -18px 45px rgba(0, 0, 0, 0.85);
+  animation: none;
+}
+
+/* Status-Hinweis (z.B. "Verbindung wird aufgebaut...") */
+.statusHinweis {
+  position: absolute;
+  bottom: -2.5rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--farbe-text-sekundaer, #64748b);
+  animation: pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Fehler-Box Overlay Karte */
+.fehlerBox {
+  position: absolute;
+  bottom: -9rem;
+  width: min(90vw, 420px);
+  background: #ffffff;
+  border: 1px solid #fecaca;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  text-align: center;
+  z-index: 20;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.fehlerTitel {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #b91c1c;
+}
+
+.fehlerText {
+  margin: 0 0 1rem 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #334155;
+}
+
+.fehlerAktionen {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.fehlerKnopfPrimaer {
+  background: #334155;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.fehlerKnopfPrimaer:hover {
+  background: #1e293b;
+}
+
+.fehlerKnopfSekundaer {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.fehlerKnopfSekundaer:hover {
+  background: #fecaca;
+}
+
 @keyframes orbHoerenPuls {
   0%, 100% {
     transform: scale(0.98);

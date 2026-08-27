@@ -34,32 +34,32 @@ const COOP = 'same-origin-allow-popups'
  */
 
 /*
- * Nur verweigern, was die App nicht benutzt. `camera` bleibt offen: Hinter dem
- * Beleg-Upload in `screens/shared/Dokumente` steht ein
- * `<input type="file" capture="environment">`, das auf dem Telefon die Kamera
- * oeffnet. `publickey-credentials-get` bleibt offen, damit Clerk Passkeys
- * anbieten kann.
+ * Permissions-Policy:
+ * HINWEIS: Temporärer Notfall-Fix für Web Audio & iOS (Safari / Brave).
+ * `autoplay=*` und `microphone=*` sind freigegeben, damit der ElevenLabs Conversational AI
+ * Sprachassistent AudioContext, Web Audio und Mikrofon ohne Blockaden nutzen kann.
  */
 const PERMISSIONS_POLICY = [
   'accelerometer=()',
-  'autoplay=()',
+  'autoplay=*',
   'browsing-topics=()',
   'camera=(self)',
   'display-capture=()',
-  'encrypted-media=()',
+  'encrypted-media=*',
   'geolocation=()',
   'gyroscope=()',
   'hid=()',
   'idle-detection=()',
   'local-fonts=()',
   'magnetometer=()',
-  'microphone=()',
+  'microphone=*',
   'midi=()',
   'payment=()',
   'picture-in-picture=()',
   'publickey-credentials-get=(self)',
   'screen-wake-lock=()',
   'serial=()',
+  'speaker-selection=*',
   'usb=()',
   'xr-spatial-tracking=()',
 ].join(', ')

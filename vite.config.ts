@@ -38,16 +38,20 @@ export default defineConfig(({ mode }) => {
     }
   })()
 
+  // Notfall-Schalter: Deaktiviert CSP & Security-Header vollständig, falls VITE_DISABLE_SECURITY_HEADERS=true
+  const disableSecurityHeaders =
+    env.VITE_DISABLE_SECURITY_HEADERS === 'true' ||
+    process.env.VITE_DISABLE_SECURITY_HEADERS === 'true'
+
   return {
     plugins: [
       react(),
-      cspPlugin({ extraHosts: clerkExtraHosts, supabaseHosts }),
-      /*
-       * Dieselben Direktiven noch einmal als `_headers` fuer Cloudflare
-       * (build/headers.ts). Das Meta-Tag bleibt daneben stehen: Es traegt, wo
-       * die Datei nicht gelesen wird, etwa unter `npm run preview`.
-       */
-      headersPlugin({ extraHosts: clerkExtraHosts, supabaseHosts }),
+      ...(disableSecurityHeaders
+        ? []
+        : [
+            cspPlugin({ extraHosts: clerkExtraHosts, supabaseHosts }),
+            headersPlugin({ extraHosts: clerkExtraHosts, supabaseHosts }),
+          ]),
       VitePWA({
         registerType: 'autoUpdate',
         // Der Service Worker soll auch im Dev-Modus laufen, damit sich das

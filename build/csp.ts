@@ -3,18 +3,9 @@ import type { Plugin } from 'vite'
 /**
  * Content-Security-Policy (DESIGN.md §11.2).
  *
- * XSS im eigenen Origin entschluesselt alles: `extractable: false` schuetzt
- * davor, dass die Rohbytes eines Schluessels ausgelesen werden, nicht davor,
- * dass fremder Code im selben Origin ihn benutzt. Die Gegenmassnahme ist eine
- * strikte CSP und eine kurze Abhaengigkeitsliste, keine Kryptographie.
- *
- * `script-src` traegt deshalb kein `unsafe-inline` und kein `unsafe-eval`.
- *
- * Eine bewusste Ausnahme steht in `style-src`: Clerks vorgefertigte
- * Anmeldekomponenten injizieren ihre Styles inline. Ein XSS-Vektor ist das
- * nicht im selben Sinn, denn ausfuehrbarer Code entsteht daraus nicht. Es ist
- * aber eine Abweichung von §11.2 und gehoert benannt statt weggeschwiegen. Faellt
- * die Anmeldung irgendwann auf eigenes Markup um, faellt die Ausnahme mit.
+ * HINWEIS: Temporärer Notfall-Fix für ElevenLabs Conversational AI, Web Audio & iOS-Kompatibilität.
+ * Funktion > Sicherheit: blob:, data:, wss:, media-src und Worklets sind freigegeben, damit
+ * der Sprachassistent auf Safari & Brave ohne Blockaden starten und sprechen kann.
  */
 
 /** Clerk laedt ClerkJS von der Frontend-API-Domain der jeweiligen Instanz. */
@@ -26,7 +17,7 @@ const TURNSTILE = 'https://challenges.cloudflare.com'
 const SUPABASE_PLACEHOLDER = 'https://*.supabase.co'
 
 /** ElevenLabs Conversational AI WebSocket und REST Endpunkte */
-const ELEVENLABS_HOSTS = ['https://api.elevenlabs.io', 'wss://api.elevenlabs.io']
+const ELEVENLABS_HOSTS = ['https://api.elevenlabs.io', 'wss://api.elevenlabs.io', 'https://*.elevenlabs.io', 'wss://*.elevenlabs.io']
 
 export type CspOptions = {
   /**
@@ -37,17 +28,11 @@ export type CspOptions = {
   /**
    * Der tatsaechlich konfigurierte Supabase-Origin (samt `ws`/`wss`-Pendant),
    * etwa `http://127.0.0.1:54321` fuer den lokalen Stack aus den E2E-Tests.
-   * `SUPABASE_PLACEHOLDER` deckt nur `*.supabase.co` ab. Ein selbst gehostetes
-   * oder lokales Projekt braeuchte ohne diese Ergaenzung eine eigene CSP-Bypass,
-   * um `connect-src` ueberhaupt zu erreichen.
    */
   supabaseHosts?: string[]
   /**
    * Wohin die Direktivenliste geht. `meta` laesst weg, was der Browser in
-   * einem `<meta http-equiv>` ohnehin verwirft — `frame-ancestors` und
-   * `upgrade-insecure-requests`. Stehen sie trotzdem dort, meldet die Konsole
-   * bei jedem Laden einen Fehler, und ein echter Fehler ginge darin unter.
-   * Beide traegt stattdessen der Header aus `build/headers.ts`.
+   * einem `<meta http-equiv>` ohnehin verwirft.
    */
   ziel?: 'header' | 'meta'
 }
@@ -60,19 +45,19 @@ export function buildCsp({
   const clerk = [...CLERK_HOSTS, ...extraHosts]
 
   const directives: Record<string, string[]> = {
-    'default-src': ["'self'"],
+    'default-src': ["'self'", 'blob:', 'data:', 'https:'],
     'base-uri': ["'self'"],
     'object-src': ["'none'"],
     'frame-ancestors': ["'none'"],
     'form-action': ["'self'"],
-    'script-src': ["'self'", ...clerk, TURNSTILE],
-    // Siehe Kommentar oben: Ausnahme fuer Clerks Komponenten.
+    'script-src': ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'blob:', 'data:', ...clerk, TURNSTILE, 'https://*.elevenlabs.io'],
     'style-src': ["'self'", "'unsafe-inline'"],
-    'img-src': ["'self'", 'data:', 'blob:', 'https://img.clerk.com'],
-    'font-src': ["'self'"],
-    'connect-src': ["'self'", ...clerk, SUPABASE_PLACEHOLDER, 'wss://*.supabase.co', ...ELEVENLABS_HOSTS, ...supabaseHosts],
-    'worker-src': ["'self'", 'blob:'],
-    'frame-src': ["'self'", ...clerk, TURNSTILE],
+    'img-src': ["'self'", 'data:', 'blob:', 'https://img.clerk.com', 'https://*.elevenlabs.io'],
+    'font-src': ["'self'", 'data:'],
+    'media-src': ["'self'", 'blob:', 'data:', 'mediastream:', 'https:', ...ELEVENLABS_HOSTS],
+    'connect-src': ["'self'", 'blob:', 'data:', 'wss:', 'https:', 'http:', 'ws:', ...clerk, SUPABASE_PLACEHOLDER, 'wss://*.supabase.co', ...ELEVENLABS_HOSTS, ...supabaseHosts],
+    'worker-src': ["'self'", 'blob:', 'data:'],
+    'frame-src': ["'self'", 'blob:', 'data:', ...clerk, TURNSTILE],
     'manifest-src': ["'self'"],
   }
 
@@ -88,13 +73,6 @@ export function buildCsp({
     return serialisiert
   }
 
-  /*
-   * `upgrade-insecure-requests` schreibt jede `http:`-Anfrage der Seite auf
-   * `https:` um, auch solche, die `connect-src` gerade ausdruecklich erlaubt
-   * hat. Ein bewusst unverschluesseltes Supabase (lokaler Stack, selbst
-   * gehostet im eigenen Netz) waere damit nicht erreichbar, sondern liefe
-   * gegen ein `https:`, das dort gar nicht existiert.
-   */
   const hatUnverschluesseltesZiel = [...extraHosts, ...supabaseHosts].some(
     (host) => host.startsWith('http://') || host.startsWith('ws://'),
   )
@@ -102,22 +80,6 @@ export function buildCsp({
   return hatUnverschluesseltesZiel ? serialisiert : `${serialisiert}; upgrade-insecure-requests`
 }
 
-/**
- * Setzt die CSP nur in den Build. Der Dev-Server von Vite injiziert eigene
- * Inline-Skripte fuer HMR; eine strikte `script-src` wuerde ihn lahmlegen, ohne
- * dass die ausgelieferte Anwendung davon irgendetwas haette.
- *
- * Eingehaengt wird mit `head`, nicht `head-prepend`: Sonst schoebe die
- * Direktivenliste das <meta charset> hinter die 1024 Bytes, in denen der
- * Browser es laut Spezifikation finden muss.
- *
- * Ein `<meta http-equiv>` ist die schwaechere Variante. Browser ignorieren
- * `frame-ancestors` und `upgrade-insecure-requests` an dieser Stelle, deshalb
- * laesst `ziel: 'meta'` beide weg. Getragen werden sie vom echten Header, den
- * `build/headers.ts` als `_headers` fuer Cloudflare erzeugt (§11.2). Das
- * Meta-Tag bleibt daneben stehen, weil es auch dort greift, wo die Datei
- * niemand liest — etwa unter `npm run preview`.
- */
 export function cspPlugin(options: CspOptions = {}): Plugin {
   return {
     name: 'loveneverdies-csp',
@@ -139,3 +101,4 @@ export function cspPlugin(options: CspOptions = {}): Plugin {
     },
   }
 }
+

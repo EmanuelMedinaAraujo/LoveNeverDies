@@ -6,16 +6,20 @@ export interface SprachagentBlaseProps {
   status: SprachagentStatus
   isMuted: boolean
   lautstaerke?: number
+  fehler?: string | null
   onPauseToggle: () => void
   onStop: () => void
+  onRetry?: () => void
 }
 
 export function SprachagentBlase({
   status,
   isMuted,
   lautstaerke = 0,
+  fehler = null,
   onPauseToggle,
   onStop,
+  onRetry,
 }: SprachagentBlaseProps) {
   // Tastatursteuerung: Escape beendet das Gespräch, Leertaste toggelt Stummschaltung
   useEffect(() => {
@@ -34,6 +38,8 @@ export function SprachagentBlase({
   const istHoeren = status === 'listening'
   const istSprechen = status === 'speaking'
   const istPausiert = status === 'paused' || isMuted
+  const istVerbinden = status === 'connecting'
+  const istFehler = status === 'error' || fehler !== null
 
   // Dynamische 3D-Skalierung des Orbs basierend auf der Lautstärke
   const scale = Math.min(1.22, 1 + lautstaerke * 0.25)
@@ -42,7 +48,9 @@ export function SprachagentBlase({
   }
 
   let orbKlasse = stile.orb
-  if (istPausiert) {
+  if (istFehler) {
+    orbKlasse = `${stile.orb} ${stile.orbFehler}`
+  } else if (istPausiert) {
     orbKlasse = `${stile.orb} ${stile.orbPausiert}`
   } else if (istSprechen) {
     orbKlasse = `${stile.orb} ${stile.orbSprechen}`
@@ -67,14 +75,51 @@ export function SprachagentBlase({
           <div
             className={orbKlasse}
             style={transformStyle}
-            onClick={onPauseToggle}
+            onClick={istFehler ? onRetry : onPauseToggle}
             role="button"
             tabIndex={0}
-            aria-label={istPausiert ? 'Mikrofon einschalten' : 'Mikrofon stummschalten'}
+            aria-label={
+              istFehler
+                ? 'Erneut versuchen'
+                : istPausiert
+                  ? 'Mikrofon einschalten'
+                  : 'Mikrofon stummschalten'
+            }
           >
             <div className={stile.orbGlanz} />
           </div>
         </div>
+
+        {/* Verbindungs-Statusanzeige */}
+        {istVerbinden && !fehler ? (
+          <p className={stile.statusHinweis}>Verbindung wird aufgebaut…</p>
+        ) : null}
+
+        {/* Fehlerbox direkt im Overlay */}
+        {istFehler && fehler ? (
+          <div className={stile.fehlerBox} role="alert">
+            <h3 className={stile.fehlerTitel}>Verbindungsfehler</h3>
+            <p className={stile.fehlerText}>{fehler}</p>
+            <div className={stile.fehlerAktionen}>
+              {onRetry ? (
+                <button
+                  type="button"
+                  className={stile.fehlerKnopfSekundaer}
+                  onClick={onRetry}
+                >
+                  Erneut versuchen
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className={stile.fehlerKnopfPrimaer}
+                onClick={onStop}
+              >
+                Schließen
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {/* Ausschließlich die beiden runden Knöpfe: Mute & Stop */}
@@ -84,6 +129,7 @@ export function SprachagentBlase({
           type="button"
           className={`${stile.kreisKnopf} ${stile.stummKnopf} ${istPausiert ? stile.stummKnopfAktiv : ''}`}
           onClick={onPauseToggle}
+          disabled={istFehler}
           aria-label={istPausiert ? 'Mikrofon einschalten' : 'Mikrofon stummschalten'}
         >
           {istPausiert ? (

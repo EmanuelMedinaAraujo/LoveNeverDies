@@ -894,6 +894,12 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
         </Button>
       </div>
 
+      {voiceAgent.fehler && !sprachagentAktiv ? (
+        <p className={stile.warnung} role="alert">
+          Sprachassistent: {voiceAgent.fehler}
+        </p>
+      ) : null}
+
       {knoten.art === 'frage' ? (
         <Frageseite knoten={knoten} fall={fall} pfad={pfad} aufgaben={aufgaben} />
       ) : (
@@ -905,7 +911,9 @@ function Seite({ fall, knotenId }: { fall: LesbarerFall; knotenId: string }) {
           status={voiceAgent.status}
           isMuted={voiceAgent.isMuted}
           lautstaerke={voiceAgent.lautstaerke}
+          fehler={voiceAgent.fehler}
           onPauseToggle={voiceAgent.togglestumm}
+          onRetry={() => void voiceAgent.starteSitzung(knotenId, pfad)}
           onStop={() => {
             const endStand = voiceAgent.beendeSitzung()
             setzeSprachagentAktiv(false)
