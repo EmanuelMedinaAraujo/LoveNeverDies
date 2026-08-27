@@ -27,11 +27,13 @@ import { supabaseFaelle } from '../core/db/supabaseFaelle.ts'
 import { supabaseFallschluessel } from '../core/db/supabaseFallschluessel.ts'
 import { supabaseGeraeteschluessel } from '../core/db/supabaseGeraeteschluessel.ts'
 import { supabaseKopplung } from '../core/db/supabaseKopplung.ts'
+import { supabaseMitglieder } from '../core/db/supabaseMitglieder.ts'
 import { supabasePersoenlicheSchluessel } from '../core/db/supabasePersoenlicheschluessel.ts'
 import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { useSupabase } from '../core/db/supabaseProvider.tsx'
 import { alsNachricht } from '../core/fehler.ts'
 import { ladeFaelle, type Fall, type LesbarerFall } from '../services/fallService.ts'
+import { personenname } from '../services/personenname.ts'
 import {
   erzeugeKopplungscode,
   freischaltungText,
@@ -41,6 +43,7 @@ import {
   schalteGeraetFrei,
   type Kopplungsanfrage,
 } from '../services/kopplungService.ts'
+import { verteileShares } from '../services/tresorService.ts'
 import { useCase } from './useCase.ts'
 import { useGeraeteanmeldung } from './useGeraete.ts'
 import { useProfilAbgleich } from './useProfil.ts'
@@ -57,6 +60,18 @@ export type KopplungscodeZustand =
 
 export type Kopplungscodedaten = {
   zustand: KopplungscodeZustand
+  /**
+   * Ob erst noch ein Name gebraucht wird (§3.3, §6).
+   *
+   * `erzeuge_kopplungscode` verlangt ein Profil ("Ohne hinterlegten Namen gibt
+   * es keinen Kopplungscode."), und das ist keine Formalie: Die einladende
+   * Person sieht diesen Namen und entscheidet daran, ob sie das
+   * Familiengeheimnis weitergibt. Steht keiner da, fragt der Screen danach,
+   * statt einen Code anzufordern, der nicht kommen kann.
+   */
+  nameFehlt: boolean
+  /** Trägt den eigenen Namen ein. Danach läuft der Code von selbst an. */
+  speichereNamen: (name: string) => Promise<void>
   /** Nach Ablauf oder Fehlgriff: einen frischen Code holen. */
   neuAnfordern: () => void
 }
@@ -78,7 +93,12 @@ export type Kopplungscodedaten = {
  */
 export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
   const anmeldung = useGeraeteanmeldung()
-  const { zustand: profil, nochmal: profilNochmal } = useProfilAbgleich()
+  const {
+    zustand: profil,
+    nameFehlt,
+    speichereNamen,
+    nochmal: profilNochmal,
+  } = useProfilAbgleich()
   const zugang = useSupabase()
 
   /*
@@ -99,7 +119,7 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
   const profilFehler = profil.status === 'fehler' ? profil.nachricht : null
 
   useEffect(() => {
-    if (identitaet === null || geraetId === null || !profilBereit) {
+    if (identitaet === null || geraetId === null || !profilBereit || nameFehlt) {
       return
     }
 
@@ -122,7 +142,7 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
     return () => {
       aktuell = false
     }
-  }, [geraetId, identitaet, profilBereit, runde, zugang, zweck])
+  }, [geraetId, identitaet, nameFehlt, profilBereit, runde, zugang, zweck])
 
   const neuAnfordern = useCallback(() => {
     // Erst das alte Ergebnis fort, dann die neue Runde: Sonst stünde der
@@ -161,7 +181,10 @@ export function useKopplungscode(zweck: Kopplungszweck): Kopplungscodedaten {
     }
   }, [anmeldungFehler, ergebnis, identitaet, profilFehler])
 
-  return useMemo(() => ({ zustand, neuAnfordern }), [neuAnfordern, zustand])
+  return useMemo(
+    () => ({ zustand, nameFehlt, speichereNamen, neuAnfordern }),
+    [nameFehlt, neuAnfordern, speichereNamen, zustand],
+  )
 }
 
 export type WacheZustand =
@@ -310,7 +333,7 @@ function lesbare(faelle: Fall[]): LesbarerFall[] {
  */
 export function useEinloesung(): Einloesungsdaten {
   const anmeldung = useGeraeteanmeldung()
-  const { zustand: fallZustand } = useCase()
+  const { zustand: fallZustand, aktualisiere: aktualisiereFaelle } = useCase()
   const zugang = useSupabase()
 
   const [zustand, setzeZustand] = useState<EinloesungZustand>({ status: 'leer', fehler: null })
@@ -398,17 +421,42 @@ export function useEinloesung(): Einloesungsdaten {
 
         await fuegeZumFallHinzu(kopplung, anfrage, fall, identitaet, geraetId)
 
+        const name = personenname(anfrage.angebot.anzeigename)
+        const nachtrag = await verteileTresoranteileNeu(zugang(), fall, benutzerId)
+
         setzeZustand({
           status: 'fertig',
-          nachricht: `${anfrage.angebot.anzeigename} gehört jetzt zum Fall ${fall.personName}.`,
+          nachricht: `${name} gehört jetzt zum Fall ${fall.personName}.${nachtrag}`,
         })
+
+        /*
+         * Der Server hat mit der Mitgliedschaft und der Verteilung `vault_n`,
+         * `vault_k` und `vault_resplit_pending` gesetzt. Ohne Nachladen zeigte
+         * der Tresor-Status auf dem nächsten Screen den Stand von vorhin.
+         *
+         * Nach der Erfolgsmeldung und nicht davor: Die Kopplung ist an dieser
+         * Stelle gelaufen und steht beim Server. Was danach noch schiefgeht,
+         * darf sie nicht rückwirkend als gescheitert ausgeben.
+         */
+        aktualisiereFaelle()
       } catch (fehler) {
         setzeZustand({ status: 'angebot', anfrage, fehler: alsNachricht(fehler) })
       } finally {
         setzeLaeuft(false)
       }
     },
-    [benutzerId, faelle, faelleBereit, geraetId, identitaet, laeuft, lesbareFaelle, zugang, zustand],
+    [
+      aktualisiereFaelle,
+      benutzerId,
+      faelle,
+      faelleBereit,
+      geraetId,
+      identitaet,
+      laeuft,
+      lesbareFaelle,
+      zugang,
+      zustand,
+    ],
   )
 
   const abbrechen = useCallback(() => setzeZustand({ status: 'leer', fehler: null }), [])
@@ -417,4 +465,53 @@ export function useEinloesung(): Einloesungsdaten {
     () => ({ zustand, laeuft, faelleBereit, lesbareFaelle, einloesen, bestaetigen, abbrechen }),
     [abbrechen, bestaetigen, einloesen, faelleBereit, laeuft, lesbareFaelle, zustand],
   )
+}
+
+/**
+ * Verteilt die Tresoranteile neu, gleich nachdem jemand dazugekommen ist (§3.5).
+ *
+ * Der Beitritt setzt `vault_resplit_pending` (Trigger `memberships_created`),
+ * und verteilen kann nur die vorsorgende Person: `K_v` liegt allein auf ihren
+ * Geräten. Genau sie steht in diesem Moment vor dem Bildschirm — sie hat eben
+ * den Prüfcode verglichen und bestätigt.
+ *
+ * Bis hierher wartete die Verteilung auf ihren nächsten Besuch im Tab
+ * „Nachlass": Nur dort hängt `useTresor` und arbeitet die Fahne ab. Wer nach
+ * der Kopplung die App zuklappte — der Normalfall, die Einladung war ja der
+ * Zweck des Besuchs —, ließ die neu hinzugekommene Person ohne Anteil zurück.
+ * Auf deren Telefon fehlte dann im Tab „Erbe" der Knopf „Todesfall
+ * bestätigen", wortlos und ohne dass irgendjemand von beiden hätte sagen
+ * können, woran es lag.
+ *
+ * Ein Fehlschlag hält die Kopplung nicht auf: Der Beitritt selbst ist gelaufen
+ * und steht. Er wird nur genannt, und der zweite Versuch steht im Tab
+ * „Nachlass" (`screens/shared/Nachlassbereich`), wo auch der automatische
+ * läuft.
+ *
+ * @returns ein Satz zum Anhängen an die Erfolgsmeldung, oder nichts.
+ */
+async function verteileTresoranteileNeu(
+  client: ReturnType<ReturnType<typeof useSupabase>>,
+  fall: LesbarerFall,
+  benutzerId: string,
+): Promise<string> {
+  // Nur der eigene Vorsorgefall, und nur auf einem Gerät, das `K_v` hat.
+  if (fall.status !== 'vorsorge' || fall.kv === null) {
+    return ''
+  }
+
+  try {
+    await verteileShares(
+      supabaseTresor(client),
+      supabaseMitglieder(client),
+      supabaseGeraeteschluessel(client),
+      fall.id,
+      fall.kv,
+      fall.preparerId ?? benutzerId,
+    )
+
+    return ''
+  } catch {
+    return ' Die Tresorschlüssel konnten noch nicht neu verteilt werden — öffnen Sie dafür bitte den Tab „Nachlass".'
+  }
 }

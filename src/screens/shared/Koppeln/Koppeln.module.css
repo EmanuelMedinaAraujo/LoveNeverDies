@@ -71,6 +71,15 @@
 .hinweis {
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
+
+  /*
+   * Eine E-Mail-Adresse hat keine Leerzeichen, an denen sich eine Zeile
+   * brechen liesse — und die verborgenen Adressen von Apple
+   * (`a1b2c3d4e5@privaterelay.appleid.com`) sind laenger als jede Karte bei
+   * 390 px. Ohne diese Zeile stand das Ende der Adresse ueber dem Kartenrand
+   * hinaus im Nichts.
+   */
+  overflow-wrap: anywhere;
 }
 
 .knoepfe {

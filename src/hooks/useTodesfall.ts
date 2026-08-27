@@ -32,6 +32,7 @@ import { supabaseTresor } from '../core/db/supabaseTresor.ts'
 import { alsNachricht } from '../core/fehler.ts'
 import { useAuth } from '../core/auth/authProvider.ts'
 import type { LesbarerFall } from '../services/fallService.ts'
+import { personenname } from '../services/personenname.ts'
 import { ausgelieferterKatalogstand, instanziiereKatalog } from '../services/katalogService.ts'
 import {
   erstelleFreigabe,
@@ -169,7 +170,7 @@ export function useTodesfall(fall: LesbarerFall, aktualisiereFall: () => void): 
               ? KEINE
               : zeilenFreigaben.map((zeile) => ({
                   userId: zeile.userId,
-                  name: namen.get(zeile.userId) ?? zeile.userId,
+                  name: personenname(namen.get(zeile.userId), zeile.userId),
                   freigegebenAm: zeile.freigegebenAm,
                   eigene: zeile.userId === userId,
                 })),
@@ -432,7 +433,7 @@ async function benenne(
     .namen(userIds)
     .catch(() => new Map<string, string>())
 
-  return userIds.map((userId) => namen.get(userId) ?? userId)
+  return userIds.map((userId) => personenname(namen.get(userId), userId))
 }
 
 /**

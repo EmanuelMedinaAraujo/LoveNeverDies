@@ -5,6 +5,7 @@ import {
   formatiereKopplungscodeEingabe,
   KOPPLUNGSCODE_LAENGE,
 } from '../../../services/kopplungService.ts'
+import { personenname } from '../../../services/personenname.ts'
 import { Button } from '../../../ui/Button/Button.tsx'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Zurueck } from '../../../ui/Zurueck/Zurueck.tsx'
@@ -111,7 +112,14 @@ export function Koppeln() {
 
         <Card>
           <h2 className={stile.abschnitt}>Wer da ist</h2>
-          <p className={stile.name}>{angebot.anzeigename}</p>
+          {/*
+            Ein fehlender Name bleibt ein fehlender Name (§6): Frueher stand
+            hier ersatzweise die E-Mail-Adresse und darunter noch einmal
+            dieselbe Adresse — bei einer Anmeldung ueber Apple die verborgene
+            aus `privaterelay.appleid.com`, die niemandem sagt, wen er
+            hereinlaesst. Die Adresse steht darunter, wo sie hingehoert.
+          */}
+          <p className={stile.name}>{personenname(angebot.anzeigename)}</p>
           {angebot.email === null ? null : <p className={stile.hinweis}>{angebot.email}</p>}
         </Card>
 
@@ -241,7 +249,7 @@ export function Koppeln() {
           <>
             {scanZustand.status === 'nicht-unterstuetzt' ? (
               <p className={stile.hinweis} role="alert">
-                Scannen wird auf diesem Gerät nicht unterstützt, bitte Code eintippen.
+                Dieses Gerät gibt keine Kamera frei, bitte Code eintippen.
               </p>
             ) : scanZustand.status === 'fehler' ? (
               <p className={stile.hinweis} role="alert">

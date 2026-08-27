@@ -3,19 +3,28 @@ import { useEffect, useRef, useState } from 'react'
 /**
  * Scannt einen QR-Code über die Gerätekamera (Punkt 5 der Kopplungs-Anforderungen).
  *
- * Genutzt wird ausschließlich die native `BarcodeDetector`-Web-API. Sie liest
- * direkt aus dem `<video>`-Element; ein eigener Canvas-Frame-Grab wäre hier
- * eine zweite, selbst gebaute Bildverarbeitung für etwas, das der Browser
- * schon kann, wo er es kann.
+ * Zwei Wege, in dieser Reihenfolge:
  *
- * Bewusst ohne Fallback-Bibliothek (z. B. jsQR) für Browser ohne
- * `BarcodeDetector` (vor allem Safari/iOS, Stand 2026): Das Scannen ist in
- * dieser App ausdrücklich nur die bequemere Alternative zum Eintippen
- * (§6) und niemals der einzige Weg. Eine zusätzliche, dauerhaft
- * mitgeschleppte Dekodierbibliothek allein für die Geräte, denen die
- * native API fehlt, wiegt schwerer als der Bequemlichkeitsgewinn; wo sie
- * fehlt, bleibt der Hinweistext, und der Kopplungscode lässt sich weiterhin
- * von Hand eingeben.
+ * 1. `BarcodeDetector`, wo der Browser ihn mitbringt (Chrome, Edge, Android).
+ *    Er liest direkt aus dem `<video>`-Element und dekodiert dort, wo das
+ *    Betriebssystem es ohnehin am besten kann.
+ * 2. `jsQR` sonst, aus einem Einzelbild auf einem Canvas.
+ *
+ * Der zweite Weg ist der Grund, warum diese Datei nicht mehr so aussieht wie
+ * vorher. Safari kennt `BarcodeDetector` bis heute nicht — auf dem iPhone,
+ * also auf genau den Geräten, an denen zwei Menschen nebeneinander sitzen und
+ * einen Code scannen wollen, stand deshalb "Scannen wird auf diesem Gerät
+ * nicht unterstützt". Ein Knopf, der nichts kann als das zu melden, ist kein
+ * zweiter Weg, sondern eine Sackgasse mit Beschriftung.
+ *
+ * Die Dekodierbibliothek liegt hinter einem dynamischen `import`: Wer einen
+ * Browser mit `BarcodeDetector` benutzt, lädt sie nie, und wer nicht scannt,
+ * lädt sie auch dann nicht, wenn sein Browser sie bräuchte. Sie kommt erst mit
+ * dem Tippen auf "Code scannen".
+ *
+ * Das Scannen bleibt in beiden Fällen die bequemere Alternative zum Eintippen
+ * (§6) und niemals der einzige Weg: Ohne Kamera, ohne Erlaubnis oder ohne
+ * beides steht der Code weiterhin zum Abtippen daneben.
  */
 
 /**
@@ -51,9 +60,20 @@ export type Scandaten = {
   videoRef: React.RefObject<HTMLVideoElement | null>
 }
 
-/** Ob dieser Browser überhaupt scannen kann, ohne dafür die Kamera zu fragen. */
+/**
+ * Ob dieses Gerät überhaupt scannen kann, ohne dafür die Kamera zu fragen.
+ *
+ * Gefragt wird nach der Kamera und nicht nach dem Dekodierer: Den bringt die
+ * App seit dem `jsQR`-Zweig selbst mit. `getUserMedia` fehlt dagegen wirklich,
+ * wenn die Seite nicht über HTTPS läuft — dann nimmt der Browser die ganze
+ * `mediaDevices`-Schnittstelle weg, und kein Dekodierer der Welt bekommt ein
+ * Bild.
+ */
 export function scannenUnterstuetzt(): boolean {
-  return typeof window !== 'undefined' && window.BarcodeDetector !== undefined
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.mediaDevices?.getUserMedia === 'function'
+  )
 }
 
 /** Eine verständliche deutsche Meldung zu dem, was beim Kamerazugriff schiefging. */
@@ -67,6 +87,68 @@ function fehlermeldung(fehler: unknown): string {
   }
 
   return 'Die Kamera war nicht zu öffnen. Bitte tippen Sie den Code stattdessen ein.'
+}
+
+/** Liest ein Einzelbild aus dem Video, oder `null`, solange keines dasteht. */
+function bildDaten(video: HTMLVideoElement, leinwand: HTMLCanvasElement): ImageData | null {
+  const breite = video.videoWidth
+  const hoehe = video.videoHeight
+
+  // Vor dem ersten Bild steht dort 0 × 0. `getImageData` würfe darauf.
+  if (breite === 0 || hoehe === 0) {
+    return null
+  }
+
+  leinwand.width = breite
+  leinwand.height = hoehe
+
+  /*
+   * `willReadFrequently`: Genau das tut dieser Takt, dreimal je Sekunde. Ohne
+   * den Hinweis legt der Browser die Leinwand auf die Grafikkarte und liest
+   * jedes Bild wieder zurück.
+   */
+  const pinsel = leinwand.getContext('2d', { willReadFrequently: true })
+
+  if (pinsel === null) {
+    return null
+  }
+
+  pinsel.drawImage(video, 0, 0, breite, hoehe)
+
+  return pinsel.getImageData(0, 0, breite, hoehe)
+}
+
+/**
+ * Der Dekodierer dieses Laufs: der eingebaute, sonst `jsQR`.
+ *
+ * Gibt eine Funktion zurück, die ein Videobild auf einen QR-Code hin ansieht
+ * und seinen Text zurückgibt — oder `null`, wenn keiner darin war.
+ */
+async function dekodierer(): Promise<(video: HTMLVideoElement) => Promise<string | null>> {
+  if (typeof window !== 'undefined' && window.BarcodeDetector !== undefined) {
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
+
+    return async (video) => (await detector.detect(video))[0]?.rawValue ?? null
+  }
+
+  const { default: jsQR } = await import('jsqr')
+  const leinwand = document.createElement('canvas')
+
+  return async (video) => {
+    const bild = bildDaten(video, leinwand)
+
+    if (bild === null) {
+      return null
+    }
+
+    /*
+     * `dontInvert`: Ein Kopplungs-QR-Code ist dunkel auf hell, wie er aus
+     * `ui/QrCode` herauskommt. Die anderen Modi versuchen dasselbe Bild ein
+     * zweites Mal invertiert und kosten je Takt so viel wie der erste
+     * Durchgang.
+     */
+    return jsQR(bild.data, bild.width, bild.height, { inversionAttempts: 'dontInvert' })?.data ?? null
+  }
 }
 
 /**
@@ -124,6 +206,14 @@ export function useQrScanner(aktiv: boolean, onErkannt: (wert: string) => void):
       setzeZustand({ status: 'startet' })
 
       try {
+        /*
+         * Der Dekodierer zuerst und die Kamera danach: Der dynamische Import
+         * kann fehlschlagen (kein Netz beim ersten Scan, eine Datei, die der
+         * Cache nicht hat), und dann soll keine Kamera angegangen sein, die
+         * gleich wieder ausgeht.
+         */
+        const erkenne = await dekodierer()
+
         stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' },
           audio: false,
@@ -136,7 +226,7 @@ export function useQrScanner(aktiv: boolean, onErkannt: (wert: string) => void):
 
         const video = videoRef.current
 
-        if (video === null || window.BarcodeDetector === undefined) {
+        if (video === null) {
           stream.getTracks().forEach((spur) => spur.stop())
           return
         }
@@ -149,8 +239,6 @@ export function useQrScanner(aktiv: boolean, onErkannt: (wert: string) => void):
           return
         }
 
-        const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
-
         setzeZustand({ status: 'aktiv' })
 
         takt = setInterval(() => {
@@ -162,16 +250,15 @@ export function useQrScanner(aktiv: boolean, onErkannt: (wert: string) => void):
             }
 
             try {
-              const treffer = await detector.detect(aktuellesVideo)
-              const erster = treffer[0]
+              const wert = await erkenne(aktuellesVideo)
 
-              if (!abgeraeumt && erster !== undefined) {
+              if (!abgeraeumt && wert !== null) {
                 // Der Takt hält an, sobald etwas erkannt ist: Ohne diesen Stopp
                 // riefe der nächste Frame `onErkannt` ein zweites Mal auf,
                 // während die aufrufende Seite noch mit dem ersten Treffer
                 // beschäftigt ist.
                 stoppeTakt()
-                onErkanntRef.current(erster.rawValue)
+                onErkanntRef.current(wert)
               }
             } catch {
               // Ein einzelner missglückter Frame ist kein Fehler für die

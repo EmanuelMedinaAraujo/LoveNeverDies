@@ -102,23 +102,4 @@ describe('Leiste', () => {
     expect(screen.getByRole('link', { name: 'Profil' })).toBeVisible()
     expect(screen.queryByText(/Freigabe nötig/)).toBeNull()
   })
-
-  it('stellt Erbe und Alle still, solange es keinen Fall gibt (§7)', () => {
-    /*
-     * Ohne Fall ist die App gesperrt. Die beiden Tabs verschwinden trotzdem
-     * nicht: Eine Leiste, die ihre Plätze wechselt, ist keine Leiste, und
-     * §7 verlangt in beiden Ansichten dieselbe Struktur. Sie stehen gedämpft
-     * da und sagen an, warum.
-     */
-    rendere({ ohneFall: true })
-
-    for (const name of ['Erbe', 'Alle']) {
-      const tab = screen.getByText(name).closest('[role="link"]')
-      expect(tab).toHaveAttribute('aria-disabled', 'true')
-      expect(tab).not.toHaveAttribute('href')
-    }
-
-    expect(screen.getByRole('link', { name: 'Profil' })).toHaveAttribute('href', '/profil')
-    expect(screen.getByRole('link', { name: 'Start' })).toHaveAttribute('href', '/')
-  })
 })

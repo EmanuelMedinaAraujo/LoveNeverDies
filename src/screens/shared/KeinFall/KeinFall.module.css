@@ -30,3 +30,24 @@
   color: var(--farbe-text-sekundaer);
   font-size: var(--dichte-schrift-klein);
 }
+
+/*
+ * Der Weg zu Profil, solange keine Leiste darunter steht. Zentriert und
+ * gedaempft: Er ist die Ausnahme auf diesem Screen und nicht der vierte Weg
+ * neben den dreien in der Karte.
+ */
+.fuss {
+  margin: 0;
+  text-align: center;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  /* §7: Touch-Ziele ab 44 x 44 px, auch bei einer Textzeile. */
+  min-height: var(--ziel-mindestmass);
+  padding: 0 var(--dichte-abstand-klein);
+
+  color: var(--farbe-text-sekundaer);
+  font-size: var(--dichte-schrift-klein);
+}

@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card } from '../../../ui/Card/Card.tsx'
 import { Button } from '../../../ui/Button/Button.tsx'
 import stile from './KeinFall.module.css'
@@ -10,6 +10,12 @@ import stile from './KeinFall.module.css'
  * - "Ein Todesfall ist eingetreten" führt zur Trauerfallanlage (§2, §3.1)
  * - "Ich möchte für später vorsorgen" führt zur Vorsorgeanlage (§2, §3.5)
  * - "Ich wurde eingeladen" zum Kopplungscode (§6)
+ *
+ * Ohne Fall steht keine untere Leiste unter dem Screen (§7, `app/Rahmen.tsx`):
+ * Zwei ihrer vier Plätze führten nirgendwohin, einer wieder hierher. Der eine
+ * Weg, der von hier aus wirklich woanders hinführt, steht deshalb als Zeile am
+ * Fuß — abmelden, Textgröße, Darstellung liegen in Profil, und ohne diese
+ * Zeile käme niemand mehr dorthin.
  */
 export function KeinFall() {
   const navigate = useNavigate()
@@ -36,6 +42,12 @@ export function KeinFall() {
           </Button>
         </div>
       </Card>
+
+      <p className={stile.fuss}>
+        <Link className={stile.link} to="/profil">
+          Profil und Einstellungen
+        </Link>
+      </p>
     </main>
   )
 }

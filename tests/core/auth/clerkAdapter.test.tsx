@@ -147,11 +147,29 @@ describe('Zustandsuebersetzung', () => {
     })
   })
 
-  it('nimmt die E-Mail-Adresse, wenn kein Name hinterlegt ist', async () => {
+  it('setzt den Namen aus Vor- und Nachname zusammen, wenn nur die dastehen', async () => {
+    useUser.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      user: {
+        id: 'user_1',
+        fullName: null,
+        firstName: 'Anna',
+        lastName: '  Müller ',
+        primaryEmailAddress: { emailAddress: 'anna@example.de' },
+      },
+    })
+
+    expect((await rendereZustand()).benutzer?.anzeigename).toBe('Anna Müller')
+  })
+
+  it('nimmt die E-Mail-Adresse nicht als Namen, wenn keiner hinterlegt ist', async () => {
     /*
-     * Clerk laesst beide Namensfelder leer, wenn sich jemand nur mit einer
-     * E-Mail-Adresse registriert. Ein leerer Name waere in §6 ("Anna Mueller
-     * zum Fall hinzufuegen?") schlimmer als eine Adresse.
+     * Der Fall, den „Mit Apple anmelden" jedes Mal erzeugt, wenn Apple den
+     * Namen nicht weitergibt: Frueher stand dann die Adresse als Anzeigename
+     * da, und weil sie von hier aus in `profiles`, in die Vorsorge-Anlage und
+     * in jedes Kopplungsangebot wandert, fragte §6 danach, ob
+     * `a1b2c3d4e5@privaterelay.appleid.com` zum Fall hinzugefuegt werden soll.
      */
     useUser.mockReturnValue({
       isLoaded: true,
@@ -159,14 +177,16 @@ describe('Zustandsuebersetzung', () => {
       user: {
         id: 'user_1',
         fullName: '   ',
-        primaryEmailAddress: { emailAddress: 'anna@example.de' },
+        primaryEmailAddress: { emailAddress: 'a1b2c3d4e5@privaterelay.appleid.com' },
       },
     })
 
-    expect((await rendereZustand()).benutzer?.anzeigename).toBe('anna@example.de')
+    expect(await rendereZustand()).toMatchObject({
+      benutzer: { anzeigename: '', email: 'a1b2c3d4e5@privaterelay.appleid.com' },
+    })
   })
 
-  it('faellt auf "Unbenannt" zurueck, wenn beides fehlt', async () => {
+  it('laesst den Namen leer, wenn beides fehlt', async () => {
     useUser.mockReturnValue({
       isLoaded: true,
       isSignedIn: true,
@@ -174,7 +194,7 @@ describe('Zustandsuebersetzung', () => {
     })
 
     expect(await rendereZustand()).toMatchObject({
-      benutzer: { anzeigename: 'Unbenannt', email: null },
+      benutzer: { anzeigename: '', email: null },
     })
   })
 })

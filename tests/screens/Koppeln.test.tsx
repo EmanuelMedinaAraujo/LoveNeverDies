@@ -167,14 +167,14 @@ describe('Koppeln: Code scannen (Alternative zum Eintippen, §6)', () => {
     expect(screen.getByRole('button', { name: 'Scannen abbrechen' })).toBeVisible()
   })
 
-  it('sagt es, wenn Scannen auf diesem Gerät nicht unterstützt wird', async () => {
+  it('sagt es, wenn das Gerät keine Kamera freigibt', async () => {
     useQrScanner.mockReturnValue({ zustand: { status: 'nicht-unterstuetzt' }, videoRef: { current: null } })
 
     const { container } = rendereMitProvidern(<Koppeln />)
     await userEvent.click(screen.getByRole('button', { name: 'Code scannen' }))
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Scannen wird auf diesem Gerät nicht unterstützt, bitte Code eintippen.',
+      'Dieses Gerät gibt keine Kamera frei, bitte Code eintippen.',
     )
     expect(container.querySelector('video')).toBeNull()
   })

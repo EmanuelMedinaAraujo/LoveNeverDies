@@ -212,6 +212,26 @@ function Todesfallfreigabe({
         </Button>
       ) : null}
 
+      {/*
+        Ohne Schlüsselanteil auf diesem Gerät gibt es nichts freizugeben (§3.5)
+        — und bis hierher stand dann gar nichts da: keine Schaltfläche, kein
+        Satz, nur der Zähler darüber. Wer den Knopf erwartet, den ihm jemand am
+        Telefon beschreibt, sucht ihn dann auf dem falschen Bildschirm.
+
+        Der Satz sagt beides: dass es an diesem Gerät liegt und nicht an der
+        Person, und wer es in Ordnung bringen kann. Verteilen kann nur die
+        vorsorgende Person; seit der Kopplung geschieht das sofort beim
+        Beitritt (`hooks/useKopplung.ts`), aber ein Gerät, das erst danach
+        dazugekommen ist, wartet weiterhin auf die nächste Verteilung.
+      */}
+      {dialog === 'zu' && !kannFreigeben && !eigeneFreigabe ? (
+        <p className={stile.hinweis}>
+          Für dieses Gerät liegt noch kein Schlüsselanteil bereit — deshalb lässt sich der
+          Todesfall von hier aus nicht bestätigen. Bitten Sie {fall.personName}, die App einmal
+          zu öffnen; die Anteile werden dann neu verteilt.
+        </p>
+      ) : null}
+
       {dialog === 'zu' && eigeneFreigabe ? (
         <p className={stile.hinweis}>Sie haben den Todesfall bereits bestätigt.</p>
       ) : null}

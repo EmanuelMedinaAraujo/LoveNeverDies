@@ -32,14 +32,27 @@ export function Rahmen({ children }: { children: ReactNode }) {
    */
   const vorsorge = zustand.status === 'bereit' && istVorsorgende(zustand.aktiver)
 
+  /*
+   * §7: Solange es keinen Fall gibt, steht auf jedem Hauptscreen der
+   * Willkommen-Screen mit den drei Wegen — und darunter stand bisher eine
+   * Leiste, deren vier Plätze zu zweien nirgendwohin führten und zu einem
+   * zurück auf denselben Screen. Das Onboarding ist ein linearer Ablauf mit
+   * genau einem nächsten Schritt, wie Todesfall, Vorsorge und Koppeln: Eine
+   * Leiste ist dort keine Orientierung, sondern eine Abbruchkante.
+   *
+   * Der Weg zu Profil geht in diesem Zustand über den Link am Fuß des
+   * Willkommen-Screens, und Profil trägt dann selbst einen Zurück-Weg.
+   */
+  const ohneFall = zustand.status === 'kein-fall'
+
+  if (ohneFall) {
+    return <div className={stile.inhaltOhneLeiste}>{children}</div>
+  }
+
   return (
     <>
       <div className={stile.inhalt}>{children}</div>
-      <Leiste
-        freigabeNoetig={freigabeNoetig}
-        ohneFall={zustand.status === 'kein-fall'}
-        vorsorge={vorsorge}
-      />
+      <Leiste freigabeNoetig={freigabeNoetig} vorsorge={vorsorge} />
     </>
   )
 }

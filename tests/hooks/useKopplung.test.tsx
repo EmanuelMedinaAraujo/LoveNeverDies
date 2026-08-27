@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Geraeteidentitaet } from '../../src/core/crypto/keystore.ts'
-import type { Fall } from '../../src/services/fallService.ts'
+import type { Fall, LesbarerFall } from '../../src/services/fallService.ts'
 import type { Kopplungsanfrage } from '../../src/services/kopplungService.ts'
 
 /**
@@ -40,6 +40,11 @@ vi.mock('../../src/services/kopplungService.ts', async () => {
 vi.mock('../../src/services/fallService.ts', () => ({
   ladeFaelle: (...a: unknown[]) => ladeFaelle(...a),
 }))
+vi.mock('../../src/services/tresorService.ts', () => ({
+  verteileShares: (...a: unknown[]) => verteileShares(...a),
+}))
+vi.mock('../../src/core/db/supabaseMitglieder.ts', () => ({ supabaseMitglieder: () => ({}) }))
+vi.mock('../../src/core/db/supabaseTresor.ts', () => ({ supabaseTresor: () => ({}) }))
 vi.mock('../../src/hooks/useGeraete.ts', () => ({
   useGeraeteanmeldung: () => useGeraeteanmeldung(),
 }))
@@ -67,6 +72,9 @@ const { useEinloesung, useKopplungscode, useKopplungswache, WACHE_ABSTAND_MS } =
 )
 
 const IDENTITAET = { pkKem: new Uint8Array([1]), pruefcode: '481253' } as Geraeteidentitaet
+
+/** §3.5: Die Neuverteilung der Tresoranteile, gleich nach dem Beitritt. */
+const verteileShares = vi.fn<(...a: unknown[]) => Promise<unknown>>()
 
 const ANMELDUNG_BEREIT = {
   status: 'bereit',
@@ -107,6 +115,18 @@ function fall(id: string, zustand: 'lesbar' | 'gesperrt' = 'lesbar'): Fall {
     : { zustand: 'gesperrt', id, grund: 'Kein Schlüssel.' }
 }
 
+/** Der eigene Vorsorgefall: `K_v` liegt auf diesem Gerät (§3.5). */
+function vorsorgefall(): LesbarerFall {
+  return {
+    ...(fall('fall-v') as LesbarerFall),
+    status: 'vorsorge',
+    sterbedatum: null,
+    kv: new Uint8Array([9]),
+    preparerId: 'user_1',
+    vaultCommitment: new Uint8Array([8]),
+  }
+}
+
 const ANFRAGE: Kopplungsanfrage = {
   code: 'K4M7QP2X',
   pruefcode: '481253',
@@ -129,6 +149,7 @@ beforeEach(() => {
   erzeugeKopplungscode.mockResolvedValue({ code: 'K4M7QP2X', laeuftAbAm: '2026-08-24T10:15:00Z' })
   loeseKopplungscodeEin.mockResolvedValue(ANFRAGE)
   fuegeZumFallHinzu.mockResolvedValue(undefined)
+  verteileShares.mockResolvedValue({ n: 1, k: 1 })
   schalteGeraetFrei.mockResolvedValue({ freigeschaltet: 2, gesamt: 3 })
   ladeFaelle.mockResolvedValue([])
 })
@@ -416,6 +437,7 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
     useCase.mockReturnValue({
       zustand: { status: 'bereit', faelle: [fall('fall-1')], aktiver: fall('fall-1') },
       legeTrauerfallAn: vi.fn(),
+      aktualisiere: vi.fn(),
     })
     fuegeZumFallHinzu.mockRejectedValue(new Error('Kein Netz.'))
 
@@ -434,6 +456,7 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
     useCase.mockReturnValue({
       zustand: { status: 'bereit', faelle: [fall('fall-1'), fall('fall-2')], aktiver: fall('fall-1') },
       legeTrauerfallAn: vi.fn(),
+      aktualisiere: vi.fn(),
     })
 
     const { result } = renderHook(() => useEinloesung())
@@ -450,10 +473,79 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
     expect(result.current.zustand).toMatchObject({ status: 'fertig' })
   })
 
+  it('verteilt die Tresoranteile sofort, wenn jemand einem Vorsorgefall beitritt (§3.5)', async () => {
+    /*
+     * Der Beitritt setzt `vault_resplit_pending`, und verteilen kann nur die
+     * vorsorgende Person — die gerade hier steht und bestätigt hat. Wartete
+     * die Verteilung auf ihren nächsten Besuch im Tab „Nachlass", bliebe die
+     * neu hinzugekommene Person ohne Anteil: Auf deren Telefon fehlte dann im
+     * Tab „Erbe" der Knopf „Todesfall bestätigen".
+     */
+    const vorsorge = vorsorgefall()
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [vorsorge], aktiver: vorsorge },
+      legeTrauerfallAn: vi.fn(),
+      aktualisiere: vi.fn(),
+    })
+
+    const { result } = renderHook(() => useEinloesung())
+    await act(() => result.current.einloesen('K4M7QP2X'))
+    await act(() => result.current.bestaetigen('fall-v'))
+
+    expect(verteileShares).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      'fall-v',
+      vorsorge.kv,
+      'user_1',
+    )
+    expect(result.current.zustand).toMatchObject({ status: 'fertig' })
+  })
+
+  it('lässt den Beitritt stehen, wenn die Neuverteilung scheitert', async () => {
+    /*
+     * Der Beitritt ist gelaufen und steht beim Server. Ein Fehlschlag danach
+     * darf ihn nicht rückwirkend als gescheitert ausgeben — er wird genannt,
+     * und der zweite Versuch steht im Tab „Nachlass".
+     */
+    const vorsorge = vorsorgefall()
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [vorsorge], aktiver: vorsorge },
+      legeTrauerfallAn: vi.fn(),
+      aktualisiere: vi.fn(),
+    })
+    verteileShares.mockRejectedValue(new Error('Kein Netz.'))
+
+    const { result } = renderHook(() => useEinloesung())
+    await act(() => result.current.einloesen('K4M7QP2X'))
+    await act(() => result.current.bestaetigen('fall-v'))
+
+    expect(result.current.zustand).toMatchObject({
+      status: 'fertig',
+      nachricht: expect.stringContaining('Nachlass'),
+    })
+  })
+
+  it('verteilt nichts neu, wenn der Fall kein Vorsorgefall ist', async () => {
+    useCase.mockReturnValue({
+      zustand: { status: 'bereit', faelle: [fall('fall-1')], aktiver: fall('fall-1') },
+      legeTrauerfallAn: vi.fn(),
+      aktualisiere: vi.fn(),
+    })
+
+    const { result } = renderHook(() => useEinloesung())
+    await act(() => result.current.einloesen('K4M7QP2X'))
+    await act(() => result.current.bestaetigen('fall-1'))
+
+    expect(verteileShares).not.toHaveBeenCalled()
+  })
+
   it('sagt es, wenn der gewählte Fall von hier aus nicht weiterzugeben ist', async () => {
     useCase.mockReturnValue({
       zustand: { status: 'bereit', faelle: [fall('fall-1', 'gesperrt')], aktiver: fall('fall-1', 'gesperrt') },
       legeTrauerfallAn: vi.fn(),
+      aktualisiere: vi.fn(),
     })
 
     const { result } = renderHook(() => useEinloesung())
@@ -475,6 +567,7 @@ describe('useEinloesung (§6, Schritt 4 bis 6)', () => {
     useCase.mockReturnValue({
       zustand: { status: 'bereit', faelle: [fall('fall-1'), fall('fall-2')], aktiver: fall('fall-1') },
       legeTrauerfallAn: vi.fn(),
+      aktualisiere: vi.fn(),
     })
 
     const { result } = renderHook(() => useEinloesung())
