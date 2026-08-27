@@ -21,23 +21,22 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 /** Liefert das aktuelle Clerk-Token, oder `null`, solange niemand angemeldet ist. */
 export type Zugangstoken = () => Promise<string | null>
 
-const rawUrl = import.meta.env.VITE_SUPABASE_URL
-const rawAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-const url =
-  rawUrl && !rawUrl.includes('xxxxxxxx')
-    ? rawUrl
-    : 'https://placeholder.supabase.co'
-
-const anonKey =
-  rawAnonKey && !rawAnonKey.includes('xxxxxxxx')
-    ? rawAnonKey
-    : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.placeholder'
+const url = import.meta.env.VITE_SUPABASE_URL
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 export function erzeugeSupabaseClient(zugangstoken: Zugangstoken): SupabaseClient {
+  if (!url || !anonKey) {
+    throw new Error(
+      'VITE_SUPABASE_URL oder VITE_SUPABASE_ANON_KEY fehlt. Siehe .env.example und supabase/README.md.',
+    )
+  }
+
   return createClient(url, anonKey, {
     accessToken: zugangstoken,
     auth: {
+      // Die Sitzung führt Clerk. Würde Supabase daneben eine eigene halten,
+      // gäbe es zwei Wahrheiten darüber, wer angemeldet ist, und sie liefen
+      // beim Abmelden auseinander.
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,

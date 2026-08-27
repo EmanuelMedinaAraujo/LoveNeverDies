@@ -1,16 +1,26 @@
 import { SignIn } from '@clerk/react'
 import { useFarbschema } from '../../../hooks/useFarbschema.ts'
-import { Button } from '../../../ui/Button/Button.tsx'
-import { Card } from '../../../ui/Card/Card.tsx'
 import stile from './Anmelden.module.css'
 
-const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-const istGueltigerKey =
-  typeof publishableKey === 'string' &&
-  publishableKey.trim() !== '' &&
-  !publishableKey.includes('xxxxxxxx') &&
-  (publishableKey.startsWith('pk_test_') || publishableKey.startsWith('pk_live_'))
-
+/**
+ * Anmeldung (DESIGN.md §7, Onboarding-Schritt 1).
+ *
+ * Wer nicht angemeldet ist, sieht ausschließlich diesen Screen. Erst danach
+ * entstehen die beiden Keypairs und läuft `navigator.storage.persist()`.
+ *
+ * Clerk rendert das Formular selbst. Die Farben kommen aus §12, die Sprache aus
+ * `deDE`, Clerks deutsche Übersetzung siezt durchgehend, was zu §1 passt.
+ *
+ * `routing="hash"` hält Anmeldung und Registrierung in dieser einen Komponente,
+ * ohne dass die App dafür eigene Routen braucht.
+ *
+ * Die Marke steht als Bild über der Überschrift, in der Fassung, die zum
+ * gewählten Farbschema passt. Ausgewählt wird sie hier und nicht mit einem
+ * `<picture media>`: Der Override aus Profil gewinnt gegen die
+ * Systemeinstellung (§7), und ein `media`-Attribut kennt nur die
+ * Systemeinstellung. Die Überschrift bleibt daneben stehen — sie ist der
+ * Name, den eine Vorlesestimme ansagt, und das Bild trägt ihn nicht.
+ */
 export function Anmelden() {
   const { palette, schema } = useFarbschema()
 
@@ -31,44 +41,23 @@ export function Anmelden() {
         </p>
       </div>
 
-      {istGueltigerKey ? (
-        <SignIn
-          routing="hash"
-          withSignUp
-          appearance={{
-            variables: {
-              colorPrimary: palette.akzent,
-              colorPrimaryForeground: palette.aufAkzent,
-              colorBackground: palette.karte,
-              colorForeground: palette.text,
-              colorMutedForeground: palette.textSekundaer,
-              colorInput: palette.karte,
-              colorInputForeground: palette.text,
-              colorBorder: palette.kartenrand,
-              colorRing: palette.akzent,
-            },
-          }}
-        />
-      ) : (
-        <Card>
-          <div style={{ textAlign: 'center', padding: '1rem' }}>
-            <h2 style={{ marginBottom: '0.75rem', fontSize: '1.25rem' }}>Demo-Modus aktiv</h2>
-            <p style={{ marginBottom: '1.5rem', color: 'var(--farbe-text-sekundaer)' }}>
-              Es ist kein Clerk-Schlüssel konfiguriert. Sie können die App und den
-              ElevenLabs-Sprachassistenten direkt im Demo-Modus nutzen.
-            </p>
-            <Button
-              volleBreite
-              onClick={() => {
-                window.location.reload()
-              }}
-            >
-              Demo-Modus fortsetzen
-            </Button>
-          </div>
-        </Card>
-      )}
+      <SignIn
+        routing="hash"
+        withSignUp
+        appearance={{
+          variables: {
+            colorPrimary: palette.akzent,
+            colorPrimaryForeground: palette.aufAkzent,
+            colorBackground: palette.karte,
+            colorForeground: palette.text,
+            colorMutedForeground: palette.textSekundaer,
+            colorInput: palette.karte,
+            colorInputForeground: palette.text,
+            colorBorder: palette.kartenrand,
+            colorRing: palette.akzent,
+          },
+        }}
+      />
     </main>
   )
 }
-

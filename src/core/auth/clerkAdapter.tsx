@@ -1,6 +1,6 @@
 import { deDE } from '@clerk/localizations'
 import { ClerkProvider, useClerk, useSession, useUser } from '@clerk/react'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import { AuthKontextProvider, type AuthKontextWert, type AuthZustand } from './authProvider.ts'
 
 /**
@@ -14,17 +14,17 @@ import { AuthKontextProvider, type AuthKontextWert, type AuthZustand } from './a
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-const istGueltigerKey =
-  typeof publishableKey === 'string' &&
-  publishableKey.trim() !== '' &&
-  !publishableKey.includes('xxxxxxxx') &&
-  (publishableKey.startsWith('pk_test_') || publishableKey.startsWith('pk_live_'))
-
 function ClerkZustandBruecke({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user } = useUser()
   const { session } = useSession()
   const clerk = useClerk()
 
+  /*
+   * Clerk gibt bei jedem Aufruf ein frisches Token heraus und erneuert es
+   * selbst, sobald es abgelaufen ist. Deshalb wird hier keines zwischengelegt:
+   * Der Supabase-Client fragt vor jeder Anfrage, und ein Token, das jemand
+   * aufgehoben hat, ist genau das eine, das irgendwann nicht mehr gilt.
+   */
   const zugangstoken = useCallback(async () => (await session?.getToken()) ?? null, [session])
 
   const abmelden = useCallback(async () => {
@@ -44,6 +44,22 @@ function ClerkZustandBruecke({ children }: { children: ReactNode }) {
       status: 'angemeldet',
       benutzer: {
         id: user.id,
+        /*
+         * Nur der Name, den die Person hinterlegt hat, und keine Ersatzangabe.
+         *
+         * Clerk laesst beide Namensfelder leer, wenn sich jemand nur mit einer
+         * E-Mail-Adresse registriert — und bei „Mit Apple anmelden" auch dann,
+         * wenn Apple den Namen nur beim ersten Mal mitschickt. Frueher stand
+         * dann die Adresse als Anzeigename da, und weil sie von hier aus in
+         * `profiles`, in die Vorsorge-Anlage und in jedes Kopplungsangebot
+         * wandert, fragte §6 danach, ob
+         * `a1b2c3d4e5@privaterelay.appleid.com` zum Fall hinzugefuegt werden
+         * soll. Das ist keine Identitaet, an der jemand am Telefon
+         * wiedererkennt, wen er hereinlaesst.
+         *
+         * `fullName` ist Clerks Zusammensetzung aus Vor- und Nachname; steht
+         * nur eines von beiden da, setzt der zweite Zweig es selbst zusammen.
+         */
         anzeigename:
           user.fullName?.trim() ||
           [user.firstName, user.lastName]
@@ -63,46 +79,11 @@ function ClerkZustandBruecke({ children }: { children: ReactNode }) {
   return <AuthKontextProvider value={wert}>{children}</AuthKontextProvider>
 }
 
-/**
- * Fallback-Provider für den Betrieb ohne Clerk-Konfiguration (Demo-Modus / lokales Testen).
- */
-function DemoAuthProvider({ children }: { children: ReactNode }) {
-  const [angemeldet, setzeAngemeldet] = useState(true)
-
-  const abmelden = useCallback(async () => {
-    setzeAngemeldet(false)
-  }, [])
-
-  const zugangstoken = useCallback(async () => null, [])
-
-  const zustand = useMemo<AuthZustand>(() => {
-    if (!angemeldet) {
-      return { status: 'abgemeldet' }
-    }
-    return {
-      status: 'angemeldet',
-      benutzer: {
-        id: 'demo-user-lokal',
-        anzeigename: 'Demo Nutzer',
-        email: 'demo@loveneverdies.app',
-      },
-    }
-  }, [angemeldet])
-
-  const wert = useMemo<AuthKontextWert>(
-    () => ({ zustand, abmelden, zugangstoken }),
-    [zustand, abmelden, zugangstoken],
-  )
-
-  return <AuthKontextProvider value={wert}>{children}</AuthKontextProvider>
-}
-
 export function ClerkAuthProvider({ children }: { children: ReactNode }) {
-  if (!istGueltigerKey) {
-    console.warn(
-      'VITE_CLERK_PUBLISHABLE_KEY fehlt oder ist ein Platzhalter. App läuft im Demo/Entwicklungsmodus.',
+  if (!publishableKey) {
+    throw new Error(
+      'VITE_CLERK_PUBLISHABLE_KEY fehlt. Siehe .env.example und `clerk init`.',
     )
-    return <DemoAuthProvider>{children}</DemoAuthProvider>
   }
 
   return (
@@ -110,6 +91,14 @@ export function ClerkAuthProvider({ children }: { children: ReactNode }) {
       publishableKey={publishableKey}
       localization={deDE}
       afterSignOutUrl="/"
+      /*
+       * ClerkJS meldet sonst Nutzungsdaten an `clerk-telemetry.com`. Die CSP
+       * blockt das ohnehin (§11.2 kennt den Host nicht), aber ein blockierter
+       * Aufruf ist eine Fehlermeldung in jeder Konsole und ein Versuch, der
+       * bei jedem Laden neu unternommen wird. Abgeschaltet gehoert er auch
+       * der Sache nach: Eine App, die Inhalte vor dem eigenen Server
+       * verbirgt, soll ihr Nutzungsverhalten nicht an einen Dritten geben.
+       */
       telemetry={{ disabled: true }}
     >
       <ClerkZustandBruecke>{children}</ClerkZustandBruecke>

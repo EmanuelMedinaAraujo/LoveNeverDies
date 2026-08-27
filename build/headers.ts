@@ -59,7 +59,6 @@ const PERMISSIONS_POLICY = [
   'publickey-credentials-get=(self)',
   'screen-wake-lock=()',
   'serial=()',
-  'speaker-selection=*',
   'usb=()',
   'xr-spatial-tracking=()',
 ].join(', ')
