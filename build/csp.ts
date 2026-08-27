@@ -25,6 +25,9 @@ const TURNSTILE = 'https://challenges.cloudflare.com'
 
 const SUPABASE_PLACEHOLDER = 'https://*.supabase.co'
 
+/** ElevenLabs Conversational AI WebSocket und REST Endpunkte */
+const ELEVENLABS_HOSTS = ['https://api.elevenlabs.io', 'wss://api.elevenlabs.io']
+
 export type CspOptions = {
   /**
    * Zusaetzliche Hosts, etwa die Frontend-API einer Clerk-Produktionsinstanz
@@ -67,7 +70,7 @@ export function buildCsp({
     'style-src': ["'self'", "'unsafe-inline'"],
     'img-src': ["'self'", 'data:', 'blob:', 'https://img.clerk.com'],
     'font-src': ["'self'"],
-    'connect-src': ["'self'", ...clerk, SUPABASE_PLACEHOLDER, 'wss://*.supabase.co', ...supabaseHosts],
+    'connect-src': ["'self'", ...clerk, SUPABASE_PLACEHOLDER, 'wss://*.supabase.co', ...ELEVENLABS_HOSTS, ...supabaseHosts],
     'worker-src': ["'self'", 'blob:'],
     'frame-src': ["'self'", ...clerk, TURNSTILE],
     'manifest-src': ["'self'"],

@@ -8,6 +8,8 @@ describe('buildCsp', () => {
     expect(csp).toContain("default-src 'self'")
     expect(csp).toContain('https://*.supabase.co')
     expect(csp).toContain('wss://*.supabase.co')
+    expect(csp).toContain('https://api.elevenlabs.io')
+    expect(csp).toContain('wss://api.elevenlabs.io')
     expect(csp).toContain('upgrade-insecure-requests')
   })
 
