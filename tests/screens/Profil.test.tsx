@@ -27,6 +27,22 @@ vi.mock('../../src/hooks/useAufgaben.ts', () => ({
   useAufgaben: () => ({ fragebaum: mockFragebaum(), fragebaumGeladen: mockGeladen() }),
 }))
 
+/*
+ * §3.3: Der angezeigte Name kommt aus `profiles` und nicht aus der Anmeldung.
+ * Wer ihn selbst eingetragen hat, soll ihn hier wiederfinden.
+ */
+let mockHinterlegterName = 'Anna Müller'
+
+vi.mock('../../src/hooks/useProfil.ts', () => ({
+  useProfilAbgleich: () => ({
+    zustand: { status: 'bereit' },
+    name: mockHinterlegterName,
+    nameFehlt: mockHinterlegterName === '',
+    speichereNamen: vi.fn(),
+    nochmal: vi.fn(),
+  }),
+}))
+
 const { Profil } = await import('../../src/screens/shared/Profil/Profil.tsx')
 
 import type { Fragebaumergebnis } from '../../src/services/aufgabenService.ts'
@@ -68,6 +84,7 @@ const LESBAR: LesbarerFall = {
 }
 
 beforeEach(() => {
+  mockHinterlegterName = 'Anna Müller'
   useCase.mockReturnValue(falldaten())
   mockFragebaum.mockReturnValue(null)
   mockGeladen.mockReturnValue(true)
@@ -98,6 +115,28 @@ describe('Profil', () => {
 
     expect(screen.getByText('Anna Müller')).toBeVisible()
     expect(screen.queryByText('anna@example.de')).toBeNull()
+  })
+
+  it('zeigt den selbst hinterlegten Namen und nicht die Adresse', () => {
+    /*
+     * §3.3: Wer seinen Namen beim Anlegen eines Falls eingetragen hat, findet
+     * ihn hier wieder. Vorher stand hier der Anzeigename aus der Anmeldung —
+     * bei „Mit Apple anmelden" also die verborgene Adresse.
+     */
+    mockHinterlegterName = 'Bernd Weber'
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByText('Bernd Weber')).toBeVisible()
+  })
+
+  it('fordert zum Ergaenzen auf, solange kein Name hinterlegt ist', () => {
+    mockHinterlegterName = ''
+
+    rendereMitProvidern(<Profil />)
+
+    expect(screen.getByRole('link', { name: /Namen ergänzen/ })).toHaveAttribute('href', '/konto')
+    expect(screen.getByText('anna@example.de')).toBeVisible()
   })
 
   it('fuehrt vom eigenen Namen in die Kontoeinstellungen', () => {

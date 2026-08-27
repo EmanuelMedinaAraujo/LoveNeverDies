@@ -14,6 +14,24 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('../../src/hooks/useCase.ts', () => ({ useCase: () => useCase() }))
 
+/*
+ * §3.3: Der eigene Name geht nicht in den Fall, sondern in `profiles`. Hier
+ * steht nur, ob der Screen ihn erfragt und weiterreicht; was dann geschieht,
+ * prueft `tests/hooks/useProfil.test.tsx`.
+ */
+const speichereNamen = vi.fn<(name: string) => Promise<void>>()
+let hinterlegterName = ''
+
+vi.mock('../../src/hooks/useProfil.ts', () => ({
+  useProfilAbgleich: () => ({
+    zustand: { status: 'bereit' },
+    name: hinterlegterName,
+    nameFehlt: hinterlegterName === '',
+    speichereNamen,
+    nochmal: vi.fn(),
+  }),
+}))
+
 const { Todesfall } = await import('../../src/screens/shared/Todesfall/Todesfall.tsx')
 
 function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
@@ -30,6 +48,9 @@ function falldaten(ueberschreibung: Partial<Falldaten> = {}): Falldaten {
 
 beforeEach(() => {
   navigiere.mockClear()
+  speichereNamen.mockReset()
+  speichereNamen.mockResolvedValue(undefined)
+  hinterlegterName = 'Anna Müller'
   useCase.mockReturnValue(falldaten())
 })
 
@@ -66,6 +87,68 @@ describe('Todesfall', () => {
     })
 
     expect(navigiere).toHaveBeenCalledWith('/', { replace: true })
+  })
+
+  it('fragt den eigenen Namen auf derselben Seite und hinterlegt ihn (§3.3)', async () => {
+    /*
+     * §6: Die eingeladene Person sieht diesen Namen, bevor sie irgendetwas
+     * bestätigt. Er gehört nicht in den Fall — dort steht der Name der
+     * verstorbenen Person —, sondern in `profiles`.
+     */
+    hinterlegterName = ''
+    const legeTrauerfallAn = vi.fn().mockResolvedValue(undefined)
+    useCase.mockReturnValue(falldaten({ legeTrauerfallAn }))
+
+    rendereMitProvidern(<Todesfall />)
+
+    const eigenes = screen.getByLabelText('Ihr Name')
+    expect(eigenes).toHaveValue('')
+    expect(eigenes).toBeRequired()
+
+    await userEvent.type(screen.getByLabelText('Name der verstorbenen Person'), 'Hans Weber')
+    await userEvent.type(screen.getByLabelText('Sterbedatum'), '2024-03-15')
+    await userEvent.type(eigenes, 'Anna Müller')
+    await userEvent.click(screen.getByRole('button', { name: 'Fall anlegen' }))
+
+    await waitFor(() => expect(speichereNamen).toHaveBeenCalledWith('Anna Müller'))
+    expect(legeTrauerfallAn).toHaveBeenCalled()
+  })
+
+  it('legt keinen Fall an, solange der eigene Name fehlt (§3.3)', async () => {
+    hinterlegterName = ''
+    const legeTrauerfallAn = vi.fn().mockResolvedValue(undefined)
+    useCase.mockReturnValue(falldaten({ legeTrauerfallAn }))
+
+    rendereMitProvidern(<Todesfall />)
+
+    await userEvent.type(screen.getByLabelText('Name der verstorbenen Person'), 'Hans Weber')
+    await userEvent.type(screen.getByLabelText('Sterbedatum'), '2024-03-15')
+    await userEvent.click(screen.getByRole('button', { name: 'Fall anlegen' }))
+
+    expect(legeTrauerfallAn).not.toHaveBeenCalled()
+    expect(speichereNamen).not.toHaveBeenCalled()
+  })
+
+  it('legt den Fall nicht an, wenn der Name nicht zu hinterlegen war', async () => {
+    /*
+     * Sonst stünde ein Fall da, dessen Anlegerin für alle anderen namenlos
+     * bleibt — und der zweite Versuch führte über diesen Screen, den sie nicht
+     * mehr sieht: Wer einen Fall hat, wird von hier weitergeleitet.
+     */
+    hinterlegterName = ''
+    speichereNamen.mockRejectedValue(new Error('Kein Netz.'))
+    const legeTrauerfallAn = vi.fn().mockResolvedValue(undefined)
+    useCase.mockReturnValue(falldaten({ legeTrauerfallAn }))
+
+    rendereMitProvidern(<Todesfall />)
+
+    await userEvent.type(screen.getByLabelText('Name der verstorbenen Person'), 'Hans Weber')
+    await userEvent.type(screen.getByLabelText('Sterbedatum'), '2024-03-15')
+    await userEvent.type(screen.getByLabelText('Ihr Name'), 'Anna Müller')
+    await userEvent.click(screen.getByRole('button', { name: 'Fall anlegen' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kein Netz.')
+    expect(legeTrauerfallAn).not.toHaveBeenCalled()
   })
 
   it('zeigt den Grund, wenn das Anlegen scheitert, und laesst es erneut versuchen', async () => {

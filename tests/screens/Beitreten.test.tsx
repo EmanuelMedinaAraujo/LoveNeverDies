@@ -16,6 +16,7 @@ const useKopplungscode = vi.fn()
 const useKopplungswache = vi.fn()
 const navigiere = vi.fn()
 const neuAnfordern = vi.fn()
+const speichereNamen = vi.fn<(name: string) => Promise<void>>()
 const qrToString = vi.fn()
 
 vi.mock('../../src/hooks/useKopplung.ts', () => ({
@@ -52,7 +53,13 @@ const BEREIT = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  useKopplungscode.mockReturnValue({ zustand: BEREIT, neuAnfordern })
+  speichereNamen.mockResolvedValue(undefined)
+  useKopplungscode.mockReturnValue({
+    zustand: BEREIT,
+    nameFehlt: false,
+    speichereNamen,
+    neuAnfordern,
+  })
   useKopplungswache.mockReturnValue({ status: 'wartet' })
   qrToString.mockResolvedValue('<svg>mock</svg>')
 })
@@ -235,5 +242,54 @@ describe('Beitreten (§6)', () => {
       )
       expect(container.querySelector('img')).toBeNull()
     })
+  })
+
+  it('fragt zuerst nach dem Namen, wenn keiner hinterlegt ist (§3.3, §6)', async () => {
+    /*
+     * `erzeuge_kopplungscode` verlangt ein Profil, und das ist keine Formalie
+     * der Datenbank: Die einladende Person liest diesen Namen und entscheidet
+     * daran, ob sie den Fall weitergibt. Ein Code daneben wäre einer, den
+     * niemand einlösen kann.
+     */
+    useKopplungscode.mockReturnValue({
+      zustand: { status: 'laedt' },
+      nameFehlt: true,
+      speichereNamen,
+      neuAnfordern,
+    })
+
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.getByRole('heading', { name: 'Wie heißen Sie?' })).toBeVisible()
+    expect(screen.queryByText('Ihr Kopplungscode wird erzeugt…')).toBeNull()
+
+    await userEvent.type(screen.getByLabelText('Ihr Name'), 'Bernd Weber')
+    await userEvent.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(speichereNamen).toHaveBeenCalledWith('Bernd Weber')
+  })
+
+  it('nennt den Grund, wenn der Name nicht zu hinterlegen war', async () => {
+    useKopplungscode.mockReturnValue({
+      zustand: { status: 'laedt' },
+      nameFehlt: true,
+      speichereNamen,
+      neuAnfordern,
+    })
+    speichereNamen.mockRejectedValue(new Error('Kein Netz.'))
+
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    await userEvent.type(screen.getByLabelText('Ihr Name'), 'Bernd Weber')
+    await userEvent.click(screen.getByRole('button', { name: 'Weiter' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kein Netz.')
+  })
+
+  it('fragt nicht nach dem Namen, wenn einer dasteht', () => {
+    rendereMitProvidern(<Beitreten zweck="join" />)
+
+    expect(screen.queryByRole('heading', { name: 'Wie heißen Sie?' })).toBeNull()
+    expect(screen.getByText('K4M7-QP2X')).toBeVisible()
   })
 })

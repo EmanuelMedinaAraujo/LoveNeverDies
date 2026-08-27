@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Kopplungszweck } from '../../../core/db/kopplung.ts'
+import { alsNachricht } from '../../../core/fehler.ts'
 import { useKopplungscode, useKopplungswache } from '../../../hooks/useKopplung.ts'
 import {
   gruppierterKopplungscode,
@@ -78,8 +79,69 @@ function uhrzeit(zeitpunkt: string): string | null {
     : datum.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
 }
 
+/**
+ * „Wie heißen Sie?" — der eine Schritt vor dem Kopplungscode (§3.3, §6).
+ *
+ * Ein eigenes Formular und kein Feld irgendwo dazwischen: Solange der Name
+ * fehlt, gibt es auf diesem Screen nichts anderes zu tun, und ein Code, der
+ * daneben schon stünde, wäre einer, den niemand einlösen kann.
+ */
+function Namensfrage({ onSpeichern }: { onSpeichern: (name: string) => Promise<void> }) {
+  const [name, setzeNamen] = useState('')
+  const [laeuft, setzeLaeuft] = useState(false)
+  const [fehler, setzeFehler] = useState<string | null>(null)
+
+  async function absenden(ereignis: FormEvent) {
+    ereignis.preventDefault()
+    setzeLaeuft(true)
+    setzeFehler(null)
+
+    try {
+      await onSpeichern(name)
+    } catch (ursache) {
+      setzeFehler(alsNachricht(ursache))
+      setzeLaeuft(false)
+    }
+  }
+
+  return (
+    <Card>
+      <h2 className={stile.abschnitt}>Wie heißen Sie?</h2>
+      <p className={stile.hinweis}>
+        Die Person, die Sie einlädt, sieht diesen Namen, bevor sie Sie in den Fall aufnimmt.
+      </p>
+
+      <form className={stile.formular} onSubmit={(ereignis) => void absenden(ereignis)}>
+        <div className={stile.feld}>
+          <label htmlFor="beitreten-name">Ihr Name</label>
+          <input
+            id="beitreten-name"
+            className={stile.eingabe}
+            value={name}
+            onChange={(ereignis) => setzeNamen(ereignis.target.value)}
+            placeholder="Vor- und Nachname"
+            autoComplete="name"
+            required
+            autoFocus
+          />
+        </div>
+
+        <Button type="submit" volleBreite disabled={laeuft}>
+          Weiter
+        </Button>
+
+        {fehler === null ? null : (
+          <p className={stile.hinweis} role="alert">
+            Ihr Name war nicht zu hinterlegen. {fehler}
+          </p>
+        )}
+      </form>
+    </Card>
+  )
+}
+
 export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
-  const { zustand, neuAnfordern } = useKopplungscode(zweck)
+  const { zustand, nameFehlt, speichereNamen, neuAnfordern } = useKopplungscode(zweck)
   const wache = useKopplungswache(zustand.status === 'bereit')
   const navigate = useNavigate()
 
@@ -163,13 +225,25 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
         <p className={stile.einleitung}>{texte.einleitung}</p>
       </div>
 
-      {zustand.status === 'laedt' ? (
+      {/*
+        §3.3, §6: Ohne hinterlegten Namen gibt es keinen Kopplungscode — und
+        das ist keine Formalie der Datenbank. Die einladende Person sieht
+        gleich „Wer da ist" und entscheidet daran, ob sie den Fall weitergibt.
+        Stünde dort nichts oder eine verborgene Apple-Adresse, entschiede sie
+        über einen Fremden.
+
+        Gefragt wird nur, wo wirklich nichts steht: Wer seinen Namen bei der
+        Anmeldung angegeben hat, bekommt seinen Code ohne Zwischenschritt.
+      */}
+      {nameFehlt ? <Namensfrage onSpeichern={speichereNamen} /> : null}
+
+      {!nameFehlt && zustand.status === 'laedt' ? (
         <p className={stile.hinweis} role="status">
           Ihr Kopplungscode wird erzeugt…
         </p>
       ) : null}
 
-      {zustand.status === 'fehler' ? (
+      {!nameFehlt && zustand.status === 'fehler' ? (
         <Card>
           <p className={stile.hinweis} role="alert">
             Es war kein Kopplungscode zu bekommen. {zustand.nachricht}
@@ -180,7 +254,7 @@ export function Beitreten({ zweck }: { zweck: Kopplungszweck }) {
         </Card>
       ) : null}
 
-      {zustand.status === 'bereit' ? (
+      {!nameFehlt && zustand.status === 'bereit' ? (
         <>
           <Card>
             <h2 className={stile.abschnitt}>Ihr Kopplungscode</h2>
