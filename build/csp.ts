@@ -71,6 +71,7 @@ export function buildCsp({
     'img-src': ["'self'", 'data:', 'blob:', 'https://img.clerk.com'],
     'font-src': ["'self'"],
     'connect-src': ["'self'", ...clerk, SUPABASE_PLACEHOLDER, 'wss://*.supabase.co', ...ELEVENLABS_HOSTS, ...supabaseHosts],
+    'media-src': ["'self'", 'blob:', 'data:', ...ELEVENLABS_HOSTS],
     'worker-src': ["'self'", 'blob:'],
     'frame-src': ["'self'", ...clerk, TURNSTILE],
     'manifest-src': ["'self'"],
