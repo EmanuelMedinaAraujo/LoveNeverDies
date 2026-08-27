@@ -309,6 +309,26 @@ describe('Aufgabe (einfach)', () => {
     expect(hinweisLabel).toHaveClass(/rot/)
   })
 
+  it('zeigt bei der Totenschein-Aufgabe die Überschrift „Totenschein erstellt"', () => {
+    mitDetail([
+      aufgabe({
+        titel: 'Totenschein erstellen',
+        katalog: herkunft({
+          aufgabeId: 'totenschein-erstellen',
+          unteraufgaben: ['Arzt kontaktieren'],
+          benoetigteDokumente: [],
+          zustaendigeStelle: 'Ärztin oder Arzt',
+          fristTage: null,
+          fristAb: null,
+        }),
+      }),
+    ])
+
+    expect(screen.getByRole('heading', { name: 'Totenschein erstellt' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
+    expect(screen.getByText('Arzt kontaktieren')).toBeVisible()
+  })
+
   it('übernimmt die Aufgabe mit einem Verb (§7)', async () => {
     const daten = mitDetail([aufgabe({ assignee: NIEMAND, katalog: herkunft() })])
 

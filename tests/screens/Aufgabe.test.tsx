@@ -520,6 +520,37 @@ describe('Aufgabendetail (§7, §8)', () => {
     expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
   })
 
+  it('zeigt bei der Totenschein-Aufgabe die Überschrift „Totenschein erstellt"', () => {
+    useAufgaben.mockReturnValue(
+      aufgabendaten({
+        zustand: {
+          status: 'bereit',
+          aufgaben: [
+            aufgabe({
+              titel: 'Totenschein erstellen',
+              katalog: herkunft({
+                aufgabeId: 'totenschein-erstellen',
+                unteraufgaben: ['Arzt kontaktieren'],
+                benoetigteDokumente: [],
+                zustaendigeStelle: 'Ärztin oder Arzt',
+                fristTage: null,
+                fristAb: null,
+              }),
+            }),
+          ],
+          uebersprungen: 0,
+          ...NETZ,
+        },
+      }),
+    )
+
+    zeigeDetail()
+
+    expect(screen.getByRole('heading', { name: 'Totenschein erstellt' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Das gilt dafür' })).toBeNull()
+    expect(screen.getByText('Arzt kontaktieren')).toBeVisible()
+  })
+
   it('zeigt Nachlassgerichtssuche ausgeklappt und persistiert gefundene Gerichte in den Notizen', async () => {
     const schreibe = vi.fn().mockResolvedValue(undefined)
     useAufgaben.mockReturnValue(

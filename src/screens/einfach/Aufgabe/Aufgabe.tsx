@@ -386,7 +386,7 @@ function Angaben({
    */
   if (istTotenscheinAufgabe(aufgabe)) {
     return schritte.length === 0 ? null : (
-      <Abschnitt titel="Das gilt dafür">
+      <Abschnitt titel="Totenschein erstellt">
         <dl className={stile.angaben}>
           <Angabe was="Das ist zu tun">
             <ol className={stile.punkte}>

@@ -494,7 +494,7 @@ function Angaben({
    */
   if (istTotenscheinAufgabe(aufgabe)) {
     return schritte.length === 0 ? null : (
-      <Card titel="Das gilt dafür">
+      <Card titel="Totenschein erstellt">
         <dl className={stile.angaben}>
           <Angabe was="Diese Schritte gehören dazu">
             <ol className={stile.punkte}>
