@@ -1,217 +1,165 @@
+<div align="center">
+
+<img src="public/logo-hell-256.png" alt="LoveNeverDies logo" width="96">
+
 # LoveNeverDies
 
-Mobile-first PWA, die Angehörige nach einem Todesfall durch die rechtlichen und
-organisatorischen Aufgaben begleitet. Deutschsprachig, Ende-zu-Ende-verschlüsselt,
-post-quantum-sicher.
+**A companion app for the weeks after a death: the paperwork, the deadlines and the question "do I even want this inheritance?", shared with your family and end-to-end encrypted with post-quantum cryptography.**
 
-Der Entwurf steht in [`docs/DESIGN.md`](docs/DESIGN.md). Er ist die Quelle für
-alles Weitere; der Code verweist an den Stellen, an denen es darauf ankommt, mit
-Paragraphennummern dorthin.
+Built in ten days for the [Legal Loves Tech Hackathon 2026](https://legallovestech.de/recap/2026) in Munich.
 
-## Einrichten
+![TypeScript](https://img.shields.io/badge/TypeScript-5.9-3178C6?logo=typescript&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3FCF8E?logo=supabase&logoColor=white)
+![Post-quantum](https://img.shields.io/badge/crypto-ML--KEM%20%2B%20ML--DSA-355440)
+![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)
+![Status: archived](https://img.shields.io/badge/status-archived-lightgrey)
 
-Node 22 oder 24. Die Untergrenze setzt Wrangler (ab 4.87 mindestens 22), die
-Obergrenze setzt Node 26: Es bringt ein eigenes, experimentelles `localStorage`
-mit, das ohne `--localstorage-file` `undefined` ist und in der
-jsdom-Umgebung von Vitest das funktionierende `localStorage` von jsdom
-verdeckt. 53 Tests fallen daran um, ohne dass am Code etwas falsch waere.
-`engines` in `package.json` haelt die Spanne fest.
+</div>
+
+![Four screens from the app: my tasks, a question from the inheritance questionnaire, a private task with a deadline and a probate-court lookup, and a pairing code](docs/screenshots/hero.png)
+
+> [!NOTE]
+> **This project is archived.** The hosted demo, database, auth instance and voice agent have been shut down. The code, the design documents and the screenshots below stay here as a record of what we built.
+
+## Why this exists
+
+The [Legal Loves Tech Hackathon 2026](https://legallovestech.de/recap/2026) brought 51 participants in 14 teams together around one theme: *access to justice*. The challenges came from the Bavarian Ministry of Justice and the Verbraucherzentrale Bayern. The programme week ran from 17 to 21 August 2026, and the teams pitched to the jury on 27 August in the Freskensaal of the LMU.
+
+We took on challenge **STMJ II, "Was nun? Digitaler Nachlassassistent"** ("What now? A digital estate assistant"), set by the [Bayerisches Staatsministerium der Justiz](https://legallovestech.de/recap/2026/challenges). The brief asked for an interactive guide that walks bereaved people through the most important inheritance steps: the certificate of inheritance, renouncing an inheritance (§ 1944 BGB), the probate court (§ 343 FamFG) and wills. It had to work for older and less tech-savvy people at one of the worst moments of their lives.
+
+That last sentence shaped everything:
+
+- **One thing at a time.** A *simple* view with large type, few buttons and one step per screen. The questionnaire asks one question per page and explains legal terms in place.
+- **Deadlines you can't miss.** Renouncing an inheritance has a six-week window that starts when *you* learned of it, not on the date of death. The app works out what applies to you and turns it into a task with a deadline and the address of the responsible court.
+- **You don't have to read.** An optional voice assistant can walk you through the questionnaire.
+- **Families do this together.** Tasks are shared and can be assigned to someone. Each person's answer to "am I an heir, and do I want to be?" stays private, even from siblings in the same case.
+- **It's nobody else's business.** Everything the family writes is encrypted on the device. The server only ever stores ciphertext.
+
+## A tour of the app
+
+All screenshots come from the running app at an iPhone 13 viewport, with made-up data. The UI is German, because the law it explains is.
+
+### Calm by design
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/screenshots/ansichtswahl.png" alt="Choice between a simple and an extended view" width="250"><br><sub><b>Pick how much you want to see.</b><br>Simple: large type, one step at a time. Extended: sorting, assignments, notes.</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/willkommen.png" alt="Welcome screen with three options" width="250"><br><sub><b>Three ways in.</b><br>A death has happened, I want to plan ahead, or I was invited.</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/meine-aufgaben.png" alt="My tasks list" width="250"><br><sub><b>My tasks.</b><br>What is yours to do, deadlines first.</sub></td>
+  </tr>
+</table>
+
+### "Am I an heir, and do I want to be?"
+
+A decision tree written by the lawyers on our team: **141 nodes and 80 outcomes**, one question per page, with the browser's back button taking you to the previous question.
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/screenshots/fragebaum-hinweis.png" alt="Questionnaire page with an explanation of what inheriting debt means" width="250"><br><sub><b>Explained where it matters.</b><br>Inheriting debt, the compulsory share, and a voice assistant on every page.</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/fragebaum-ergebnis.png" alt="Questionnaire outcome: you want to renounce the inheritance" width="250"><br><sub><b>An outcome, not a verdict.</b><br>What applies to you, and the steps that follow from it.</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/aufgabe-frist.png" alt="Private task to renounce the inheritance with a deadline and a court lookup" width="250"><br><sub><b>A private task with a deadline.</b><br>The postcode lookup knows 611 probate courts across 10,813 German postcodes.</sub></td>
+  </tr>
+</table>
+
+### Together, but private
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/screenshots/alle-aufgaben.png" alt="All tasks of the case, with one private task" width="250"><br><sub><b>The whole family's list.</b><br>Shared tasks next to ones marked "Nur für mich" (only for me).</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/kopplungscode.png" alt="Pairing code and six-digit verification code" width="250"><br><sub><b>Joining by phone call.</b><br>An eight-character code you can read aloud, plus six digits both sides compare.</sub></td>
+    <td align="center" width="33%"><img src="docs/screenshots/erbe-status.png" alt="Private inheritance status" width="250"><br><sub><b>Your status, yours alone.</b><br>Encrypted under a key only you hold.</sub></td>
+  </tr>
+</table>
+
+### Before it happens
+
+<table>
+  <tr>
+    <td align="center" width="33%"><img src="docs/screenshots/vorsorge-nachlass.png" alt="Planning ahead: sealed vault and estate checklist" width="250"><br><sub><b>A sealed vault.</b><br>Where the papers are, which contracts run, what should happen at the funeral.</sub></td>
+    <td align="center" colspan="2"><img src="docs/screenshots/hell-dunkel.png" alt="My tasks in light and dark theme side by side" width="520"><br><sub><b>Light and dark.</b> Respects system theme, text scaling and reduced motion.</sub></td>
+  </tr>
+</table>
+
+The vault opens only when a two-thirds majority of the invited relatives confirm the death. Until then, nobody can read it: not the relatives, and not us.
+
+## Under the hood
+
+The threat model assumes the server is curious and may actively misbehave, up to swapping public keys. The full reasoning lives in [`docs/DESIGN.md`](docs/DESIGN.md) (German), and the code cites its sections where it matters.
+
+```mermaid
+flowchart LR
+    subgraph Device["Each family member's device"]
+        UI[React PWA] --> Crypto["core/crypto<br/>ML-KEM-768 + X25519<br/>ML-DSA-65 + Ed25519<br/>AES-256-GCM"]
+        Crypto --> Keys[("Device keys<br/>non-extractable,<br/>never leave the device")]
+        UI --> Queue[("Offline queue<br/>IndexedDB")]
+    end
+    Queue -- ciphertext only --> DB[("Supabase Postgres<br/>row-level security")]
+    DB -- realtime --> UI
+    UI -- sign-in --> Clerk[Clerk]
+    Clerk -. JWT .-> DB
+```
+
+| | |
+| --- | --- |
+| **Key exchange** | Hybrid ML-KEM-768 + X25519. Breaking it requires breaking both. |
+| **Signatures** | ML-DSA-65 + Ed25519. A signature only counts if both verify. |
+| **Content** | AES-256-GCM in a versioned envelope. Task titles, notes, deadlines, documents and the name of the deceased are encrypted before upload. |
+| **Vault** | Shamir secret sharing, `k = ⌈2n/3⌉` of `n` relatives. The case opens on proof that the key was actually rebuilt, not on a release counter. |
+| **Pairing** | A short code via server rendezvous, then a spoken check of six digits derived from *both* public keys, so the server can't slip in its own. |
+| **Reminders** | Scheduled on the device from decrypted deadlines. The server never sees a date. |
+| **Web** | Strict CSP without `unsafe-inline`, HSTS and a tight `Permissions-Policy`, generated at build time. Telemetry is off. |
+
+<details>
+<summary><b>What the server can and can't see</b></summary>
+
+<br>
+
+**Plaintext:** case IDs and status, memberships, public device keys, timestamps, the number of vault releases, and each person's display name and email.
+
+**Encrypted:** task titles, descriptions, deadlines, assignees, notes, documents, subtask structure, completion state, the name and date of death of the deceased, and each person's questionnaire answers and inheritance status.
+
+There is no recovery phrase and no key derived from a password. Lose your only device and you lose access, until another device or another family member grants it again.
+
+</details>
+
+### Engineering notes
+
+- **The database is tested for real.** About 130 Vitest files run against the full chain of 20 migrations on an actual Postgres, compiled to WASM with PGlite, row-level security included. No Docker needed.
+- **The architecture is enforced, not hoped for.** `core/crypto` imports neither React nor Supabase, so the `vault-release` Edge Function reuses the same code. ESLint enforces the layering, a test checks that the lint rule really fires, and a new folder that belongs to no layer fails the lint run.
+- **End-to-end tests with several people.** Playwright drives mobile WebKit and desktop Chromium through pairing between two people and the full vault lifecycle, from planning ahead to opening after a death.
+- **Decisions are written down.** The [ADRs](docs/adr) record, for example, why we removed statute citations from tasks: the app must not look like legal advice ([ADR-0003](docs/adr/0003-keine-rechtsgrundlagen-und-keine-quelllinks.md)).
+
+### Stack
+
+Vite, React 19, TypeScript and react-router as an installable PWA · Clerk for sign-in · Supabase (Postgres, RLS, Realtime, Storage, Edge Functions on Deno) in Frankfurt · `@noble/post-quantum`, `@noble/curves`, `shamir-secret-sharing` and WebCrypto · ElevenLabs Conversational AI for the voice assistant · Vitest, PGlite and Playwright · hosted as static assets on Cloudflare Workers.
+
+## Running it yourself
+
+The hosted services are gone, so you need your own Clerk application and Supabase project. Node 22 or 24 is required.
 
 ```bash
 npm install
-```
-
-`npm install` meldet nicht freigegebene Installationsskripte von `esbuild` und
-`workerd`. Sie bleiben es: Der ausgelieferte Worker buendelt nichts (kein
-`main`, siehe unten), und `npm run deploy` kommt ohne sie aus. Wer lokal
-`npm run preview:cf` fahren will, braucht `workerd` und gibt es dann gezielt
-mit `npm approve-scripts workerd` frei.
-
-Danach die Clerk-Zugangsdaten holen. Sie stehen **nicht** im Repo — jede Person
-zieht sie sich selbst aus der verknüpften Clerk-Anwendung:
-
-```bash
-clerk link --app app_3IEII7CYI5MAH2RIajEorZ1Fd8U
-clerk env pull --file .env.local
-```
-
-Das schreibt `VITE_CLERK_PUBLISHABLE_KEY` (und einen `CLERK_SECRET_KEY`, den
-diese App nicht braucht) nach `.env.local`. Die Datei ist gitignored und gehört
-dort auch hin: Der Secret Key erlaubt vollen Zugriff auf die Clerk-Instanz, und
-was einmal in der Git-History steht, steht dort dauerhaft.
-
-Ohne Clerk-Zugang: `.env.example` nach `.env.local` kopieren und den
-Publishable Key eintragen. Er ist öffentlich und liegt ohnehin im ausgelieferten
-JavaScript — schützenswert ist allein der Secret Key.
-
-Dazu die Supabase-Zugangsdaten: `VITE_SUPABASE_URL` und
-`VITE_SUPABASE_ANON_KEY`. Wie das Projekt angelegt und verknüpft wird, steht in
-[`supabase/README.md`](supabase/README.md). Ohne sie läuft die App bis zur
-Anmeldung und meldet danach, dass die Geräte nicht abrufbar sind.
-
-```bash
+cp .env.example .env.local   # fill in Clerk and Supabase keys
 npm run dev
 ```
 
-## Befehle
+[`supabase/README.md`](supabase/README.md) covers the schema, migrations, Edge Functions and the Clerk integration. [`tests/e2e/README.md`](tests/e2e/README.md) covers the Playwright setup. `npm test` runs the unit and database tests without any external service.
 
-| Befehl               | Wirkung                                           |
-| -------------------- | ------------------------------------------------- |
-| `npm run dev`        | Dev-Server samt Service Worker                    |
-| `npm run build`      | Produktionsbuild inklusive CSP und PWA-Manifest   |
-| `npm run preview`    | Den Produktionsbuild lokal ausliefern             |
-| `npm run preview:cf` | Denselben Build unter Cloudflares Asset-Router    |
-| `npm run typecheck`  | TypeScript ohne Emit                              |
-| `npm run lint`       | ESLint samt der Importgrenzen aus §9              |
-| `npm test`           | Vitest                                            |
-| `npm run icons`      | PWA-Icons aus den Farbwerten in §12 neu erzeugen  |
-| `npm run deploy:dry` | Bauen und den Deploy prüfen, ohne ihn auszuführen |
-| `npm run deploy`     | Bauen und auf Cloudflare ausliefern               |
+## Further reading
 
-## Ausliefern
+- [`docs/DESIGN.md`](docs/DESIGN.md): data model, cryptography, schema, sync, pairing, UI, tests and the limits we accepted (German)
+- [`docs/ERBE_DESIGN.md`](docs/ERBE_DESIGN.md): the inheritance questionnaire (German)
+- [`docs/adr/`](docs/adr): architecture decision records
 
-Die App liegt auf Cloudflare Workers unter
-<https://loveneverdies.emanuel-andre.workers.dev>. Die Konfiguration steht in
-`wrangler.jsonc`.
+## Limitations
 
-```bash
-npm run deploy
-```
+This was a hackathon project and never held real data. German law only, German UI only. Not legal advice: the questionnaire was written by lawyers, but it is no substitute for one or for the probate court. The voice assistant sends audio to ElevenLabs, outside the end-to-end encryption. It has never been tested on a real iOS device.
 
-Es gibt **kein** `main` und damit keinen Worker-Code: ausgeliefert werden nur
-die Dateien aus `dist/`. Wo kein Server-Code läuft, liegt auch kein Schlüssel
-und kein Token, das jemand herausholen könnte — alles Serverseitige steht in
-Supabase (§4). `not_found_handling: "single-page-application"` sorgt dafür, dass
-ein Reload auf `/fall/<id>` nicht im 404 endet; die Routen kennt react-router,
-nicht der Hoster.
+## Team
 
-### Sicherheits-Header
+Built by [@EmanuelMedinaAraujo](https://github.com/EmanuelMedinaAraujo) and [@ClarissaZierl](https://github.com/ClarissaZierl) with the lawyers on our team, who wrote the inheritance decision tree, at the Legal Loves Tech Hackathon 2026, organised by MLTech with the LMU and the TUM under the patronage of the Bavarian Ministry of Justice.
 
-`build/headers.ts` erzeugt beim Bauen eine Datei `dist/_headers`, die Cloudflare
-liest und in Response-Header übersetzt. Sie wird nicht selbst ausgeliefert.
+The cryptography stands on Paul Miller's audited [noble](https://paulmillr.com/noble/) libraries and Privy's audited [`shamir-secret-sharing`](https://github.com/privy-io/shamir-secret-sharing).
 
-Der Grund für die Datei: Ein `<meta http-equiv>` trägt `frame-ancestors` und
-`upgrade-insecure-requests` nicht — Browser verwerfen beide an dieser Stelle —,
-und wer das erste Byte des Dokuments kontrolliert, kontrolliert auch das
-Meta-Tag. Beide Wege fallen aus derselben Quelle (`build/csp.ts`), damit sie
-nicht auseinanderlaufen; das Meta-Tag bleibt für den Fall, dass die Datei
-niemand liest, etwa unter `npm run preview`.
-
-Dazu HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy` und eine
-`Permissions-Policy`, die alles abschaltet, was die App nicht braucht. Zwei
-Ausnahmen sind bewusst gesetzt und in `build/headers.ts` begründet:
-`Cross-Origin-Opener-Policy` steht auf `same-origin-allow-popups`, weil Clerks
-Anmelde-Popup sonst seinen Rückweg verliert, und `camera` bleibt offen, weil
-hinter dem Beleg-Upload ein `<input type="file" capture="environment">` steht.
-Ein `Cross-Origin-Embedder-Policy` gibt es nicht: Weder Clerks Frontend-API noch
-Turnstile liefern das nötige CORP-Bekenntnis, die Anmeldung wäre tot.
-
-Geprüft ist das in `tests/build/headers.test.ts`.
-
-### Clerk
-
-Ausgeliefert wird mit der **Entwicklungsinstanz**. Eine Produktionsinstanz
-(`pk_live_...`) verlangt eine eigene Domain samt `clerk.<domain>`-CNAME, und
-`*.workers.dev` gehört uns nicht. Was das kostet: höchstens 100 Konten, ein
-"Development mode"-Hinweis unter dem Anmeldeformular, und die Instanz nimmt
-jeden Origin an, statt sich an eine Domain zu binden. Für eine Demo trägt das;
-für echte Daten gehört eine Domain davor und danach `clerk deploy`.
-
-ClerkJS meldet standardmäßig Nutzungsdaten an `clerk-telemetry.com`. Das ist in
-`core/auth/clerkAdapter.tsx` abgeschaltet — eine App, die ihre Inhalte vor dem
-eigenen Server verbirgt, soll ihr Nutzungsverhalten nicht an einen Dritten
-geben. Die CSP kennt den Host ohnehin nicht.
-
-## Abhängigkeiten
-
-Alle Versionen sind exakt gepinnt (`save-exact=true` in `.npmrc`). §11.2 nennt
-die kurze, kontrollierte Abhängigkeitsliste als Gegenmaßnahme gegen XSS im
-eigenen Origin — die Kryptobibliotheken dürfen sich nicht unbemerkt bewegen.
-
-## Kryptokern
-
-`src/core/crypto` steht für sich: kein React, kein Supabase, kein Clerk, und
-außer WebCrypto keine Browser-Abhängigkeit — die Edge Function `vault-release`
-soll dieselben Präfixe und denselben Verifikationscode benutzen können (§9).
-
-| Datei            | Wofür                                                             |
-| ---------------- | ----------------------------------------------------------------- |
-| `domain.ts`      | Die fünf Domain-Trennungs-Präfixe aus §3.2, an genau einer Stelle |
-| `envelope.ts`    | Das versionierte Format aus §3.2 samt Versions-Dispatch           |
-| `aead.ts`        | AES-256-GCM über WebCrypto                                        |
-| `kem.ts`         | ML-KEM-768 + X25519: kapseln und entkapseln (zum Namen: §1)       |
-| `sign.ts`        | ML-DSA-65 **und** Ed25519; gültig nur, wenn beide verifizieren    |
-| `shamir.ts`      | `K_v` teilen und zusammensetzen (ohne `n = 1`, siehe §3.5)        |
-| `commitment.ts`  | Tresor-Commitment, Freigabe- und Wrap-Nachricht, Katalog-Item-ID  |
-| `fingerprint.ts` | Geräte-Fingerprint und der 6-stellige Prüfcode aus §3.6           |
-| `bytes.ts`       | Verketten, Vergleichen, Zufall, SHA-256 und HMAC                  |
-| `keystore.ts`    | Der Geräte-Seed in IndexedDB, verschlüsselt und ohne Weg zurück   |
-
-Ein Blob mit unbekanntem `v` oder `aead` wird abgewiesen und nie stillschweigend
-falsch gelesen; Migration läuft lazy, also müssen alte und neue nebeneinander
-lesbar bleiben. Die Tests dazu liegen in `tests/crypto/`.
-
-## Geräteidentität
-
-Jedes Gerät hat zwei Keypairs (§3.1): ML-KEM-768 + X25519 für den
-Schlüsseltransport, ML-DSA-65 + Ed25519 für Signaturen. Beide entstehen bei der
-ersten Anmeldung aus einem 96-Byte-Seed, der in IndexedDB liegt — verschlüsselt
-unter einem AES-GCM-`CryptoKey` mit `extractable: false`.
-
-Der Seed verlässt das Gerät nie. Es gibt keinen portablen Seed, keine
-Wiederherstellungsphrase und keine Ableitung aus dem Login-Passwort; die
-Begründungen stehen in §3.6, die Konsequenz als Grenze 1 in §11. Wer sein
-einziges Gerät verliert, verliert die Entschlüsselbarkeit — die Absicherung ist
-ein zweites Gerät oder eine zweite Person im Fall.
-
-Öffentlich wird davon nur, was öffentlich sein muss: `pk_kem` und `pk_sig`
-stehen in `device_keys`. Der Prüfcode aus §3.6 fällt aus beiden zusammen und
-steht in Profil → Geräte.
-
-## Kopplung
-
-Öffentliche Schlüssel sind zusammen über 3 KB groß und am Telefon nicht nennbar.
-Deshalb der kurze Code mit Server-Rendezvous aus §6: Die beitretende Seite holt
-sich acht Zeichen ohne O, 0, I und 1, nennt sie, und die einladende Seite sieht
-danach Name, E-Mail und einen sechsstelligen Prüfcode.
-
-```
-beitretende Seite            Server                 einladende Seite
-─────────────────            ──────                 ────────────────
-Code holen ──────────────►   pairing_codes
-       │  Code am Telefon ───────────────────────►  Code eingeben
-       │                                            Name, E-Mail, Prüfcode
-       │  ◄─── Prüfcode mündlich abgleichen ──────────────►  │
-       ▼                                            bestätigen
- Fall wird lesbar  ◄────── K_c und K_cat, gewrappt ─────────┘
-```
-
-**Der mündliche Abgleich ist der Kern und nicht die Zierde.** Ein öffentlicher
-Schlüssel ist keine Identität; dass der Server einen echten Namen dazu liefert,
-bindet ihn an eine authentifizierte Clerk-Person, nicht an diesen Schlüssel.
-Erst der Vergleich der sechs Ziffern schließt die Lücke — und er deckt beide
-Schlüssel ab, weil ein Fingerprint nur über den KEM-Schlüssel den
-Signaturschlüssel austauschbar ließe (§3.6).
-
-Derselbe Ablauf gibt ein zweites Gerät derselben Person frei, nur mit
-`purpose = device` und Einstieg über Profil. Freigeschaltet werden dabei alle
-Fälle, die das freigebende Gerät selbst lesen kann; die übrigen bleiben gesperrt,
-und die App benennt die Zahl ("2 von 3 Fällen freigeschaltet"), statt es
-schweigend geschehen zu lassen.
-
-`pairing_codes` ist nicht selektierbar. Ein Code lebt 15 Minuten und genau eine
-Einlösung, und wer rät, läuft in ein Rate-Limit.
-
-## Datenbank
-
-Schema, RLS und Migrationen liegen unter [`supabase/`](supabase/README.md). Die
-Kette wird bei jedem `npm test` gegen ein echtes Postgres eingespielt — PGlite,
-also WASM statt Docker —, samt der RLS-Policies aus §4.
-
-## Schichtung
-
-`core/crypto` importiert weder React noch Supabase, Abhängigkeiten zeigen
-ausschließlich nach unten (§9). Das setzt `eslint.config.js` durch, und
-`tests/importBoundaries.test.ts` prüft, dass es das wirklich tut. Ein neuer
-Ordner unter `src/`, der zu keiner Schicht gehört, lässt den Lint-Lauf
-fehlschlagen — sonst ließe sich die Grenze durch Danebenlegen umgehen.
+No license is granted. All rights reserved.
