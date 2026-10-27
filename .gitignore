@@ -25,3 +25,16 @@ supabase/.branches/
 
 # Wrangler: lokaler Zustand von `wrangler dev`, kein Quelltext.
 .wrangler/
+
+# Local AI-tooling config (not part of the project)
+/CLAUDE.md
+/AGENTS.md
+/.agents/
+/.claude/
+/.mcp.json
+/opencode.json
+/agents.json
+/tools.json
+/tests.json
+/skills-lock.json
+/docs/agents/
